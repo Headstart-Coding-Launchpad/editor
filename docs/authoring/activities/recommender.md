@@ -51,6 +51,7 @@ tasks:
 | `raters` | No | Only `preset` (the default): a made-up class generated from the items. |
 | `showWhy` | No | Default `true`. Each recommendation gets a **Why?** button, and opening one is part of passing. `false` hides the buttons and drops that part of the goal. |
 | `bubble` | No | Default `false`. Shows the bubble meter under the feed. |
+| `goals` | No | A switch for what the feed aims for: 1 to 3 different goals from `like`, `watching` and `new`. With two or more the student gets buttons (at least 44px) above the feed: **What I'll like**, **Keep me watching**, **Something new**. Leave it out and the feed is the usual one, exactly as before. |
 | `minRated` | No | How many items the student must rate. Default 6; 1 to the number of items. |
 
 ## Item fields
@@ -73,6 +74,13 @@ tasks:
   yet, the feed is what the class liked most, one of each kind first.
 - **Why?** Opens "Because Robo Rita and Sporty Sam, who liked what you liked, liked this". Where no
   rater is behind a pick it says "People like you liked this" or "You liked other sport things".
+- **Feed goals** (`goals: [like, watching, new]`). The student switches what the feed aims for and
+  the feed and the bubble meter recompute at once (only on a tap, no timers). `like` is the usual
+  feed. `watching` ("Keep me watching") leans hard on the kind they liked most, so the feed narrows
+  towards one kind. `new` ("Something new") puts kinds they have not rated yet first, so it opens
+  up. The feed starts on `like` (or the first goal listed if `like` is not there). **Why?** names
+  the goal: "Because you liked lots of sport, and this feed wants you to keep watching." With no
+  ratings yet every goal shows the same starting feed.
 - **Bubble meter** (`bubble: true`). Under the feed: "Your feed has 1 of 4 kinds: bubble!" with a
   dot per kind, and the nudge "Like something different to break out." Rate only one kind and the
   feed shrinks to it; like something else and it opens again.
@@ -87,7 +95,8 @@ tasks:
 ## Teacher tools
 
 - **Live.** Every tap is mirrored at once. The student card shows e.g. `4/6 rated · feed 2 of 4
-  kinds`, and `· opened Why?` once they have. The student modal shows the student's ratings, their
+  kinds`, and `· opened Why?` once they have; with a goal switch it adds `· aim: Keep me watching`
+  (the goal the feed is on; the shared state carries `goal` and `tried`). The student modal shows the student's ratings, their
   feed and the bubble meter, read-only.
 - **Edit answers** lets the teacher change the student's ratings (marked teacher assisted); the
   feed follows.
@@ -99,7 +108,9 @@ tasks:
 
 `itemProgress` is `{ correct, total }` = items rated out of `minRated`. The task summary adds
 `recommenderResults`: `students`, `avgRated`, `avgFeedKinds` (how many groups the feed shows),
-`openedWhyCount` and `bubbleCount` (students whose feed is a single kind). See
+`openedWhyCount` and `bubbleCount` (students whose feed is a single kind). With `goals`, `goalCounts`
+says how many students had the feed on each goal at some point (`{ like, watching, new }`), and
+`avgFeedKinds` is measured on the goal each student left it on. See
 [session-reports.md](../session-reports.md#activity-summary-fields).
 
 ## Devices and accessibility

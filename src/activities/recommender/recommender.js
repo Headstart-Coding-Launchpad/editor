@@ -8,13 +8,24 @@
 // Items from kinds the student likes get a small boost, so rating one kind visibly shrinks the
 // feed into a bubble. Everything is recomputed only when a rating changes (see ui.jsx).
 //
-// State: { v: 1, ratings: { [itemId]: 1 | -1 }, why: boolean }. A skipped item has no entry.
+// State: { v: 1, ratings: { [itemId]: 1 | -1 }, why: boolean, goal?, tried? }. A skipped item has
+// no entry. With the task's `goals` the student picks what the feed aims for: `goal` is the one
+// now, `tried` the goals they have switched to (the report's "goals tried").
+//   like      what the similar raters liked, with a small boost for kinds they like (the default)
+//   watching  leans hard on their most-liked kind, so the feed narrows into a bubble
+//   new       mixes in kinds they have not rated yet
 
 export const MAX_ITEMS = 20
 export const RECOMMENDED_MIN_ITEMS = 12
 export const RECOMMENDED_MIN_GROUPS = 3
 export const DEFAULT_MIN_RATED = 6
 export const FEED_SIZE = 4
+export const GOALS = ['like', 'watching', 'new']
+export const GOAL_LABELS = {
+  like: "What I'll like",
+  watching: 'Keep me watching',
+  new: 'Something new',
+}
 
 // Fixed silly names, handed out in order. The made-up class is always these 8.
 export const RATER_NAMES = [
@@ -120,7 +131,9 @@ function popularity(items, raters) {
 // The feed: up to `size` unrated items, best first. Returns [{ item, score, because: [names],
 // reason }]. With no ratings (cold start) it is simply what the class liked most, one per kind
 // first so the starting feed is varied. `because` lists the similar raters who liked the item.
-export function recommend(items, raters, ratings = {}, size = FEED_SIZE) {
+// `goal` (like, watching or new) is only given when the task has `goals`; left out, the feed is
+// exactly the original (no goal on the entries).
+export function recommend(items, raters, ratings = {}, size = FEED_SIZE, goal = undefined) {
   const list = (items ?? []).filter((item) => item && item.id != null)
   const mine = {}
   for (const id of Object.keys(ratings ?? {})) {
@@ -150,6 +163,7 @@ export function recommend(items, raters, ratings = {}, size = FEED_SIZE) {
       score: pop[item.id],
       because: [],
       reason: 'Lots of the class liked this',
+      ...(goal ? { goal, topKind: null, unseen: false } : {}),
     }))
   }
 
@@ -158,6 +172,12 @@ export function recommend(items, raters, ratings = {}, size = FEED_SIZE) {
   const likes = list.filter((item) => mine[item.id] === 1)
   const kindShare = (group) =>
     likes.length === 0 ? 0 : likes.filter((item) => item.group === group).length / likes.length
+  // The kind they liked most (a tie goes to the first kind listed), and the kinds they rated.
+  const topKind = groupsOf(list).reduce(
+    (best, group) => (kindShare(group) > (best ? kindShare(best) : 0) ? group : best),
+    null
+  )
+  const ratedKinds = new Set(list.filter((item) => mine[item.id] != null).map((i) => i.group))
 
   const scored = unrated.map((item) => {
     let sum = 0
@@ -171,9 +191,14 @@ export function recommend(items, raters, ratings = {}, size = FEED_SIZE) {
     })
     const cf = simTotal > 0 ? sum / simTotal : 0
     const share = kindShare(item.group)
+    const unseen = !ratedKinds.has(item.group)
+    let score = cf + 0.5 * share
+    if (goal === 'watching') score = 0.25 * cf + 2 * share + (item.group === topKind ? 1 : 0)
+    else if (goal === 'new') score = 0.5 * cf + (unseen ? 1 : 0)
     return {
       item,
-      score: cf + 0.5 * share,
+      score,
+      unseen,
       because: because.sort((a, b) => b.s - a.s).map((b) => b.name),
       share,
     }
@@ -194,15 +219,58 @@ export function recommend(items, raters, ratings = {}, size = FEED_SIZE) {
       : s.share > 0
         ? `You liked other ${s.item.group} things`
         : 'Lots of the class liked this',
+    ...(goal ? { goal, topKind, unseen: s.unseen } : {}),
   }))
 }
 
 // "Because Robo Rita and Sporty Sam, who liked what you liked, liked this". With no names to
 // give it falls back to the reason ("People like you ...").
+// With a goal (the task has `goals`) it also names what the feed is aiming for.
 export function whyText(entry) {
   const names = (entry?.because ?? []).slice(0, 2)
-  if (names.length === 0) return `${entry?.reason ?? 'People like you liked this'}.`
-  return `Because ${names.join(' and ')}, who liked what you liked, liked this.`
+  const base =
+    names.length === 0
+      ? `${entry?.reason ?? 'People like you liked this'}.`
+      : `Because ${names.join(' and ')}, who liked what you liked, liked this.`
+  const goal = entry?.goal
+  if (!goal) return base
+  if (goal === 'watching') {
+    return entry.topKind
+      ? `Because you liked lots of ${entry.topKind}, and this feed wants you to keep watching.`
+      : `${base} This feed wants you to keep watching.`
+  }
+  if (goal === 'new') {
+    return entry.unseen
+      ? `Because you have not rated any ${entry.item.group} yet, and this feed wants to show you something new.`
+      : `${base} This feed wants to show you something new.`
+  }
+  return `${base} This feed wants to show you what you'll like.`
+}
+
+// ---- The feed goal switch (task field `goals`) ----
+
+// The goals the student can switch between, in the author's order; [] when the task has none.
+export function goalsOf(task) {
+  const list = Array.isArray(task?.goals) ? task.goals : []
+  return list.filter((g, i) => GOALS.includes(g) && list.indexOf(g) === i)
+}
+
+// The goal now: the student's pick if the task offers it, else "like" (or the first goal).
+// undefined when the task has no goals: the feed is then the original one.
+export function goalOf(task, state) {
+  const goals = goalsOf(task)
+  if (goals.length === 0) return undefined
+  if (goals.includes(state?.goal)) return state.goal
+  return goals.includes('like') ? 'like' : goals[0]
+}
+
+// Every goal the student has had the feed on, the one now included (for the report).
+export function triedGoalsOf(task, state) {
+  const goals = goalsOf(task)
+  if (goals.length === 0) return []
+  const tried = Array.isArray(state?.tried) ? state.tried : []
+  const now = goalOf(task, state)
+  return goals.filter((g) => g === now || tried.includes(g))
 }
 
 // The bubble meter: how many different kinds are in the feed.
@@ -265,6 +333,18 @@ export function validateRecommender(task, n) {
   if (task?.raters != null && task.raters !== 'preset') {
     errors.push(`${where}: raters must be preset.`)
   }
+  if (
+    task?.goals != null &&
+    !(
+      Array.isArray(task.goals) &&
+      task.goals.length >= 1 &&
+      task.goals.length <= GOALS.length &&
+      new Set(task.goals).size === task.goals.length &&
+      task.goals.every((g) => GOALS.includes(g))
+    )
+  ) {
+    errors.push(`${where}: goals must list 1 to 3 different goals from like, watching and new.`)
+  }
   if (task?.showWhy != null && typeof task.showWhy !== 'boolean') {
     errors.push(`${where}: showWhy must be true or false.`)
   }
@@ -292,12 +372,20 @@ export function validateRecommender(task, n) {
 
 export function summaryText(task, state) {
   const { rated, need, why } = gradeTask(task, state)
-  return `${rated}/${need} rated${why ? ' · opened Why?' : ''}`
+  const goal = goalOf(task, state)
+  const aim = goal && goalsOf(task).length > 1 && rated > 0 ? ` · aim: ${GOAL_LABELS[goal]}` : ''
+  return `${rated}/${need} rated${why ? ' · opened Why?' : ''}${aim}`
 }
 
 // The student's feed size in kinds right now (for the report): { kinds, total, level, text }.
 export function feedKinds(task, state) {
   const items = task?.items ?? []
-  const feed = recommend(items, generateRaters(items), state?.ratings ?? {})
+  const feed = recommend(
+    items,
+    generateRaters(items),
+    state?.ratings ?? {},
+    FEED_SIZE,
+    goalOf(task, state)
+  )
   return bubbleInfo(feed, items)
 }

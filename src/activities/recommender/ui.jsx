@@ -3,12 +3,17 @@ import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import RecommenderBuilderEditor from './RecommenderBuilderEditor.jsx'
 import {
   BUBBLE_NUDGE,
+  FEED_SIZE,
+  GOAL_LABELS,
   bubbleInfo,
   generateRaters,
+  goalOf,
+  goalsOf,
   gradeTask,
   needsWhy,
   ratedCount,
   recommend,
+  triedGoalsOf,
   whyText,
 } from './recommender.js'
 
@@ -29,7 +34,13 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
 
   // Same lesson, same made-up class: built once per item list.
   const raters = useMemo(() => generateRaters(items), [items])
-  const feed = useMemo(() => recommend(items, raters, ratings), [items, raters, ratings])
+  // The goal is undefined unless the task has `goals`, which keeps the usual feed.
+  const goals = goalsOf(task)
+  const goal = goalOf(task, state)
+  const feed = useMemo(
+    () => recommend(items, raters, ratings, FEED_SIZE, goal),
+    [items, raters, ratings, goal]
+  )
   const bubble = useMemo(() => bubbleInfo(feed, items), [feed, items])
   const { need, passed, why } = gradeTask(task, state)
   const rated = ratedCount(state)
@@ -42,6 +53,14 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
       if (current[item.id] === value) delete current[item.id]
       else current[item.id] = value
       return { ...(prev ?? { v: 1 }), v: 1, ratings: current }
+    })
+  }
+
+  function pickGoal(next) {
+    if (readOnly || next === goal) return
+    onChange?.((prev) => {
+      const base = prev ?? { v: 1, ratings: {}, why: false }
+      return { ...base, v: 1, goal: next, tried: [...new Set([...triedGoalsOf(task, base), next])] }
     })
   }
 
@@ -104,6 +123,23 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
       </ul>
 
       <h3 className="act-rec__heading">Your feed</h3>
+      {goals.length > 1 && (
+        <div className="act-row" role="group" aria-label="What should your feed aim for?">
+          {goals.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className="btn-secondary act-btn"
+              aria-pressed={goal === g}
+              disabled={readOnly}
+              onClick={() => pickGoal(g)}
+            >
+              {goal === g ? '✓ ' : ''}
+              {GOAL_LABELS[g]}
+            </button>
+          ))}
+        </div>
+      )}
       {rated === 0 && (
         <p className="act-hint">Nothing rated yet, so this is what the class likes most.</p>
       )}

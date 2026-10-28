@@ -1,5 +1,5 @@
 import definition from './definition.js'
-import { DEFAULT_MIN_RATED } from './recommender.js'
+import { DEFAULT_MIN_RATED, GOALS, GOAL_LABELS } from './recommender.js'
 import {
   Field,
   InlineField,
@@ -64,6 +64,34 @@ export default function RecommenderBuilderEditor({ task, onUpdate }) {
         />
         <span>Bubble meter under the feed</span>
       </label>
+
+      <Field
+        label="Feed goal switch"
+        hint="Tick none for the usual feed. Two or more give the student a switch: Keep me watching narrows the feed to their favourite kind, Something new mixes in kinds they have not rated."
+      >
+        <div className="te-act-inline-row" role="group" aria-label="Feed goals">
+          {GOALS.map((goal) => {
+            const list = Array.isArray(task.goals) ? task.goals : []
+            return (
+              <label key={goal} className="te-act-inline">
+                <input
+                  type="checkbox"
+                  checked={list.includes(goal)}
+                  aria-label={`Goal ${GOAL_LABELS[goal]}`}
+                  onChange={(e) => {
+                    const next = GOALS.filter((g) =>
+                      g === goal ? e.target.checked : list.includes(g)
+                    )
+                    const { goals: _drop, ...rest } = task
+                    onUpdate(next.length ? { ...rest, goals: next } : rest)
+                  }}
+                />
+                <span>{GOAL_LABELS[goal]}</span>
+              </label>
+            )
+          })}
+        </div>
+      </Field>
 
       <RowListEditor
         label="Items"

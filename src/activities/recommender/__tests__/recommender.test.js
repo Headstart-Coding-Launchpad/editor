@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import definition from '../definition.js'
 import {
+  GOAL_LABELS,
   bubbleInfo,
   generateRaters,
+  goalOf,
+  goalsOf,
+  triedGoalsOf,
   gradeTask,
   groupsOf,
   recommend,
@@ -203,5 +207,90 @@ describe('validation', () => {
     expect(warningsOf({ ...task(), items: flat })).toContain(
       'Task 1: recommender needs at least 3 different groups to show a bubble.'
     )
+  })
+})
+
+describe('feed goals', () => {
+  const GOALS_TASK = { ...task(), goals: ['like', 'watching', 'new'] }
+  // A student who liked two sport things and nothing else.
+  const ratings = { football: 1, swimming: 1 }
+  const feedFor = (goal) => recommend(items, raters, ratings, 4, goal)
+
+  it('validates goals', () => {
+    expect(errorsOf(GOALS_TASK)).toEqual([])
+    const message = 'Task 1: goals must list 1 to 3 different goals from like, watching and new.'
+    expect(errorsOf({ ...task(), goals: [] })).toEqual([message])
+    expect(errorsOf({ ...task(), goals: ['like', 'like'] })).toEqual([message])
+    expect(errorsOf({ ...task(), goals: ['love'] })).toEqual([message])
+    expect(errorsOf({ ...task(), goals: 'like' })).toEqual([message])
+  })
+
+  it('without goals the feed is exactly the original', () => {
+    expect(goalsOf(task())).toEqual([])
+    expect(goalOf(task(), { goal: 'watching' })).toBeUndefined()
+    const plain = recommend(items, raters, ratings)
+    expect(plain).toEqual(recommend(items, raters, ratings, 4, undefined))
+    expect(plain.every((e) => !('goal' in e))).toBe(true)
+  })
+
+  it('like is the current feed, with the goal named on each entry', () => {
+    const plain = recommend(items, raters, ratings)
+    const like = feedFor('like')
+    expect(like.map((e) => e.item.id)).toEqual(plain.map((e) => e.item.id))
+    expect(like.every((e) => e.goal === 'like')).toBe(true)
+  })
+
+  it('watching leans on their most-liked kind and narrows the feed', () => {
+    const watching = feedFor('watching')
+    expect(watching[0].item.group).toBe('sport')
+    expect(groupsInFeed(watching).size).toBeLessThanOrEqual(groupsInFeed(feedFor('like')).size)
+    // The one unrated sport item is in; the rest of the feed is other kinds.
+    expect(watching.filter((e) => e.item.group === 'sport')).toHaveLength(1)
+    const info = bubbleInfo(watching, items)
+    expect(info.kinds).toBeLessThanOrEqual(bubbleInfo(feedFor('new'), items).kinds)
+  })
+
+  it('new mixes in kinds the student has not rated', () => {
+    const fresh = feedFor('new')
+    expect(fresh.every((e) => e.item.group !== 'sport')).toBe(true)
+    expect(groupsInFeed(fresh).size).toBeGreaterThanOrEqual(groupsInFeed(feedFor('watching')).size)
+    expect(fresh[0].unseen).toBe(true)
+  })
+
+  it('Why? names the goal', () => {
+    expect(whyText(feedFor('watching')[0])).toBe(
+      'Because you liked lots of sport, and this feed wants you to keep watching.'
+    )
+    expect(whyText(feedFor('new')[0])).toMatch(
+      /^Because you have not rated any \w+ yet, and this feed wants to show you something new\.$/
+    )
+    expect(whyText(feedFor('like')[0])).toMatch(/This feed wants to show you what you'll like\.$/)
+  })
+
+  it('starts on like (or the first goal), and keeps only goals the task offers', () => {
+    expect(goalOf(GOALS_TASK, {})).toBe('like')
+    expect(goalOf({ ...task(), goals: ['watching', 'new'] }, {})).toBe('watching')
+    expect(goalOf(GOALS_TASK, { goal: 'new' })).toBe('new')
+    expect(goalOf({ ...task(), goals: ['like', 'new'] }, { goal: 'watching' })).toBe('like')
+  })
+
+  it('reports the goals tried, the current one included', () => {
+    expect(triedGoalsOf(GOALS_TASK, { goal: 'new', tried: ['watching'] })).toEqual([
+      'watching',
+      'new',
+    ])
+    expect(triedGoalsOf(GOALS_TASK, {})).toEqual(['like'])
+    expect(triedGoalsOf(task(), { tried: ['new'] })).toEqual([])
+  })
+
+  it('tutor card and report follow the goal, and passing is unchanged', () => {
+    const state = { v: 1, ratings, why: true, goal: 'watching', tried: ['like', 'watching'] }
+    expect(definition.summarize(GOALS_TASK, state).text).toContain(`aim: ${GOAL_LABELS.watching}`)
+    expect(definition.summarize(task(), state).text).not.toContain('aim:')
+    const out = definition.report.summaryFields(GOALS_TASK, [
+      { distinctAttempts: [{ submission: JSON.stringify(state) }] },
+    ])
+    expect(out.recommenderResults.goalCounts).toEqual({ like: 1, watching: 1, new: 0 })
+    expect(gradeTask(GOALS_TASK, state).passed).toBe(gradeTask(task(), state).passed)
   })
 })
