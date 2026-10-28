@@ -18,6 +18,7 @@ import realOrAiUi from './real_or_ai/ui.jsx'
 import nextWordUi from './next_word/ui.jsx'
 import classifierUi from './classifier/ui.jsx'
 import stationUi from './station/ui.jsx'
+import gameAgentUi from './game_agent/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -34,6 +35,7 @@ export const ACTIVITY_UIS = Object.freeze({
   next_word: nextWordUi,
   classifier: classifierUi,
   station: stationUi,
+  game_agent: gameAgentUi,
 })
 
 const merged = new Map()

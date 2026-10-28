@@ -723,6 +723,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
 | `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
 | `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
+| `game_agent/game_agent.js` | Pure Game agent activity logic: map parse and validation (`parseMap`, 10x10, one R, one T, BFS reachability), the world (`stepWorld`: wall bump keeps position), hand-written tabular Q-learning with a seeded RNG (`newAgent`, `stepEpisode`, `trainEpisodes`, `agentAfter` replays a saved robot from rewards + tries), `greedyRun`, shared state (`normalizeGameAgentState`, `withGoResult`, `withRewards`), grading with hints, card summary, authoring validation |
+| `game_agent/definition.js` | Game agent activity definition wrapping `game_agent.js`: default task, validation (race warns), small shared state (rewards, tries, last scores, last Go! route), change classification (training progress continuous), grading (passes when a Go! reaches the treasure), progress, the tutor card line (tries and best score), report `gameAgentResults`, print |
+| `game_agent/GameAgentBuilderEditor.jsx` | Game agent Builder editor: map text, starting rewards, tries per Train, learning curve toggle |
+| `game_agent/ui.jsx` | Game agent StudentView: grid with the robot, reward steppers, Train / Stop / Go! / Fast / Start again (paced requestAnimationFrame loop with a per-frame step cap, progress committed on start, stop and every 2 s), learning curve, best score; read-only tutor view with the route |
 
 ---
 

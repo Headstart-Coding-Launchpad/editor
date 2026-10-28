@@ -413,6 +413,22 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
 | `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
 
+### Game agent ([activities/game_agent.md](activities/game_agent.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: needs a map (a list of rows of text).` | `map` is missing, empty or not a list of strings. | Add `map:` with one text row per line. |
+| `Task …: map can be at most 10 x 10.` | The map has more than 10 rows or columns. | Make the map smaller. |
+| `Task …: map row … is not the same length as row 1.` | A row is shorter or longer than the first. | Make every row the same length. |
+| `Task …: map row … has "…"; use # . R T X only.` | A row has a character other than `#`, `.`, `R`, `T`, `X`. | Use only those characters. |
+| `Task …: map needs exactly one R (the robot start).` | There is no `R`, or more than one. | Put exactly one `R` on the map. |
+| `Task …: map needs exactly one T (the treasure).` | There is no `T`, or more than one. | Put exactly one `T` on the map. |
+| `Task …: the robot cannot reach the treasure on this map.` | Walls (or pits) block every way from `R` to `T`. | Open a path between them. |
+| `Task …: rewards must be an object like { treasure: 10, step: -1, wall: -5 }.` | `rewards` is not an object. | Write `rewards:` with `treasure`, `step`, `wall` (and `pit`). |
+| `Task …: rewards.… must be a whole number from -20 to 20.` | A reward is not a whole number, or is out of range. | Use a whole number from -20 to 20. |
+| `Task …: episodes must be a whole number from 1 to 500.` | `episodes` is not a whole number in range. | Use 1 to 500 (default 50). |
+| `Task …: race is not built yet; the tutor's card shows each best score so a race can be run on the big screen.` | `race: true` is set (warning). | Remove `race`; the tutor card shows each best score. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

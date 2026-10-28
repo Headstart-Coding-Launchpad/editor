@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **New activity `game_agent`: set the rewards and train a robot to find the treasure.** A grid
+  `map` (`#` wall, `.` floor, `R` robot, `T` treasure, optional `X` pit, at most 10 x 10, treasure
+  reachable) with student-editable `rewards` (`treasure`, `step`, `wall`, `pit`, whole numbers
+  -20..20), `episodes` per Train (default 50) and `showLearning`. The robot learns by hand-written
+  Q-learning, watched on the grid; Go! runs the learned route once, and the task passes when it
+  reaches the treasure. `race` is accepted with a warning but is not built yet; the tutor card shows
+  each student's best score so a race can be run on the big screen. See
+  [activities/game_agent.md](activities/game_agent.md).
+  - Affects: game_agent (new activity) · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-23-game-agent-reinforcement-learning-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and
