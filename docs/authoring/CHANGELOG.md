@@ -37,6 +37,28 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
+  New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
+  up to that many features and the tree regrows from only those; the examples still record every
+  feature. They start with none ticked. The tutor card adds `· uses has fur, can fly`, the shared
+  state carries `chosenFeatures`, and the session report adds `featureUse`. Leave the field out for
+  the old behaviour (the tree uses every feature). See
+  [activities/learning_tree.md](activities/learning_tree.md).
+  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-learning-tree-student-picked-features-and-depth-and-the-path.md
+
+- **New activity: Learning Tree (`type: learning_tree`).** The student gives a tree labelled
+  examples (a name, a tick per yes/no feature, a label) and the tree builds itself with ID3, picking
+  its own questions and redrawing every time an example changes. **Try it on new things** then
+  sorts the lesson's unseen `testItems`; the task passes at `passAt` (default 4 of 5). Task fields:
+  `features` (1-6), `labels` (2-6), `testItems` (`name`, `yes`, `label`), `maxExamples`,
+  `maxDepth`, `passAt`. The tutor card shows examples, tree depth and test score. See
+  [activities/learning_tree.md](activities/learning_tree.md).
+  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-23-learning-decision-tree-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,

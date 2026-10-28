@@ -723,6 +723,11 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
 | `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
 | `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
+| `learning_tree/tree.js` | Pure ID3 decision tree for Learning Tree: entropy, information gain, best split, build with a depth cap, classify, score |
+| `learning_tree/learning_tree.js` | Pure Learning Tree activity logic: task validation, state normalising, the tree and test grading, hints, shared state |
+| `learning_tree/definition.js` | Learning Tree activity definition wrapping `learning_tree.js`: default task, state, grading, progress, tutor card summary, session-report fields, print |
+| `learning_tree/ui.jsx` | Learning Tree StudentView: example form, the drawn tree (nested boxes), Try it results; read-only for the tutor |
+| `learning_tree/LearningTreeBuilderEditor.jsx` | Builder editor for Learning Tree: features, labels, max examples/depth, passAt and the test items |
 
 ---
 
