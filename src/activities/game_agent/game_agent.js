@@ -158,6 +158,14 @@ function bestAction(agent, s) {
   return best
 }
 
+// The move the robot currently thinks is best from square `s`, as an index into ACTIONS, or -1
+// when it has no opinion yet (all four values equal, e.g. untrained). Ties go to the first best.
+export function bestMoveOf(agent, s) {
+  const q = agent.q.slice(s * 4, s * 4 + 4)
+  if (q.length < 4 || q.every((v) => v === q[0])) return -1
+  return bestAction(agent, s)
+}
+
 export function beginEpisode(env) {
   return { s: env.start, steps: 0, score: 0, done: false, reached: false, last: null }
 }

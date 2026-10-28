@@ -170,4 +170,24 @@ describe('Game agent UI', () => {
     expect(screen.getByTestId('ga-stats')).toHaveTextContent('Best score: 8 (3 steps)')
     expect(screen.getByTestId('ga-result')).toHaveTextContent('found the treasure')
   })
+
+  it('keeps the treasure visible when the robot stands on it', () => {
+    // A finished Go! leaves the robot on the treasure (cell 13 in TASK's 5-wide map).
+    renderView({ initialState: solutionFor(TASK) })
+    const cell = screen.getByTestId('ga-grid').querySelector('[data-cell="13"]')
+    expect(cell).toHaveTextContent('🤖')
+    expect(screen.getByTestId('ga-gem')).toBeInTheDocument()
+    expect(cell).toContainElement(screen.getByTestId('ga-gem'))
+  })
+
+  it('Show what it learned draws best-move arrows in open squares only', () => {
+    renderView({ initialState: solutionFor(TASK) })
+    expect(screen.queryByRole('img', { name: /best move/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show what it learned' }))
+    const arrows = screen.getAllByRole('img', { name: /^best move: (up|right|down|left)$/ })
+    expect(arrows.length).toBeGreaterThan(0)
+    const grid = screen.getByTestId('ga-grid')
+    expect(grid.querySelector('[data-cell="0"] .act-ga-cell__best')).toBeNull() // wall
+    expect(grid.querySelector('[data-cell="13"] .act-ga-cell__best')).toBeNull() // treasure
+  })
 })

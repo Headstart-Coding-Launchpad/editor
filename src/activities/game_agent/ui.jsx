@@ -7,6 +7,7 @@ import {
   MAX_SCORES,
   agentAfter,
   beginEpisode,
+  bestMoveOf,
   cellsOfMoves,
   envOf,
   episodesOf,
@@ -34,6 +35,10 @@ const SLOW_STEPS = 3 // moves per frame when watching
 const FAST_STEPS = 1500 // moves per frame in Fast mode (the work per frame is capped)
 const COMMIT_MS = 2000
 const GO_STEP_MS = 220
+
+// Up, right, down, left (the order of ACTIONS).
+const ARROWS = ['↑', '→', '↓', '←']
+const ARROW_NAMES = ['up', 'right', 'down', 'left']
 
 const REWARD_LABELS = {
   treasure: ['Treasure', '💎'],
@@ -117,6 +122,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   // { kind: 'go', cells, upTo } or null.
   const [run, setRun] = useState(null)
   const [fast, setFast] = useState(false)
+  const [showBest, setShowBest] = useState(false)
   const agentRef = useRef(null)
   const stopRef = useRef(false)
   const frameRef = useRef(null)
@@ -274,13 +280,15 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   const graded = gradeTask(task, state)
   const names = hasPit(env) ? ['treasure', 'step', 'wall', 'pit'] : ['treasure', 'step', 'wall']
   const lastGo = state.goes > 0 && !run
+  // What it learned so far: while training, the live robot; otherwise the saved one (replayed).
+  const learner = showBest ? (run?.kind === 'train' ? agentRef.current?.agent : getAgent()) : null
 
   return (
     <div className="act-panel" data-testid="game_agent-activity">
       <div
         className="act-ga-grid"
         style={{ gridTemplateColumns: `repeat(${env.cols}, 1fr)`, maxWidth: `${env.cols * 52}px` }}
-        role="img"
+        role={showBest ? 'group' : 'img'}
         aria-label={`Grid ${env.cols} by ${env.rows}. The robot is at row ${Math.floor(robotAt / env.cols) + 1}, column ${(robotAt % env.cols) + 1}.`}
         data-testid="ga-grid"
       >
@@ -291,6 +299,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
             kind === 'wall' ? 'act-ga-cell--wall' : '',
             trailSet.has(i) && !isRobot && i !== env.treasure ? 'act-ga-cell--trail' : '',
           ]
+          const onTreasure = isRobot && i === env.treasure
           const face = isRobot
             ? '🤖'
             : i === env.treasure
@@ -300,9 +309,30 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
                 : kind === 'pit'
                   ? '🕳️'
                   : ''
+          const best =
+            learner && kind !== 'wall' && i !== env.treasure ? bestMoveOf(learner, i) : -1
           return (
             <span key={i} className={cls.join(' ').trim()} data-cell={i}>
               {face}
+              {onTreasure && (
+                <span
+                  className="act-ga-cell__gem"
+                  role="img"
+                  aria-label="treasure"
+                  data-testid="ga-gem"
+                >
+                  💎
+                </span>
+              )}
+              {best >= 0 && (
+                <span
+                  className="act-ga-cell__best"
+                  role="img"
+                  aria-label={`best move: ${ARROW_NAMES[best]}`}
+                >
+                  {ARROWS[best]}
+                </span>
+              )}
             </span>
           )
         })}
@@ -365,6 +395,14 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
             onClick={forget}
           >
             Start again
+          </button>
+          <button
+            type="button"
+            className="btn-ghost-outline act-btn"
+            aria-pressed={showBest}
+            onClick={() => setShowBest((v) => !v)}
+          >
+            Show what it learned
           </button>
         </div>
       )}

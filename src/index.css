@@ -4445,6 +4445,7 @@ label.te-backdrop-tag,
 }
 
 .act-ga-cell {
+  position: relative;
   aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
@@ -4454,6 +4455,26 @@ label.te-backdrop-tag,
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
   border-radius: 4px;
+}
+
+/* The treasure under the robot: a small gem in the corner. */
+.act-ga-cell__gem {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 0.6em;
+  line-height: 1;
+}
+
+/* "What it learned": the best move from this square. */
+.act-ga-cell__best {
+  position: absolute;
+  bottom: 1px;
+  left: 3px;
+  font-size: 0.6em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--colour-ink-strong);
 }
 
 .act-ga-cell--wall {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_REWARDS,
   agentAfter,
+  bestMoveOf,
   cellsOfMoves,
   envOf,
   gradeTask,
@@ -158,6 +159,18 @@ describe('learning', () => {
     const [score] = trainEpisodes(env, SILLY, agent, 1)
     expect(agent.episodes).toBe(1)
     expect(score).toBeLessThanOrEqual(env.cap * 5)
+  })
+
+  it('bestMoveOf: no opinion when untrained, the highest Q-value otherwise', () => {
+    const agent = newAgent(env)
+    expect(bestMoveOf(agent, env.start)).toBe(-1)
+    agent.q[env.start * 4 + 2] = 3 // down
+    expect(bestMoveOf(agent, env.start)).toBe(2)
+    agent.q[env.start * 4 + 1] = 5 // right
+    expect(bestMoveOf(agent, env.start)).toBe(1)
+    // After training, the square before the treasure points at it.
+    const trained = agentAfter(env, DEFAULT_REWARDS, 50)
+    expect(bestMoveOf(trained, env.start)).toBeGreaterThanOrEqual(0)
   })
 
   it('draws a stored route back onto the grid', () => {

@@ -66,7 +66,10 @@ tasks:
   the grid. **Fast** does a big batch of moves per frame and skips the drawing. The work per frame
   is capped, so it stays smooth on a low-end Chromebook.
 - **Go!** runs the learned moves greedily (no exploring) once from `R`, walks the route on the grid
-  and shows its score.
+  and shows its score. If the robot ends on the treasure, a small 💎 stays in the cell corner.
+- **Show what it learned** (off by default) draws a small arrow in each open square for the move
+  the robot currently rates best there (no arrow where it has no opinion yet, or on walls and the
+  treasure). It updates live while training. Student-side only; the tutor view is unchanged.
 
 ## Marking and hints
 
