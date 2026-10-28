@@ -6,14 +6,20 @@ and the Workspace-module-vs-Activity decision test are in
 [modular-activities-plan.md](modular-activities-plan.md); authoring pages are in
 `docs/authoring/activities/` ([binary](../authoring/activities/binary.md),
 [keyboard](../authoring/activities/keyboard.md), [mouse](../authoring/activities/mouse.md),
-[classifier](../authoring/activities/classifier.md)).
+[classifier](../authoring/activities/classifier.md),
+[next_word](../authoring/activities/next_word.md),
+[real_or_ai](../authoring/activities/real_or_ai.md),
+[station](../authoring/activities/station.md)). Quizzes are authored from
+[quiz-tasks.md](../authoring/quiz-tasks.md).
 
-Status: Binary, Keyboard and Mouse run through the host (plan step 2.3a), and so do quizzes
-(steps 2.2 / 2.3b, see [Quizzes](#quizzes-legacy-activities)). The Builder authors every
-activity from the registry and previews it through the host (step 2.4, see [Builder](#builder)),
-and YAML has the `type: <activity>` shorthand. `code_arrange` is an activity **hosted by a
-workspace module** rather than by `ActivityHost` (step 4.9, see
-[Code Arrange](#code-arrange-an-activity-hosted-in-a-module)).
+Status: every activity in `src/activities/` runs through the host: Binary, Keyboard, Mouse,
+Classifier, Next Word, Real or AI and Station, and the six quizzes (`quiz_confidence`,
+`quiz_fill_blank`, `quiz_match`, `quiz_multiple_choice`, `quiz_poll`, `quiz_short_answer`; see
+[Quizzes](#quizzes-legacy-activities)). The Builder authors every activity from the registry and
+previews it through the host (see [Builder](#builder)), and YAML has the `type: <activity>`
+shorthand. `code_arrange` is an activity **hosted by a workspace module** rather than by
+`ActivityHost` (step 4.9, see [Code Arrange](#code-arrange-an-activity-hosted-in-a-module)); it has
+no page of its own under `docs/authoring/activities/`.
 
 ## Pieces
 

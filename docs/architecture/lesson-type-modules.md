@@ -67,6 +67,13 @@ python, turtle, html), `errorHelp` (a crashed run's Python error is explained in
 report's `typing` measures), `previewInspector` (a task's `inspector` field adds the HTML Inspector
 to the preview; `src/modules/html/inspector/`; html).
 
+Optional (default none): `scrub` (live number / colour scrubbing in the code editor for a
+task's `scrub` field: `{ liveRerun: 'preview' | 'none', needsImport, inputCall }`, checked by
+`scrubCapabilityProblem` in `src/shared/scrub/scrubConfig.js`; python, turtle, html) and
+`highlightTargets` (the controls a tutor, or a task's `highlight` field, can highlight: an array of
+`{ id, label, pane?, aliases?, options? }` with unique snake_case ids; a `pane` must be a
+`focusPanes` id).
+
 | Field | Values |
 |---|---|
 | `stageReveal` | `'progressive'` (support stages as read-only references, complete previewed first; python, html) \| `'offer'` (offer the next stage after two failed checks) |
@@ -218,7 +225,7 @@ Optional `exportWork`: `() => import('./exportWork.js')`, the module's "Export w
 the tutor's StudentModal and the public `/share/:id` viewer (contract in
 `src/shared/exportWork/exporters.js`: `readLive`, `readSubmission`, `buildFiles`, optional
 `buildPictures`, `sharePayload`, `ShareView`). Loaded lazily so export code and fflate stay out of
-the main bundle. A module without it is simply left out of exports; a new module (e.g. the Python
+the main bundle. `exportWork` is optional. Python, turtle, html and scratch provide it; filesystem, desktop, electronics and arcade do not. A module without it is simply left out of exports; a new module (e.g. the Python
 Stage) adds pictures by declaring `buildPictures`.
 
 ## Check-Type Registry
@@ -227,7 +234,7 @@ Stage) adds pictures by declaring `buildPictures`.
 `CORE_CHECKS`, every module's `CHECKS` and the shared input checks. A definition is
 `{ type, owner, subject?, operators?, fields?, aliases?, timing, requiresRun, submitAllowed,
 contextKey?, evaluate(check, output, ctx), validate?(check, ctx) }`; `owner` is `core`,
-`module:<type>` or `input`; duplicate ids throw. `evaluateSingleCheck` normalises core aliases,
+`module:<type>` or `input`; duplicate ids throw. Not every module has a `CHECKS` array: arcade has no `checks.js` at all, and scratch's `checks.js` holds only a check catalogue (`SCRATCH_CHECK_CATALOG`) and default sprites, because its checks are judged inside the workspace by `checkDispatch.js` / `checkVerification.js`. `evaluateSingleCheck` normalises core aliases,
 looks up and calls `evaluate` (unknown types are `false`); `RUN_REQUIRED` / `SUBMIT_ALLOWED` are
 derived. Scratch evaluates its own checks in the workspace. `checkRegistryParity.test.js` holds
 parity with the frozen pre-registry dispatcher.

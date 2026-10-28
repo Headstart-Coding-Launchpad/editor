@@ -366,10 +366,12 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - **Level management**: its own Admin tab (`Levels`) for creating and editing the reusable levels lessons can reference
 - **Class management**: create and archive admin-only class records used for reusable lesson forks
 - **Session management**: see every live or waiting session left open across the platform (lesson, state, paused flag, student/online counts, how long it's been open) and close any of them remotely, for cases where a teacher left a session running without ending it
+- **Solo & side-quests**: who did the Solo Challenges (and any lesson opened solo) and who opened side-quests in live sessions, per lesson and class, with an anonymised download ("Student N"). Solo study is no longer recorded, so its solo section is empty; see "Side-quests" and the solo study log note above
 - **Topic library**: create, edit, and delete topics with full Markdown description and syntax fields; type filters come from the lesson module registry
-- **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, backdrops and sounds, shared across every lesson of a given type
+- **Shared assets**: manage lesson-type-wide Firebase Storage files and Scratch default sprites, backdrops and sounds (the Scratch type's sprite library), shared across every lesson of a given type
 - **Badges**: see every built-in live badge with its exact rule (rule-backed or tutor-only, auto-awardable), and add, edit, archive or restore manual-only badges that reach tutors' award pickers with no deploy; ids and emoji are checked for clashes on save, and archived badges still show wherever they were awarded
 - **Shared work**: every share link tutors made with Export work (title, module, date, live/expired/revoked, days left), with Revoke for live ones
+- **Feedback**: platform feedback, lesson feedback and task feedback in three sub-tabs, with archive and resolve actions; see "Viewing and deleting feedback (admin)" under Feedback
 - **Version footer**: the bottom of every Admin tab shows `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (BUILD rises on every merge to `main`), with a Copy button for bug reports; clicking the version opens "What's new" milestone release notes
 
 ---
