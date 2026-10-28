@@ -64,8 +64,12 @@
               ".validate": "!newData.isString() || newData.val().length <= 30 || auth.token.role === 'teacher' || auth.token.role === 'admin'"
             },
             "currentCode": { ".validate": "!newData.isString() || newData.val().length <= 100000" },
-            "currentOutput": { ".validate": "!newData.isString() || newData.val().length <= 100000" },
-            "currentAnswer": { ".validate": "!newData.isString() || newData.val().length <= 100000" },
+            "currentOutput": {
+              ".validate": "!newData.isString() || newData.val().length <= 100000"
+            },
+            "currentAnswer": {
+              ".validate": "!newData.isString() || newData.val().length <= 100000"
+            },
             "currentDraft": {
               "text": { ".validate": "!newData.isString() || newData.val().length <= 100000" }
             },
