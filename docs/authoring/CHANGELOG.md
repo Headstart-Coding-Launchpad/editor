@@ -39,6 +39,18 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-28
 
+- **`game_agent`: senses, coins, a mystery map and race v1.** New `map` character `C` (coin, paid
+  once per try) with a `rewards.coin` (default 3). New `senses` (starting list from `position`,
+  `walls`, `treasure_direction`, `treasure_direction_4`, `pit_near`, `coin_direction`; default
+  `[position]`) and `maxSenses`; setting either lets the student toggle senses, and the robot learns
+  from what it senses instead of its square, so it can cope with a map it has not seen. `testMaps`
+  (up to 5, sealed) adds **Go on a new map**: one run with no training, and the task then passes when
+  it reaches the treasure there. Also a robot's-eye view, a "when it sees X it goes Y" list and a
+  "N situations to learn" count. `race: true` now puts each student's best mystery-map score on
+  their tutor card (it warns without `testMaps`). See [activities/game_agent.md](activities/game_agent.md).
+  - Affects: game_agent · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-game-agent-senses-robot-s-eye-view-mystery-map-coins-and-a-c.md
+
 - **New activity `game_agent`: set the rewards and train a robot to find the treasure.** A grid
   `map` (`#` wall, `.` floor, `R` robot, `T` treasure, optional `X` pit, at most 10 x 10, treasure
   reachable) with student-editable `rewards` (`treasure`, `step`, `wall`, `pit`, whole numbers

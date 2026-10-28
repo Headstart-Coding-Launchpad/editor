@@ -44,11 +44,14 @@ tasks:
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | `game_agent` in YAML (JSON: `taskType: activity` + `activityType: game_agent`) |
-| `map` | Yes | Rows of text, at most 10 x 10, all the same length. `#` wall, `.` floor, `R` robot start (exactly one), `T` treasure (exactly one), `X` pit (optional: falling in ends the try). The treasure must be reachable from `R` (a pit is not a way through). The edge of the grid counts as a wall. |
-| `rewards` | No | The starting rewards the student can change: `{ treasure, step, wall, pit }`, whole numbers from -20 to 20. Default `{ treasure: 10, step: -1, wall: -5, pit: -10 }`. The pit reward only shows when the map has an `X`. |
+| `map` | Yes | Rows of text, at most 10 x 10, all the same length. `#` wall, `.` floor, `R` robot start (exactly one), `T` treasure (exactly one), `X` pit (optional: falling in ends the try), `C` coin (optional: picked up once per try, the robot walks through it). The treasure must be reachable from `R` (a pit is not a way through). The edge of the grid counts as a wall. |
+| `rewards` | No | The starting rewards the student can change: `{ treasure, step, wall, pit, coin }`, whole numbers from -20 to 20. Default `{ treasure: 10, step: -1, wall: -5, pit: -10 }` (plus `coin: 3` when the map has a `C`). The pit and coin rewards only show when the map has an `X` / `C`. |
+| `senses` | No | What the robot senses to tell situations apart (and the starting choice): `position` (its square), `walls` (the four sides), `treasure_direction` (8-way compass), `treasure_direction_4` (4-way compass), `pit_near`, `coin_direction` (compass to the nearest coin not yet picked up). Setting `senses` or `maxSenses` shows the sense buttons so the student can switch senses on and off. Default `[position]`: the old behaviour, the robot only knows its square. |
+| `maxSenses` | No | The most senses on at once (1 to 6). Default 6. |
+| `testMaps` | No | A sealed list (at most 5) of maps, same characters as `map`, that nobody trains on. See "The mystery map". |
 | `episodes` | No | How many practice tries one press of **Train** runs (1 to 500). Default 50. The student can press Train again to practise more. |
 | `showLearning` | No | Show the learning curve (one small bar per try, the last 40). Default true. |
-| `race` | No | **Not built yet.** Accepted with a warning. Racing classmates needs a design decision; for now the tutor card shows each student's best score so the tutor can run a race on the big screen. |
+| `race` | No | Race v1: the tutor card shows each student's best mystery-map score (`mystery map: 8 pts`) so the tutor can rank the class. Needs `testMaps` (a warning if missing). There is no class ranking screen yet; see "Teacher tools". |
 
 ## How the robot learns
 
@@ -71,6 +74,29 @@ tasks:
   the robot currently rates best there (no arrow where it has no opinion yet, or on walls and the
   treasure). It updates live while training. Student-side only; the tutor view is unchanged.
 
+## Senses
+
+The robot's table is keyed by what its senses report, not by the square. With only `position` it
+memorises one map. With `walls` + `treasure_direction` it learns rules ("wall up and treasure to the
+right, go right") that still work on a map it has never seen. More senses means more situations to
+learn, so slower learning ("too many senses make slow learners"). The student sees **Your robot has N
+situations to learn** (the number of different situations the chosen senses can report on this map).
+
+- Sense buttons are at least 44px high and toggle on and off (at least one stays on, at most
+  `maxSenses`). **Changing a sense makes the robot forget everything**, the same as changing a reward.
+- **Robot's-eye view** greys the grid and writes what the robot's senses report from where it
+  stands ("walls: up, left; treasure is down and right").
+- **Show what it learned**: arrows per square when `position` is a sense, otherwise a short list
+  "When it sees ..., it goes ..." of the situations it meets most.
+
+## The mystery map
+
+When `testMaps` is set, **Go on a new map** appears. It runs the trained robot once on one of the
+sealed maps (they take turns), with no exploring and no training. A situation the robot never met
+gets a fixed made-up move, and the run stops after 120 moves. The task passes (no Check button) when
+that run reaches the treasure; **Go!** on the training map no longer decides the pass. Without
+`testMaps` the old rule applies (a Go! reaches the treasure).
+
 ## Marking and hints
 
 - The task passes (no Check button) when a Go! reaches the treasure within the step limit.
@@ -80,7 +106,13 @@ tasks:
 ## Teacher tools
 
 - The student card shows the tries and the best score, e.g. `50 episodes · best 8 (3 steps)`, or
-  `training` while a Train is running. Compare cards to run a race on the big screen.
+  `training` while a Train is running. With `race: true` and a mystery-map run it reads
+  `mystery map: 8 pts · 50 tries` (or `lost`), so cards can be compared for a race.
+- Shared state (tutor visibility): the senses, rewards, tries, the last test-map result (reached,
+  score, steps), the best test-map score and the number of test-map runs.
+- No class ranking screen exists. Activities have no class-wide tutor view hook, only per-student
+  cards, so the race is ranked by reading the card text. A proper ranking screen needs a class-level
+  activity summary hook (a ranked list across `perStudent` states, live, on the tutor's view).
 - The student modal shows the grid with the last Go! route, the rewards, the tries, the best score
   and the learning curve, live while the student trains (the count updates about every 2 seconds
   while watched).
@@ -88,7 +120,8 @@ tasks:
   answers)** to fill in a trained robot. There is no Edit answers.
 - Reports show `itemProgress` (trained, then found the treasure), the tries trained, the best score
   and whether the last Go! reached the treasure; the class summary adds how many trained, how many
-  reached the treasure, the average tries and the best score.
+  reached the treasure, the average tries and the best score, plus how many ran a test map, how many
+  reached the treasure on one and the best test-map score.
 
 ## Devices
 

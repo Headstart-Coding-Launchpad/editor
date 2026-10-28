@@ -88,7 +88,7 @@ export default defineActivity({
         name: 'race',
         type: 'boolean',
         description:
-          'Race v1: the tutor card shows each student's best mystery-map score ("mystery map: 8 pts") so the class can be ranked. Needs testMaps.',
+          'Race v1: the tutor card shows each best mystery-map score, like "mystery map: 8 pts", so the class can be ranked. Needs testMaps.',
       },
     ],
   },
