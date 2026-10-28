@@ -12,7 +12,7 @@ import {
   onDisconnect,
   runTransaction,
 } from 'firebase/database'
-import { db } from '../../shared/firebase'
+import { auth, db } from '../../shared/firebase'
 import { onValueWhenSignedIn } from '../../shared/onValueWhenSignedIn.js'
 import { buildControlHighlightCommand } from '../../shared/controlHighlight.js'
 import { clearPeerHelpData } from './usePeerHelp'
@@ -1536,7 +1536,9 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   async function registerJoining(tempId) {
     const r = ref(db, `sessions/${lessonId}/joiningStudents/${tempId}`)
     onDisconnect(r).remove()
-    await set(r, { joinedAt: serverTimestamp() })
+    // Stamped with the signed-in uid so only this student (or a tutor) can change the marker.
+    const uid = auth?.currentUser?.uid
+    await set(r, uid ? { joinedAt: serverTimestamp(), uid } : { joinedAt: serverTimestamp() })
   }
 
   async function unregisterJoining(tempId) {

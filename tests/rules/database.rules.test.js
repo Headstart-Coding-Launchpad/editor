@@ -56,7 +56,9 @@ describe('sessions', () => {
     const marker = `sessions/${LESSON}/joiningStudents/temp-1`
 
     beforeEach(async () => {
-      await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, marker).set({ joinedAt: 1000 }))
+      await testEnv.withSecurityRulesDisabled((ctx) =>
+        ref(ctx, marker).set({ joinedAt: 1000, uid: STUDENT_ID })
+      )
     })
 
     it('lets the student share a typed name up to 30 characters', async () => {
@@ -91,6 +93,51 @@ describe('sessions', () => {
       await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
       await assertSucceeds(ref(as.student, marker).remove())
     })
+
+    it('ties the marker to the student who made it', async () => {
+      await assertFails(ref(as.otherStudent, marker).set({ joinedAt: 2000, uid: OTHER_STUDENT_ID }))
+      await assertFails(ref(as.otherStudent, `${marker}/typedName`).set('Hacked'))
+      await assertFails(ref(as.otherStudent, marker).remove())
+      await assertSucceeds(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertSucceeds(ref(as.teacher, marker).remove())
+      // A new marker: the uid must be the writer's own.
+      await assertFails(ref(as.student, marker).set({ joinedAt: 3000, uid: OTHER_STUDENT_ID }))
+      await assertSucceeds(ref(as.student, marker).set({ joinedAt: 3000, uid: STUDENT_ID }))
+      await assertSucceeds(ref(as.student, marker).remove())
+    })
+
+    it('leaves a marker with no uid to teachers and admins', async () => {
+      await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, marker).set({ joinedAt: 1000 }))
+      await assertFails(ref(as.student, `${marker}/typedName`).set('Jamie'))
+      await assertFails(ref(as.student, marker).remove())
+      await assertSucceeds(ref(as.teacher, `${marker}/admit`).set({ name: 'Jamie', at: 2000 }))
+      await assertSucceeds(ref(as.admin, marker).remove())
+    })
+  })
+})
+
+describe('student node size caps', () => {
+  const node = `sessions/${LESSON}/students/${STUDENT_ID}`
+
+  it('caps names at 30 characters for students but not for teachers', async () => {
+    await assertSucceeds(ref(as.student, `${node}/displayName`).set('x'.repeat(30)))
+    await assertFails(ref(as.student, `${node}/displayName`).set('x'.repeat(31)))
+    await assertSucceeds(ref(as.teacher, `${node}/displayName`).set('x'.repeat(40)))
+  })
+
+  it('caps code, output, answer and draft at 100000 and each file at 200000', async () => {
+    for (const key of ['currentCode', 'currentOutput', 'currentAnswer']) {
+      await assertSucceeds(ref(as.student, `${node}/${key}`).set('x'.repeat(100000)))
+      await assertFails(ref(as.student, `${node}/${key}`).set('x'.repeat(100001)))
+    }
+    await assertSucceeds(ref(as.student, `${node}/currentDraft`).set({ text: 'x'.repeat(100000) }))
+    await assertFails(ref(as.student, `${node}/currentDraft`).set({ text: 'x'.repeat(100001) }))
+    await assertSucceeds(
+      ref(as.student, `${node}/currentFiles`).set({ 'a,py': 'x'.repeat(200000) })
+    )
+    await assertFails(ref(as.student, `${node}/currentFiles`).set({ 'a,py': 'x'.repeat(200001) }))
+    // Other shapes still pass.
+    await assertSucceeds(ref(as.student, `${node}/currentAnswer`).set({ choice: 1 }))
   })
 })
 
