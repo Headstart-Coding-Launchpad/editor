@@ -258,8 +258,10 @@ the generators (planning against the repo, applying in a temporary copy).
 
 ## Continuous Integration
 
-`.github/workflows/ci.yml` runs on every pull request and every push to `main`. Its jobs run in
-parallel:
+`.github/workflows/ci.yml` runs on every branch push (and by hand with `gh workflow run ci.yml --ref
+<branch>`). Pushing a branch never deploys; only a green run on `main` does. A tip: when one shard
+fails, rerun the whole run, not just the failed job, or `coverage` merges the old shard's report.
+Its jobs run in parallel:
 
 - **checks:** `npm run docs:check`, `npm run lint` (fails on errors, not warnings),
   `npm run format:check` (Prettier, code only; Markdown is ignored) and `npx vite build`. The
@@ -271,6 +273,9 @@ parallel:
 - **coverage:** waits for the shards, merges their reports with `vitest --merge-reports
   --coverage`, applies the coverage floors and uploads the `coverage` artifact.
 - **rules:** the security rules tests (see above).
+- **smoke:** Playwright `e2e/smoke.spec.js` in Chromium, with a dummy Firebase config: the
+  landing page and the login page render in a real browser. A failure uploads the
+  `playwright-report` artifact. The older `e2e/` specs predate the current app and are not run.
 
 Every job installs through `.github/actions/setup`, which caches `node_modules` against the
 lockfile hash and only runs `npm install` when the lockfile changes. It uses `npm install`, not

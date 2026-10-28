@@ -1,12 +1,12 @@
 name: CI
 
-# Runs on pull requests and on every push to main. Branches merged locally and
-# pushed straight to main still get checked. A green run on main triggers the
-# Pages deploy (deploy.yml).
+# Runs on every branch push (sessions push branches so the full suite runs here,
+# not on a low-memory PC; Ryan 2026-10-28, #250). Pushing a branch never deploys:
+# only a green run on main triggers the Pages deploy (deploy.yml). Pull requests
+# come from branches in this repo, so their push run is the check.
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -116,3 +116,36 @@ jobs:
 
       - name: Test security rules
         run: npm run test:rules
+
+  # Playwright smoke: the landing page and the Builder load in a real browser
+  # (e2e/). Catches a blank page or a broken route that unit tests miss.
+  smoke:
+    # Pinned: Playwright has no Chromium build for ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Only smoke.spec.js: the older e2e specs predate the current app.
+      # Dummy Firebase config, so CI never touches the live project.
+      - name: Smoke test
+        run: npx playwright test e2e/smoke.spec.js --reporter=line
+        env:
+          VITE_FIREBASE_API_KEY: demo-key
+          VITE_FIREBASE_AUTH_DOMAIN: demo-hsc-test.firebaseapp.com
+          VITE_FIREBASE_DATABASE_URL: https://demo-hsc-test-default-rtdb.firebaseio.com
+          VITE_FIREBASE_PROJECT_ID: demo-hsc-test
+          VITE_FIREBASE_STORAGE_BUCKET: demo-hsc-test.appspot.com
+          VITE_FIREBASE_APP_ID: demo-app
+
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
