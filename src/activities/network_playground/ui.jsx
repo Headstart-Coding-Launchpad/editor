@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import NetworkPlaygroundBuilderEditor from './NetworkPlaygroundBuilderEditor.jsx'
-import { accuracy, initNet, makeDataset, makeRng, predict, trainEpoch } from './network.js'
+import {
+  accuracy,
+  initNet,
+  makeDataset,
+  makeRng,
+  makeTestDots,
+  predict,
+  trainEpoch,
+} from './network.js'
 import {
   TRAIN_EVERY,
   MAX_HIDDEN_LAYERS,
   allowAddLayerOf,
+  allowInputsOf,
+  allowZeroLayersOf,
   datasetOf,
+  inputLabel,
+  testDotsOf,
   maxNeuronsOf,
   netOfState,
   normalizeNetworkState,
@@ -72,7 +84,7 @@ function drawField(canvas, net, dots) {
 
 // Neurons as circles, weights as lines: orange for a positive weight, blue for a negative one,
 // thicker for a bigger one.
-function NetworkDiagram({ net, sizes }) {
+function NetworkDiagram({ net, sizes, inputs }) {
   const width = 300
   const height = 170
   const cols = sizes.length
@@ -110,7 +122,11 @@ function NetworkDiagram({ net, sizes }) {
       className="act-net-diagram"
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label={`The network: 2 inputs, ${sizes.slice(1, -1).join(' then ')} hidden neurons, 1 output`}
+      aria-label={`The network: inputs ${inputs.map(inputLabel).join(', ')}, ${
+        sizes.length > 2
+          ? `${sizes.slice(1, -1).join(' then ')} hidden neurons`
+          : 'no hidden layers'
+      }, 1 output`}
       data-testid="network-diagram"
     >
       {lines}
@@ -127,21 +143,24 @@ function NetworkDiagram({ net, sizes }) {
           />
         ))
       )}
-      <text x={pos[0][0].x - 4} y={pos[0][0].y + 4} fontSize="10" fill="#334155">
-        x
-      </text>
-      <text x={pos[0][1].x - 4} y={pos[0][1].y + 4} fontSize="10" fill="#334155">
-        y
-      </text>
+      {pos[0].map((p, i) => (
+        <text key={inputs[i]} x={p.x - 4} y={p.y + 4} fontSize="9" fill="#334155">
+          {inputLabel(inputs[i])}
+        </text>
+      ))}
     </svg>
   )
 }
 
-const keyOf = (s) => JSON.stringify([s?.layers ?? null, s?.w ?? null])
+const keyOf = (s) =>
+  JSON.stringify([s?.layers ?? null, s?.inputs ?? null, s?.test ?? null, s?.w ?? null])
 const newSeed = () => Math.floor(Math.random() * 2147483000) + 1
 
 export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly = false }) {
   const dots = useMemo(() => makeDataset(datasetOf(task)), [task])
+  const testDots = useMemo(() => (testDotsOf(task) ? makeTestDots(datasetOf(task)) : []), [task])
+  const allowedInputs = allowInputsOf(task)
+  const zeroOk = allowZeroLayersOf(task)
   const target = targetOf(task)
   const maxNeurons = maxNeuronsOf(task)
   const shown = useMemo(() => normalizeNetworkState(task, state), [task, state])
@@ -151,15 +170,26 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
   const rngRef = useRef(null)
   const runningRef = useRef(false)
   const rafRef = useRef(null)
-  const statsRef = useRef({ acc: 0, epochs: 0, best: 0, maxLayers: 1, hold: 0, frames: 0 })
+  const statsRef = useRef({
+    acc: 0,
+    epochs: 0,
+    best: 0,
+    maxLayers: 1,
+    hold: 0,
+    frames: 0,
+    test: null,
+  })
   const lastSyncRef = useRef(0)
   const lastKeyRef = useRef(keyOf(shown))
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
   const [layers, setLayers] = useState(shown.layers)
+  const [inputs, setInputs] = useState(shown.inputs)
+  const inputsRef = useRef(inputs)
+  inputsRef.current = inputs
   const [running, setRunning] = useState(false)
-  const [live, setLive] = useState({ acc: shown.acc, epochs: shown.epochs })
+  const [live, setLive] = useState({ acc: shown.acc, epochs: shown.epochs, test: shown.test })
   const [note, setNote] = useState('')
   const [, setPaint] = useState(0)
   const layersRef = useRef(layers)
@@ -168,11 +198,12 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
   // The tutor sees the student's network from the state's numbers; the student's own is in a ref.
   const viewNet = readOnly ? netOfState(shown) : netRef.current
   const viewLayers = readOnly ? shown.layers : layers
+  const viewInputs = readOnly ? shown.inputs : inputs
 
   const buildNet = useCallback(
-    (nextLayers, fromState) => {
+    (nextLayers, fromState, nextInputs = inputsRef.current) => {
       const fromNumbers = fromState ? netOfState(fromState) : null
-      netRef.current = fromNumbers ?? initNet(nextLayers, newSeed())
+      netRef.current = fromNumbers ?? initNet(nextLayers, newSeed(), nextInputs)
       rngRef.current = makeRng(newSeed())
       statsRef.current = {
         acc: accuracy(netRef.current, dots),
@@ -181,6 +212,7 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
         maxLayers: Math.max(fromState?.maxLayers ?? 0, nextLayers.length),
         hold: 0,
         frames: 0,
+        test: fromNumbers ? (fromState.test ?? null) : null,
       }
     },
     [dots]
@@ -197,7 +229,10 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     const s = statsRef.current
     const prev = { best: s.best, maxLayers: s.maxLayers }
     const next = {
-      ...stateFromNet(prev, layersRef.current, netRef.current, s.acc, s.epochs),
+      ...stateFromNet(prev, layersRef.current, netRef.current, s.acc, s.epochs, {
+        inputs: inputsRef.current,
+        test: s.test,
+      }),
       training,
     }
     s.best = next.best
@@ -212,7 +247,11 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
       rafRef.current = null
       setRunning(false)
       setNote(message)
-      setLive({ acc: statsRef.current.acc, epochs: statsRef.current.epochs })
+      setLive({
+        acc: statsRef.current.acc,
+        epochs: statsRef.current.epochs,
+        test: statsRef.current.test,
+      })
       redraw()
       commit(false)
     },
@@ -252,6 +291,8 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     if (readOnly || runningRef.current) return
     runningRef.current = true
     statsRef.current.hold = 0
+    statsRef.current.test = null
+    setLive((prev) => ({ ...prev, test: null }))
     setRunning(true)
     setNote('')
     commit(true)
@@ -259,7 +300,7 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
   }
 
   // Changing the layers (or Start again) gives the network fresh random numbers.
-  function rebuild(nextLayers) {
+  function rebuild(nextLayers, nextInputs = inputsRef.current) {
     if (readOnly) return
     runningRef.current = false
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
@@ -268,12 +309,30 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     setNote('')
     layersRef.current = nextLayers
     setLayers(nextLayers)
+    inputsRef.current = nextInputs
+    setInputs(nextInputs)
     const keep = { best: statsRef.current.best, maxLayers: statsRef.current.maxLayers }
-    buildNet(nextLayers, null)
+    buildNet(nextLayers, null, nextInputs)
     statsRef.current.best = keep.best
     statsRef.current.maxLayers = Math.max(keep.maxLayers, nextLayers.length)
-    setLive({ acc: statsRef.current.acc, epochs: 0 })
+    setLive({ acc: statsRef.current.acc, epochs: 0, test: null })
     redraw()
+    commit(false)
+  }
+
+  // Switching an input on or off rebuilds the network (fresh numbers), keeping at least one.
+  function toggleInput(id) {
+    const has = inputsRef.current.includes(id)
+    if (has && inputsRef.current.length <= 1) return
+    const next = allowedInputs.filter((x) => (x === id ? !has : inputsRef.current.includes(x)))
+    rebuild(layers, next)
+  }
+
+  // Scores fresh dots from the same pattern. It does not change whether the task passes.
+  function tryNewDots() {
+    if (readOnly || runningRef.current || statsRef.current.epochs === 0) return
+    statsRef.current.test = accuracy(netRef.current, testDots)
+    setLive((prev) => ({ ...prev, test: statsRef.current.test }))
     commit(false)
   }
 
@@ -292,8 +351,14 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     lastKeyRef.current = keyOf(shown)
     layersRef.current = shown.layers
     setLayers(shown.layers)
-    buildNet(shown.layers, shown.w ? shown : null)
-    setLive({ acc: statsRef.current.acc, epochs: statsRef.current.epochs })
+    inputsRef.current = shown.inputs
+    setInputs(shown.inputs)
+    buildNet(shown.layers, shown.w ? shown : null, shown.inputs)
+    setLive({
+      acc: statsRef.current.acc,
+      epochs: statsRef.current.epochs,
+      test: statsRef.current.test,
+    })
     redraw()
   }, [readOnly, shown, buildNet, redraw])
 
@@ -312,8 +377,9 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
 
   const acc = readOnly ? shown.acc : live.acc
   const epochs = readOnly ? shown.epochs : live.epochs
+  const fresh = readOnly ? shown.test : live.test
   const passed = acc >= target
-  const sizes = [2, ...viewLayers, 1]
+  const sizes = [viewInputs.length, ...viewLayers, 1]
   const canAdd = allowAddLayerOf(task) && viewLayers.length < MAX_HIDDEN_LAYERS
 
   return (
@@ -339,10 +405,16 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
           <strong>{epochs > 0 ? `${percent(acc)}% right` : 'Not trained yet'}</strong> (aim for{' '}
           {percent(target)}%) · {viewLayers.length} hidden layer{viewLayers.length === 1 ? '' : 's'}
           {epochs > 0 && ` · ${epochs} rounds`}
+          {testDotsOf(task) && fresh != null && (
+            <>
+              {' '}
+              · <span data-testid="network-new-dots">New dots: {percent(fresh)}% right</span>
+            </>
+          )}
           {readOnly && state?.training && ' · training now'}
         </p>
 
-        <NetworkDiagram net={viewNet} sizes={sizes} />
+        <NetworkDiagram net={viewNet} sizes={sizes} inputs={viewInputs} />
 
         {!readOnly && (
           <>
@@ -362,6 +434,38 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
                 🔄 Start again
               </button>
             </div>
+
+            {allowedInputs.length > 0 && (
+              <div className="act-row" role="group" aria-label="Inputs">
+                <span className="act-net__layer-name">Inputs</span>
+                {allowedInputs.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="btn-secondary act-btn"
+                    aria-pressed={inputs.includes(id)}
+                    aria-label={`Input ${inputLabel(id)}`}
+                    onClick={() => toggleInput(id)}
+                  >
+                    {inputs.includes(id) ? '✓ ' : ''}
+                    {inputLabel(id)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {testDotsOf(task) && (
+              <div className="act-row">
+                <button
+                  type="button"
+                  className="btn-secondary act-btn"
+                  disabled={running || epochs === 0}
+                  onClick={tryNewDots}
+                >
+                  🎯 Try new dots
+                </button>
+              </div>
+            )}
 
             <div className="act-net__layers" role="group" aria-label="Layers">
               {layers.map((count, index) => (
@@ -400,7 +504,7 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
                     ➕ Add a layer
                   </button>
                 )}
-                {allowAddLayerOf(task) && layers.length > 1 && (
+                {(allowAddLayerOf(task) || zeroOk) && layers.length > (zeroOk ? 0 : 1) && (
                   <button
                     type="button"
                     className="btn-secondary act-btn"

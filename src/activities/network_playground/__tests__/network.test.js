@@ -5,6 +5,7 @@ import {
   initNet,
   makeDataset,
   makeRng,
+  makeTestDots,
   netFromFlat,
   predict,
   trainEpoch,
@@ -68,5 +69,53 @@ describe('the network', () => {
     expect(Math.abs(accuracy(again, dots) - accuracy(net, dots))).toBeLessThan(0.1)
     expect(netFromFlat([4], flat)).toBeNull()
     expect(netFromFlat([4, 3], null)).toBeNull()
+  })
+})
+
+describe('student-picked inputs, zero layers and new dots', () => {
+  it('gives the network one input node per picked input', () => {
+    const net = initNet([2], 1, ['x', 'y', 'x2', 'y2'])
+    expect(net.sizes).toEqual([4, 2, 1])
+    expect(net.inputs).toEqual(['x', 'y', 'x2', 'y2'])
+    expect(weightCount([2], 4)).toBe(4 * 2 + 2 + 2 + 1)
+    expect(weightCount([2])).toBe(weightCount([2], 2))
+  })
+
+  it('rebuilds a net with its inputs from the flat list, and refuses a mismatch', () => {
+    const net = initNet([], 3, ['x2', 'y2'])
+    const flat = flattenNet(net)
+    expect(flat.length).toBe(weightCount([], 2))
+    const again = netFromFlat([], flat, ['x2', 'y2'])
+    expect(again.inputs).toEqual(['x2', 'y2'])
+    expect(netFromFlat([], flat, ['x', 'y', 'x2'])).toBeNull()
+  })
+
+  it('makes 80 fresh dots from the same pattern, different from the training dots', () => {
+    for (const name of ['two_blobs', 'circle', 'spiral']) {
+      const test = makeTestDots(name)
+      expect(test).toHaveLength(80)
+      expect(test).toEqual(makeTestDots(name))
+      expect(test).not.toEqual(makeDataset(name).slice(0, 80))
+      expect(test.filter((d) => d.label === 1)).toHaveLength(40)
+    }
+  })
+
+  it('cannot solve the circle from x and y with no hidden layer', () => {
+    const dots = makeDataset('circle')
+    const net = initNet([], 1, ['x', 'y'])
+    const rng = makeRng(5)
+    for (let i = 0; i < 300; i += 1) trainEpoch(net, dots, rng)
+    expect(accuracy(net, dots)).toBeLessThan(0.7)
+  })
+
+  it('solves the circle from x2 and y2 with no hidden layer, on new dots too', () => {
+    const dots = makeDataset('circle')
+    for (const seed of [1, 2, 3]) {
+      const net = initNet([], seed, ['x2', 'y2'])
+      const rng = makeRng(5)
+      for (let i = 0; i < 300; i += 1) trainEpoch(net, dots, rng)
+      expect(accuracy(net, dots)).toBeGreaterThanOrEqual(0.9)
+      expect(accuracy(net, makeTestDots('circle'))).toBeGreaterThanOrEqual(0.9)
+    }
   })
 })

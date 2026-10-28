@@ -5,6 +5,22 @@
 export const DATASETS = ['two_blobs', 'circle', 'spiral']
 export const LEARNING_RATE = 0.1
 export const POINTS_PER_CLASS = 80
+// "Try new dots": fresh dots from the same pattern (80 in all, 40 a class).
+export const TEST_POINTS_PER_CLASS = 40
+const TEST_SEED_SHIFT = 7919
+
+// The inputs the network can be given for a dot at (x, y): the plain x and y, or their squares
+// (x2 is x times x). Squares let a straight cut separate a circle.
+export const INPUT_IDS = ['x', 'y', 'x2', 'y2']
+export const INPUT_LABELS = { x: 'x', y: 'y', x2: 'x²', y2: 'y²' }
+export const DEFAULT_INPUTS = ['x', 'y']
+
+export function inputValue(id, x, y) {
+  if (id === 'y') return y
+  if (id === 'x2') return x * x
+  if (id === 'y2') return y * y
+  return x
+}
 
 // Small seeded random number generator (mulberry32): same seed, same numbers, everywhere.
 export function makeRng(seed) {
@@ -26,10 +42,12 @@ const bell = (rng) => (rng() + rng() + rng() - 1.5) * 1.15
 
 // The dots: [{ x, y, label }] with x, y in [-1, 1] and label 0 (blue) or 1 (orange).
 // Always the same dots for the same name.
-export function makeDataset(name) {
-  const rng = makeRng(name === 'circle' ? 22 : name === 'spiral' ? 33 : 11)
+// `shift` changes the seed for a different set of dots from the same pattern; `perClass` is how
+// many dots each colour gets.
+export function makeDataset(name, shift = 0, perClass = POINTS_PER_CLASS) {
+  const rng = makeRng((name === 'circle' ? 22 : name === 'spiral' ? 33 : 11) + shift)
   const dots = []
-  for (let i = 0; i < POINTS_PER_CLASS; i += 1) {
+  for (let i = 0; i < perClass; i += 1) {
     for (const label of [0, 1]) {
       let x
       let y
@@ -41,7 +59,7 @@ export function makeDataset(name) {
         y = Math.sin(angle) * radius
       } else if (name === 'spiral') {
         // Two arms winding out from the middle.
-        const t = (i + rng() * 0.8) / POINTS_PER_CLASS
+        const t = (i + rng() * 0.8) / perClass
         const angle = t * Math.PI * 2.2 + label * Math.PI
         const radius = 0.08 + 0.85 * t
         x = Math.cos(angle) * radius + bell(rng) * 0.04
@@ -58,16 +76,22 @@ export function makeDataset(name) {
   return dots
 }
 
-// ---- The network ----
-// net = { sizes: [2, ...hidden, 1], W: [layer][neuron][input], b: [layer][neuron] }
-
-export function netSizes(layers) {
-  return [2, ...layers, 1]
+// Fresh dots from the same pattern, different from the training dots (a different seed).
+export function makeTestDots(name) {
+  return makeDataset(name, TEST_SEED_SHIFT, TEST_POINTS_PER_CLASS)
 }
 
-export function initNet(layers, seed = 1) {
+// ---- The network ----
+// net = { sizes: [inputs, ...hidden, 1], inputs: ['x', 'y'], W: [layer][neuron][input],
+//         b: [layer][neuron] }. No hidden layers is allowed: the inputs go straight to the output.
+
+export function netSizes(layers, inputCount = 2) {
+  return [inputCount, ...layers, 1]
+}
+
+export function initNet(layers, seed = 1, inputs = DEFAULT_INPUTS) {
   const rng = makeRng(seed)
-  const sizes = netSizes(layers)
+  const sizes = netSizes(layers, inputs.length)
   const W = []
   const b = []
   for (let l = 1; l < sizes.length; l += 1) {
@@ -79,12 +103,12 @@ export function initNet(layers, seed = 1) {
     )
     b.push(Array.from({ length: sizes[l] }, () => 0))
   }
-  return { sizes, W, b }
+  return { sizes, inputs: [...inputs], W, b }
 }
 
 // How many numbers a net of these hidden layers holds.
-export function weightCount(layers) {
-  const sizes = netSizes(layers)
+export function weightCount(layers, inputCount = 2) {
+  const sizes = netSizes(layers, inputCount)
   let total = 0
   for (let l = 1; l < sizes.length; l += 1) total += sizes[l] * sizes[l - 1] + sizes[l]
   return total
@@ -101,10 +125,10 @@ export function flattenNet(net) {
 }
 
 // The reverse of flattenNet; null when the list does not fit these layers.
-export function netFromFlat(layers, flat) {
-  if (!Array.isArray(flat) || flat.length !== weightCount(layers)) return null
+export function netFromFlat(layers, flat, inputs = DEFAULT_INPUTS) {
+  if (!Array.isArray(flat) || flat.length !== weightCount(layers, inputs.length)) return null
   if (!flat.every((v) => typeof v === 'number' && Number.isFinite(v))) return null
-  const sizes = netSizes(layers)
+  const sizes = netSizes(layers, inputs.length)
   const W = []
   const b = []
   let at = 0
@@ -119,14 +143,14 @@ export function netFromFlat(layers, flat) {
     b.push(flat.slice(at, at + sizes[l]))
     at += sizes[l]
   }
-  return { sizes, W, b }
+  return { sizes, inputs: [...inputs], W, b }
 }
 
 const sigmoid = (v) => 1 / (1 + Math.exp(-v))
 
 // All neurons' outputs, layer by layer (the first entry is the input).
 function activations(net, x, y) {
-  const acts = [[x, y]]
+  const acts = [(net.inputs ?? DEFAULT_INPUTS).map((id) => inputValue(id, x, y))]
   const last = net.W.length - 1
   for (let l = 0; l <= last; l += 1) {
     const input = acts[l]

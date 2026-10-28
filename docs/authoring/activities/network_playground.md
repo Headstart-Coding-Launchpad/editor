@@ -51,7 +51,19 @@ tasks:
 | `layers` | No | The hidden layers the network starts with, as neurons per layer: `[3]` (default) or `[4, 3]`. 1 or 2 layers, each from 1 to `maxNeurons`. |
 | `maxNeurons` | No | Most neurons the student can put in one layer, 1 to 8. Default 6. |
 | `allowAddLayer` | No | Show **Add a layer** and **Remove a layer** (2 hidden layers at most). Default `true`. `false` leaves only the neuron buttons. |
+| `inputs` | No | The inputs the network starts with, from `x`, `y`, `x2` (x squared) and `y2` (y squared): 1 to 4 different ones. Default `[x, y]`. Each input is one node on the left of the diagram, labelled x, y, x², y². |
+| `allowInputs` | No | The inputs the student may switch on and off (a subset of `x, y, x2, y2`, 1 to 4). Shows an **Inputs** row of toggle buttons (at least 44px, at least one stays on). Changing one rebuilds the network with fresh numbers, like changing a layer. Leave it out for fixed inputs. `inputs` must be inside it. |
+| `allowZeroLayers` | No | `true` lets the student remove every hidden layer, so the inputs go straight to the output (**Remove a layer** works down to none; `layers: []` can start there). Default `false`. |
+| `testDots` | No | `true` adds **Try new dots**: it scores 80 fresh dots (40 each colour) from the same pattern, made with a different seed from the training dots, and shows **New dots: N% right** beside the training score. It does not change whether the task passes. The score clears when the network trains again or is rebuilt. Default `false`. |
 | `target` | No | Accuracy to pass, above 0.5 and up to 1. Default 0.9. |
+
+## Better inputs beat a bigger network
+
+With `inputs: [x, y]` and no hidden layer the network can only draw a straight line, so the
+`circle` cannot be cracked. Switch on `x2` and `y2` (x and y squared) and the circle is a straight
+cut on those: the unit tests train it with no hidden layer and it reaches the target in a few
+passes. A good setup for the lesson is `dataset: circle`, `layers: [1]`,
+`allowInputs: [x, y, x2, y2]`, `allowZeroLayers: true`, `testDots: true`.
 
 ## Marking and hints
 
@@ -79,6 +91,12 @@ tasks:
   layer. There is no **Edit answers** (there is nothing to type).
 - **Stage → Start again** resets the student's network; **Complete (show answers)** marks it
   passed with 100% (no network drawn).
+- With `allowInputs` the card adds `· inputs x², y²`; with `testDots` and a score, `· new dots 90%`.
+  A network with no hidden layers shows as `0 layers (none)`. The modal's diagram shows the same
+  input nodes and the New dots score, read-only, and they are part of the shared state.
+- Session reports also keep `inputs` and the new-dots score; the class summary adds `inputCounts`
+  (how many students used each input, when `allowInputs` is set) and `avgNewDots` (when `testDots`
+  is on).
 - Session reports show each student's final accuracy, best accuracy and most layers used, and the
   class summary adds how many reached the target and the average layers used.
 - Go Live on an activity task is teacher-only: a student's network is never broadcast.

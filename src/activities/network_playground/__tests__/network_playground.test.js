@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import definition from '../definition.js'
 import {
+  allowInputsOf,
   gradeTask,
+  startInputsOf,
   initialNetworkState,
   normalizeNetworkState,
   startLayersOf,
@@ -146,5 +148,95 @@ describe('definition', () => {
   it('never resumes training after a reload', () => {
     const raw = JSON.stringify({ training: true, layers: [3] })
     expect(definition.deserialize(raw, TASK).training).toBe(false)
+  })
+})
+
+describe('inputs, zero layers and new dots', () => {
+  const MORE = {
+    ...TASK,
+    inputs: ['x', 'y'],
+    allowInputs: ['x', 'y', 'x2', 'y2'],
+    allowZeroLayers: true,
+    testDots: true,
+  }
+
+  it('validates the new fields', () => {
+    expect(validateNetworkPlaygroundTask(MORE, 1)).toEqual([])
+    expect(errorsOf({ allowInputs: ['x', 'z'] })).toEqual([
+      'Task 2: allowInputs must list 1 to 4 different inputs from x, y, x2 and y2.',
+    ])
+    expect(errorsOf({ allowInputs: [] })).toHaveLength(1)
+    expect(errorsOf({ inputs: ['x', 'x'] })).toEqual([
+      'Task 2: inputs must list 1 to 4 different inputs from x, y, x2 and y2.',
+    ])
+    expect(errorsOf({ inputs: ['x2'], allowInputs: ['x', 'y'] })).toEqual([
+      'Task 2: every input in inputs must also be in allowInputs.',
+    ])
+    expect(errorsOf({ allowZeroLayers: 'yes' })).toEqual([
+      'Task 2: allowZeroLayers must be true or false.',
+    ])
+    expect(errorsOf({ testDots: 1 })).toEqual(['Task 2: testDots must be true or false.'])
+  })
+
+  it('allows an empty layers list only with allowZeroLayers', () => {
+    expect(errorsOf({ layers: [] })).toEqual(['Task 2: layers must list 1 or 2 hidden layers.'])
+    expect(errorsOf({ layers: [], allowZeroLayers: true })).toEqual([])
+    expect(startLayersOf({ layers: [], allowZeroLayers: true })).toEqual([])
+    expect(startLayersOf({ layers: [] })).toEqual([3])
+  })
+
+  it('starts with x and y unless the task says otherwise', () => {
+    expect(startInputsOf(TASK)).toEqual(['x', 'y'])
+    expect(startInputsOf({ inputs: ['x2', 'y2'], allowInputs: ['x', 'y', 'x2', 'y2'] })).toEqual([
+      'x2',
+      'y2',
+    ])
+    expect(allowInputsOf(TASK)).toEqual([])
+    expect(initialNetworkState(TASK).inputs).toEqual(['x', 'y'])
+  })
+
+  it('keeps only inputs the task allows, and zero layers only when allowed', () => {
+    const s = normalizeNetworkState(MORE, { layers: [], inputs: ['y2', 'x2', 'q'], test: 0.8 })
+    expect(s.layers).toEqual([])
+    expect(s.inputs).toEqual(['x2', 'y2'])
+    expect(s.test).toBe(0.8)
+    expect(normalizeNetworkState(TASK, { layers: [], inputs: ['x2'] }).layers).toEqual([3])
+    expect(normalizeNetworkState(TASK, { inputs: ['x2'] }).inputs).toEqual(['x', 'y'])
+    expect(normalizeNetworkState(MORE, { test: 9 }).test).toBeNull()
+  })
+
+  it('shows the inputs and the new-dots score to the tutor, and reports them', () => {
+    const s = {
+      ...normalizeNetworkState(MORE, {}),
+      layers: [],
+      inputs: ['x2', 'y2'],
+      acc: 0.95,
+      best: 0.95,
+      epochs: 40,
+      test: 0.9,
+      maxLayers: 1,
+    }
+    expect(definition.summarize(MORE, s).text).toBe(
+      '95% · 0 layers (none) · inputs x², y² · new dots 90%'
+    )
+    expect(
+      definition.summarize(TASK, { ...s, layers: [3], inputs: ['x', 'y'], test: null }).text
+    ).toBe('95% · 1 layer (3)')
+    expect(definition.buildSubmission(MORE, s)).toMatchObject({ inputs: ['x2', 'y2'], test: 0.9 })
+    const out = definition.report.summaryFields(MORE, [
+      { distinctAttempts: [{ submission: JSON.stringify(s) }] },
+    ])
+    expect(out.networkResults).toMatchObject({
+      inputCounts: { x2: 1, y2: 1 },
+      avgNewDots: 0.9,
+    })
+  })
+
+  it('a new new-dots score is a discrete change', () => {
+    const base = normalizeNetworkState(MORE, { layers: [3], acc: 0.6, epochs: 50 })
+    expect(definition.classifyChange(base, { ...base, test: 0.7 }, MORE)).toBe('discrete')
+    expect(definition.classifyChange(base, { ...base, inputs: ['x2', 'y2'] }, MORE)).toBe(
+      'discrete'
+    )
   })
 })

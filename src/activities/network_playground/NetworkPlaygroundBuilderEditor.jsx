@@ -1,5 +1,6 @@
 import definition from './definition.js'
 import { DATASET_LABELS, maxNeuronsOf, startLayersOf, targetOf } from './network_playground.js'
+import { INPUT_IDS, INPUT_LABELS } from './network.js'
 import {
   ChoiceCards,
   Field,
@@ -95,6 +96,49 @@ export default function NetworkPlaygroundBuilderEditor({ task, onUpdate }) {
         />
         Students can add a layer
       </label>
+      <label className="te-check-toggle">
+        <input
+          type="checkbox"
+          checked={task.allowZeroLayers === true}
+          onChange={(event) => set({ allowZeroLayers: event.target.checked || undefined })}
+        />
+        Students can remove every hidden layer
+      </label>
+      <label className="te-check-toggle">
+        <input
+          type="checkbox"
+          checked={task.testDots === true}
+          onChange={(event) => set({ testDots: event.target.checked || undefined })}
+        />
+        Show Try new dots (scores fresh dots from the same pattern)
+      </label>
+
+      <Field
+        label="Students can switch these inputs"
+        hint="Tick none for fixed inputs (x and y). Squares (x², y²) let a straight cut separate the circle."
+      >
+        <div className="te-act-inline-row" role="group" aria-label="Allowed inputs">
+          {INPUT_IDS.map((id) => {
+            const list = Array.isArray(task.allowInputs) ? task.allowInputs : []
+            return (
+              <label key={id} className="te-check-toggle">
+                <input
+                  type="checkbox"
+                  checked={list.includes(id)}
+                  aria-label={`Allow input ${INPUT_LABELS[id]}`}
+                  onChange={(event) => {
+                    const next = INPUT_IDS.filter((x) =>
+                      x === id ? event.target.checked : list.includes(x)
+                    )
+                    set({ allowInputs: next.length ? next : undefined })
+                  }}
+                />
+                {INPUT_LABELS[id]}
+              </label>
+            )
+          })}
+        </div>
+      </Field>
     </div>
   )
 }

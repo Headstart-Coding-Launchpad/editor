@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-28
 
+- **Network Playground: student-picked inputs, zero hidden layers and a new-dots test.** New
+  optional fields on a `network_playground` task. `inputs` (the start) and `allowInputs` (a subset of
+  `x`, `y`, `x2`, `y2`) let the student switch the network's inputs, rebuilding it, with the input
+  nodes labelled x, y, x², y² in the diagram. `allowZeroLayers: true` lets them remove every hidden
+  layer (inputs wired straight to the output). `testDots: true` adds **Try new dots**, which scores
+  80 fresh dots from the same pattern (a different seed from training) and shows **New dots: N%
+  right** beside the training score; passing is unchanged. With `x2` and `y2` and no hidden layer the
+  circle is solved. The tutor card and modal show the inputs and the new-dots score, and the report
+  keeps them. Leave all four out for the old behaviour. See
+  [activities/network_playground.md](activities/network_playground.md).
+  - Affects: network_playground · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-network-playground-student-picked-inputs-x-y-x-2-y-2-and-a-n.md
+
 - **New activity: Network Playground (`type: network_playground`).** The student trains a tiny
   neural network (2 inputs, 1 or 2 hidden layers of neurons, 1 output) to sort orange and blue
   dots, watching the neurons, the weights and the coloured guess live, and can add neurons or a
