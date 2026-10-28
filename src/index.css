@@ -7890,3 +7890,62 @@ label.te-backdrop-tag,
     }
   }
 }
+
+/* Network Playground activity: the dots on a canvas, the network drawn beside it. */
+.act-net {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 24px;
+}
+
+.act-net__main {
+  flex: 1 1 260px;
+  max-width: 340px;
+  min-width: 0;
+}
+
+.act-net__side {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.act-net__field {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+}
+
+.act-net__legend {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--colour-ink-muted, #475569);
+}
+
+.act-net__stats {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.act-net-diagram {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+}
+
+.act-net__layer-name {
+  min-width: 64px;
+  font-weight: 600;
+}
+
+.act-net__count {
+  min-width: 88px;
+  text-align: center;
+}

@@ -723,6 +723,11 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
 | `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
 | `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
+| `network_playground/network.js` | Pure maths for the Network Playground: seeded datasets (two_blobs, circle, spiral), a hand-written tiny network (tanh hidden layers, sigmoid output), plain SGD, accuracy, and flatten/rebuild of the weights |
+| `network_playground/network_playground.js` | Pure Network Playground logic: task defaults and validation, the saved state (layers, accuracy, weights), grading and hints |
+| `network_playground/definition.js` | Network Playground activity definition wrapping `network_playground.js`: default task, state, change classification (training updates continuous, start/stop/layers/pass discrete), grading, tutor summary, report fields |
+| `network_playground/ui.jsx` | Network Playground StudentView: canvas heatmap and dots, SVG network diagram, requestAnimationFrame training loop (one pass a frame), Train/Pause, neuron and layer buttons; the tutor's read-only view rebuilds the network from the state |
+| `network_playground/NetworkPlaygroundBuilderEditor.jsx` | Builder editor: dots, starting layers, neuron limit, target, add-a-layer switch |
 
 ---
 

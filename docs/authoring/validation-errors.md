@@ -413,6 +413,17 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
 | `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
 
+### Network Playground ([activities/network_playground.md](activities/network_playground.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: dataset must be two_blobs, circle or spiral.` | `dataset` is missing or not one of the three patterns. | Set `dataset` to `two_blobs`, `circle` or `spiral`. |
+| `Task …: maxNeurons must be a whole number from 1 to 8.` | `maxNeurons` is not a whole number in range. | Use a whole number from 1 to 8, or leave it out for 6. |
+| `Task …: layers must list 1 or 2 hidden layers.` | `layers` is not a list of one or two numbers. | Write `layers: [3]` or `layers: [4, 3]`. |
+| `Task …: each layer in layers must be a whole number from 1 to maxNeurons.` | A layer has no neurons or more than `maxNeurons`. | Use whole numbers from 1 up to `maxNeurons`. |
+| `Task …: target must be a number above 0.5 and up to 1.` | `target` is not an accuracy above 0.5 and up to 1. | Use a number such as `0.9`. |
+| `Task …: allowAddLayer must be true or false.` | `allowAddLayer` is not a boolean. | Use `true` or `false`. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

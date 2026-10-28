@@ -19,6 +19,7 @@ import realOrAi from './real_or_ai/definition.js'
 import nextWord from './next_word/definition.js'
 import classifier from './classifier/definition.js'
 import station from './station/definition.js'
+import networkPlayground from './network_playground/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
 const ACTIVITIES = [
@@ -36,6 +37,7 @@ const ACTIVITIES = [
   nextWord,
   classifier,
   station,
+  networkPlayground,
   unknown,
 ]
 

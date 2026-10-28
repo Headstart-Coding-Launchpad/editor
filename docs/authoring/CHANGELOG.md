@@ -37,6 +37,18 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **New activity: Network Playground (`type: network_playground`).** The student trains a tiny
+  neural network (2 inputs, 1 or 2 hidden layers of neurons, 1 output) to sort orange and blue
+  dots, watching the neurons, the weights and the coloured guess live, and can add neurons or a
+  layer. Fields: `dataset` (`two_blobs` | `circle` | `spiral`, required), `layers` (default
+  `[3]`), `maxNeurons` (default 6), `allowAddLayer` (default true), `target` (default 0.9).
+  Marked as you go when accuracy reaches `target`. The tutor sees the network, layers and accuracy
+  live. See [activities/network_playground.md](activities/network_playground.md).
+  - Affects: network_playground (new activity) · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-23-neural-network-playground-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and

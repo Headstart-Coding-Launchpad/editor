@@ -358,6 +358,11 @@ Space station activity reference: task and item fields, marking and hints, teach
 
 **Load when:** authoring or editing a Space station activity task.
 
+### [authoring/activities/network_playground.md](authoring/activities/network_playground.md)
+Network Playground activity reference: dataset, layers and target fields, how training and marking work, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Network Playground activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 
