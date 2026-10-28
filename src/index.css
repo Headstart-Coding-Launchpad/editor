@@ -8218,6 +8218,8 @@ label.te-backdrop-tag,
 }
 .act-lt-tone-5 {
   background: #fed7aa;
+}
+
 /* Recommender: a grid of things to rate (thumbs up / down) and a short feed under it. Buttons are
    at least 44px. State is always words and symbols as well as colour. No animation loop. */
 .act-rec__count {
@@ -8342,6 +8344,8 @@ label.te-backdrop-tag,
 .act-rec__bubble-dot--on {
   background: var(--colour-primary);
   border-color: var(--colour-primary);
+}
+
 /* Network Playground activity: the dots on a canvas, the network drawn beside it. */
 .act-net {
   flex-direction: row;
