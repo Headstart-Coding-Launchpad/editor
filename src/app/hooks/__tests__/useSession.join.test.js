@@ -35,7 +35,10 @@ vi.mock('firebase/database', () => ({
   runTransaction: (...args) => firebaseMocks.runTransaction(...args),
 }))
 
-vi.mock('../../../shared/firebase', () => ({ db: {} }))
+vi.mock('../../../shared/firebase', () => ({
+  db: {},
+  auth: { currentUser: { uid: 'auth-uid-1' } },
+}))
 
 const LESSON = 'lesson-1'
 const STUDENT = 'student-abc'
@@ -173,5 +176,20 @@ describe('recordStudentReturn', () => {
     })
     expect(firebaseMocks.runTransaction).not.toHaveBeenCalled()
     expect(firebaseMocks.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('registerJoining', () => {
+  it('stamps the marker with the signed-in uid', async () => {
+    const { result } = renderSession({ state: 'active', currentTaskId: 1 })
+    await act(async () => {
+      await result.current.registerJoining('temp-1')
+    })
+
+    const call = firebaseMocks.set.mock.calls.find(
+      ([r]) => r.path === `sessions/${LESSON}/joiningStudents/temp-1`
+    )
+    expect(call[1]).toMatchObject({ uid: 'auth-uid-1' })
+    expect(call[1]).toHaveProperty('joinedAt')
   })
 })
