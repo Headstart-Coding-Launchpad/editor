@@ -6,11 +6,17 @@ import { roundSummaryText } from '../round.js'
 import ClassifierBuilderEditor from './ClassifierBuilderEditor.jsx'
 import { DrawPad, GridThumb } from './DrawPad.jsx'
 import {
+  GRID_SIZES,
+  NOT_THING,
+  UNSURE,
   MAX_LABEL_LENGTH,
   MAX_STUDENT_CLASSES,
   MIN_CLASSES,
   addClass,
   addExample,
+  answerFor,
+  answerText,
+  blockGrid,
   canTest,
   cleanLabel,
   countsOf,
@@ -19,12 +25,15 @@ import {
   describeResult,
   encodeGrid,
   gradeTask,
-  guessOf,
+  gridSizeOf,
   initialClassifierState,
   isHeldOut,
+  isSingle,
   liveCountOf,
   mixupsOf,
+  modelOf,
   nextTarget,
+  notThingOf,
   padOf,
   panelsOf,
   predictLive,
@@ -34,8 +43,11 @@ import {
   removeClass,
   removeExample,
   rightsOf,
+  runSelfTest,
   runTest,
+  selftestOf,
   setClassName,
+  setGridSize,
   setPad,
   shortLabel,
   splitExamples,
@@ -45,6 +57,7 @@ import {
   teachMiss,
   testSetOf,
   testSize,
+  unsureOf,
   withReadyAt,
 } from './classifier.js'
 
@@ -72,10 +85,19 @@ const MISS_MOMENT_MS = 1800
 function Big({ label }) {
   return (
     <span className="act-cls-big" aria-hidden="true">
-      {shortLabel(label)}
+      {label === UNSURE ? '🤔' : label === NOT_THING ? '🚫' : shortLabel(label)}
     </span>
   )
 }
+
+// "not sure" / "not a square" / the thing: what the model said, for a sentence.
+const sayOf = (label, state) => answerText(label, state?.classes)
+
+// "your 🐱 was a 🐟", or "your 🐱 was not sure" is wrong: say what it did instead.
+const wasText = (predicted, state) =>
+  predicted === UNSURE || predicted === NOT_THING
+    ? `got ${sayOf(predicted, state)}`
+    : `was a ${sayOf(predicted, state)}`
 
 function Bar({ value, label }) {
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100)
@@ -112,6 +134,15 @@ function GuessBars({ labels, scores, top }) {
   )
 }
 
+// "Tested on its own drawings: 24 of 24 right", shown beside the round's real score.
+function SelfTestLine({ selftest }) {
+  return (
+    <p className="act-cls-selftest" data-testid="classifier-selftest" role="status">
+      Tested on its own drawings: {selftest.right} of {selftest.total} right
+    </p>
+  )
+}
+
 // "It got 4 of 5 right" as a meter.
 function ResultMeter({ right, total }) {
   if (!(total > 0)) return null
@@ -125,14 +156,14 @@ function ResultMeter({ right, total }) {
 }
 
 // Tutor text for mix-ups: "🐱 called 🐟 x2".
-function MixupList({ result }) {
+function MixupList({ result, state }) {
   const mixups = mixupsOf(result)
   if (!mixups.length) return null
   return (
     <ul className="act-cls-list" aria-label="Mix-ups">
       {mixups.map((m) => (
         <li key={`${m.actual}>${m.predicted}`}>
-          Called {shortLabel(m.actual)} a {shortLabel(m.predicted)}: {m.count}
+          Called {sayOf(m.actual, state)} a {sayOf(m.predicted, state)}: {m.count}
         </li>
       ))}
     </ul>
@@ -162,13 +193,10 @@ function TutorWork({ state }) {
           {recent.map((m, i) => (
             <figure className="act-cls-mixup" key={`${i}-${m.grid.slice(0, 16)}`}>
               <div className="act-cls-thumb" style={{ cursor: 'default' }}>
-                <GridThumb
-                  grid={m.grid}
-                  title={`Missed: they drew ${splitLabel(m.actual).name || m.actual}`}
-                />
+                <GridThumb grid={m.grid} title={`Missed: they drew ${sayOf(m.actual, state)}`} />
               </div>
               <figcaption>
-                It said {shortLabel(m.predicted)}, they drew {shortLabel(m.actual)}
+                It said {sayOf(m.predicted, state)}, they drew {sayOf(m.actual, state)}
               </figcaption>
             </figure>
           ))}
@@ -190,6 +218,7 @@ function TutorSummary({ task, state }) {
   const tries = liveCountOf(state)
   const rights = rightsOf(state)
   const core = taskLiveTestSize(task)
+  const selftest = selftestOf(state)
   return (
     <div className="act-cls-section" data-testid="classifier-summary">
       <p className="act-notice">
@@ -220,8 +249,20 @@ function TutorSummary({ task, state }) {
               : `${roundSummaryText(tries, Math.max(core, tries), core, 'tried')} · ${rights} right`}
           </p>
           {tries > 0 && <ResultMeter right={rights} total={tries} />}
-          <MixupList result={state.result} />
+          <MixupList result={state.result} state={state} />
+          {selftest && <SelfTestLine selftest={selftest} />}
+          {unsureOf(state) > 0 && <p>Tries it was not sure about: {unsureOf(state)}</p>}
+          {notThingOf(state) > 0 && (
+            <p>
+              Tries it answered {answerText(NOT_THING, state.classes)}: {notThingOf(state)}
+            </p>
+          )}
         </>
+      )}
+      {panelsOf(task).includes('gridsize') && (
+        <p data-testid="classifier-tutor-gridsize">
+          Grid size it looks at: {gridSizeOf(task, state)} x {gridSizeOf(task, state)}
+        </p>
       )}
       {graded.ready && !live && (
         <>
@@ -229,7 +270,7 @@ function TutorSummary({ task, state }) {
           {state.result && (
             <>
               <p role="status">{describeResult(state.result)}</p>
-              <MixupList result={state.result} />
+              <MixupList result={state.result} state={state} />
             </>
           )}
         </>
@@ -265,9 +306,13 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const trainSet = useMemo(() => splitExamples(task, state).train, [task, state])
   const grid = useMemo(() => (strokes.length ? encodeGrid(rasterize(strokes)) : null), [strokes])
   const ready = graded.ready && !duplicate
+  const single = isSingle(state)
+  const gridSize = gridSizeOf(task, state)
+  const model = useMemo(() => modelOf(task, state), [task, state])
   const guess = useMemo(
-    () => (ready && grid ? guessOf(trainSet, grid, labels) : null),
-    [ready, grid, trainSet, labels]
+    () => (ready && grid ? answerFor(trainSet, grid, labels, model) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ready, grid, trainSet, labels, model.size, model.cutoff]
   )
 
   // The round moves on by itself after a right answer (and after a miss that has no
@@ -301,7 +346,9 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const rights = rightsOf(state)
   // Every change also stamps when the pad first became ready (the AI Trainer badge).
   const update = (fn) => onChange?.((prev) => withReadyAt(fn(prev ?? initialClassifierState(task))))
-  const topScore = guess?.label ? (guess.scores[guess.label] ?? 0) : 0
+  const special = guess?.label === UNSURE || guess?.label === NOT_THING
+  const topScore = guess?.label && !special ? (guess.scores[guess.label] ?? 0) : 0
+  const selftest = selftestOf(state)
 
   // Share the pad with the tutor as its grid at each stroke end (not the strokes), with the thing
   // it is for. Not while a try is being named or shown: that try is about to be recorded.
@@ -351,6 +398,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
 
   function handleTeach() {
     if (!feedback || feedback.taught) return
+    if (feedback.drawn === NOT_THING) return
     update((prev) => teachMiss(prev, feedback.drawn, feedback.grid))
     setFeedback({ ...feedback, taught: true })
   }
@@ -488,8 +536,9 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
               aria-label="What did you draw?"
             >
               <div className="act-cls-ask__choices">
-                {labels.map((label) => {
-                  const name = splitLabel(label).name || label
+                {(single ? [...labels, NOT_THING] : labels).map((label) => {
+                  const name =
+                    label === NOT_THING ? sayOf(label, state) : splitLabel(label).name || label
                   const suggested = label === pending.suggested
                   return (
                     <button
@@ -577,16 +626,18 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
               data-testid="classifier-feedback"
             >
               {feedback.right ? (
-                <p className="act-prompt">✓ It got it! It said {shortLabel(feedback.predicted)}</p>
+                <p className="act-prompt">
+                  ✓ It got it! It said {sayOf(feedback.predicted, state)}
+                </p>
               ) : (
                 <p className="act-prompt">
-                  ✗ It got that one wrong. It said {shortLabel(feedback.predicted)}, you drew{' '}
-                  {shortLabel(feedback.drawn)}
+                  ✗ It got that one wrong. It said {sayOf(feedback.predicted, state)}, you drew{' '}
+                  {sayOf(feedback.drawn, state)}
                 </p>
               )}
               {!feedback.right && panels.includes('fool') && (
                 <div className="act-row">
-                  {feedback.taught ? (
+                  {feedback.drawn === NOT_THING ? null : feedback.taught ? (
                     <span>✓ Taught! It will remember this one.</span>
                   ) : (
                     <button type="button" className="btn-primary act-btn" onClick={handleTeach}>
@@ -605,8 +656,54 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
         {/* The guess, live: one bar per thing, and the optional parts. */}
         {ready && (
           <div className="act-cls-play__side">
-            <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />
-            {panels.includes('sure') && (
+            {single || guess?.label === UNSURE ? (
+              <p className="act-cls-answer" data-testid="classifier-answer" role="status">
+                {guess?.label ? (
+                  <>
+                    <Big label={guess.label} /> It says: {sayOf(guess.label, state)}
+                  </>
+                ) : (
+                  'Draw something to see its answer.'
+                )}
+              </p>
+            ) : (
+              <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />
+            )}
+            {panels.includes('close') && (
+              <div className="act-cls-close" data-testid="classifier-close">
+                <span>How close is it?</span>
+                <Bar
+                  value={guess?.ratio == null ? 0 : Math.max(0, 1 - guess.ratio / 2)}
+                  label="How close is it to what you taught"
+                />
+                <span className="act-cls-bars__pct">
+                  {guess?.ratio == null ? '' : guess.ratio <= 1 ? 'close enough' : 'too far'}
+                </span>
+              </div>
+            )}
+            {panels.includes('gridsize') && (
+              <div
+                className="act-row"
+                role="group"
+                aria-label="Grid size it looks at"
+                data-testid="classifier-gridsize"
+              >
+                <span>Grid size</span>
+                {GRID_SIZES.map((size) => (
+                  <button
+                    type="button"
+                    key={size}
+                    className={`${size === gridSize ? 'btn-primary' : 'btn-ghost-outline'} act-btn`}
+                    aria-pressed={size === gridSize}
+                    aria-label={`${size} by ${size}`}
+                    onClick={() => update((prev) => setGridSize(prev, size))}
+                  >
+                    {size} x {size}
+                  </button>
+                ))}
+              </div>
+            )}
+            {panels.includes('sure') && !single && (
               <div className="act-cls-sure" data-testid="classifier-sure">
                 <span>How sure is it?</span>
                 <Bar value={topScore} label="How sure is it" />
@@ -620,7 +717,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
                 <span>What it sees</span>
                 <div className="act-cls-grid__pic">
                   <GridThumb
-                    grid={grid}
+                    grid={blockGrid(grid, gridSize)}
                     title="What the model sees: your drawing as a small grid"
                   />
                 </div>
@@ -664,6 +761,18 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
 
       {/* Results, in pictures. */}
       {live && tries > 0 && <ResultMeter right={rights} total={tries} />}
+      {ready && panels.includes('selftest') && (
+        <div className="act-cls-section" data-testid="classifier-selftest-box">
+          <button
+            type="button"
+            className="btn-ghost-outline act-btn"
+            onClick={() => update((prev) => runSelfTest(task, prev))}
+          >
+            Test on what it learned
+          </button>
+          {selftest && <SelfTestLine selftest={selftest} />}
+        </div>
+      )}
       {!live && state.result && (
         <div className="act-cls-result" data-testid="classifier-result" role="status">
           <span className="act-cls-result__big">{describeResult(state.result)}</span>
@@ -681,13 +790,10 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
           {state.misses.map((m, i) => (
             <figure className="act-cls-mixup" key={`${i}-${m.grid.slice(0, 16)}`}>
               <div className="act-cls-thumb" style={{ cursor: 'default' }}>
-                <GridThumb
-                  grid={m.grid}
-                  title={`Your drawing of ${splitLabel(m.actual).name || m.actual}`}
-                />
+                <GridThumb grid={m.grid} title={`Your drawing of ${sayOf(m.actual, state)}`} />
               </div>
               <figcaption>
-                It thought your {shortLabel(m.actual)} was a {shortLabel(m.predicted)}
+                It thought your {sayOf(m.actual, state)} {wasText(m.predicted, state)}
                 {m.fixed ? ' ✓ taught' : ''}
               </figcaption>
             </figure>

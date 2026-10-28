@@ -19,7 +19,9 @@ export const CLASSIFIER_MODES_NOT_BUILT = ['sound']
 export const TEST_SETS = ['held_out', 'teacher', 'live']
 // Extra parts a lesson can switch on (the pad, the teach step and the guess bars always show):
 // grid = what it sees, sure = how sure is it, fool = fool-it-and-fix-it.
-export const PANELS = ['grid', 'sure', 'fool']
+// gridsize = the student picks 4 / 8 / 16, close = how-close meter, unsure = a "not sure" answer,
+// selftest = "Test on what it learned" (scores the training drawings).
+export const PANELS = ['grid', 'sure', 'fool', 'gridsize', 'close', 'unsure', 'selftest']
 export const DEFAULT_PANELS = ['fool']
 // Tries in a round and mix-up drawings kept on the device.
 export const MAX_ATTEMPTS = 200
@@ -51,6 +53,18 @@ export const MAX_TEST_ITEMS = 24
 export const MAX_GIVEN_EXAMPLES = 40
 // Serialised shared state must stay well under the ~2 KB currentAnswer budget.
 export const MAX_SHARED_CHARS = 1800
+
+// Grid sizes the model can look at (a drawing is stored at 16 x 16 and block-averaged down).
+export const GRID_SIZES = [4, 8, 16]
+export const DEFAULT_GRID_SIZE = 16
+// The two answers that are not one of the things: "not sure" (unsure panel) and "not a <thing>"
+// (a lesson with one thing). Stored in the tries in place of a thing's name.
+export const UNSURE = '__unsure__'
+export const NOT_THING = '__not__'
+// The cut-off for "close enough" is this many times the median nearest-neighbour distance among
+// the drawings of one thing, but never below the floor (so one or two drawings still work).
+export const CUTOFF_FACTOR = 1.5
+export const CUTOFF_FLOOR = 4
 
 const GRID_CELLS = GRID * GRID
 const GRID_CHARS = /^[0-9]+$/
@@ -147,6 +161,36 @@ export function gridFromRows(rows) {
 
 // ── k-nearest-neighbours ─────────────────────────────────────────────────────
 
+// A grid as the model sees it at a given size (4, 8 or 16): each block of cells is averaged and
+// the average is spread back over the block, so the numbers stay 256 long and distances keep the
+// same scale at every size. 16 is the grid itself.
+export function viewOf(grid, size = GRID) {
+  const cells = decodeGrid(grid)
+  if (!(size < GRID) || GRID % size !== 0) return cells
+  const block = GRID / size
+  const out = new Array(GRID_CELLS)
+  for (let by = 0; by < size; by += 1) {
+    for (let bx = 0; bx < size; bx += 1) {
+      let sum = 0
+      for (let y = 0; y < block; y += 1) {
+        for (let x = 0; x < block; x += 1) {
+          sum += cells[(by * block + y) * GRID + bx * block + x]
+        }
+      }
+      const avg = sum / (block * block)
+      for (let y = 0; y < block; y += 1) {
+        for (let x = 0; x < block; x += 1) out[(by * block + y) * GRID + bx * block + x] = avg
+      }
+    }
+  }
+  return out
+}
+
+// The same, as grid text (for showing "what it sees" at the chosen size).
+export function blockGrid(grid, size = GRID) {
+  return encodeGrid(viewOf(grid, size))
+}
+
 function distance(a, b) {
   let sum = 0
   for (let i = 0; i < a.length; i += 1) {
@@ -157,10 +201,10 @@ function distance(a, b) {
 }
 
 // The k closest examples to a grid, nearest first: [{ label, d }].
-function nearestOf(examples, grid, k) {
-  const vec = decodeGrid(grid)
+function nearestOf(examples, grid, k, size = GRID) {
+  const vec = viewOf(grid, size)
   return examples
-    .map((example) => ({ label: example.label, d: distance(decodeGrid(example.grid), vec) }))
+    .map((example) => ({ label: example.label, d: distance(viewOf(example.grid, size), vec) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, Math.min(k, examples.length))
 }
@@ -194,9 +238,9 @@ function topOf(by) {
 
 // examples: [{ label, grid }] (grid = encoded text). Returns the label with the most weight among
 // the K nearest examples (ties go to the label with the closest example), or null with none.
-export function classify(examples, grid, k = K) {
+export function classify(examples, grid, k = K, size = GRID) {
   if (!examples.length) return null
-  return topOf(weigh(nearestOf(examples, grid, k)))
+  return topOf(weigh(nearestOf(examples, grid, k, size)))
 }
 
 // ── guessing ─────────────────────────────────────────────────────────────────
@@ -205,17 +249,75 @@ export function classify(examples, grid, k = K) {
 // (its part of the distance-weighted vote of the K nearest drawings, 0 to 1, adding up to 1). The
 // shares are the bars shown while the student draws; they change a little with every drawing
 // taught, not in thirds.
-export function guessOf(examples, grid, classes, k = K) {
+export function guessOf(examples, grid, classes, k = K, size = GRID) {
   const labels = classes ?? []
   const scores = Object.fromEntries(labels.map((label) => [label, 0]))
   if (!examples.length || !isGridString(grid)) return { label: null, scores }
-  const by = weigh(nearestOf(examples, grid, k))
+  const by = weigh(nearestOf(examples, grid, k, size))
   let total = 0
   for (const [label, entry] of by) if (label in scores) total += entry.w
   if (total > 0) {
     for (const [label, entry] of by) if (label in scores) scores[label] = entry.w / total
   }
   return { label: topOf(by), scores }
+}
+
+// ── "close enough": the cut-off for not sure / not a <thing> ─────────────────
+
+// The cut-off for one thing from its own drawings (grid texts): CUTOFF_FACTOR times the median
+// distance from each drawing to its nearest neighbour among them, never below CUTOFF_FLOOR (one
+// drawing has no neighbour, so it gets the floor). Recomputed from the drawings every time.
+export function cutoffOf(grids, size = GRID) {
+  const list = Array.isArray(grids) ? grids : []
+  if (list.length < 2) return CUTOFF_FLOOR
+  const views = list.map((grid) => viewOf(grid, size))
+  const nearest = views.map((a, i) =>
+    Math.min(...views.map((b, j) => (i === j ? Infinity : distance(a, b))))
+  )
+  nearest.sort((a, b) => a - b)
+  const mid = Math.floor(nearest.length / 2)
+  const median = nearest.length % 2 ? nearest[mid] : (nearest[mid - 1] + nearest[mid]) / 2
+  return Math.max(CUTOFF_FLOOR, median * CUTOFF_FACTOR)
+}
+
+// The model's full answer for a drawing. With `cutoff` on, a drawing that is farther from every
+// taught thing than that thing's cut-off gets UNSURE (several things) or NOT_THING (one thing)
+// instead of the nearest thing. Returns { label, scores, ratio } where ratio is the closest
+// distance divided by that thing's cut-off (1 or less = close enough), for the how-close meter;
+// ratio is null with no drawings. `label` is null when it cannot answer.
+export function answerFor(examples, grid, classes, { size = GRID, cutoff = false } = {}) {
+  const guess = guessOf(examples, grid, classes, K, size)
+  if (!guess.label) return { ...guess, ratio: null }
+  const vec = viewOf(grid, size)
+  let ratio = Infinity
+  for (const label of classes ?? []) {
+    const own = examples.filter((example) => example.label === label)
+    if (!own.length) continue
+    const d = Math.min(...own.map((example) => distance(viewOf(example.grid, size), vec)))
+    ratio = Math.min(
+      ratio,
+      d /
+        cutoffOf(
+          own.map((example) => example.grid),
+          size
+        )
+    )
+  }
+  if (!Number.isFinite(ratio)) return { ...guess, ratio: null }
+  if (cutoff && ratio > 1) {
+    return { ...guess, label: (classes ?? []).length === 1 ? NOT_THING : UNSURE, ratio }
+  }
+  return { ...guess, ratio }
+}
+
+// What to call an answer in a sentence: a thing's emoji/name, "not sure", or "not a <thing>".
+export function answerText(label, classes) {
+  if (label === UNSURE) return 'not sure'
+  if (label === NOT_THING) {
+    const first = (classes ?? []).filter(Boolean)[0]
+    return `not a ${splitLabel(first).name || first || 'thing'}`
+  }
+  return shortLabel(label)
 }
 
 // ── things (a class may start with an emoji: "🐱 cat") ───────────────────────
@@ -264,6 +366,37 @@ export function taskMinExamples(task) {
   return Number.isInteger(task?.minExamplesPerClass)
     ? task.minExamplesPerClass
     : DEFAULT_MIN_EXAMPLES
+}
+
+// The grid size a lesson starts the model at: gridSize 4, 8 or 16 (default 16).
+export function taskGridSize(task) {
+  return GRID_SIZES.includes(task?.gridSize) ? task.gridSize : DEFAULT_GRID_SIZE
+}
+
+// The size the model looks at now: the student's pick when the gridsize panel is on, else the
+// lesson's.
+export function gridSizeOf(task, state) {
+  return panelsOf(task).includes('gridsize') && GRID_SIZES.includes(state?.gridSize)
+    ? state.gridSize
+    : taskGridSize(task)
+}
+
+// A lesson with one thing: the model answers "<thing>" or "not a <thing>".
+export function isSingle(state) {
+  return state?.single === true && (state?.classes ?? []).filter(Boolean).length === 1
+}
+
+// Things needed before the model is ready: 2, or 1 in a one-thing lesson.
+export function minClassesOf(state) {
+  return state?.single === true ? 1 : MIN_CLASSES
+}
+
+// How the model answers right now for this task and state: { size, cutoff }.
+export function modelOf(task, state) {
+  return {
+    size: gridSizeOf(task, state),
+    cutoff: isSingle(state) || panelsOf(task).includes('unsure'),
+  }
 }
 
 export function taskTarget(task) {
@@ -328,6 +461,9 @@ export function initialClassifierState(task) {
     v: 1,
     classes,
     min: taskMinExamples(task),
+    ...(classes.length === 1 ? { single: true } : {}),
+    // Side of the grid the model looks at (the gridsize panel lets the student change it).
+    gridSize: taskGridSize(task),
     ...(given ? { given } : {}),
     examples: emptyExamples(classes),
     // The round: [drawn, predicted] for every try. `drawn` is what the student said they drew
@@ -344,6 +480,19 @@ export function initialClassifierState(task) {
     result: null,
     tests: 0,
   }
+}
+
+// "Test on what it learned": { right, total } over the training drawings, or null.
+function cleanSelftest(raw) {
+  const right = Number(raw?.right)
+  const total = Number(raw?.total)
+  if (!Number.isInteger(right) || !Number.isInteger(total) || total <= 0) return null
+  if (right < 0 || right > total) return null
+  return { right, total }
+}
+
+export function selftestOf(state) {
+  return cleanSelftest(state?.selftest)
 }
 
 function cleanResult(raw) {
@@ -397,6 +546,9 @@ export function normalizeClassifierState(task, raw) {
     v: 1,
     classes,
     min: base.min,
+    ...(base.single ? { single: true } : {}),
+    gridSize: GRID_SIZES.includes(raw.gridSize) ? raw.gridSize : base.gridSize,
+    ...(cleanSelftest(raw.selftest) ? { selftest: cleanSelftest(raw.selftest) } : {}),
     result: cleanResult(raw.result),
     live: Array.isArray(raw.live)
       ? raw.live
@@ -436,6 +588,8 @@ export function normalizeClassifierState(task, raw) {
     next.shared = true
     next.counts = {}
     for (const label of classes) next.counts[label] = wholeNumber(Number(raw.counts?.[label]))
+    next.unsure = wholeNumber(raw.unsure)
+    next.notThing = wholeNumber(raw.notThing)
     next.liveCount = wholeNumber(raw.liveCount)
     next.rights = wholeNumber(raw.rights)
     // The last few misses as grids (what it said, what they drew), for the tutor.
@@ -482,7 +636,7 @@ export function ownCountsOf(state) {
 // Train button (k-NN just uses every drawing).
 export function readyOf(state) {
   const labels = (state?.classes ?? []).filter(Boolean)
-  if (labels.length < MIN_CLASSES) return false
+  if (labels.length < minClassesOf(state)) return false
   const counts = countsOf(state)
   const min = state?.min ?? DEFAULT_MIN_EXAMPLES
   return labels.every((label) => (counts[label] ?? 0) >= min)
@@ -501,6 +655,22 @@ export function rightsOf(state) {
     return state.live.filter(([actual, predicted]) => actual === predicted).length
   }
   return state?.rights ?? 0
+}
+
+// Tries the model answered "not sure" (unsure panel).
+export function unsureOf(state) {
+  if (Array.isArray(state?.live) && state.live.length) {
+    return state.live.filter(([, predicted]) => predicted === UNSURE).length
+  }
+  return state?.unsure ?? 0
+}
+
+// Tries the model answered "not a <thing>" (a lesson with one thing).
+export function notThingOf(state) {
+  if (Array.isArray(state?.live) && state.live.length) {
+    return state.live.filter(([, predicted]) => predicted === NOT_THING).length
+  }
+  return state?.notThing ?? 0
 }
 
 // How many of the pad's misses the student then taught it ("Teach it this one"). A counter, so it
@@ -554,6 +724,10 @@ export function sharedState(state) {
     taught: taughtOf(state),
     ...(state?.readyAt ? { readyAt: state.readyAt } : {}),
     tests: state?.tests ?? 0,
+    ...(GRID_SIZES.includes(state?.gridSize) ? { gridSize: state.gridSize } : {}),
+    ...(selftestOf(state) ? { selftest: selftestOf(state) } : {}),
+    ...(unsureOf(state) ? { unsure: unsureOf(state) } : {}),
+    ...(notThingOf(state) ? { notThing: notThingOf(state) } : {}),
     pad: pad ? packGrid(pad.grid) : null,
     target: pad?.target ?? null,
     recent: recentMissesOf(state).map((m) => ({
@@ -576,7 +750,7 @@ export function sharedState(state) {
 // tries stay: teaching it a miss is the point of the round.
 function stale(state) {
   // eslint-disable-next-line no-unused-vars
-  const { shared, counts, liveCount, rights, recent, ...rest } = state
+  const { shared, counts, liveCount, rights, recent, selftest, unsure, notThing, ...rest } = state
   return { ...rest, result: rest.live?.length ? rest.result : null }
 }
 
@@ -587,6 +761,15 @@ export function setPad(state, grid, target = null) {
   if (!next && !now) return state
   if (next && now && now.grid === next.grid && now.target === next.target) return state
   return { ...state, pad: next }
+}
+
+// The student picks the grid size the model looks at (4, 8 or 16). Their drawings are re-read at
+// the new size, not redrawn. An old self-test no longer matches, so it is cleared.
+export function setGridSize(state, size) {
+  if (!GRID_SIZES.includes(size) || state?.gridSize === size) return state
+  // eslint-disable-next-line no-unused-vars
+  const { selftest, ...rest } = state
+  return { ...rest, gridSize: size }
 }
 
 export function addExample(state, label, grid) {
@@ -776,7 +959,24 @@ export function runTest(task, state) {
 // What the model would say about a drawing, or null when it is not ready / the grid is bad.
 export function predictLive(task, state, grid) {
   if (!readyOf(state) || !isGridString(grid)) return null
-  return classify(splitExamples(task, state).train, grid)
+  return answerFor(splitExamples(task, state).train, grid, state.classes, modelOf(task, state))
+    .label
+}
+
+// "Test on what it learned": the model answers every drawing it was taught (the given ones and
+// the student's own), which is marking its own homework. Kept beside the real round score and
+// never counted towards passing.
+export function runSelfTest(task, state) {
+  if (!readyOf(state)) return state
+  const { train } = splitExamples(task, state)
+  if (!train.length) return state
+  const model = modelOf(task, state)
+  const pairs = train.map((item) => [
+    item.label,
+    answerFor(train, item.grid, state.classes, model).label,
+  ])
+  const { right, total } = tally(pairs)
+  return { ...state, selftest: { right, total } }
 }
 
 // One try in the round: the student drew something, said what it was (`actual`), and the model
@@ -784,12 +984,13 @@ export function predictLive(task, state, grid) {
 // (the pad may have suggested another thing: they were free to try to fool it). Returns the new
 // state and what the model said (null when it could not guess).
 export function recordLive(task, state, actual, grid) {
-  if (!readyOf(state) || !state.classes.includes(actual) || !isGridString(grid)) {
+  const known = state.classes.includes(actual) || (actual === NOT_THING && isSingle(state))
+  if (!readyOf(state) || !known || !isGridString(grid)) {
     return { state, predicted: null }
   }
   if ((state.live ?? []).length >= MAX_ATTEMPTS) return { state, predicted: null }
   const { train: trainSet } = splitExamples(task, state)
-  const predicted = classify(trainSet, grid)
+  const predicted = answerFor(trainSet, grid, state.classes, modelOf(task, state)).label
   const live = [...(state.live ?? []), [actual, predicted]]
   const misses =
     predicted === actual
@@ -842,7 +1043,7 @@ export function gradeTask(task, state) {
   const classesMet = classes.filter((label) => (counts[label] ?? 0) >= min).length
   const accuracy = accuracyOf(state?.result)
   const enoughClasses =
-    classes.length >= MIN_CLASSES &&
+    classes.length >= minClassesOf(state) &&
     (!task?.classes?.length || classes.length === cleanClasses(task.classes).length)
   const ready = enoughClasses && classesMet === classes.length
   const won = live ? tries >= core : accuracy != null && accuracy + 1e-9 >= target
@@ -1003,7 +1204,10 @@ export function validateClassifierTask(task, n) {
         errors.push(`${where}: each class name must be 1 to ${MAX_LABEL_LENGTH} characters.`)
       } else if (new Set(classes.map((label) => label.toLowerCase())).size !== classes.length) {
         errors.push(`${where}: class names must all be different.`)
-      } else if (classes.length < MIN_CLASSES || classes.length > MAX_CLASSES) {
+      } else if (
+        classes.length > MAX_CLASSES ||
+        (classes.length < MIN_CLASSES && !(classes.length === 1 && testSet === 'live'))
+      ) {
         errors.push(`${where}: classifier needs ${MIN_CLASSES} to ${MAX_CLASSES} classes.`)
       }
     }
@@ -1033,6 +1237,9 @@ export function validateClassifierTask(task, n) {
     errors.push(
       `${where}: liveTestSize must be a whole number from ${MIN_LIVE_TEST_SIZE} to ${MAX_LIVE_TEST_SIZE}.`
     )
+  }
+  if (task.gridSize !== undefined && !GRID_SIZES.includes(task.gridSize)) {
+    errors.push(`${where}: gridSize must be 4, 8 or 16.`)
   }
   if (task.panels !== undefined) {
     if (!Array.isArray(task.panels)) {

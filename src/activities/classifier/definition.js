@@ -19,7 +19,13 @@ import {
   initialClassifierState,
   itemResultsOf,
   liveCountOf,
+  gridSizeOf,
+  minClassesOf,
   normalizeClassifierState,
+  notThingOf,
+  selftestOf,
+  unsureOf,
+  GRID_SIZES,
   panelsOf,
   percent,
   rightsOf,
@@ -31,7 +37,6 @@ import {
   validateClassifierTask,
   validateClassifierWarnings,
   DEFAULT_MIN_EXAMPLES,
-  MIN_CLASSES,
   teacherTestItems,
 } from './classifier.js'
 
@@ -82,7 +87,14 @@ export default defineActivity({
         name: 'classes',
         type: 'array',
         description:
-          'The things to teach (2 to 6; 3 is a good number). A name may start with an emoji, like "🐱 cat". Empty or missing: the student names 2 to 4 of their own.',
+          'The things to teach (2 to 6; 3 is a good number; 1 is allowed in the live round, and the model then answers the thing or "not a <thing>"). A name may start with an emoji, like "🐱 cat". Empty or missing: the student names 2 to 4 of their own.',
+      },
+      {
+        name: 'gridSize',
+        type: 'number',
+        values: GRID_SIZES,
+        description:
+          'The grid the model looks at: 4, 8 or 16 (default 16). With the gridsize panel this is the starting size and the student can pick 4, 8 or 16.',
       },
       { name: 'minExamplesPerClass', type: 'number' },
       { name: 'targetAccuracy', type: 'number' },
@@ -96,7 +108,7 @@ export default defineActivity({
         name: 'panels',
         type: 'array',
         description:
-          'Extra parts to show: grid (what it sees), sure (how sure is it), fool (fool it and fix it). Default [fool]. The pad, the teach step and the guess bars always show.',
+          'Extra parts to show: grid (what it sees), sure (how sure is it), fool (fool it and fix it), gridsize (student picks the grid size), close (how-close meter against the cut-off), unsure (a "not sure" answer), selftest (Test on what it learned). Default [fool]. The pad, the teach step and the guess bars always show.',
       },
       {
         name: 'examples',
@@ -173,6 +185,10 @@ export default defineActivity({
     const q = sharedState(next)
     const same =
       p.trained === q.trained &&
+      p.gridSize === q.gridSize &&
+      JSON.stringify(p.selftest) === JSON.stringify(q.selftest) &&
+      p.unsure === q.unsure &&
+      p.notThing === q.notThing &&
       p.liveCount === q.liveCount &&
       p.rights === q.rights &&
       JSON.stringify(p.result) === JSON.stringify(q.result) &&
@@ -196,7 +212,7 @@ export default defineActivity({
   // Teaching: things with enough drawings. Then the round: tries towards the goal.
   getProgress: (task, state) => {
     const { classesMet, classesTotal, live, core, tries } = gradeTask(task, state)
-    const things = Math.max(classesTotal, MIN_CLASSES)
+    const things = Math.max(classesTotal, minClassesOf(state))
     const filled = classesMet + (live ? Math.min(tries, core) : 0)
     return { kind: 'items', filled, total: things + (live ? core : 0), correct: filled }
   },
@@ -234,9 +250,19 @@ export default defineActivity({
     const core = taskLiveTestSize(task)
     const tries = liveCountOf(state)
     const ownNote = given ? ` · ${ownTotal} own drawings` : ''
-    if (tries === 0) return { text: `Ready: 0/${core} tried${ownNote}`, tone }
+    // New in AI Level 1: grid size (gridsize panel), the self-test next to the real score, and how
+    // many tries came back "not sure" / "not a <thing>".
+    const extras = []
+    if (panelsOf(task).includes('gridsize')) extras.push(`grid ${gridSizeOf(task, state)}`)
+    const self = selftestOf(state)
+    if (self) extras.push(`own test ${self.right}/${self.total}`)
+    if (unsureOf(state)) extras.push(`${unsureOf(state)} not sure`)
+    if (notThingOf(state))
+      extras.push(`${notThingOf(state)} not a ${(state.classes ?? [])[0] ?? 'thing'}`)
+    const tail = extras.length ? ` · ${extras.join(' · ')}` : ''
+    if (tries === 0) return { text: `Ready: 0/${core} tried${ownNote}${tail}`, tone }
     const text = roundSummaryText(tries, Math.max(core, tries), core, 'tried')
-    return { text: `${text} · ${rights} right${ownNote}`, tone }
+    return { text: `${text} · ${rights} right${ownNote}${tail}`, tone }
   },
 
   // The log keeps the shared form: counts, trained and the result, never the drawings.
@@ -258,11 +284,22 @@ export default defineActivity({
       let atTarget = 0
       let sum = 0
       const confusion = {}
+      // Per student (latest attempt): the grid size they finished on, the self-test next to the
+      // round score, and the tries that came back "not sure" / "not a <thing>".
+      const gridSizes = {}
+      let selfTested = 0
+      let unsureTries = 0
+      let notThingTries = 0
       const target = typeof task?.targetAccuracy === 'number' ? task.targetAccuracy : 0.8
       for (const t of perStudent ?? []) {
         const latest = t.distinctAttempts?.[t.distinctAttempts.length - 1]?.submission
         const state = latest && typeof latest === 'object' ? latest : parse(latest)
-        const result = normalizeClassifierState(task, state).result
+        const norm = normalizeClassifierState(task, state)
+        gridSizes[gridSizeOf(task, norm)] = (gridSizes[gridSizeOf(task, norm)] ?? 0) + 1
+        if (selftestOf(norm)) selfTested += 1
+        unsureTries += unsureOf(norm)
+        notThingTries += notThingOf(norm)
+        const result = norm.result
         const accuracy = accuracyOf(result)
         if (accuracy == null) continue
         tested += 1
@@ -282,6 +319,10 @@ export default defineActivity({
           targetAccuracy: target,
           avgAccuracy: tested ? Number((sum / tested).toFixed(2)) : null,
           confusion,
+          gridSizes,
+          selfTestedCount: selfTested,
+          unsureTries,
+          notThingTries,
         },
       }
     },

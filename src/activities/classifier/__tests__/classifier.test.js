@@ -11,6 +11,20 @@ import {
   classifierBadgeResult,
   clearExamples,
   countsOf,
+  NOT_THING,
+  UNSURE,
+  CUTOFF_FLOOR,
+  answerFor,
+  answerText,
+  blockGrid,
+  cutoffOf,
+  gridSizeOf,
+  notThingOf,
+  runSelfTest,
+  selftestOf,
+  setGridSize,
+  unsureOf,
+  viewOf,
   decodeGrid,
   describeResult,
   encodeGrid,
@@ -644,6 +658,7 @@ describe('privacy: what is shared', () => {
       misses: 1,
       taught: 0,
       tests: 0,
+      gridSize: 16,
       pad: null,
       target: null,
       recent: [{ g: packGrid(gridOf(circle())), s: 'circle', d: 'line' }],
@@ -826,7 +841,7 @@ describe('definition', () => {
       sub(bad),
       { distinctAttempts: [] },
     ])
-    expect(fields.classifierResults).toEqual({
+    expect(fields.classifierResults).toMatchObject({
       testedCount: 2,
       atTargetCount: 1,
       targetAccuracy: 0.75,
@@ -937,7 +952,7 @@ describe('validateClassifierTask', () => {
     expect(ok({ ...LIVE, panels: [] })).toEqual([])
     expect(ok({ ...LIVE, panels: undefined })).toEqual([])
     expect(ok({ ...LIVE, panels: ['grid', 'bias'] })).toEqual([
-      'Task 3: classifier panels has an unknown value "bias". Use grid, sure, fool.',
+      'Task 3: classifier panels has an unknown value "bias". Use grid, sure, fool, gridsize, close, unsure, selftest.',
     ])
     expect(ok({ ...LIVE, panels: 'grid' })[0]).toMatch(/panels must be a list/)
   })
@@ -1000,5 +1015,250 @@ describe('validateClassifierTask', () => {
       expect(validateClassifierWarnings(teacher(good), 3)).toEqual([])
       expect(validateClassifierWarnings(TASK, 3)).toEqual([])
     })
+  })
+})
+
+// ── AI Level 1 additions: grid size, self-test, one thing, not sure ─────────
+
+function liveTriesOf(state) {
+  return state.live.length
+}
+
+describe('grid size (gridsize panel)', () => {
+  const SIZED = { ...LIVE, panels: ['gridsize'], gridSize: 8 }
+
+  it('averages 16 -> 8 -> 4 by blocks and keeps 256 numbers', () => {
+    const grid = gridOf(circle())
+    expect(viewOf(grid, 16)).toEqual(decodeGrid(grid))
+    for (const size of [8, 4]) {
+      const view = viewOf(grid, size)
+      expect(view).toHaveLength(GRID * GRID)
+      const block = GRID / size
+      // Every cell in a block holds the same number: the block's average.
+      const first = view[0]
+      for (let y = 0; y < block; y += 1) {
+        for (let x = 0; x < block; x += 1) expect(view[y * GRID + x]).toBe(first)
+      }
+    }
+    const flat = encodeGrid(new Array(256).fill(1))
+    expect(viewOf(flat, 4).every((v) => v === 1)).toBe(true)
+    expect(blockGrid(flat, 4)).toBe(flat)
+  })
+
+  it('starts at the lesson size and lets the student change it only with the panel', () => {
+    expect(initialClassifierState(SIZED).gridSize).toBe(8)
+    expect(initialClassifierState(LIVE).gridSize).toBe(16)
+    let state = initialClassifierState(SIZED)
+    state = setGridSize(state, 4)
+    expect(gridSizeOf(SIZED, state)).toBe(4)
+    expect(gridSizeOf({ ...LIVE, gridSize: 8 }, state)).toBe(8)
+    expect(setGridSize(state, 5)).toBe(state)
+    expect(setGridSize(state, 4)).toBe(state)
+  })
+
+  it('re-reads the same drawings at the new size, with no redrawing', () => {
+    const state = withExamples(SIZED, 3)
+    const small = setGridSize(state, 4)
+    expect(countsOf(small)).toEqual(countsOf(state))
+    expect(small.examples).toEqual(state.examples)
+    const grid = gridOf(circle(0.25))
+    expect(predictLive(SIZED, small, grid)).toBe('circle')
+    expect(predictLive(SIZED, setGridSize(state, 16), grid)).toBe('circle')
+    const train = splitExamples(SIZED, small).train
+    expect(guessOf(train, grid, ['circle', 'line'], 7, 4).label).toBe('circle')
+  })
+
+  it('shares and restores the size', () => {
+    const state = setGridSize(withExamples(SIZED, 3), 4)
+    const shared = JSON.parse(definition.serializeShared(state))
+    expect(shared.gridSize).toBe(4)
+    expect(normalizeClassifierState(SIZED, shared).gridSize).toBe(4)
+    expect(normalizeClassifierState(SIZED, JSON.parse(definition.serialize(state))).gridSize).toBe(
+      4
+    )
+  })
+
+  it('validates gridSize', () => {
+    expect(validateClassifierTask({ ...LIVE, gridSize: 8 }, 3)).toEqual([])
+    expect(validateClassifierTask({ ...LIVE, gridSize: 5 }, 3)).toEqual([
+      'Task 3: gridSize must be 4, 8 or 16.',
+    ])
+  })
+})
+
+describe('Test on what it learned (selftest panel)', () => {
+  const SELF = { ...LIVE, panels: ['fool', 'selftest'] }
+
+  it('scores every training drawing and is cleared when the drawings change', () => {
+    const state = runSelfTest(SELF, withExamples(SELF, 3))
+    expect(selftestOf(state)).toEqual({ right: 6, total: 6 })
+    expect(selftestOf(addExample(state, 'circle', gridOf(circle(0.4))))).toBeNull()
+    expect(selftestOf(setGridSize(state, 4))).toBeNull()
+  })
+
+  it('does nothing until the model is ready', () => {
+    const state = initialClassifierState(SELF)
+    expect(runSelfTest(SELF, state)).toBe(state)
+  })
+
+  it('does not count towards passing or the round score', () => {
+    const base = played([['circle', 'circle']], SELF)
+    const tested = runSelfTest(SELF, base)
+    expect(rightsOf(tested)).toBe(1)
+    expect(gradeTask(SELF, tested).passed).toBe(gradeTask(SELF, base).passed)
+    expect(tested.live).toEqual(base.live)
+  })
+
+  it('is shared with the tutor next to the round score', () => {
+    const state = runSelfTest(SELF, played([['circle', 'circle']], SELF))
+    const shared = JSON.parse(definition.serializeShared(state))
+    expect(shared.selftest).toEqual({ right: 6, total: 6 })
+    expect(shared.rights).toBe(1)
+    expect(selftestOf(normalizeClassifierState(SELF, shared))).toEqual({ right: 6, total: 6 })
+    expect(definition.summarize(SELF, state).text).toMatch(/own test 6\/6/)
+  })
+})
+
+describe('the cut-off', () => {
+  const g = (r, dx = 0) => gridOf(circle(r, dx))
+
+  it('is the floor for none or one drawing', () => {
+    expect(cutoffOf([])).toBe(CUTOFF_FLOOR)
+    expect(cutoffOf([g(0.3)])).toBe(CUTOFF_FLOOR)
+  })
+
+  it('is 1.5 x the median nearest-neighbour distance, never below the floor', () => {
+    const spread = [g(0.15), g(0.3), g(0.45), g(0.6)]
+    const views = spread.map((x) => viewOf(x))
+    const dist = (a, b) => Math.sqrt(a.reduce((sum, v, i) => sum + (v - b[i]) ** 2, 0))
+    const nn = views.map((a, i) =>
+      Math.min(...views.filter((_, j) => j !== i).map((b) => dist(a, b)))
+    )
+    nn.sort((a, b) => a - b)
+    const median = (nn[1] + nn[2]) / 2
+    expect(cutoffOf(spread)).toBeCloseTo(Math.max(CUTOFF_FLOOR, median * 1.5), 6)
+    // A tight cluster still gets the floor.
+    expect(cutoffOf([g(0.3), g(0.3), g(0.3)])).toBe(CUTOFF_FLOOR)
+  })
+
+  it('grows when more varied drawings are added', () => {
+    const tight = cutoffOf([g(0.3), g(0.31), g(0.32)])
+    // Drawings are scaled to fit before comparing, so 'varied' means different shapes.
+    const wide = cutoffOf([g(0.3), gridOf(line(0)), gridOf(line(0.3)), gridOf(line(-0.3))])
+    expect(wide).toBeGreaterThan(tight)
+  })
+})
+
+describe('only one thing (a single class)', () => {
+  const ONE = {
+    id: 5,
+    taskType: 'activity',
+    activityType: 'classifier',
+    mode: 'drawing',
+    classes: ['⬜ square'],
+    minExamplesPerClass: 3,
+    liveTestSize: 3,
+    panels: ['close'],
+  }
+  const square = (wobble = 0) => [
+    [
+      [0.2, 0.2],
+      [0.8 + wobble, 0.2],
+      [0.8, 0.8 + wobble],
+      [0.2, 0.8],
+      [0.2, 0.2],
+    ],
+  ]
+  const oneState = () => {
+    let state = initialClassifierState(ONE)
+    for (let i = 0; i < 3; i += 1) state = addExample(state, '⬜ square', gridOf(square(i * 0.02)))
+    return state
+  }
+
+  it('is valid with one class in the live round only', () => {
+    expect(validateClassifierTask(ONE, 3)).toEqual([])
+    const held = { ...ONE, testSet: 'held_out', minExamplesPerClass: 4 }
+    expect(validateClassifierTask(held, 3)[0]).toMatch(/needs 2 to 6 classes/)
+  })
+
+  it('is ready with one thing and its drawings', () => {
+    expect(readyOf(initialClassifierState(ONE))).toBe(false)
+    expect(readyOf(oneState())).toBe(true)
+    expect(gradeTask(ONE, oneState()).ready).toBe(true)
+  })
+
+  it('says the thing for a square and "not a square" for a circle', () => {
+    const state = oneState()
+    expect(predictLive(ONE, state, gridOf(square(0.01)))).toBe('⬜ square')
+    expect(predictLive(ONE, state, gridOf(circle(0.3)))).toBe(NOT_THING)
+    expect(answerText(NOT_THING, state.classes)).toBe('not a square')
+  })
+
+  it('records tries as the thing or not-the-thing, and counts the not-a answers', () => {
+    const state = oneState()
+    const square1 = gridOf(square(0.01))
+    const circle1 = gridOf(circle(0.3))
+    let r = recordLive(ONE, state, '⬜ square', square1)
+    expect(r.state.live).toEqual([['⬜ square', '⬜ square']])
+    r = recordLive(ONE, r.state, NOT_THING, circle1)
+    expect(r.predicted).toBe(NOT_THING)
+    expect(rightsOf(r.state)).toBe(2)
+    r = recordLive(ONE, r.state, '⬜ square', circle1)
+    expect(r.state.misses).toHaveLength(1)
+    expect(notThingOf(r.state)).toBe(2)
+    expect(sharedState(r.state).notThing).toBe(2)
+    expect(sharedState(r.state).liveCount).toBe(3)
+    expect(gradeTask(ONE, r.state).passed).toBe(true)
+    expect(notThingOf(normalizeClassifierState(ONE, sharedState(r.state)))).toBe(2)
+    // "not a" is only an answer in a one-thing lesson.
+    const two = withExamples(LIVE, 3)
+    expect(recordLive(LIVE, two, NOT_THING, square1).predicted).toBeNull()
+  })
+
+  it('widens with more varied drawings', () => {
+    let state = oneState()
+    const odd = gridOf(square(0.25))
+    for (const w of [0.1, 0.2, 0.3]) state = addExample(state, '⬜ square', gridOf(square(w)))
+    expect(predictLive(ONE, state, odd)).toBe('⬜ square')
+  })
+})
+
+describe('not sure (unsure panel)', () => {
+  const SURE = { ...LIVE, panels: ['fool', 'unsure'] }
+  const far = gridOf([
+    [
+      [0.1, 0.1],
+      [0.1, 0.9],
+      [0.5, 0.2],
+      [0.9, 0.9],
+    ],
+  ])
+
+  it('is off by default: it always picks a thing it knows', () => {
+    const state = withExamples(LIVE, 3)
+    expect(['circle', 'line']).toContain(predictLive(LIVE, state, far))
+  })
+
+  it('answers not sure when nothing taught is close enough, and still knows what it was taught', () => {
+    const state = withExamples(SURE, 3)
+    expect(predictLive(SURE, state, gridOf(circle(0.25)))).toBe('circle')
+    const answer = answerFor(splitExamples(SURE, state).train, far, state.classes, {
+      cutoff: true,
+    })
+    expect(answer.ratio).toBeGreaterThan(1)
+    expect(answer.label).toBe(UNSURE)
+    expect(answerText(UNSURE, state.classes)).toBe('not sure')
+  })
+
+  it('counts a not-sure try as a try and as a miss, and shares the count', () => {
+    const state = withExamples(SURE, 3)
+    const r = recordLive(SURE, state, 'circle', far)
+    expect(r.predicted).toBe(UNSURE)
+    expect(liveTriesOf(r.state)).toBe(1)
+    expect(rightsOf(r.state)).toBe(0)
+    expect(unsureOf(r.state)).toBe(1)
+    expect(sharedState(r.state).unsure).toBe(1)
+    expect(unsureOf(normalizeClassifierState(SURE, sharedState(r.state)))).toBe(1)
+    expect(definition.summarize(SURE, r.state).text).toMatch(/1 not sure/)
   })
 })

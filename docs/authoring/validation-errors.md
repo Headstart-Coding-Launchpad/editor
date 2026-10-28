@@ -308,12 +308,13 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: classifier mode … is not built yet. Use mode: drawing.` | `mode: sound` (the microphone version) is planned but not built. | Use `mode: drawing`. |
 | `Task …: classifier mode must be drawing.` | `mode` is missing or not `drawing` (webcam mode does not exist). | Set `mode: drawing`. |
 | `Task …: classifier testSet must be one of ….` | `testSet` is there but is not one of `held_out`, `teacher`, `live`. (Leaving it out is fine: it means the live round.) | Fix it, or leave it out. |
-| `Task …: classifier panels must be a list (any of …).` | `panels` is not a list. | Write `panels: [grid, sure, fool]` (any of those). |
-| `Task …: classifier panels has an unknown value "…". Use ….` | A `panels` entry is not `grid`, `sure` or `fool`. | Use only those three, or leave `panels` out (default `[fool]`). |
+| `Task …: classifier panels must be a list (any of …).` | `panels` is not a list. | Write `panels: [grid, sure, fool]` (any of `grid`, `sure`, `fool`, `gridsize`, `close`, `unsure`, `selftest`). |
+| `Task …: classifier panels has an unknown value "…". Use ….` | A `panels` entry is not `grid`, `sure`, `fool`, `gridsize`, `close`, `unsure` or `selftest`. | Use only those, or leave `panels` out (default `[fool]`). |
 | `Task …: classifier classes must be a list of names.` | `classes` is not a list. | Write `classes: [cat, fish]`, or leave it out so students name their own. |
 | `Task …: each class name must be 1 to … characters.` | A class name is empty or too long. | Use short names (up to 16 characters). |
 | `Task …: class names must all be different.` | Two classes share a name (capitals ignored). | Rename one. |
-| `Task …: classifier needs … to … classes.` | There are fewer than 2 or more than 6 classes. | Give 2 to 6 classes. |
+| `Task …: classifier needs … to … classes.` | There are more than 6 classes, or fewer than 2 (one class is allowed only in the live round, with no `testSet` or `testSet: live`). | Give 2 to 6 classes, or one class in the live round for a one-thing detector. |
+| `Task …: gridSize must be 4, 8 or 16.` | `gridSize` is not 4, 8 or 16. | Use `4`, `8` or `16`, or leave it out (default 16). |
 | `Task …: minExamplesPerClass must be a whole number from 2 to ….` | `minExamplesPerClass` is not a whole number in range. | Use a whole number from 2 to 40. |
 | `Task …: testSet held_out needs minExamplesPerClass of at least … (every …th drawing is kept back for the test).` | With `held_out`, every 4th drawing is kept back, so a class needs at least 4. | Raise `minExamplesPerClass` to 4 or more, or use another `testSet`. |
 | `Task …: targetAccuracy must be a number above 0 and up to 1 (0.8 means 80%).` | `targetAccuracy` is not a fraction. | Write `0.8`, not `80`. |

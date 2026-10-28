@@ -517,3 +517,65 @@ describe('Classifier UI: read-only (tutor) view', () => {
     expect(screen.getByText('The student has not named any things yet.')).toBeInTheDocument()
   })
 })
+
+describe('Classifier UI: AI Level 1 panels', () => {
+  it('lets the student pick the grid size and shows the size on the tutor view', () => {
+    const task = { ...TASK, panels: ['gridsize', 'grid'] }
+    const { state } = renderView({ task, initialState: withDrawings(task, 3) })
+    const group = screen.getByTestId('classifier-gridsize')
+    expect(within(group).getAllByRole('button')).toHaveLength(3)
+    expect(screen.getByRole('button', { name: '16 by 16' })).toHaveAttribute('aria-pressed', 'true')
+    click('4 by 4')
+    expect(state().gridSize).toBe(4)
+    expect(screen.getByRole('button', { name: '4 by 4' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('runs "Test on what it learned" beside the round score', () => {
+    const task = { ...TASK, panels: ['fool', 'selftest'] }
+    renderView({ task, initialState: played([['circle', 'circle']], task) })
+    expect(screen.queryByTestId('classifier-selftest')).not.toBeInTheDocument()
+    click('Test on what it learned')
+    expect(screen.getByTestId('classifier-selftest')).toHaveTextContent(
+      'Tested on its own drawings: 6 of 6 right'
+    )
+    expect(screen.getByTestId('classifier-result')).toHaveTextContent('It got 1 of 1 right')
+  })
+
+  it('shows the tutor the grid size, the self-test and the not-sure count', () => {
+    const task = { ...TASK, panels: ['gridsize', 'selftest', 'unsure'] }
+    const state = {
+      ...played([['circle', '__unsure__']], task),
+      gridSize: 8,
+      selftest: { right: 6, total: 6 },
+    }
+    renderView({
+      task,
+      readOnly: true,
+      initialState: definition.deserialize(definition.serializeShared(state), task),
+    })
+    expect(screen.getByTestId('classifier-tutor-gridsize')).toHaveTextContent('8 x 8')
+    expect(screen.getByTestId('classifier-selftest')).toHaveTextContent('6 of 6')
+    expect(screen.getByText('Tries it was not sure about: 1')).toBeInTheDocument()
+  })
+
+  it('a one-thing lesson answers with the thing or "not a" and asks with two buttons', () => {
+    const task = {
+      ...TASK,
+      classes: ['⬜ square'],
+      panels: ['close'],
+    }
+    let state = initialClassifierState(task)
+    for (let i = 0; i < 3; i += 1) {
+      state = addExample(state, '⬜ square', gridOf(line(i * 0.02)))
+    }
+    renderView({ task, initialState: state })
+    expect(screen.getByTestId('classifier-close')).toBeInTheDocument()
+    drawOn(pad(), circle(0.3)[0])
+    expect(screen.getByTestId('classifier-answer')).toHaveTextContent('It says: not a square')
+    click('Done')
+    expect(screen.getByRole('button', { name: 'I drew square' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I drew not a square' })).toBeInTheDocument()
+    click('I drew not a square')
+    expect(screen.getByTestId('classifier-feedback')).toHaveTextContent('It said not a square')
+  })
+})
