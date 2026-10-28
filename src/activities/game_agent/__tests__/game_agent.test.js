@@ -46,7 +46,7 @@ describe('parseMap and validateGameAgentTask', () => {
     expect(msgs(undefined)).toEqual(['Task 2: needs a map (a list of rows of text).'])
     expect(msgs([])).toEqual(['Task 2: needs a map (a list of rows of text).'])
     expect(msgs(['R.T', '..'])).toEqual(['Task 2: map row 2 is not the same length as row 1.'])
-    expect(msgs(['R.T?'])).toEqual(['Task 2: map row 1 has "?"; use # . R T X only.'])
+    expect(msgs(['R.T?'])).toEqual(['Task 2: map row 1 has "?"; use # . R T X C only.'])
     expect(msgs(['R....T....'.repeat(2)])).toEqual(['Task 2: map can be at most 10 x 10.'])
     expect(msgs(['...T'])).toEqual(['Task 2: map needs exactly one R (the robot start).'])
     expect(msgs(['RRT'])).toEqual(['Task 2: map needs exactly one R (the robot start).'])
