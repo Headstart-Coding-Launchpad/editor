@@ -276,7 +276,9 @@ describe('Classifier UI: the round', () => {
     expect(state().pad).toBeNull()
     expect(screen.getByTestId('classifier-feedback')).toHaveTextContent('It got it! It said circle')
     expect(screen.getByText('1 of 3 done')).toBeInTheDocument()
-    expect(screen.getByText('It got 1 of 1 right')).toBeInTheDocument()
+    // One place for the round score: the progress line, not a second "It got 1 of 1 right" box.
+    expect(screen.getByText('got 1 right')).toBeInTheDocument()
+    expect(screen.queryByText('It got 1 of 1 right')).not.toBeInTheDocument()
     expect(pad()).toHaveClass('act-cls-pad--off')
     act(() => vi.advanceTimersByTime(800))
     expect(screen.queryByTestId('classifier-feedback')).not.toBeInTheDocument()
@@ -359,7 +361,7 @@ describe('Classifier UI: the round', () => {
     expect(screen.queryByText(/You did it/)).not.toBeInTheDocument()
   })
 
-  it('shows the results as pictures: a meter and the mix-ups as thumbnails', () => {
+  it('shows the results in the progress line and the mix-ups as thumbnails', () => {
     renderView({
       initialState: played([
         ['circle', 'circle'],
@@ -367,7 +369,8 @@ describe('Classifier UI: the round', () => {
         ['circle', 'circle'],
       ]),
     })
-    expect(screen.getByText('It got 2 of 3 right')).toBeInTheDocument()
+    expect(screen.getByText('got 2 right')).toBeInTheDocument()
+    expect(screen.queryByTestId('classifier-result')).not.toBeInTheDocument()
     const mixups = screen.getByTestId('classifier-mixups')
     expect(within(mixups).getByText('It thought your line was a circle')).toBeInTheDocument()
     expect(within(mixups).getAllByRole('img')).toHaveLength(1)
@@ -570,8 +573,10 @@ describe('Classifier UI: AI Level 1 panels', () => {
       state = addExample(state, '⬜ square', gridOf(line(i * 0.02)))
     }
     renderView({ task, initialState: state })
-    expect(screen.getByTestId('classifier-close')).toBeInTheDocument()
+    // The closeness bar waits for a drawing to measure.
+    expect(screen.queryByTestId('classifier-close')).not.toBeInTheDocument()
     drawOn(pad(), circle(0.3)[0])
+    expect(screen.getByTestId('classifier-close')).toBeInTheDocument()
     expect(screen.getByTestId('classifier-answer')).toHaveTextContent('It says: not a square')
     click('Done')
     expect(screen.getByRole('button', { name: 'I drew square' })).toBeInTheDocument()

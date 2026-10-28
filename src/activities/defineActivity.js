@@ -123,6 +123,9 @@ export function defineActivity(def) {
     // What the student's pass banner says (default 'Correct!'). For an auto-completing activity
     // where passing means finishing, not being right ('Round done!').
     passMessage: null,
+    // True when the activity's own screen already states the pass (a score with a tick), so the
+    // host shows no pass banner on top of it.
+    quietPass: false,
     // How Show it opens this activity's builds: 'side' (default, up to three side by side) or
     // 'single' (one at a time, full width; for a big view such as a space station). The tutor can
     // switch either way (src/shared/showIt.js).

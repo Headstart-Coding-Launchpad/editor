@@ -167,10 +167,12 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
               className={`act-rec__item${value === 1 ? ' act-rec__item--liked' : ''}${value === -1 ? ' act-rec__item--disliked' : ''}`}
               data-testid={`recommender-item-${item.id}`}
             >
-              <span className="act-rec__emoji" aria-hidden="true">
-                {item.emoji}
+              <span className="act-rec__who">
+                <span className="act-rec__emoji" aria-hidden="true">
+                  {item.emoji}
+                </span>
+                <span className="act-rec__label">{item.label}</span>
               </span>
-              <span className="act-rec__label">{item.label}</span>
               <span className="act-rec__buttons">
                 <button
                   type="button"

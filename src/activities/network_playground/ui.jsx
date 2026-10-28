@@ -90,7 +90,7 @@ function drawField(canvas, net, dots) {
 function NetworkDiagram({ net, sizes, inputs, slots = [], onToggle = null }) {
   const width = 300
   const slotIds = slots.length ? slots : inputs
-  const height = slotIds.length > 3 ? 210 : 170
+  const height = slotIds.length > 3 ? 240 : 170
   const cols = sizes.length
   const pos = sizes.map((count, c) => {
     const n = c === 0 ? slotIds.length : count
@@ -158,7 +158,7 @@ function NetworkDiagram({ net, sizes, inputs, slots = [], onToggle = null }) {
           const active = inputs.includes(id)
           const circle = (
             <>
-              {toggleable && <circle cx={p.x} cy={p.y} r={22} fill="transparent" />}
+              {toggleable && <circle cx={p.x} cy={p.y} r={24} fill="transparent" />}
               <circle
                 cx={p.x}
                 cy={p.y}

@@ -544,7 +544,13 @@ export default function LessonTaskContent({
   // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
   const sentHintText = cs.teacherHint?.text ?? ''
+  const quietActivityPass =
+    isActivityTask &&
+    !isQuizTask &&
+    displayCheckPassed &&
+    getActivityDefinition(getActivityId(task))?.quietPass === true
   const shouldShowFeedbackBanner =
+    !quietActivityPass &&
     !cs.stagePromptAccepted &&
     !isSandbox &&
     !cs.inPersonalSandbox &&

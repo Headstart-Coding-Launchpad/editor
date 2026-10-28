@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import ActivityLayout, { ActChip, ActSegmented, ActStepper } from '../ui/ActivityLayout.jsx'
 import GameAgentBuilderEditor from './GameAgentBuilderEditor.jsx'
 import {
@@ -15,7 +14,6 @@ import {
   envOf,
   episodesOf,
   finishEpisode,
-  gradeTask,
   greedyRun,
   hasCoin,
   hasPit,
@@ -352,7 +350,6 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           ? savedCells[savedCells.length - 1]
           : env.start
   const trailSet = new Set(trail)
-  const graded = gradeTask(task, state)
   const names = [
     'treasure',
     'step',
@@ -680,13 +677,6 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
       )}
       {showList && heard.length === 0 && trained && (
         <p className="act-hint">It has no favourite moves yet.</p>
-      )}
-      {graded.passed && (
-        <ActivityCorrect>
-          {hasTests
-            ? 'Your robot found the treasure on a new map'
-            : 'Your robot found the treasure'}
-        </ActivityCorrect>
       )}
     </>
   )

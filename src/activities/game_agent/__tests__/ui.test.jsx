@@ -108,7 +108,8 @@ describe('Game agent UI', () => {
     })
     expect(screen.getByTestId('ga-result')).toHaveTextContent('Found it in 3 steps')
     expect(definition.grade(TASK, state()).passed).toBe(true)
-    expect(screen.getByText('Your robot found the treasure')).toBeInTheDocument()
+    // The pass is stated once, by the host banner, not by a second line in the screen.
+    expect(screen.queryByText('Your robot found the treasure')).not.toBeInTheDocument()
   })
 
   it('Fast trains in a few frames and Stop keeps what has been learned', async () => {

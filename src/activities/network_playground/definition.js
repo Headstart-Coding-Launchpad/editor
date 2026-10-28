@@ -54,6 +54,8 @@ export default defineActivity({
   // Marked as you go: the task passes when the network's accuracy reaches the target.
   completion: 'auto',
   passMessage: 'Your network did it!',
+  // The big score with its tick is the result; no banner on top of it.
+  quietPass: true,
 
   fields: {
     task: [

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import ActivityLayout, { ActChip, ActFold, ActStepper } from '../ui/ActivityLayout.jsx'
 import {
   MAX_NAME,
@@ -268,7 +267,6 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
               )
             })}
           </ul>
-          {g.passed && <ActivityCorrect>Your tree works!</ActivityCorrect>}
         </div>
       )}
     </div>

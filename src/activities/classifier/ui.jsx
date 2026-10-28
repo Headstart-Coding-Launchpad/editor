@@ -516,7 +516,14 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
           It is ready. Draw anything and watch it guess.
         </p>
       )}
-      {ready && live && <RoundProgress done={tries} total={Math.max(core, tries)} core={core} />}
+      {ready && live && (
+        <RoundProgress
+          done={tries}
+          total={Math.max(core, tries)}
+          core={core}
+          extra={tries > 0 ? `got ${rights} right` : undefined}
+        />
+      )}
       {finished && (
         <p className="act-result act-result--pass" role="status" data-testid="round-bonus">
           Round done! It got {rights} of {tries} right. Keep going for bonus tries.
@@ -664,7 +671,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   // Lesson panels (only when the lesson turns them on) and the results.
   const controls = (
     <>
-      {ready && panels.includes('close') && (
+      {ready && panels.includes('close') && guess?.ratio != null && (
         <div className="act-cls-close" data-testid="classifier-close">
           <span>How close is it?</span>
           <Bar
@@ -746,7 +753,9 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
       )}
 
       {/* Results, in pictures. */}
-      {live && tries > 0 && <ResultMeter right={rights} total={tries} />}
+      {live && tries > 0 && panels.includes('selftest') && (
+        <ResultMeter right={rights} total={tries} />
+      )}
       {ready && panels.includes('selftest') && (
         <div className="act-cls-section" data-testid="classifier-selftest-box">
           <button
@@ -796,7 +805,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
       <ActivityLayout
         className="act-layout--classifier"
         progress={progress}
-        stageTop={thingsSection}
+        stageTop={ready && live ? null : thingsSection}
         stage={stage}
         action={action}
         actionUnderStage

@@ -92,7 +92,7 @@ describe('Learning Tree UI', () => {
     expect(state().tried).toBe(true)
     expect(screen.getByText('Your tree got 4 of 5 right')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Goldfish: tree says wild/ })).toBeInTheDocument()
-    expect(screen.getByText('Your tree works!')).toBeInTheDocument()
+    expect(screen.queryByText('Your tree works!')).not.toBeInTheDocument()
   })
 
   it('clears the Try it result when an example changes', () => {

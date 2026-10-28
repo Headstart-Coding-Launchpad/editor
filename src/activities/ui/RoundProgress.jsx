@@ -6,9 +6,10 @@ import { usePresentation } from './presentation.js'
 // bonus reps drawn as stars after the core) and one consistent line, "3 of 5 done". It replaces
 // the old Previous / numbered dots / Next bar: the student never picks an item, the round moves
 // on by itself. aria-live so a screen reader hears each rep land. Hidden for a single rep.
+// `extra` (optional) is a second short phrase beside the count, like "got 2 right".
 // `flags` (optional, one boolean per rep) says which reps are done when they need not be the first
 // `done` ones, like the Space station where the first N goals make the round.
-export default function RoundProgress({ done, total, core = total, flags }) {
+export default function RoundProgress({ done, total, core = total, flags, extra }) {
   if (usePresentation() || !(total >= 2)) return null
   const goal = Math.min(core, total)
   const text = roundText(done, total, goal)
@@ -37,6 +38,7 @@ export default function RoundProgress({ done, total, core = total, flags }) {
       <span className="act-round__text" aria-live="polite">
         {text}
       </span>
+      {extra ? <span className="act-round__text act-round__extra">{extra}</span> : null}
     </div>
   )
 }
