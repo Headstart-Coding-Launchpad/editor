@@ -37,6 +37,18 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **New activity: Learning Tree (`type: learning_tree`).** The student gives a tree labelled
+  examples (a name, a tick per yes/no feature, a label) and the tree builds itself with ID3, picking
+  its own questions and redrawing every time an example changes. **Try it on new things** then
+  sorts the lesson's unseen `testItems`; the task passes at `passAt` (default 4 of 5). Task fields:
+  `features` (1-6), `labels` (2-6), `testItems` (`name`, `yes`, `label`), `maxExamples`,
+  `maxDepth`, `passAt`. The tutor card shows examples, tree depth and test score. See
+  [activities/learning_tree.md](activities/learning_tree.md).
+  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-23-learning-decision-tree-activity-ai-level-1.md
+
 ## 2026-10-27
 
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and

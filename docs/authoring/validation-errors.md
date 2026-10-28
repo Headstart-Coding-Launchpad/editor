@@ -413,6 +413,21 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: note sticker "…" must be a colour and a shape joined with a dash, ….` | A note sticker is not valid. | Use a sticker like `green-triangle`. |
 | `Task …: note sticker "…" is not on any crate.` | The note lists a sticker no crate has. | Put it on a crate, or take it off the note. |
 
+### Learning Tree ([activities/learning_tree.md](activities/learning_tree.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: features must be 1 to 6 different names, each 1 to 24 characters.` | `features` is missing, empty, too long, has a repeat or an empty name. | List 1 to 6 different yes/no feature names. |
+| `Task …: labels must be 2 to 6 different names, each 1 to 16 characters.` | `labels` is missing, has fewer than 2, a repeat or a name that is empty or too long. | List 2 to 6 different labels. |
+| `Task …: maxExamples must be a whole number from 4 to 40.` | `maxExamples` is there but is not a whole number in range. | Fix it, or leave it out (default 20). |
+| `Task …: maxDepth must be a whole number from 1 to 5.` | `maxDepth` is there but is not a whole number in range. | Fix it, or leave it out (default 3). |
+| `Task …: testItems needs 2 to 12 items.` | `testItems` is missing or has too few or too many items. | Give 2 to 12 test items. |
+| `Task … item …: name is required (1 to 16 characters).` | A test item has no name, or a name that is too long. | Give it a short name. |
+| `Task … item …: label must be one of the task's labels.` | A test item's `label` is not in `labels`. | Use one of the `labels`. |
+| `Task … item …: yes must list only the task's features, each once.` | A test item's `yes` is not a list, names a feature that is not in `features`, or repeats one. | List only features from `features`, each once. |
+| `Task …: passAt must be a share above 0 and below 1 (0.8) or a whole number of test items.` | `passAt` is not a share between 0 and 1 or a whole number from 1 up to the number of test items. | Fix it, or leave it out (default 0.8). |
+| `Task …: the first label is the right answer for … of … test items, so an empty tree could pass. Make more test items use the other labels.` | Warning: an empty tree answers the first label every time, and that already reaches `passAt`. | Use the other labels for more test items, or raise `passAt`. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

@@ -7890,3 +7890,131 @@ label.te-backdrop-tag,
     }
   }
 }
+
+/* Learning Tree activity: nested boxes, no animation. */
+.act-lt-form {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.act-lt-toggle[aria-pressed='true'] {
+  background: var(--colour-success-bg);
+  border-color: var(--colour-success-text);
+}
+
+.act-lt-label[aria-checked='true'] {
+  outline: 3px solid var(--colour-primary);
+}
+
+.act-lt-heading {
+  font-size: 1.05rem;
+  margin: 0 0 6px;
+}
+
+.act-lt-empty,
+.act-lt-count-text {
+  color: var(--colour-text-muted, #64748b);
+  font-size: 0.95rem;
+}
+
+.act-lt-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.act-lt-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--ui-border);
+}
+
+.act-lt-remove {
+  padding: 4px 10px;
+}
+
+.act-lt-scroll {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.act-lt-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: max-content;
+}
+
+.act-lt-kids {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-top: 6px;
+}
+
+.act-lt-kid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.act-lt-branch {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--colour-text-muted, #64748b);
+}
+
+.act-lt-box {
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-sm);
+  border: 2px solid var(--ui-border);
+  background: var(--ui-surface);
+  text-align: center;
+  min-width: 72px;
+}
+
+.act-lt-question {
+  font-weight: 600;
+  border-color: var(--colour-primary);
+}
+
+.act-lt-leaf {
+  display: flex;
+  flex-direction: column;
+}
+
+.act-lt-count {
+  font-size: 0.8rem;
+  color: var(--colour-text-muted, #64748b);
+}
+
+.act-lt-tone-0 {
+  background: #dbeafe;
+}
+.act-lt-tone-1 {
+  background: #fde68a;
+}
+.act-lt-tone-2 {
+  background: #bbf7d0;
+}
+.act-lt-tone-3 {
+  background: #fecdd3;
+}
+.act-lt-tone-4 {
+  background: #e9d5ff;
+}
+.act-lt-tone-5 {
+  background: #fed7aa;
+}
