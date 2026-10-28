@@ -67,10 +67,25 @@ describe('Learning Tree deck screen', () => {
     sort('Sprouts', 'No thanks')
     fireEvent.click(screen.getByRole('button', { name: /Play 20 Questions/ }))
     // Cookie is sweet: the tree asks about sweetness, wrong answer is refused.
+    // Only the card (emoji + name) shows; one question at a time; facts are off by default.
+    expect(screen.getByTestId('lt-play')).toHaveTextContent('Cookie')
+    expect(screen.queryByTestId('lt-facts')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('lt-ask')).toHaveLength(1)
     expect(screen.getByTestId('lt-ask')).toHaveTextContent('is sweet?')
+    expect(screen.getByTestId('lt-ask')).not.toHaveTextContent('crunchy')
+    expect(screen.getByTestId('lt-tree').querySelectorAll('.act-lt-on').length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('lt-guess')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'No' }))
     expect(screen.getByText(/Look at the card again/)).toBeInTheDocument()
+    expect(screen.getByTestId('lt-ask')).toHaveTextContent('is sweet?')
+    const litBefore = screen.getByTestId('lt-tree').querySelectorAll('.act-lt-on').length
+    fireEvent.click(screen.getByRole('button', { name: 'Show the facts' }))
+    expect(screen.getByTestId('lt-facts')).toHaveTextContent('is sweet? Yes')
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
+    // The branch is lit further along, down to the leaf.
+    expect(screen.getByTestId('lt-tree').querySelectorAll('.act-lt-on').length).toBeGreaterThan(
+      litBefore
+    )
     expect(screen.getByTestId('lt-guess')).toHaveTextContent("I think: I'd eat it")
     fireEvent.click(screen.getByRole('button', { name: /Right/ }))
     expect(state().q).toBe('r-')

@@ -9360,3 +9360,9 @@ input.act-lt-binname {
   display: flex;
   gap: 8px;
 }
+
+.act-lt-step {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--colour-ink-muted, #555);
+}

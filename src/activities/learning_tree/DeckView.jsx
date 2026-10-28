@@ -30,6 +30,11 @@ import Tree from './TreeDiagram.jsx'
 
 const NONE = '-'
 
+// The boxes the child has walked through: the tree is rebuilt on every render, so the walk is kept
+// as the answers given and replayed down the current tree.
+const walkOf = (tree, answers) =>
+  answers.reduce((nodes, yes) => [...nodes, yes ? nodes.at(-1).yes : nodes.at(-1).no], [tree])
+
 export default function LearningTreeDeckView({ task, state, onChange, readOnly = false }) {
   const features = featuresOf(task)
   const clean = normalizeState(task, state)
@@ -42,6 +47,7 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
   const [play, setPlay] = useState(null)
   const [picked, setPicked] = useState(null)
   const [note, setNote] = useState(null)
+  const [showFacts, setShowFacts] = useState(false)
   const [everTried, setEverTried] = useState(!!clean.tried)
   const [blocked, setBlocked] = useState(false)
   const maxDepth = maxDepthOf(task)
@@ -120,12 +126,13 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
     const mystery = nextUnplayed(-1) ?? 0
     setPicked(null)
     setNote(null)
-    setPlay({ mystery, walk: [g.tree], phase: g.tree.leaf ? 'guess' : 'asking' })
+    setShowFacts(false)
+    setPlay({ mystery, answers: [], phase: g.tree.leaf ? 'guess' : 'asking' })
   }
 
   function answer(yes) {
     const row = g.rows[play.mystery]
-    const node = play.walk[play.walk.length - 1]
+    const node = walkOf(g.tree, play.answers).at(-1)
     const truth = row.f[node.feature] === 1
     if (yes !== truth) {
       setNote(`Look at the card again: ${featureQuestion(features[node.feature])}`)
@@ -133,7 +140,7 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
     }
     setNote(null)
     const next = yes ? node.yes : node.no
-    setPlay({ ...play, walk: [...play.walk, next], phase: next.leaf ? 'guess' : 'asking' })
+    setPlay({ ...play, answers: [...play.answers, yes], phase: next.leaf ? 'guess' : 'asking' })
   }
 
   function mark(right) {
@@ -151,17 +158,18 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
   function nextCard() {
     const after = nextUnplayed(play.mystery)
     setNote(null)
+    setShowFacts(false)
     if (after === null) {
       setPlay(null)
       return
     }
-    setPlay({ mystery: after, walk: [g.tree], phase: g.tree.leaf ? 'guess' : 'asking' })
+    setPlay({ mystery: after, answers: [], phase: g.tree.leaf ? 'guess' : 'asking' })
   }
 
   // --- the picture ----------------------------------------------------------------------------
   const route =
     !play && g.tried && picked !== null && g.rows[picked] ? pathOf(g.tree, g.rows[picked].f) : null
-  const lit = new Set(play ? play.walk : route ? route.nodes : [])
+  const lit = new Set(play ? walkOf(g.tree, play.answers) : route ? route.nodes : [])
   const binned = clean.examples.length
   const stuck =
     binned >= 2 &&
@@ -359,7 +367,7 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
   let playPanel = null
   if (play) {
     const row = g.rows[play.mystery]
-    const node = play.walk[play.walk.length - 1]
+    const node = walkOf(g.tree, play.answers).at(-1)
     const truthLabel = bins[row.l]
     playPanel = (
       <section className="act-lt-play" aria-label="20 Questions" data-testid="lt-play">
@@ -369,16 +377,29 @@ export default function LearningTreeDeckView({ task, state, onChange, readOnly =
           </span>
           <strong>{row.name}</strong>
         </div>
-        <ul className="act-lt-facts">
-          {features.map((f, i) => (
-            <li key={f}>
-              <span aria-hidden="true">{row.f[i] === 1 ? '✓' : '✗'}</span> {featureQuestion(f)}{' '}
-              {row.f[i] === 1 ? 'Yes' : 'No'}
-            </li>
-          ))}
-        </ul>
+        {play.phase !== 'marked' && (
+          <button
+            type="button"
+            className="act-lt-back"
+            aria-pressed={showFacts}
+            onClick={() => setShowFacts(!showFacts)}
+          >
+            {showFacts ? 'Hide the facts' : 'Show the facts'}
+          </button>
+        )}
+        {(showFacts || play.phase === 'marked') && (
+          <ul className="act-lt-facts" data-testid="lt-facts">
+            {features.map((f, i) => (
+              <li key={f}>
+                <span aria-hidden="true">{row.f[i] === 1 ? '✓' : '✗'}</span> {featureQuestion(f)}{' '}
+                {row.f[i] === 1 ? 'Yes' : 'No'}
+              </li>
+            ))}
+          </ul>
+        )}
         {play.phase === 'asking' && (
           <div className="act-lt-ask">
+            <p className="act-lt-step">Question {play.answers.length + 1}</p>
             <p className="act-lt-question" data-testid="lt-ask">
               {featureQuestion(features[node.feature])}
             </p>
