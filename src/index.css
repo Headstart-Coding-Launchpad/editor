@@ -8007,6 +8007,8 @@ label.te-backdrop-tag,
 
 .act-lt-result[aria-pressed='true'] {
   border-color: var(--colour-primary);
+  background: var(--colour-primary);
+  color: #fff;
   box-shadow: 0 0 0 2px var(--colour-primary);
 }
 
