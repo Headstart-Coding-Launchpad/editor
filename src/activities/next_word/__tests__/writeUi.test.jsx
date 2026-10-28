@@ -69,6 +69,24 @@ describe('Next Word write mode', () => {
     expect(screen.queryByTestId('next_word-keep')).toBeNull()
   })
 
+  it('shows Copied word for word when the pack is one sentence, and kept cards render in the card style', () => {
+    const task = {
+      ...TASK,
+      card: 'headline',
+      texts: [{ title: 'One', emoji: 'O', body: 'The cat sat on the mat.' }],
+    }
+    renderView({ task })
+    go()
+    expect(screen.getByTestId('next_word-sentence').textContent).toMatch(/the cat sat on the mat\./)
+    expect(screen.getByTestId('next_word-copied').textContent).toMatch(/Copied word for word/)
+    fireEvent.click(screen.getByTestId('next_word-keep'))
+    const kept = screen.getByTestId('next_word-keptcard')
+    expect(kept.className).toMatch(/act-nw-minicard--headline/)
+    expect(kept.textContent).toMatch(/📰/)
+    expect(kept.textContent).toMatch(/the cat sat on the mat\./)
+    expect(kept.textContent).toMatch(/copied/)
+  })
+
   it('tapping a written word says why', () => {
     renderView()
     go()

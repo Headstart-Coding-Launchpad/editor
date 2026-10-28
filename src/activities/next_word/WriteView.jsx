@@ -365,9 +365,16 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
         ) : (
           <ul className="act-nw-cardlist">
             {state.cards.map((card, i) => (
-              <li key={i} className="act-nw-minicard">
-                {card.text}
-                {card.copied ? ' (copied)' : ''}
+              <li
+                key={i}
+                className={`act-nw-minicard act-nw-minicard--${cardStyle}`}
+                data-testid="next_word-keptcard"
+              >
+                <span className="act-nw-minicard__icon" aria-hidden="true">
+                  {CARD_ICON[cardStyle]}
+                </span>
+                <span className="act-nw-minicard__text">{card.text}</span>
+                {card.copied && <span className="act-nw-minicard__copied">copied</span>}
               </li>
             ))}
           </ul>

@@ -7363,20 +7363,65 @@ label.te-backdrop-tag,
 }
 
 .act-nw-cardlist {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15em), 1fr));
+  gap: 10px;
+  max-height: 11.5rem;
+  overflow-y: auto;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .act-nw-minicard {
-  max-width: 100%;
-  padding: 6px 10px;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-sm);
-  font-size: 0.95rem;
+  background: #fff;
+  color: var(--colour-ink-strong);
+  font-size: 1.1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.act-nw-minicard__icon {
+  font-size: 1.3rem;
+}
+
+.act-nw-minicard__text {
+  flex: 1;
+}
+
+.act-nw-minicard__copied {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #664d03;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.act-nw-minicard--headline {
+  border: 2px solid var(--colour-ink-strong);
+  border-radius: 2px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 var(--colour-ink-strong);
+}
+
+.act-nw-minicard--post {
+  border-radius: 18px 18px 18px 4px;
+}
+
+.act-nw-minicard--commentary {
+  font-style: italic;
+  border-left: 6px solid var(--colour-primary);
 }
 
 .act-nw-silly {
