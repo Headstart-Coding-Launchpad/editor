@@ -116,6 +116,12 @@ export default defineActivity({
           'Ratings already set when the task opens: { itemId: up | down }. They show a "set for you" tag, the student can change them, and minRated counts only the own ratings of the student (changed or new). The report shows the kinds in the feed at the start and at the end.',
       },
       {
+        name: 'startGoal',
+        type: 'string',
+        description:
+          'With goals: the goal the feed starts on (one of goals). startGoal: watching with startRatings opens the task already in a bubble.',
+      },
+      {
         name: 'minRated',
         type: 'number',
         description: 'How many items the student must rate. Default 6.',

@@ -370,3 +370,14 @@ describe('startRatings', () => {
     ).toBeUndefined()
   })
 })
+
+describe('startGoal', () => {
+  it('opens on the given goal, and is checked against goals', () => {
+    const t = { ...task(), goals: ['like', 'watching', 'new'], startGoal: 'watching' }
+    expect(goalOf(t, {})).toBe('watching')
+    expect(goalOf(t, { goal: 'new' })).toBe('new')
+    expect(validateRecommender({ ...t, startGoal: 'nope' }, 1).errors).toContain(
+      "Task 1: startGoal must be one of the task's goals."
+    )
+  })
+})

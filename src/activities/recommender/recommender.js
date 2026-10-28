@@ -296,6 +296,8 @@ export function goalOf(task, state) {
   const goals = goalsOf(task)
   if (goals.length === 0) return undefined
   if (goals.includes(state?.goal)) return state.goal
+  // `startGoal` opens the task on that goal (e.g. stuck in a "keep me watching" bubble).
+  if (goals.includes(task?.startGoal)) return task.startGoal
   return goals.includes('like') ? 'like' : goals[0]
 }
 
@@ -391,6 +393,9 @@ export function validateRecommender(task, n) {
     (!Number.isInteger(task.minRated) || task.minRated < 1 || task.minRated > items.length)
   ) {
     errors.push(`${where}: minRated must be a whole number from 1 to the number of items.`)
+  }
+  if (task?.startGoal != null && !goalsOf(task).includes(task.startGoal)) {
+    errors.push(`${where}: startGoal must be one of the task's goals.`)
   }
   if (task?.startRatings != null) {
     const given = task.startRatings
