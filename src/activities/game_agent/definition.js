@@ -49,13 +49,30 @@ export default defineActivity({
         required: true,
         authored: true,
         description:
-          'Rows of text, at most 10 x 10: # wall, . floor, R robot start (exactly one), T treasure (exactly one), X pit (optional, ends the try). The treasure must be reachable.',
+          'Rows of text, at most 10 x 10: # wall, . floor, R robot start (exactly one), T treasure (exactly one), X pit (optional, ends the try), C coin (optional, pays once per try). The treasure must be reachable.',
       },
       {
         name: 'rewards',
         type: 'object',
         description:
-          'The starting rewards the student can change: { treasure, step, wall, pit }, whole numbers from -20 to 20. Default { treasure: 10, step: -1, wall: -5, pit: -10 }.',
+          'The starting rewards the student can change: { treasure, step, wall, pit, coin }, whole numbers from -20 to 20. Default { treasure: 10, step: -1, wall: -5, pit: -10 } (coin: 3 when the map has a C).',
+      },
+      {
+        name: 'senses',
+        type: 'array',
+        description:
+          'What the robot senses to tell situations apart, and the starting choice: position, walls, treasure_direction, treasure_direction_4, pit_near, coin_direction. Setting this (or maxSenses) lets the student toggle senses. Default [position] (the square it stands on).',
+      },
+      {
+        name: 'maxSenses',
+        type: 'number',
+        description: 'The most senses the student can switch on at once (1 to 6). Default 6.',
+      },
+      {
+        name: 'testMaps',
+        type: 'array',
+        description:
+          'Sealed list of up to 5 maps (same characters as map) nobody trains on. "Go on a new map" runs the trained robot once on one of them, with no training; the task then passes when it reaches the treasure there.',
       },
       {
         name: 'episodes',
@@ -71,7 +88,7 @@ export default defineActivity({
         name: 'race',
         type: 'boolean',
         description:
-          'Not built yet (accepted with a warning). The tutor card shows each best score so a race can be run on the big screen.',
+          'Race v1: the tutor card shows each student's best mystery-map score ("mystery map: 8 pts") so the class can be ranked. Needs testMaps.',
       },
     ],
   },
@@ -110,6 +127,8 @@ export default defineActivity({
       q.training &&
       q.trained >= p.trained &&
       JSON.stringify(p.rewards) === JSON.stringify(q.rewards) &&
+      JSON.stringify(p.senses) === JSON.stringify(q.senses) &&
+      p.tests === q.tests &&
       p.goes === q.goes &&
       p.reached === q.reached
     return progressOnly ? 'continuous' : 'discrete'
@@ -144,6 +163,9 @@ export default defineActivity({
       let reachedCount = 0
       let episodes = 0
       let best = null
+      let testedCount = 0
+      let testReachedCount = 0
+      let bestTest = null
       for (const t of perStudent ?? []) {
         const latest = t.distinctAttempts?.[t.distinctAttempts.length - 1]?.submission
         const raw = latest && typeof latest === 'object' ? latest : parse(latest)
@@ -154,6 +176,11 @@ export default defineActivity({
         episodes += s.trained
         if (s.reached) reachedCount += 1
         if (s.bestScore != null && (best == null || s.bestScore > best)) best = s.bestScore
+        if (s.tests > 0) testedCount += 1
+        if (s.testBest != null) {
+          testReachedCount += 1
+          if (bestTest == null || s.testBest > bestTest) bestTest = s.testBest
+        }
       }
       return {
         gameAgentResults: {
@@ -161,6 +188,9 @@ export default defineActivity({
           reachedCount,
           avgEpisodes: trainedCount ? Math.round(episodes / trainedCount) : null,
           bestScore: best,
+          testedCount,
+          testReachedCount,
+          bestTestScore: bestTest,
         },
       }
     },

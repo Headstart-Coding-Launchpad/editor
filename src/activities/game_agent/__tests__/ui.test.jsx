@@ -190,4 +190,22 @@ describe('Game agent UI', () => {
     expect(grid.querySelector('[data-cell="0"] .act-ga-cell__best')).toBeNull() // wall
     expect(grid.querySelector('[data-cell="13"] .act-ga-cell__best')).toBeNull() // treasure
   })
+
+  it('offers senses, the situation count, the eye view and Go on a new map', () => {
+    const task = {
+      ...TASK,
+      senses: ['walls'],
+      maxSenses: 2,
+      testMaps: [['#####', '#R.T#', '#####']],
+    }
+    const { state } = renderView({ task, initialState: definition.initialState(task) })
+    expect(screen.getByTestId('ga-situations')).toHaveTextContent('situations to learn')
+    expect(screen.getByTestId('ga-sense-walls')).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByTestId('ga-sense-pit_near'))
+    expect(state().senses).toEqual(['walls', 'pit_near'])
+    expect(screen.getByTestId('ga-sense-position')).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /eye view/ }))
+    expect(screen.getByTestId('ga-eye')).toBeInTheDocument()
+    expect(screen.getByTestId('ga-go-new')).toBeDisabled()
+  })
 })

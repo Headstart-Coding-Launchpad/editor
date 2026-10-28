@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_REWARDS,
   agentAfter,
+  countSituations,
+  describeSituation,
+  stateKey,
+  testMapFor,
+  topSituations,
+  withTestResult,
   bestMoveOf,
   cellsOfMoves,
   envOf,
@@ -20,6 +26,7 @@ import {
   validateGameAgentWarnings,
   withGoResult,
   withRewards,
+  withSenses,
 } from '../game_agent.js'
 import definition from '../definition.js'
 
@@ -65,11 +72,31 @@ describe('parseMap and validateGameAgentTask', () => {
     expect(t({ rewards: { treasure: 5 }, episodes: 10 })).toEqual([])
   })
 
-  it('warns that race is not built yet', () => {
+  it('warns when race has no testMaps', () => {
     expect(validateGameAgentWarnings({ race: true }, 4)).toEqual([
-      "Task 4: race is not built yet; the tutor's card shows each best score so a race can be run on the big screen.",
+      "Task 4: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.",
     ])
+    expect(validateGameAgentWarnings({ race: true, testMaps: [MAP] }, 4)).toEqual([])
     expect(validateGameAgentWarnings({}, 4)).toEqual([])
+  })
+
+  it('validates senses, maxSenses and testMaps', () => {
+    const t = (extra) => validateGameAgentTask({ ...TASK, ...extra }, 2)
+    expect(t({ senses: ['walls', 'treasure_direction'], maxSenses: 3 })).toEqual([])
+    expect(t({ senses: ['smell'] })).toHaveLength(1)
+    expect(t({ senses: [] })).toHaveLength(1)
+    expect(t({ maxSenses: 0 })).toHaveLength(1)
+    expect(t({ senses: ['walls', 'pit_near'], maxSenses: 1 })).toEqual([
+      'Task 2: senses lists 2 senses but maxSenses is 1.',
+    ])
+    expect(t({ testMaps: [['#####', '#R.T#', '#####']] })).toEqual([])
+    expect(t({ testMaps: [['#R#T#']] })).toEqual([
+      'Task 2: testMaps map 1: the robot cannot reach the treasure on this map.',
+    ])
+    expect(t({ testMaps: [] })).toHaveLength(1)
+    expect(t({ testMaps: Array(6).fill(MAP) })).toEqual([
+      'Task 2: testMaps can have at most 5 maps.',
+    ])
   })
 })
 
@@ -164,9 +191,9 @@ describe('learning', () => {
   it('bestMoveOf: no opinion when untrained, the highest Q-value otherwise', () => {
     const agent = newAgent(env)
     expect(bestMoveOf(agent, env.start)).toBe(-1)
-    agent.q[env.start * 4 + 2] = 3 // down
+    agent.q.set(stateKey(env, env.start, agent.senses, new Set()), [0, 0, 3, 0]) // down
     expect(bestMoveOf(agent, env.start)).toBe(2)
-    agent.q[env.start * 4 + 1] = 5 // right
+    agent.q.get(stateKey(env, env.start, agent.senses, new Set()))[1] = 5 // right
     expect(bestMoveOf(agent, env.start)).toBe(1)
     // After training, the square before the treasure points at it.
     const trained = agentAfter(env, DEFAULT_REWARDS, 50)
@@ -298,6 +325,120 @@ describe('state, grading and the definition', () => {
       reachedCount: 1,
       avgEpisodes: Math.round((good.trained + 40) / 2),
       bestScore: 8,
+      testedCount: 0,
+      testReachedCount: 0,
+      bestTestScore: null,
     })
+  })
+})
+
+describe('senses, coins and the mystery map', () => {
+  const COIN_MAP = ['#######', '#R.C..#', '#.#X#T#', '#######']
+  const coinEnv = envOf({ map: COIN_MAP })
+  const OPEN = ['#####', '#R..#', '#.#T#', '#####']
+
+  it('parses a coin and lets the robot walk through it', () => {
+    expect(coinEnv.coins).toEqual([10])
+    expect(coinEnv.cells[10]).toBe('coin')
+  })
+
+  it('pays a coin once per try', () => {
+    const taken = new Set()
+    const rewards = { ...DEFAULT_REWARDS, coin: 4 }
+    expect(stepWorld(coinEnv, rewards, 9, 1, taken).reward).toBe(4)
+    expect(stepWorld(coinEnv, rewards, 11, 3, taken).reward).toBe(-1)
+    expect(taken.has(10)).toBe(true)
+  })
+
+  it('stateKey reports only the chosen senses', () => {
+    const open = envOf({ map: OPEN })
+    expect(stateKey(open, open.start, ['position'], new Set())).toBe(`p${open.start}`)
+    expect(stateKey(open, open.start, ['walls'], new Set())).toBe('w1001')
+    expect(stateKey(open, open.start, ['treasure_direction'], new Set())).toBe('tSE')
+    expect(stateKey(open, open.start, ['treasure_direction_4'], new Set())).toBe('fE')
+    expect(stateKey(open, open.start, ['pit_near'], new Set())).toBe('x0')
+    expect(stateKey(open, open.start, ['walls', 'position'], new Set())).toBe(
+      `p${open.start}|w1001`
+    )
+  })
+
+  it('stateKey senses pits and coins, and forgets a taken coin', () => {
+    expect(stateKey(coinEnv, 9, ['pit_near'], new Set())).toBe('x0')
+    expect(stateKey(coinEnv, 10, ['pit_near'], new Set())).toBe('x1')
+    expect(stateKey(coinEnv, coinEnv.start, ['coin_direction'], new Set())).toBe('cE')
+    expect(stateKey(coinEnv, coinEnv.start, ['coin_direction'], new Set([10]))).toBe('cnone')
+  })
+
+  it('counts the situations the senses can report', () => {
+    const open = envOf({ map: OPEN })
+    expect(countSituations(open, ['position'])).toBe(5)
+    expect(countSituations(open, ['walls'])).toBeLessThan(5)
+  })
+
+  it('describes a situation in plain words', () => {
+    expect(describeSituation('w1001|tSE')).toBe('walls: up, left; treasure is down and right')
+  })
+
+  it('learns with senses, deterministically, and lists top situations', () => {
+    const senses = ['walls', 'treasure_direction']
+    const rewards = { ...DEFAULT_REWARDS, coin: 3 }
+    const a = agentAfter(coinEnv, rewards, 60, senses)
+    const b = agentAfter(coinEnv, rewards, 60, senses)
+    expect(a.q).toEqual(b.q)
+    const top = topSituations(a, 3)
+    expect(top.length).toBeGreaterThan(0)
+    expect(top[0].visits).toBeGreaterThanOrEqual(top[top.length - 1].visits)
+  })
+
+  it('runs on a test map with no training and a step cap', () => {
+    const senses = ['walls', 'treasure_direction']
+    const task = { ...TASK, senses, testMaps: [['######', '#..T.#', '#.##.#', '#R...#', '######']] }
+    const agent = agentAfter(envOf(task), DEFAULT_REWARDS, 80, senses)
+    const before = agent.episodes
+    const testEnv = testMapFor(task, 0)
+    const run = greedyRun(testEnv, DEFAULT_REWARDS, agent, { unseen: true })
+    expect(agent.episodes).toBe(before)
+    expect(run.steps).toBeLessThanOrEqual(120)
+    expect(testMapFor(task, 1)).toEqual(testEnv)
+    expect(testMapFor(TASK, 0)).toBeNull()
+  })
+
+  it('passes on the test map when testMaps are set, else on the Go!', () => {
+    const task = { ...TASK, testMaps: [['#####', '#R.T#', '#####']] }
+    const trained = { ...normalizeGameAgentState(task, null), trained: 50, reached: true }
+    expect(gradeTask(task, trained).passed).toBe(false)
+    const tested = withTestResult(trained, { reached: true, score: 9, steps: 2 })
+    expect(gradeTask(task, tested).passed).toBe(true)
+    expect(gradeTask(TASK, trained).passed).toBe(true)
+  })
+
+  it('changing senses resets learning but keeps rewards', () => {
+    const s = { ...normalizeGameAgentState(TASK, null), trained: 30 }
+    const next = withSenses(TASK, s, ['walls'])
+    expect(next.trained).toBe(0)
+    expect(next.senses).toEqual(['walls'])
+    expect(next.rewards).toEqual(s.rewards)
+    expect(withRewards(TASK, next, { ...next.rewards, step: -2 }).senses).toEqual(['walls'])
+  })
+
+  it('shows the mystery-map score on the card when race is on', () => {
+    const task = { ...TASK, race: true, testMaps: [['#####', '#R.T#', '#####']] }
+    const base = { ...normalizeGameAgentState(task, null), trained: 40 }
+    const s = withTestResult(base, { reached: true, score: 8, steps: 2 })
+    expect(summaryOf(task, s).text).toBe('mystery map: 8 pts · 40 tries')
+  })
+
+  it('reports senses, rewards, tries and the test result in the shared state', () => {
+    const run = { reached: false, score: -9, steps: 30 }
+    const s = withTestResult(normalizeGameAgentState(TASK, null), run)
+    const shared = JSON.parse(definition.serializeShared(s))
+    expect(shared).toMatchObject({
+      senses: ['position'],
+      tests: 1,
+      testReached: false,
+      testScore: -9,
+    })
+    expect(shared.rewards).toBeDefined()
+    expect(shared.trained).toBe(0)
   })
 })

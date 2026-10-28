@@ -4481,6 +4481,29 @@ label.te-backdrop-tag,
   pointer-events: none;
 }
 
+/* Robot's-eye view: everything but the robot is greyed out. */
+.act-ga-cell--dark {
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-surface-soft);
+  opacity: 0.6;
+}
+
+.act-ga-senses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.act-ga-sense {
+  min-height: 44px;
+}
+
+.act-ga-learned {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+
 .act-ga-cell--wall {
   background: var(--ui-surface-soft);
 }

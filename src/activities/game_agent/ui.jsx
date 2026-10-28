@@ -5,22 +5,34 @@ import {
   REWARD_MAX,
   REWARD_MIN,
   MAX_SCORES,
+  SENSE_KEYS,
+  SENSE_LABELS,
   agentAfter,
   beginEpisode,
   bestMoveOf,
   cellsOfMoves,
+  countSituations,
+  describeSituation,
   envOf,
   episodesOf,
   finishEpisode,
   gradeTask,
   greedyRun,
+  hasCoin,
   hasPit,
   hintFor,
+  maxSensesOf,
   normalizeGameAgentState,
+  sensesChoosable,
   showLearningOf,
+  stateKey,
   stepEpisode,
+  testMapFor,
+  topSituations,
   withGoResult,
   withRewards,
+  withSenses,
+  withTestResult,
 } from './game_agent.js'
 
 // Game agent UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev => next)`,
@@ -45,6 +57,7 @@ const REWARD_LABELS = {
   step: ['Each step', '👣'],
   wall: ['Hit a wall', '🧱'],
   pit: ['Fall in a pit', '🕳️'],
+  coin: ['Pick up a coin', '🪙'],
 }
 
 function reducedMotion() {
@@ -123,12 +136,13 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   const [run, setRun] = useState(null)
   const [fast, setFast] = useState(false)
   const [showBest, setShowBest] = useState(false)
+  const [eyeView, setEyeView] = useState(false)
   const agentRef = useRef(null)
   const stopRef = useRef(false)
   const frameRef = useRef(null)
   const timerRef = useRef(null)
   const running = run != null
-  const rewardsKey = JSON.stringify(state.rewards)
+  const rewardsKey = JSON.stringify([state.rewards, state.senses])
 
   // A slide change or closed tab mid-run stops the loop.
   useEffect(
@@ -152,7 +166,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   function getAgent() {
     const held = agentRef.current
     if (held && held.key === rewardsKey && held.agent.episodes === state.trained) return held.agent
-    const agent = agentAfter(env, state.rewards, state.trained)
+    const agent = agentAfter(env, state.rewards, state.trained, state.senses)
     agentRef.current = { key: rewardsKey, agent }
     return agent
   }
@@ -162,6 +176,19 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     onChange?.((prev) => {
       const p = normalizeGameAgentState(task, prev)
       return withRewards(task, p, { ...p.rewards, [name]: value })
+    })
+  }
+
+  function toggleSense(sense) {
+    if (readOnly || running) return
+    agentRef.current = null
+    onChange?.((prev) => {
+      const p = normalizeGameAgentState(task, prev)
+      const on = p.senses.includes(sense)
+      if (on && p.senses.length === 1) return p // keep at least one
+      if (!on && p.senses.length >= maxSensesOf(task)) return p
+      const next = SENSE_KEYS.filter((k) => (k === sense ? !on : p.senses.includes(k)))
+      return withSenses(task, p, next)
     })
   }
 
@@ -194,7 +221,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
       onChange((prev) => {
         const p = normalizeGameAgentState(task, prev)
         // Rewards changed or the robot was reset from outside: this run is over.
-        if (JSON.stringify(p.rewards) !== JSON.stringify(rewards) || p.trained !== before) {
+        if (JSON.stringify([p.rewards, p.senses]) !== rewardsKey || p.trained !== before) {
           stopRef.current = true
           return p
         }
@@ -216,7 +243,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           ep = null
         }
       }
-      agentRef.current = { key: JSON.stringify(rewards), agent }
+      agentRef.current = { key: rewardsKey, agent }
       if (done >= total || stopRef.current) {
         commit(false)
         setRun(null)
@@ -263,6 +290,14 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     }, GO_STEP_MS)
   }
 
+  // "Go on a new map": the trained robot, no training, on a sealed map it has never seen.
+  function goNew() {
+    const testEnv = testMapFor(task, state.tests)
+    if (readOnly || running || !onChange || state.trained === 0 || !testEnv) return
+    const result = greedyRun(testEnv, state.rewards, getAgent(), { unseen: true })
+    onChange((prev) => withTestResult(normalizeGameAgentState(task, prev), result))
+  }
+
   // What to draw: the robot, and the trail of the last Go!.
   const shown =
     run?.kind === 'train' ? { ...state, trained: run.trained, scores: run.scores } : state
@@ -278,10 +313,23 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           : env.start
   const trailSet = new Set(trail)
   const graded = gradeTask(task, state)
-  const names = hasPit(env) ? ['treasure', 'step', 'wall', 'pit'] : ['treasure', 'step', 'wall']
+  const names = [
+    'treasure',
+    'step',
+    'wall',
+    ...(hasPit(env) ? ['pit'] : []),
+    ...(hasCoin(env) ? ['coin'] : []),
+  ]
+  const hasTests = !!testMapFor(task, 0)
+  const choosable = sensesChoosable(task)
+  const maxSenses = maxSensesOf(task)
+  const situations = countSituations(env, state.senses)
+  const showList = showBest && !state.senses.includes('position')
+  const seeing = describeSituation(stateKey(env, robotAt, state.senses, new Set()))
   const lastGo = state.goes > 0 && !run
   // What it learned so far: while training, the live robot; otherwise the saved one (replayed).
   const learner = showBest ? (run?.kind === 'train' ? agentRef.current?.agent : getAgent()) : null
+  const heard = showList && learner ? topSituations(learner, 5) : []
 
   return (
     <div className="act-panel" data-testid="game_agent-activity">
@@ -297,20 +345,31 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           const cls = [
             'act-ga-cell',
             kind === 'wall' ? 'act-ga-cell--wall' : '',
+            eyeView && !isRobot ? 'act-ga-cell--dark' : '',
             trailSet.has(i) && !isRobot && i !== env.treasure ? 'act-ga-cell--trail' : '',
           ]
           const onTreasure = isRobot && i === env.treasure
           const face = isRobot
             ? '🤖'
-            : i === env.treasure
-              ? '💎'
-              : kind === 'wall'
-                ? '🧱'
-                : kind === 'pit'
-                  ? '🕳️'
-                  : ''
+            : eyeView
+              ? ''
+              : i === env.treasure
+                ? '💎'
+                : kind === 'wall'
+                  ? '🧱'
+                  : kind === 'pit'
+                    ? '🕳️'
+                    : kind === 'coin' && !trailSet.has(i)
+                      ? '🪙'
+                      : ''
           const best =
-            learner && kind !== 'wall' && i !== env.treasure ? bestMoveOf(learner, i) : -1
+            learner &&
+            !eyeView &&
+            state.senses.includes('position') &&
+            kind !== 'wall' &&
+            i !== env.treasure
+              ? bestMoveOf(learner, i)
+              : -1
           return (
             <span key={i} className={cls.join(' ').trim()} data-cell={i}>
               {face}
@@ -337,6 +396,41 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           )
         })}
       </div>
+
+      {eyeView && (
+        <p className="act-hint" role="status" data-testid="ga-eye">
+          The robot sees: {seeing || 'nothing'}.
+        </p>
+      )}
+
+      {choosable && (
+        <div className="act-ga-senses" role="group" aria-label="Senses" data-testid="ga-senses">
+          <p className="act-hint">
+            What can your robot sense? (up to {maxSenses}). Changing a sense makes it forget.
+          </p>
+          {SENSE_KEYS.map((sense) => {
+            const on = state.senses.includes(sense)
+            const [label, icon] = SENSE_LABELS[sense]
+            return (
+              <button
+                key={sense}
+                type="button"
+                className="btn-ghost-outline act-btn act-ga-sense"
+                aria-pressed={on}
+                disabled={readOnly || running || (!on && state.senses.length >= maxSenses)}
+                onClick={() => toggleSense(sense)}
+                data-testid={`ga-sense-${sense}`}
+              >
+                <span aria-hidden="true">{icon}</span> {label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <p className="act-ga-stats" data-testid="ga-situations">
+        Your robot has <strong>{situations}</strong> situation{situations === 1 ? '' : 's'} to
+        learn.
+      </p>
 
       <div className="act-ga-rewards" aria-label="Rewards">
         {names.map((name) => (
@@ -404,7 +498,40 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           >
             Show what it learned
           </button>
+          <button
+            type="button"
+            className="btn-ghost-outline act-btn"
+            aria-pressed={eyeView}
+            onClick={() => setEyeView((v) => !v)}
+          >
+            Robot’s-eye view
+          </button>
+          {hasTests && (
+            <button
+              type="button"
+              className="btn-primary act-btn"
+              disabled={running || state.trained === 0}
+              onClick={goNew}
+              data-testid="ga-go-new"
+            >
+              Go on a new map
+            </button>
+          )}
         </div>
+      )}
+
+      {heard.length > 0 && (
+        <ul className="act-ga-learned" data-testid="ga-learned">
+          {heard.map((row) => (
+            <li key={row.key}>
+              When it sees {describeSituation(row.key)}, it goes{' '}
+              <strong>{ARROW_NAMES[row.move]}</strong> {ARROWS[row.move]}
+            </li>
+          ))}
+        </ul>
+      )}
+      {showList && heard.length === 0 && state.trained > 0 && (
+        <p className="act-hint">It has no favourite moves yet.</p>
       )}
 
       <p className="act-ga-stats" role="status" data-testid="ga-stats">
@@ -424,10 +551,23 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
             : `Go! missed the treasure. Score ${state.goScore}. ${hintFor(state)}`}
         </p>
       )}
+      {state.tests > 0 && !run && (
+        <p className="act-hint" data-testid="ga-test-result">
+          {state.testReached
+            ? `On the new map the robot found the treasure in ${state.testSteps} steps. Score ${state.testScore}.`
+            : `On the new map the robot got lost. Score ${state.testScore}. ${hintFor(state)}`}
+        </p>
+      )}
       {!lastGo && !run && state.trained === 0 && !readOnly && (
         <p className="act-hint">Press Train and watch the robot practise.</p>
       )}
-      {graded.passed && <ActivityCorrect>Your robot found the treasure</ActivityCorrect>}
+      {graded.passed && (
+        <ActivityCorrect>
+          {hasTests
+            ? 'Your robot found the treasure on a new map'
+            : 'Your robot found the treasure'}
+        </ActivityCorrect>
+      )}
     </div>
   )
 }

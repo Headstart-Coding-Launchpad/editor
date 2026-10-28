@@ -16,7 +16,29 @@ export const MAX_SCORES = 40
 export const MAX_MOVES = 80
 
 export const DEFAULT_REWARDS = { treasure: 10, step: -1, wall: -5, pit: -10 }
-export const REWARD_KEYS = ['treasure', 'step', 'wall', 'pit']
+export const DEFAULT_COIN = 3
+// `coin` only exists in a task's rewards when its map has a C (see rewardsOf).
+export const REWARD_KEYS = ['treasure', 'step', 'wall', 'pit', 'coin']
+
+// What the robot can sense. The learned table is keyed by what the chosen senses report.
+export const SENSE_KEYS = [
+  'position',
+  'walls',
+  'treasure_direction',
+  'treasure_direction_4',
+  'pit_near',
+  'coin_direction',
+]
+export const SENSE_LABELS = {
+  position: ['Where I am', '📍'],
+  walls: ['Walls next to me', '🧱'],
+  treasure_direction: ['Treasure compass (8 ways)', '🧭'],
+  treasure_direction_4: ['Treasure compass (4 ways)', '🧭'],
+  pit_near: ['Pit next to me', '🕳️'],
+  coin_direction: ['Coin compass', '🪙'],
+}
+export const MAX_TEST_MAPS = 5
+export const MAX_TEST_MOVES = 120
 
 // Up, right, down, left. The letters are how a route is stored.
 export const ACTIONS = [
@@ -35,7 +57,7 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
 
 // ---------------------------------------------------------------- the map
 
-const MAP_CHARS = new Set(['#', '.', 'R', 'T', 'X'])
+const MAP_CHARS = new Set(['#', '.', 'R', 'T', 'X', 'C'])
 
 // Check a map and build the world. Returns { errors, env } (env is null when there are errors).
 // The messages carry no "Task n:" prefix; validateGameAgentTask adds it.
@@ -53,7 +75,7 @@ export function parseMap(map) {
     if (row.length !== cols) errors.push(`map row ${i + 1} is not the same length as row 1.`)
     const bad = [...row].find((ch) => !MAP_CHARS.has(ch))
     if (bad !== undefined) {
-      errors.push(`map row ${i + 1} has "${bad}"; use # . R T X only.`)
+      errors.push(`map row ${i + 1} has "${bad}"; use # . R T X C only.`)
     }
   })
   if (cols === 0) errors.push('needs a map (a list of rows of text).')
@@ -67,7 +89,7 @@ export function parseMap(map) {
       const index = r * cols + c
       if (ch === 'R') starts.push(index)
       if (ch === 'T') treasures.push(index)
-      cells.push(ch === '#' ? 'wall' : ch === 'X' ? 'pit' : 'floor')
+      cells.push(ch === '#' ? 'wall' : ch === 'X' ? 'pit' : ch === 'C' ? 'coin' : 'floor')
     })
   })
   if (starts.length !== 1) errors.push('map needs exactly one R (the robot start).')
@@ -81,6 +103,7 @@ export function parseMap(map) {
     cells,
     start: starts[0],
     treasure: treasures[0],
+    coins: cells.flatMap((cell, i) => (cell === 'coin' ? [i] : [])),
     cap: Math.max(8, 4 * floorCount),
   }
   if (!canReach(env)) {
@@ -101,7 +124,7 @@ function canReach(env) {
       const c = (s % env.cols) + a.dc
       if (r < 0 || c < 0 || r >= env.rows || c >= env.cols) continue
       const next = r * env.cols + c
-      if (seen.has(next) || env.cells[next] !== 'floor') continue
+      if (seen.has(next) || env.cells[next] === 'wall' || env.cells[next] === 'pit') continue
       seen.add(next)
       queue.push(next)
     }
@@ -116,7 +139,8 @@ export function envOf(task) {
 // ---------------------------------------------------------------- the world
 
 // One move. A wall (or the edge) keeps the robot where it is and costs the wall reward.
-export function stepWorld(env, rewards, s, a) {
+// `taken` (optional Set) holds the coins already collected this try; a coin pays once.
+export function stepWorld(env, rewards, s, a, taken) {
   const r = Math.floor(s / env.cols) + ACTIONS[a].dr
   const c = (s % env.cols) + ACTIONS[a].dc
   if (r < 0 || c < 0 || r >= env.rows || c >= env.cols || env.cells[r * env.cols + c] === 'wall') {
@@ -129,7 +153,136 @@ export function stepWorld(env, rewards, s, a) {
   if (env.cells[next] === 'pit') {
     return { s: next, reward: rewards.pit, bumped: false, done: true, reached: false }
   }
+  if (env.cells[next] === 'coin' && taken && !taken.has(next)) {
+    taken.add(next)
+    return { s: next, reward: rewards.coin ?? 0, bumped: false, done: false, reached: false }
+  }
   return { s: next, reward: rewards.step, bumped: false, done: false, reached: false }
+}
+
+// ---------------------------------------------------------------- senses
+
+const COMPASS_WORDS = {
+  N: 'up',
+  NE: 'up and right',
+  E: 'right',
+  SE: 'down and right',
+  S: 'down',
+  SW: 'down and left',
+  W: 'left',
+  NW: 'up and left',
+}
+const SIDE_NAMES = ['up', 'right', 'down', 'left']
+const COMPASS_TABLE = {
+  '-1,0': 'N',
+  '-1,1': 'NE',
+  '0,1': 'E',
+  '1,1': 'SE',
+  '1,0': 'S',
+  '1,-1': 'SW',
+  '0,-1': 'W',
+  '-1,-1': 'NW',
+}
+
+// 8-way compass from square `from` to square `to` (rows grow downwards, so N is up).
+function compass(env, from, to) {
+  const dr = Math.sign(Math.floor(to / env.cols) - Math.floor(from / env.cols))
+  const dc = Math.sign((to % env.cols) - (from % env.cols))
+  if (dr === 0 && dc === 0) return 'here'
+  return COMPASS_TABLE[`${dr},${dc}`]
+}
+
+// 4-way compass: whichever way is further (ties go up/down).
+function compass4(env, from, to) {
+  const dr = Math.floor(to / env.cols) - Math.floor(from / env.cols)
+  const dc = (to % env.cols) - (from % env.cols)
+  if (dr === 0 && dc === 0) return 'here'
+  if (Math.abs(dr) >= Math.abs(dc)) return dr < 0 ? 'N' : 'S'
+  return dc > 0 ? 'E' : 'W'
+}
+
+function neighbour(env, s, a) {
+  const r = Math.floor(s / env.cols) + ACTIONS[a].dr
+  const c = (s % env.cols) + ACTIONS[a].dc
+  if (r < 0 || c < 0 || r >= env.rows || c >= env.cols) return -1
+  return r * env.cols + c
+}
+
+// The robot's situation as a string: what its chosen senses report from square `pos`.
+// `taken` is the Set of coins already collected (they stop being sensed).
+export function stateKey(env, pos, senses, taken) {
+  const parts = []
+  for (const sense of SENSE_KEYS) {
+    if (!senses.includes(sense)) continue
+    if (sense === 'position') parts.push(`p${pos}`)
+    if (sense === 'walls') {
+      let bits = ''
+      for (let a = 0; a < 4; a++) {
+        const n = neighbour(env, pos, a)
+        bits += n < 0 || env.cells[n] === 'wall' ? '1' : '0'
+      }
+      parts.push(`w${bits}`)
+    }
+    if (sense === 'treasure_direction') parts.push(`t${compass(env, pos, env.treasure)}`)
+    if (sense === 'treasure_direction_4') parts.push(`f${compass4(env, pos, env.treasure)}`)
+    if (sense === 'pit_near') {
+      const near = [0, 1, 2, 3].some((a) => {
+        const n = neighbour(env, pos, a)
+        return n >= 0 && env.cells[n] === 'pit'
+      })
+      parts.push(near ? 'x1' : 'x0')
+    }
+    if (sense === 'coin_direction') {
+      let best = -1
+      let bestDist = Infinity
+      for (const coin of env.coins ?? []) {
+        if (taken?.has(coin)) continue
+        const d =
+          Math.abs(Math.floor(coin / env.cols) - Math.floor(pos / env.cols)) +
+          Math.abs((coin % env.cols) - (pos % env.cols))
+        if (d < bestDist) {
+          best = coin
+          bestDist = d
+        }
+      }
+      parts.push(best < 0 ? 'cnone' : `c${compass(env, pos, best)}`)
+    }
+  }
+  return parts.join('|')
+}
+
+const wordsOf = (value) => (value === 'here' ? 'here' : COMPASS_WORDS[value])
+
+// A key in plain words, for "the robot sees ...".
+export function describeSituation(key) {
+  const out = []
+  for (const part of String(key).split('|')) {
+    const kind = part[0]
+    const value = part.slice(1)
+    if (kind === 'p') out.push(`I am on square ${Number(value) + 1}`)
+    else if (kind === 'w') {
+      const names = SIDE_NAMES.filter((_, i) => value[i] === '1')
+      out.push(names.length ? `walls: ${names.join(', ')}` : 'no walls next to me')
+    } else if (kind === 't' || kind === 'f') out.push(`treasure is ${wordsOf(value)}`)
+    else if (kind === 'x') out.push(value === '1' ? 'a pit is next to me' : 'no pit next to me')
+    else if (kind === 'c') {
+      out.push(value === 'none' ? 'no coin to find' : `coin is ${wordsOf(value)}`)
+    }
+  }
+  return out.join('; ')
+}
+
+// How many different situations the chosen senses can report on this map ("N situations to
+// learn"). Counts every open square with no coins taken and with all coins taken.
+export function countSituations(env, senses) {
+  const seen = new Set()
+  const all = new Set(env.coins ?? [])
+  for (let s = 0; s < env.cells.length; s++) {
+    if (env.cells[s] === 'wall') continue
+    seen.add(stateKey(env, s, senses, new Set()))
+    seen.add(stateKey(env, s, senses, all))
+  }
+  return seen.size
 }
 
 // ---------------------------------------------------------------- learning
@@ -143,8 +296,19 @@ function nextRandom(agent) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 }
 
-export function newAgent(env) {
-  return { q: new Array(env.rows * env.cols * 4).fill(0), rng: SEED, episodes: 0 }
+// The table is a Map from situation (stateKey) to the four move values. `visits` counts how
+// often each situation came up (to list the commonest in "what it learned").
+export function newAgent(env, senses = ['position']) {
+  return { q: new Map(), visits: new Map(), env, senses, rng: SEED, episodes: 0 }
+}
+
+const rowOf = (agent, key) => {
+  let row = agent.q.get(key)
+  if (!row) {
+    row = [0, 0, 0, 0]
+    agent.q.set(key, row)
+  }
+  return row
 }
 
 // Explore a lot at first, then settle down.
@@ -152,36 +316,67 @@ export function epsilonFor(episode) {
   return Math.max(0.05, 0.9 * Math.pow(0.93, episode))
 }
 
-function bestAction(agent, s) {
+function bestAction(agent, key) {
+  const row = agent.q.get(key)
+  if (!row) return 0
   let best = 0
-  for (let a = 1; a < 4; a++) if (agent.q[s * 4 + a] > agent.q[s * 4 + best]) best = a
+  for (let a = 1; a < 4; a++) if (row[a] > row[best]) best = a
   return best
 }
 
 // The move the robot currently thinks is best from square `s`, as an index into ACTIONS, or -1
 // when it has no opinion yet (all four values equal, e.g. untrained). Ties go to the first best.
+export function bestMoveOfKey(agent, key) {
+  const q = agent.q.get(key)
+  if (!q || q.every((v) => v === q[0])) return -1
+  return bestAction(agent, key)
+}
+
+// Same, for square `s` (with no coins taken yet).
 export function bestMoveOf(agent, s) {
-  const q = agent.q.slice(s * 4, s * 4 + 4)
-  if (q.length < 4 || q.every((v) => v === q[0])) return -1
-  return bestAction(agent, s)
+  return bestMoveOfKey(agent, stateKey(agent.env, s, agent.senses, new Set()))
+}
+
+// The situations the robot meets most, each with the move it prefers: for "when it sees X it
+// goes Y". Only situations it has an opinion about.
+export function topSituations(agent, limit = 5) {
+  return [...agent.q.keys()]
+    .map((key) => ({ key, move: bestMoveOfKey(agent, key), visits: agent.visits.get(key) ?? 0 }))
+    .filter((row) => row.move >= 0)
+    .sort((a, b) => b.visits - a.visits || (a.key < b.key ? -1 : 1))
+    .slice(0, limit)
 }
 
 export function beginEpisode(env) {
-  return { s: env.start, steps: 0, score: 0, done: false, reached: false, last: null }
+  return {
+    s: env.start,
+    steps: 0,
+    score: 0,
+    done: false,
+    reached: false,
+    last: null,
+    taken: new Set(),
+  }
 }
 
 // Advance one episode by one move (learning from it). Returns the same episode object.
 export function stepEpisode(env, rewards, agent, ep) {
   if (ep.done) return ep
   const s = ep.s
+  const key = stateKey(env, s, agent.senses, ep.taken)
+  const row = rowOf(agent, key)
+  agent.visits.set(key, (agent.visits.get(key) ?? 0) + 1)
   const a =
     nextRandom(agent) < epsilonFor(agent.episodes)
       ? Math.floor(nextRandom(agent) * 4)
-      : bestAction(agent, s)
-  const out = stepWorld(env, rewards, s, a)
-  const future = out.done ? 0 : agent.q[out.s * 4 + bestAction(agent, out.s)]
-  const i = s * 4 + a
-  agent.q[i] += ALPHA * (out.reward + GAMMA * future - agent.q[i])
+      : bestAction(agent, key)
+  const out = stepWorld(env, rewards, s, a, ep.taken)
+  let future = 0
+  if (!out.done) {
+    const nextRow = agent.q.get(stateKey(env, out.s, agent.senses, ep.taken))
+    future = nextRow ? Math.max(...nextRow) : 0
+  }
+  row[a] += ALPHA * (out.reward + GAMMA * future - row[a])
   ep.s = out.s
   ep.steps += 1
   ep.score += out.reward
@@ -214,22 +409,27 @@ export function trainEpisodes(env, rewards, agent, n) {
 }
 
 // A robot that has had `trained` episodes (replayed, so a saved state need not hold the table).
-export function agentAfter(env, rewards, trained) {
-  const agent = newAgent(env)
+export function agentAfter(env, rewards, trained, senses = ['position']) {
+  const agent = newAgent(env, senses)
   trainEpisodes(env, rewards, agent, trained)
   return agent
 }
 
 // Run the learned moves once from R with no exploring. `moves` is the route as U/R/D/L letters.
-export function greedyRun(env, rewards, agent) {
+// With `unseen` (a map nobody trained on) a situation the robot never met gets a fixed
+// made-up move instead of "up", and the run stops after MAX_TEST_MOVES.
+export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
   let s = env.start
   let score = 0
   let reached = false
   let moves = ''
   const cells = [s]
-  for (let steps = 0; steps < env.cap; steps++) {
-    const a = bestAction(agent, s)
-    const out = stepWorld(env, rewards, s, a)
+  const taken = new Set()
+  const cap = unseen ? Math.min(env.cap, MAX_TEST_MOVES) : env.cap
+  for (let steps = 0; steps < cap; steps++) {
+    const key = stateKey(env, s, agent.senses ?? ['position'], taken)
+    const a = unseen && !agent.q.has(key) ? guessMove(key, steps) : bestAction(agent, key)
+    const out = stepWorld(env, rewards, s, a, taken)
     moves += ACTIONS[a].letter
     score += out.reward
     s = out.s
@@ -240,6 +440,19 @@ export function greedyRun(env, rewards, agent) {
     }
   }
   return { moves, cells, score, steps: moves.length, reached }
+}
+
+// A repeatable made-up move for a situation the robot has never seen.
+export function guessMove(key, step) {
+  let h = step
+  for (const ch of key) h += ch.charCodeAt(0)
+  return h % 4
+}
+
+// Which test map a "Go on a new map" press uses (they take turns); null when none are set.
+export function testMapFor(task, tests) {
+  const maps = testMapsOf(task)
+  return maps.length ? maps[tests % maps.length] : null
 }
 
 // Where a stored route goes (used to draw the tutor's view). Stops at a wall bump's square.
@@ -267,9 +480,13 @@ export function cellsOfMoves(env, moves) {
 
 // ---------------------------------------------------------------- task fields
 
+export const hasCoin = (env) => !!env && (env.coins?.length ?? 0) > 0
+
 export function rewardsOf(task) {
   const out = { ...DEFAULT_REWARDS }
   const given = task?.rewards && typeof task.rewards === 'object' ? task.rewards : {}
+  const mapHasCoin = Array.isArray(task?.map) && task.map.some((row) => String(row).includes('C'))
+  if (mapHasCoin || isWhole(given.coin)) out.coin = DEFAULT_COIN
   for (const key of REWARD_KEYS) {
     if (isWhole(given[key])) out[key] = clamp(given[key], REWARD_MIN, REWARD_MAX)
   }
@@ -280,6 +497,27 @@ export function episodesOf(task) {
   return isWhole(task?.episodes) && task.episodes >= 1
     ? Math.min(task.episodes, MAX_EPISODES)
     : DEFAULT_EPISODES
+}
+
+// The starting senses (the student can change them when the task offers the choice).
+export function sensesOf(task) {
+  const given = Array.isArray(task?.senses) ? task.senses.filter((x) => SENSE_KEYS.includes(x)) : []
+  return given.length ? SENSE_KEYS.filter((x) => given.includes(x)) : ['position']
+}
+
+export const maxSensesOf = (task) =>
+  isWhole(task?.maxSenses) && task.maxSenses >= 1
+    ? Math.min(task.maxSenses, SENSE_KEYS.length)
+    : SENSE_KEYS.length
+
+// The student picks senses only when the task sets `senses` or `maxSenses`.
+export const sensesChoosable = (task) => task?.senses !== undefined || task?.maxSenses !== undefined
+
+// The sealed maps for "Go on a new map": parsed worlds (maps that fail to parse are dropped).
+export function testMapsOf(task) {
+  return Array.isArray(task?.testMaps)
+    ? task.testMaps.map((m) => parseMap(m).env).filter(Boolean)
+    : []
 }
 
 export const showLearningOf = (task) => task?.showLearning !== false
@@ -306,6 +544,40 @@ export function validateGameAgentTask(task, n) {
       }
     }
   }
+  if (task?.senses !== undefined) {
+    if (!Array.isArray(task.senses) || task.senses.length === 0) {
+      errors.push(`${where}: senses must be a list of ${SENSE_KEYS.join(', ')}.`)
+    } else {
+      for (const sense of task.senses) {
+        if (!SENSE_KEYS.includes(sense)) {
+          errors.push(`${where}: senses has "${sense}"; use ${SENSE_KEYS.join(', ')} only.`)
+        }
+      }
+    }
+  }
+  if (task?.maxSenses !== undefined) {
+    if (!isWhole(task.maxSenses) || task.maxSenses < 1 || task.maxSenses > SENSE_KEYS.length) {
+      errors.push(`${where}: maxSenses must be a whole number from 1 to ${SENSE_KEYS.length}.`)
+    } else if (Array.isArray(task.senses) && task.senses.length > task.maxSenses) {
+      errors.push(
+        `${where}: senses lists ${task.senses.length} senses but maxSenses is ${task.maxSenses}.`
+      )
+    }
+  }
+  if (task?.testMaps !== undefined) {
+    if (!Array.isArray(task.testMaps) || task.testMaps.length === 0) {
+      errors.push(`${where}: testMaps must be a list of maps (each a list of rows of text).`)
+    } else {
+      if (task.testMaps.length > MAX_TEST_MAPS) {
+        errors.push(`${where}: testMaps can have at most ${MAX_TEST_MAPS} maps.`)
+      }
+      task.testMaps.forEach((m, i) => {
+        for (const message of parseMap(m).errors) {
+          errors.push(`${where}: testMaps map ${i + 1}: ${message}`)
+        }
+      })
+    }
+  }
   if (task?.episodes !== undefined) {
     if (!isWhole(task.episodes) || task.episodes < 1 || task.episodes > MAX_EPISODES) {
       errors.push(`${where}: episodes must be a whole number from 1 to ${MAX_EPISODES}.`)
@@ -316,9 +588,9 @@ export function validateGameAgentTask(task, n) {
 
 export function validateGameAgentWarnings(task, n) {
   const warnings = []
-  if (task?.race) {
+  if (task?.race && testMapsOf(task).length === 0) {
     warnings.push(
-      `Task ${n}: race is not built yet; the tutor's card shows each best score so a race can be run on the big screen.`
+      `Task ${n}: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.`
     )
   }
   return warnings
@@ -332,6 +604,7 @@ export function initialGameAgentState(task) {
   return {
     v: 1,
     rewards: rewardsOf(task),
+    senses: sensesOf(task),
     trained: 0,
     scores: [],
     training: false,
@@ -341,6 +614,11 @@ export function initialGameAgentState(task) {
     reached: false,
     bestScore: null,
     bestSteps: null,
+    tests: 0,
+    testReached: false,
+    testScore: null,
+    testSteps: null,
+    testBest: null,
   }
 }
 
@@ -351,11 +629,16 @@ export function normalizeGameAgentState(task, raw) {
   if (!raw || typeof raw !== 'object') return base
   const rewards = { ...base.rewards }
   for (const key of REWARD_KEYS) {
-    if (isWhole(raw.rewards?.[key])) rewards[key] = clamp(raw.rewards[key], REWARD_MIN, REWARD_MAX)
+    if (key in base.rewards && isWhole(raw.rewards?.[key]))
+      rewards[key] = clamp(raw.rewards[key], REWARD_MIN, REWARD_MAX)
   }
+  const rawSenses = Array.isArray(raw.senses)
+    ? raw.senses.filter((x) => SENSE_KEYS.includes(x))
+    : []
   return {
     v: 1,
     rewards,
+    senses: rawSenses.length ? SENSE_KEYS.filter((x) => rawSenses.includes(x)) : base.senses,
     trained: isWhole(raw.trained) && raw.trained > 0 ? Math.min(raw.trained, 100000) : 0,
     scores: Array.isArray(raw.scores)
       ? raw.scores.filter((s) => typeof s === 'number' && Number.isFinite(s)).slice(-MAX_SCORES)
@@ -368,6 +651,11 @@ export function normalizeGameAgentState(task, raw) {
     reached: raw.reached === true,
     bestScore: numOrNull(raw.bestScore),
     bestSteps: numOrNull(raw.bestSteps),
+    tests: isWhole(raw.tests) && raw.tests > 0 ? raw.tests : 0,
+    testReached: raw.testReached === true,
+    testScore: numOrNull(raw.testScore),
+    testSteps: numOrNull(raw.testSteps),
+    testBest: numOrNull(raw.testBest),
   }
 }
 
@@ -392,7 +680,29 @@ export function withGoResult(state, run) {
 // New rewards: the robot forgets everything and the best score starts again (scores made with
 // other rewards cannot be compared).
 export function withRewards(task, state, rewards) {
-  return { ...initialGameAgentState(task), rewards }
+  return { ...initialGameAgentState(task), rewards, senses: state.senses ?? sensesOf(task) }
+}
+
+// New senses: the robot forgets everything, the same as new rewards (what it learned was keyed
+// by what it used to sense).
+export function withSenses(task, state, senses) {
+  return { ...initialGameAgentState(task), rewards: state.rewards, senses }
+}
+
+// The state after "Go on a new map": the result only. No training happens; a new map is a test.
+export function withTestResult(state, run) {
+  const better =
+    run.reached && (state.testBest == null || run.score > state.testBest)
+      ? { testBest: run.score }
+      : {}
+  return {
+    ...state,
+    tests: (state.tests ?? 0) + 1,
+    testReached: run.reached,
+    testScore: run.score,
+    testSteps: run.steps,
+    ...better,
+  }
 }
 
 // A finished state for "Complete (show answers)": trains with the task's rewards until the
@@ -402,7 +712,7 @@ export function solutionFor(task) {
   const state = initialGameAgentState(task)
   if (!env) return { ...state, reached: true }
   const rewards = state.rewards
-  const agent = newAgent(env)
+  const agent = newAgent(env, state.senses)
   const scores = []
   const batch = episodesOf(task)
   let run = greedyRun(env, rewards, agent)
@@ -410,7 +720,12 @@ export function solutionFor(task) {
     scores.push(...trainEpisodes(env, rewards, agent, batch))
     run = greedyRun(env, rewards, agent)
   }
-  return withGoResult({ ...state, trained: agent.episodes, scores: scores.slice(-MAX_SCORES) }, run)
+  const done = withGoResult(
+    { ...state, trained: agent.episodes, scores: scores.slice(-MAX_SCORES) },
+    run
+  )
+  const testEnv = testMapFor(task, 0)
+  return testEnv ? withTestResult(done, greedyRun(testEnv, rewards, agent, { unseen: true })) : done
 }
 
 // ---------------------------------------------------------------- grading
@@ -419,7 +734,10 @@ export function solutionFor(task) {
 export function hintFor(state) {
   const { rewards } = state
   if (state.trained === 0) return 'Press Train to let the robot practise.'
-  if (state.goes === 0) return 'Press Go! to see where the robot goes.'
+  if (state.goes === 0 && state.tests === 0) return 'Press Go! to see where the robot goes.'
+  if (state.tests > 0 && !state.testReached) {
+    return 'The robot got lost on the new map. Try other senses, so it can find the way on a map it has not seen.'
+  }
   if (rewards.treasure <= 0) return 'The treasure is worth nothing. Give it a big reward.'
   if (rewards.step >= 0)
     return 'Every step earns a bonus, so the robot just wanders. Make steps cost something.'
@@ -428,11 +746,14 @@ export function hintFor(state) {
 
 export function gradeTask(task, state) {
   const s = normalizeGameAgentState(task, state)
-  const passed = s.trained > 0 && s.reached
+  const hasTests = testMapsOf(task).length > 0
+  const passed = s.trained > 0 && (hasTests ? s.testReached : s.reached)
   return {
     passed,
     trained: s.trained,
     reached: s.reached,
+    testReached: s.testReached,
+    testBest: s.testBest,
     bestScore: s.bestScore,
     bestSteps: s.bestSteps,
     hint: passed ? null : hintFor(s),
@@ -444,6 +765,13 @@ export function summaryOf(task, state) {
   const s = normalizeGameAgentState(task, state)
   const g = gradeTask(task, s)
   if (s.trained === 0) return { text: 'Not trained yet', tone: 'neutral' }
+  if (task?.race && s.tests > 0) {
+    const got = s.testBest == null ? 'lost' : `${s.testBest} pts`
+    return {
+      text: `mystery map: ${got} · ${s.trained} tries`,
+      tone: g.passed ? 'success' : 'neutral',
+    }
+  }
   const best =
     s.bestScore == null ? 'no treasure yet' : `best ${s.bestScore} (${s.bestSteps} steps)`
   const where = s.training ? 'training' : `${s.trained} episodes`
