@@ -45,6 +45,18 @@ The YAML you wish you could write (omit for bug, docs and tooling requests unles
       title: ...
       ...
 
+## Fun moment as a check
+
+The wow in one line, written so it can be tested: what the student does and what visibly
+happens (e.g. "with walls + compass, Go on a new map reaches the treasure first time; with
+position only it gets lost"). LaunchPad Dev turns this into a behaviour test before building.
+
+## Screen after this
+
+For a mode or extension of an existing activity: what the student should see by default once it
+is added (the one main action, what stays hidden until the lesson turns it on). At most 5
+visible controls on a default screen.
+
 ## Checks wanted
 
 - Outcome: what must be true at the end (e.g. "the number 13 is shown in binary").
