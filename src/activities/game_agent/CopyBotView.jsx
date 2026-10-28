@@ -64,7 +64,7 @@ function NetworkPanel({ names, net, acts }) {
   return (
     <svg
       className="act-ga-net"
-      viewBox={`0 0 340 ${height}`}
+      viewBox={`-62 0 402 ${height}`}
       role="img"
       aria-label={`The robot's network: ${names.length} inputs, ${hidden} hidden neurons and 4 outputs${
         picked >= 0 ? `. It picks ${ARROW_NAMES[picked]}.` : '.'
@@ -483,17 +483,21 @@ export default function CopyBotView({
           )
         })}
       </div>
-      {pad}
-      {status}
     </>
   )
 
-  const controls = hasNetworkPanel(task) ? (
-    <section className="act-ga-card" aria-label="The robot's brain">
-      <h3 className="act-ga-card__title">The robot's brain</h3>
-      <NetworkPanel names={names} net={getNet()} acts={acts} />
-    </section>
-  ) : null
+  const controls = (
+    <>
+      {pad}
+      {status}
+      {hasNetworkPanel(task) ? (
+        <section className="act-ga-card" aria-label="The robot's brain">
+          <h3 className="act-ga-card__title">The robot's brain</h3>
+          <NetworkPanel names={names} net={getNet()} acts={acts} />
+        </section>
+      ) : null}
+    </>
+  )
 
   return (
     <div className="act-panel act-ga" data-testid="game_agent-activity">
