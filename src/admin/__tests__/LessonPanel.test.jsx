@@ -9,6 +9,7 @@ vi.mock('firebase/firestore', () => ({
   collectionGroup: vi.fn((_db, name) => ({ __collectionGroup: name })),
   query: vi.fn((q) => q),
   orderBy: vi.fn(),
+  limit: vi.fn((n) => ({ __limit: n })),
   onSnapshot: vi.fn(() => vi.fn()),
   getDocs: vi.fn(() => Promise.resolve({ docs: [], size: 0 })),
   deleteDoc: vi.fn(() => Promise.resolve()),
@@ -37,9 +38,10 @@ vi.mock('../../shared/lessonLinks', () => ({
   }),
 }))
 
-import { deleteDoc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { deleteDoc, getDocs, limit, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 
 let snapshotCallbacks = {}
+let errorCallbacks = {}
 
 function fireLessons(lessons) {
   act(() => {
@@ -140,10 +142,12 @@ describe('LessonPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     snapshotCallbacks = {}
+    errorCallbacks = {}
 
-    onSnapshot.mockImplementation((ref, successCb) => {
+    onSnapshot.mockImplementation((ref, successCb, errorCb) => {
       const key = ref.__collection ?? ref.__collectionGroup
       snapshotCallbacks[key] = successCb
+      errorCallbacks[key] = errorCb
       return vi.fn()
     })
   })
@@ -432,6 +436,59 @@ describe('LessonPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /Feedback.*1 open \/ 1 total/i }))
     expect(screen.getByText('Clarify the example.')).toBeInTheDocument()
+  })
+
+  it('reads only the newest 300 session reports', () => {
+    render(<LessonPanel />)
+
+    expect(limit).toHaveBeenCalledWith(300)
+  })
+
+  it('shows an error when the session reports or feedback listeners fail', () => {
+    render(<LessonPanel />)
+    fireAll()
+
+    act(() => {
+      errorCallbacks.sessionReports?.(new Error('reports denied'))
+      errorCallbacks.feedback?.(new Error('feedback denied'))
+    })
+
+    expect(screen.getByText(/Could not load session reports: reports denied/)).toBeInTheDocument()
+    expect(screen.getByText(/Could not load feedback: feedback denied/)).toBeInTheDocument()
+  })
+
+  it('shows an error and not a resolved state when resolving feedback fails', async () => {
+    const user = userEvent.setup()
+    // Other updateDoc calls (the legacy-level migration on load) must still succeed; only the
+    // feedback write fails.
+    updateDoc.mockImplementation((ref) =>
+      ref?.__subcollection === 'feedback'
+        ? Promise.reject(new Error('write denied'))
+        : Promise.resolve()
+    )
+    render(<LessonPanel />)
+    fireAll({
+      lessons: [PYTHON_LESSON],
+      feedback: [
+        {
+          id: 'feedback-1',
+          lessonId: 'py-intro',
+          taskTitle: 'Variables',
+          teacherEmail: 'teacher@example.com',
+          submittedAt: Date.UTC(2026, 0, 2),
+          text: 'Clarify the example.',
+        },
+      ],
+    })
+
+    await openFirstLevel(user)
+    await openLesson(user)
+    await user.click(screen.getByRole('button', { name: /Feedback.*1 open \/ 1 total/i }))
+    await user.click(screen.getByRole('button', { name: 'Resolve' }))
+
+    expect(
+      await screen.findByText(/Could not mark the feedback resolved: write denied/)
+    ).toBeInTheDocument()
   })
 
   it('creates a level from the Levels view with emoji and colour values', async () => {

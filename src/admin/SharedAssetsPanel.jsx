@@ -53,6 +53,7 @@ function TypeAssetsEditor({ lessonType }) {
   const [typeData, setTypeData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploads, setUploads] = useState({})
+  const [saveError, setSaveError] = useState(null)
   // Default sprites / backdrops: the sprite-library module (authoring.spriteLibrary; scratch).
   const hasSpriteDefaults = !!getModuleAuthoring(lessonType)?.spriteLibrary
   // A module whose preview always includes its shared type assets (authoring.previewTypeAssets;
@@ -66,7 +67,10 @@ function TypeAssetsEditor({ lessonType }) {
         setTypeData(snap.exists() ? snap.data() : {})
         setLoading(false)
       },
-      () => setLoading(false)
+      (err) => {
+        setSaveError(`Could not load shared assets: ${err.message}`)
+        setLoading(false)
+      }
     )
   }, [lessonType])
 
@@ -82,9 +86,15 @@ function TypeAssetsEditor({ lessonType }) {
     }
   }
 
+  // Never throws: a failed save shows an error line instead of looking saved.
   async function updateField(field, value) {
-    await ensureDoc()
-    await updateDoc(doc(firestore, 'lessonTypeAssets', lessonType), { [field]: value })
+    setSaveError(null)
+    try {
+      await ensureDoc()
+      await updateDoc(doc(firestore, 'lessonTypeAssets', lessonType), { [field]: value })
+    } catch (err) {
+      setSaveError(`Could not save changes: ${err.message}`)
+    }
   }
 
   function handleFileSelect() {
@@ -111,7 +121,13 @@ function TypeAssetsEditor({ lessonType }) {
       (err) =>
         setUploads((prev) => ({ ...prev, [file.name]: { progress: 0, error: err.message } })),
       async () => {
-        const url = await getDownloadURL(task.snapshot.ref)
+        let url
+        try {
+          url = await getDownloadURL(task.snapshot.ref)
+        } catch (err) {
+          setUploads((prev) => ({ ...prev, [file.name]: { progress: 0, error: err.message } }))
+          return
+        }
         setUploads((prev) => {
           const next = { ...prev }
           delete next[file.name]
@@ -162,6 +178,7 @@ function TypeAssetsEditor({ lessonType }) {
             Upload file
           </button>
         </div>
+        {saveError && <p style={s.errorText}>{saveError}</p>}
         {loading && <p style={s.muted}>Loading…</p>}
         {!loading && storageAssets.length === 0 && activeUploads.length === 0 && (
           <p style={s.muted}>No shared files uploaded for this lesson type.</p>

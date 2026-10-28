@@ -28,6 +28,7 @@ export default function SessionsPanel() {
   const [sessionsById, setSessionsById] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [titlesError, setTitlesError] = useState(null)
   const [titlesById, setTitlesById] = useState({})
   const [closingId, setClosingId] = useState(null)
   const [closeError, setCloseError] = useState(null)
@@ -52,9 +53,13 @@ export default function SessionsPanel() {
   }, [])
 
   useEffect(() => {
-    return onSnapshot(collection(firestore, 'lessons'), (snap) => {
-      setTitlesById(Object.fromEntries(snap.docs.map((d) => [d.id, d.data().title])))
-    })
+    return onSnapshot(
+      collection(firestore, 'lessons'),
+      (snap) => {
+        setTitlesById(Object.fromEntries(snap.docs.map((d) => [d.id, d.data().title])))
+      },
+      (err) => setTitlesError(err.message)
+    )
   }, [])
 
   useEffect(() => {
@@ -116,6 +121,9 @@ export default function SessionsPanel() {
       {loading && <AdminMessage>Loading sessions…</AdminMessage>}
       {error && <AdminMessage tone="error">Could not load sessions: {error}</AdminMessage>}
       {closeError && <AdminMessage tone="error">{closeError}</AdminMessage>}
+      {titlesError && (
+        <AdminMessage tone="error">Could not load lesson titles: {titlesError}</AdminMessage>
+      )}
       {clearedStale.length > 0 && (
         <AdminMessage>
           Cleared {clearedStale.length} {clearedStale.length === 1 ? 'session' : 'sessions'} left
