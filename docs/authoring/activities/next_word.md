@@ -15,7 +15,7 @@ straight after which. Then:
    like `Yes, "net" was the likeliest!` or `"ball" was likelier (3 of 5 times)`. Every guess
    counts, right or wrong. The task passes after `guesses` guesses (default 5); more guesses
    are bonus and free play. No Check button: it finishes by itself.
-3. **Extra parts, switched on by the lesson** (`panels`): `stats`, `silly`, `voices`.
+3. **Extra parts, switched on by the lesson** (`panels`): `stats`, `silly`, `voices`, `lookback`.
 
 There is no API and no network: the model runs in the browser. No Run button, personal sandbox,
 sharing or carry-through. Progress is saved on the device and mirrored to the teacher's student
@@ -55,7 +55,9 @@ tasks:
 |---|:---:|---|
 | `type` | Yes | `next_word` in YAML (JSON: `taskType: activity` + `activityType: next_word`) |
 | `guesses` | No | A whole number from 1 to 20 (default 5). The round: this many "Guess what it says next" guesses make the task pass. Right or wrong both count. |
-| `panels` | No | A list of extra parts to show: `stats`, `silly`, `voices`. Missing means `[stats]`. `[]` shows none. Unknown values are errors. |
+| `panels` | No | A list of extra parts to show: `stats`, `silly`, `voices`, `lookback`. Missing means `[stats]`. `[]` shows none. Unknown values are errors. |
+| `lookBack` | No | A whole number from 1 to `maxLookBack` (default 1). How many words back the model looks. With the `lookback` panel it is where the student starts and they can change it; without the panel it is fixed. |
+| `maxLookBack` | No | A whole number from 1 to 3 (default 3). The most words back the student can pick with the `lookback` panel. |
 | `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters) and an optional `emoji` for its card. |
 
 ### Panels
@@ -67,6 +69,16 @@ The lesson turns parts on so each screen stays simple.
 | `stats` | Bars of which words followed a word in what the model learned, each with the number in words ("cat: 2 of 3 times"). During the core it shows the step the student just guessed (never the one they are guessing); in bonus play and to the tutor it shows the current step. |
 | `silly` | A **Sensible to Silly** slider. It is the temperature, named in words: low always takes the likeliest word, high lets rarer words come up. |
 | `voices` | Cards with an emoji to switch which text the model learned from: each of the lesson's `texts`, plus **My writing**. Switching clears the sentence. Without this panel the model only learns from the student's own sentences and `texts` are not used. |
+
+| `lookback` | A **How many words back should it look?** control: a **−** button, a button for each of 1, 2, 3 (up to `maxLookBack`) and a **+** button, all at least 44px. The model counts which word followed the last N words, so look-back 1 gives nonsense and 3 gives sentences that sound like the text. Changing it keeps the sentence and works the chips and stats out again; a tapped guess is dropped. |
+
+### Look-back
+
+- With look-back 2 the stats read `After "the big", these words came next:` then `dog: 2 of 3 times`. Contexts never reach back over a sentence end.
+- When the longer context was never seen, it falls back to fewer words, down to one, and says so in words: `Never saw "the big red", using "big red".` A sentence shorter than the look-back just uses the words it has (no message).
+- Marking is unchanged: a guess is right when the tapped word is (one of) the likeliest after the context in use, and guesses count right or wrong.
+- Without `lookback` and with no `lookBack`, the task runs exactly as before (look-back 1).
+- Example: `panels: [stats, lookback]`, `lookBack: 1`, `maxLookBack: 3`.
 
 ## Removed fields
 
@@ -124,11 +136,11 @@ more.
 The tutor sees, live and before anything is finished, what the student has:
 
 - **Student card:** `3/5 guessed · 2 right · 14 own words` (the own-words part shows when the
-  student is on My writing), plus `+2 bonus` after the core. Item progress also goes to the
+  student is on My writing; `looked back 2` shows with the `lookback` panel, so the tutor sees the look-back each student finished on), plus `+2 bonus` after the core. Item progress also goes to the
   session report.
 - **Student modal** (read-only, same view the student has, always with the odds shown): the
   sentence so far, the chip the student has tapped but not pressed yet ("Guessing: ..."), the
-  last tick or cross, the slider and the voice, and the student's own sentences. Taps, presses and
+  last tick or cross, the slider, the look-back and the voice, and the student's own sentences. Taps, presses and
   voice switches appear straight away; typing and the slider stream while the tutor is watching
   that student.
 - **Stage → Start again** clears the student's choices; **Complete (show answers)** finishes the

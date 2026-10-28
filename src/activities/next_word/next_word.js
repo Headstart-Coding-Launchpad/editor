@@ -10,8 +10,10 @@
 // or wrong; the task passes when the core is done, then free play is bonus. A sentence ends when
 // the model picks ".", "!" or "?" (kept as tokens by ./ngram.js).
 import {
+  DEFAULT_LOOK_BACK,
   DEFAULT_TEMPERATURE,
   MAX_GENERATED_CHARS,
+  MAX_LOOK_BACK,
   MAX_PASTE_CHARS,
   MAX_TEMPERATURE,
   MAX_TEXT_CHARS,
@@ -21,11 +23,13 @@ import {
   lastWordOf,
   modelFor,
   nextOptions,
+  nextOptionsLookBack,
   startingWords,
   tokenise,
 } from './ngram.js'
 
-export const PANELS = ['stats', 'silly', 'voices']
+export { DEFAULT_LOOK_BACK, MAX_LOOK_BACK }
+export const PANELS = ['stats', 'silly', 'voices', 'lookback']
 export const DEFAULT_PANELS = ['stats']
 export const DEFAULT_GUESSES = 5
 export const MAX_GUESSES = 20
@@ -52,6 +56,27 @@ export function textsOf(task) {
 export function panelsOf(task) {
   if (!Array.isArray(task?.panels)) return [...DEFAULT_PANELS]
   return PANELS.filter((panel) => task.panels.includes(panel))
+}
+
+// The most words back the student can look: maxLookBack (1 to 3, default 3).
+export function maxLookBackOf(task) {
+  const max = task?.maxLookBack
+  return Number.isInteger(max) && max >= 1 && max <= MAX_LOOK_BACK ? max : MAX_LOOK_BACK
+}
+
+// The look-back a task starts at: lookBack, kept within maxLookBack (default 1).
+export function startLookBackOf(task) {
+  const start = task?.lookBack
+  const ok = Number.isInteger(start) && start >= 1 && start <= MAX_LOOK_BACK
+  return Math.min(ok ? start : DEFAULT_LOOK_BACK, maxLookBackOf(task))
+}
+
+// The look-back in use: the student's choice with the lookback panel, else the task's own.
+export function lookBackOf(task, state) {
+  const start = startLookBackOf(task)
+  if (!panelsOf(task).includes('lookback')) return start
+  const chosen = state?.lookBack
+  return Number.isInteger(chosen) && chosen >= 1 ? Math.min(chosen, maxLookBackOf(task)) : start
 }
 
 // How many guesses make the round's core.
@@ -102,9 +127,15 @@ export function ownWordsOf(state) {
 
 // The words the model might pick after the sentence so far, most likely first (up to
 // MAX_CANDIDATES): { word, total, options: [{ word, count, share }] }.
-export function candidatesOf(model, sentence) {
+// With lookBack above 1 the result also carries { asked, used, fellBack } (see
+// ngram.nextOptionsLookBack); with 1 it is exactly as before.
+export function candidatesOf(model, sentence, lookBack = DEFAULT_LOOK_BACK) {
   // A finished sentence has nothing to guess: the next press starts a new one.
   if (endsSentence(sentence)) return { word: '', total: 0, options: [] }
+  if (lookBack > 1) {
+    const longer = nextOptionsLookBack(model, sentence, lookBack)
+    return { ...longer, options: longer.options.slice(0, MAX_CANDIDATES) }
+  }
   const info = nextOptions(model, lastWordOf(sentence))
   return { ...info, options: info.options.slice(0, MAX_CANDIDATES) }
 }
@@ -145,6 +176,7 @@ export function initialNextWordState(task) {
     history: '',
     last: null,
     temperature: DEFAULT_TEMPERATURE,
+    lookBack: startLookBackOf(task),
   }
 }
 
@@ -187,6 +219,10 @@ export function normalizeNextWordState(task, raw) {
     temperature: Number.isFinite(raw.temperature)
       ? Math.min(MAX_TEMPERATURE, Math.max(MIN_TEMPERATURE, raw.temperature))
       : DEFAULT_TEMPERATURE,
+    lookBack:
+      Number.isInteger(raw.lookBack) && raw.lookBack >= 1
+        ? Math.min(raw.lookBack, maxLookBackOf(task))
+        : base.lookBack,
   }
 }
 
@@ -364,6 +400,20 @@ export function validateNextWordTask(task, n) {
         }
       }
     }
+  }
+  if (
+    task?.maxLookBack != null &&
+    (!Number.isInteger(task.maxLookBack) ||
+      task.maxLookBack < 1 ||
+      task.maxLookBack > MAX_LOOK_BACK)
+  ) {
+    errors.push(`${where}: maxLookBack must be a whole number from 1 to ${MAX_LOOK_BACK}.`)
+  }
+  if (
+    task?.lookBack != null &&
+    (!Number.isInteger(task.lookBack) || task.lookBack < 1 || task.lookBack > maxLookBackOf(task))
+  ) {
+    errors.push(`${where}: lookBack must be a whole number from 1 to ${maxLookBackOf(task)}.`)
   }
   if (
     task?.guesses != null &&

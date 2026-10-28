@@ -298,8 +298,10 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
 | `Task … text …: emoji must be one short emoji.` | `emoji` is empty, not text, or too long. | Use a single emoji, or leave it out. |
 | `Task …: panels must be a list.` | `panels` is not a list. | Write `panels: [stats, silly]`. |
-| `Task …: panels has "…", which is not one of ….` | A `panels` value is not `stats`, `silly` or `voices`. | Use only the listed parts. |
+| `Task …: panels has "…", which is not one of ….` | A `panels` value is not `stats`, `silly`, `voices` or `lookback`. | Use only the listed parts. |
 | `Task …: guesses must be a whole number from 1 to ….` | `guesses` is not a whole number in range. | Use a number such as `5`, or leave it out for the default. |
+| `Task …: maxLookBack must be a whole number from 1 to ….` | `maxLookBack` is not a whole number from 1 to 3. | Use 1, 2 or 3, or leave it out for 3. |
+| `Task …: lookBack must be a whole number from 1 to ….` | `lookBack` is not a whole number, or is more than `maxLookBack`. | Use a number from 1 up to `maxLookBack`, or leave it out for 1. |
 
 ### Classifier ([activities/classifier.md](activities/classifier.md))
 

@@ -37,6 +37,18 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **Next Word: student-picked look-back (1, 2 or 3 words).** New `lookback` panel plus `lookBack`
+  (starting value, default 1) and `maxLookBack` (1 to 3, default 3) task fields. The student changes
+  how many words back the model looks with − / + or 1/2/3 buttons, and sees the model's counts change:
+  the stats show multi-word contexts (`after "the big": dog: 2 of 3 times`) and, when a longer context
+  was never seen, say it fell back to fewer words (`Never saw "the big red", using "big red"`). Marking
+  is unchanged. The tutor sees the look-back on the card (`looked back 2`) and in the student modal.
+  See [activities/next_word.md](activities/next_word.md).
+  - Affects: `next_word` · Existing lessons: no changes needed; add `lookback` to `panels` to use it ·
+    Resolves: authoring-requests/2026-10-28-next-word-student-picked-look-back-1-2-or-3-words.md
+
 ## 2026-10-27
 
 - **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,

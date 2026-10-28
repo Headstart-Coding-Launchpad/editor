@@ -12,12 +12,16 @@ import {
   DEFAULT_GUESSES,
   DEFAULT_PANELS,
   MAX_GUESSES,
+  DEFAULT_LOOK_BACK,
+  MAX_LOOK_BACK,
   PANELS,
   gradeTask,
   initialNextWordState,
+  lookBackOf,
   nextWordBadgeResult,
   normalizeNextWordState,
   ownWordsOf,
+  panelsOf,
   sharedState,
   solutionStateFor,
   validateNextWordTask,
@@ -58,7 +62,17 @@ export default defineActivity({
         name: 'panels',
         type: 'array',
         values: PANELS,
-        description: `Which extra parts show: stats (bars of which words followed the last word), silly (Sensible to Silly slider), voices (switch between the lesson's texts and My writing). Default ${JSON.stringify(DEFAULT_PANELS)}.`,
+        description: `Which extra parts show: stats (bars of which words followed the last word), silly (Sensible to Silly slider), voices (switch between the lesson's texts and My writing), lookback (the student picks how many words back it looks, 1 to ${MAX_LOOK_BACK}). Default ${JSON.stringify(DEFAULT_PANELS)}.`,
+      },
+      {
+        name: 'lookBack',
+        type: 'number',
+        description: `How many words back the model looks to pick the next word (1 to maxLookBack, default ${DEFAULT_LOOK_BACK}). With the lookback panel it is where the student starts and they can change it.`,
+      },
+      {
+        name: 'maxLookBack',
+        type: 'number',
+        description: `The most words back the student can choose with the lookback panel (1 to ${MAX_LOOK_BACK}, default ${MAX_LOOK_BACK}).`,
       },
       {
         name: 'texts',
@@ -133,7 +147,7 @@ export default defineActivity({
   // Writing the sentences and moving the slider are continuous; a tap, a press, a voice switch
   // and Start again are discrete.
   classifyChange: (prev, next) => {
-    const keys = ['voice', 'sentence', 'pending', 'guesses', 'right']
+    const keys = ['voice', 'sentence', 'pending', 'guesses', 'right', 'lookBack']
     if (keys.some((key) => prev?.[key] !== next?.[key])) return 'discrete'
     if (JSON.stringify(prev?.last ?? null) !== JSON.stringify(next?.last ?? null)) return 'discrete'
     if (prev?.own !== next?.own || prev?.temperature !== next?.temperature) return 'continuous'
@@ -160,6 +174,7 @@ export default defineActivity({
       roundSummaryText(guesses, goal + 1, goal, 'guessed'),
       `${right} right`,
       voiceOf(task, state).id === 'own' ? `${words} own ${words === 1 ? 'word' : 'words'}` : null,
+      panelsOf(task).includes('lookback') ? `looked back ${lookBackOf(task, state)}` : null,
     ]
     return { text: parts.filter(Boolean).join(' · '), tone: done ? 'success' : 'neutral' }
   },

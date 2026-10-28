@@ -9,6 +9,8 @@ import {
   joinTokens,
   lastWordOf,
   modelFor,
+  nextOptionsLookBack,
+  contextWordsOf,
   nextOptions,
   normaliseWord,
   pickOption,
@@ -220,5 +222,73 @@ describe('sampling', () => {
     expect(temperatureLabel(1)).toBe('balanced')
     expect(temperatureLabel(1.5)).toBe('adventurous')
     expect(temperatureLabel(2)).toBe('wild')
+  })
+})
+
+describe('look-back', () => {
+  const model = buildModel('the big dog ran. the big dog sat. the big cat ran. a big red ball.')
+
+  it('takes the last words of a sentence, never past a sentence end', () => {
+    expect(contextWordsOf('the big dog', 2)).toEqual(['big', 'dog'])
+    expect(contextWordsOf('the big dog', 3)).toEqual(['the', 'big', 'dog'])
+    expect(contextWordsOf('dog', 3)).toEqual(['dog'])
+    expect(contextWordsOf('the dog.', 2)).toEqual([])
+  })
+
+  it('counts what follows two words', () => {
+    const info = nextOptionsLookBack(model, 'the big', 2)
+    expect(info.word).toBe('the big')
+    expect(info.total).toBe(3)
+    expect(info.options.map((o) => [o.word, o.count])).toEqual([
+      ['dog', 2],
+      ['cat', 1],
+    ])
+    expect(info.fellBack).toBe(false)
+    expect(info.used).toBe(2)
+  })
+
+  it('counts what follows three words', () => {
+    const info = nextOptionsLookBack(model, 'the big dog', 3)
+    expect(info.word).toBe('the big dog')
+    expect(info.options.map((o) => [o.word, o.count])).toEqual([
+      ['ran', 1],
+      ['sat', 1],
+    ])
+  })
+
+  it('with a look-back of 1 is the same as nextOptions on the last word', () => {
+    const one = nextOptionsLookBack(model, 'the big', 1)
+    const { word, total, options } = one
+    expect({ word, total, options }).toEqual(nextOptions(model, 'big'))
+  })
+
+  it('falls back to fewer words when the longer context was never seen', () => {
+    const info = nextOptionsLookBack(model, 'the big red', 3)
+    expect(info.asked).toBe('the big red')
+    expect(info.word).toBe('big red')
+    expect(info.used).toBe(2)
+    expect(info.fellBack).toBe(true)
+    expect(info.options.map((o) => o.word)).toEqual(['ball'])
+  })
+
+  it('falls back all the way to one word, and to nothing', () => {
+    const one = nextOptionsLookBack(buildModel('a b c. x b d.'), 'q b', 2)
+    expect(one.word).toBe('b')
+    expect(one.fellBack).toBe(true)
+    const none = nextOptionsLookBack(model, 'zebra', 2)
+    expect(none.total).toBe(0)
+    expect(none.options).toEqual([])
+  })
+
+  it('does not say it fell back when the sentence is shorter than the look-back', () => {
+    const info = nextOptionsLookBack(model, 'big', 3)
+    expect(info.fellBack).toBe(false)
+    expect(info.word).toBe('big')
+  })
+
+  it('never builds a context across a sentence end', () => {
+    const info = nextOptionsLookBack(buildModel('a b. c d.'), 'b c', 2)
+    expect(info.fellBack).toBe(true)
+    expect(model.contexts.get(2).has('ran the')).toBe(false)
   })
 })

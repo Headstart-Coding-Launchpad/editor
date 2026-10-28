@@ -10,6 +10,9 @@ import {
   gradeTask,
   guessGoalOf,
   initialNextWordState,
+  lookBackOf,
+  maxLookBackOf,
+  startLookBackOf,
   nextWordBadgeResult,
   normalizeNextWordState,
   panelsOf,
@@ -409,5 +412,84 @@ describe('sillyLabel', () => {
     expect(sillyLabel(1)).toBe('A bit silly')
     expect(sillyLabel(1.5)).toBe('Silly')
     expect(sillyLabel(2)).toBe('Super silly')
+  })
+})
+
+describe('look-back (lookback panel)', () => {
+  const LOOK = {
+    ...TASK,
+    panels: ['stats', 'lookback'],
+    texts: [
+      { title: 'Dogs', body: 'the big dog ran. the big dog sat. the big cat ran. a big red ball.' },
+    ],
+  }
+
+  it('defaults to a start of 1 and a maximum of 3', () => {
+    expect(startLookBackOf(TASK)).toBe(1)
+    expect(maxLookBackOf(TASK)).toBe(3)
+    expect(initialNextWordState(TASK).lookBack).toBe(1)
+    expect(initialNextWordState({ ...LOOK, lookBack: 2 }).lookBack).toBe(2)
+  })
+
+  it('keeps the start inside the maximum', () => {
+    expect(startLookBackOf({ lookBack: 3, maxLookBack: 2 })).toBe(2)
+  })
+
+  it('lets the student change it only with the lookback panel', () => {
+    expect(lookBackOf(LOOK, { lookBack: 3 })).toBe(3)
+    expect(lookBackOf({ ...LOOK, maxLookBack: 2 }, { lookBack: 3 })).toBe(2)
+    expect(lookBackOf(TASK, { lookBack: 3 })).toBe(1)
+    expect(lookBackOf({ ...TASK, lookBack: 2 }, { lookBack: 3 })).toBe(2)
+  })
+
+  it('reads and shares the state, tolerating junk', () => {
+    expect(normalizeNextWordState(LOOK, { lookBack: 2 }).lookBack).toBe(2)
+    expect(normalizeNextWordState(LOOK, { lookBack: 9 }).lookBack).toBe(3)
+    expect(normalizeNextWordState(LOOK, { lookBack: 'x' }).lookBack).toBe(1)
+    expect(normalizeNextWordState(LOOK, { lookBack: 0 }).lookBack).toBe(1)
+    expect(sharedState({ lookBack: 2 }).lookBack).toBe(2)
+  })
+
+  it('candidates use the longer context, and are unchanged at 1', () => {
+    const model = buildModel('the big dog ran. the big dog sat. the big cat ran. a big red ball.')
+    const two = candidatesOf(model, 'the big', 2)
+    expect(two.options.map((o) => o.word)).toEqual(['dog', 'cat'])
+    expect(two.total).toBe(3)
+    expect(candidatesOf(model, 'the big')).toEqual(candidatesOf(model, 'the big', 1))
+    expect(candidatesOf(model, 'the big dog.', 3).options).toEqual([])
+  })
+
+  it('a guess is graded against the longer context', () => {
+    const info = candidatesOf(
+      buildModel('the big dog ran. the big dog sat. the big cat ran. a big red ball.'),
+      'the big',
+      2
+    )
+    expect(gradeGuess(info, 'dog', 'cat').ok).toBe(true)
+    expect(gradeGuess(info, 'cat', 'dog').ok).toBe(false)
+  })
+
+  it('the card summary names the look-back the student is on', () => {
+    expect(definition.summarize(LOOK, { ...initialNextWordState(LOOK), lookBack: 2 }).text).toMatch(
+      /looked back 2/
+    )
+    expect(definition.summarize(TASK, initialNextWordState(TASK)).text).not.toMatch(/looked back/)
+  })
+
+  it('treats a change of look-back as a discrete change', () => {
+    const before = initialNextWordState(LOOK)
+    expect(definition.classifyChange(before, { ...before, lookBack: 2 })).toBe('discrete')
+  })
+
+  it('validates lookBack and maxLookBack', () => {
+    expect(validateNextWordTask({ ...LOOK, lookBack: 2, maxLookBack: 3 }, 1)).toEqual([])
+    expect(validateNextWordTask({ ...LOOK, maxLookBack: 4 }, 1)).toEqual([
+      'Task 1: maxLookBack must be a whole number from 1 to 3.',
+    ])
+    expect(validateNextWordTask({ ...LOOK, lookBack: 0 }, 1)).toHaveLength(1)
+    expect(validateNextWordTask({ ...LOOK, lookBack: 3, maxLookBack: 2 }, 1)).toEqual([
+      'Task 1: lookBack must be a whole number from 1 to 2.',
+    ])
+    expect(validateNextWordTask({ ...LOOK, panels: ['lookback'] }, 1)).toEqual([])
   })
 })

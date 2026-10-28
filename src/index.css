@@ -6428,6 +6428,23 @@ label.te-backdrop-tag,
   font-size: 1.05rem;
 }
 
+.act-nw-lookback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-nw-lookback button[aria-pressed='true'] {
+  background: var(--ui-primary, #2563eb);
+  color: #fff;
+  border-color: transparent;
+}
+
+.act-nw-fallback {
+  font-weight: 600;
+}
+
 .act-nw-voices {
   display: flex;
   flex-wrap: wrap;

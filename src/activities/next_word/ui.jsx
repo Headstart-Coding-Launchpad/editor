@@ -14,6 +14,8 @@ import {
   gradeTask,
   guessGoalOf,
   initialNextWordState,
+  lookBackOf,
+  maxLookBackOf,
   normalizeNextWordState,
   ownWordsOf,
   panelsOf,
@@ -30,8 +32,7 @@ import {
   describeCount,
   endsSentence,
   isEndMark,
-  lastWordOf,
-  nextOptions,
+  nextOptionsLookBack,
   pickOption,
   spoken,
   withoutLastToken,
@@ -53,6 +54,7 @@ const MAX_BARS = 8
 const SPIN_STEP_MS = 110
 const HOLD_MS = 600
 const PLAIN_SIZE = '1.3rem'
+const LOOK_BACK_BUTTON = { minWidth: 44, minHeight: 44 }
 
 const chipText = (word) => (isEndMark(word) ? `${word} (the end)` : word)
 
@@ -72,8 +74,9 @@ function momentText(last) {
 
 // The stats panel: which words followed the sentence's last word, with the numbers in words.
 // `previous` marks the step before the current one (shown while a guess is pending).
-function StatsPanel({ model, sentence, previous = false }) {
-  const word = lastWordOf(sentence)
+function StatsPanel({ model, sentence, lookBack = 1, previous = false }) {
+  const info = model && sentence ? nextOptionsLookBack(model, sentence, lookBack) : null
+  const word = info?.asked ?? ''
   if (!model || !word) {
     return (
       <p className="act-nw-none">
@@ -83,7 +86,6 @@ function StatsPanel({ model, sentence, previous = false }) {
       </p>
     )
   }
-  const info = nextOptions(model, word)
   if (info.total === 0) {
     return <p className="act-nw-none">No word comes after “{spoken(word)}” in what it learned.</p>
   }
@@ -94,6 +96,11 @@ function StatsPanel({ model, sentence, previous = false }) {
       <p className="act-nw-bars-title">
         {previous ? 'Last guess: after' : 'After'} “{spoken(info.word)}”, these words came next:
       </p>
+      {info.fellBack && (
+        <p className="act-nw-fallback" data-testid="next_word-fallback">
+          Never saw “{info.asked}”, using “{info.word}”.
+        </p>
+      )}
       <ul className="act-nw-bars" aria-label={`Words that came after ${spoken(info.word)}`}>
         {shown.map((option) => (
           <li key={option.word} className="act-nw-bar">
@@ -113,6 +120,55 @@ function StatsPanel({ model, sentence, previous = false }) {
         </p>
       )}
     </div>
+  )
+}
+
+// The look-back control: − and + buttons and one button per choice (1 to maxLookBack), all at
+// least 44px. `value` is the number of words the model looks back.
+function LookBackPanel({ value, max, disabled, onPick }) {
+  const choices = Array.from({ length: max }, (_, i) => i + 1)
+  const label = value === 1 ? '1 word' : `${value} words`
+  return (
+    <section className="act-nw-section" aria-label="Look back" data-testid="next_word-lookback">
+      <h3 className="act-nw-heading">How many words back should it look?</h3>
+      <div className="act-nw-lookback" role="group" aria-label="Words to look back">
+        <button
+          type="button"
+          className="btn-ghost-outline act-btn act-nw-lookback__step"
+          style={LOOK_BACK_BUTTON}
+          disabled={disabled || value <= 1}
+          aria-label="Look back one word less"
+          onClick={() => onPick(value - 1)}
+        >
+          −
+        </button>
+        {choices.map((n) => (
+          <button
+            key={n}
+            type="button"
+            className="btn-ghost-outline act-btn act-nw-lookback__choice"
+            style={LOOK_BACK_BUTTON}
+            aria-pressed={n === value}
+            disabled={disabled}
+            aria-label={n === 1 ? 'Look back 1 word' : `Look back ${n} words`}
+            onClick={() => onPick(n)}
+          >
+            {n}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="btn-ghost-outline act-btn act-nw-lookback__step"
+          style={LOOK_BACK_BUTTON}
+          disabled={disabled || value >= max}
+          aria-label="Look back one word more"
+          onClick={() => onPick(value + 1)}
+        >
+          +
+        </button>
+      </div>
+      <p data-testid="next_word-lookback-label">It looks back {label}.</p>
+    </section>
   )
 }
 
@@ -175,10 +231,11 @@ export function NextWordStudentView({
   const goal = guessGoalOf(task)
   const progress = gradeTask(task, state)
   const model = activeModel(task, state)
+  const lookBack = lookBackOf(task, state)
   const temperature = panels.includes('silly') ? state.temperature : DEFAULT_TEMPERATURE
   const ended = endsSentence(state.sentence)
   // (candidatesOf gives no options for a finished sentence: the next press starts a new one.)
-  const info = model && state.sentence ? candidatesOf(model, state.sentence) : null
+  const info = model && state.sentence ? candidatesOf(model, state.sentence, lookBack) : null
   const options = info?.options ?? []
   const pending = options.some((option) => option.word === state.pending) ? state.pending : ''
   const inCore = !progress.done
@@ -252,6 +309,13 @@ export function NextWordStudentView({
     setSpinIndex(0)
   }
 
+  // Changing the look-back keeps the sentence; the chips and stats are worked out again from it
+  // on the next render. A tapped guess is dropped (its chip may no longer be there).
+  function chooseLookBack(n) {
+    if (spinning || hold) return
+    update({ lookBack: Math.min(maxLookBackOf(task), Math.max(1, n)), pending: '' })
+  }
+
   function chooseVoice(id) {
     stopSpin()
     update({ voice: id, sentence: '', pending: '', last: null })
@@ -305,6 +369,15 @@ export function NextWordStudentView({
         )}
         {goal < 2 && !progress.done && <p>1 guess to do</p>}
       </div>
+
+      {panels.includes('lookback') && (
+        <LookBackPanel
+          value={lookBack}
+          max={maxLookBackOf(task)}
+          disabled={watching || spinning || Boolean(hold)}
+          onPick={chooseLookBack}
+        />
+      )}
 
       {panels.includes('voices') && (
         <section className="act-nw-section" aria-label="Voices">
@@ -502,7 +575,12 @@ export function NextWordStudentView({
       {panels.includes('stats') && (
         <section className="act-nw-section">
           <h3 className="act-nw-heading">What it learned</h3>
-          <StatsPanel model={model} sentence={statsSentence} previous={statsPrevious} />
+          <StatsPanel
+            model={model}
+            sentence={statsSentence}
+            lookBack={lookBack}
+            previous={statsPrevious}
+          />
         </section>
       )}
     </div>
