@@ -465,6 +465,29 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: inputs must list 1 to 4 different inputs from x, y, x2 and y2.` | `inputs` is not a list of 1 to 4 different names from `x`, `y`, `x2`, `y2`. | Write `inputs: [x, y]`. |
 | `Task …: every input in inputs must also be in allowInputs.` | `inputs` starts the network with an input the student cannot switch to. | Add it to `allowInputs`, or take it out of `inputs`. |
 
+### Game agent ([activities/game_agent.md](activities/game_agent.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: needs a map (a list of rows of text).` | `map` is missing, empty or not a list of strings. | Add `map:` with one text row per line. |
+| `Task …: map can be at most … x ….` | The map has more than 10 rows or columns. | Make the map smaller. |
+| `Task …: map row … is not the same length as row 1.` | A row is shorter or longer than the first. | Make every row the same length. |
+| `Task …: map row … has "…"; use # . R T X C only.` | A row has a character other than `#`, `.`, `R`, `T`, `X`, `C`. | Use only those characters. |
+| `Task …: map needs exactly one R (the robot start).` | There is no `R`, or more than one. | Put exactly one `R` on the map. |
+| `Task …: map needs exactly one T (the treasure).` | There is no `T`, or more than one. | Put exactly one `T` on the map. |
+| `Task …: the robot cannot reach the treasure on this map.` | Walls (or pits) block every way from `R` to `T`. | Open a path between them. |
+| `Task …: rewards must be an object like { treasure: 10, step: -1, wall: -5 }.` | `rewards` is not an object. | Write `rewards:` with `treasure`, `step`, `wall` (and `pit`). |
+| `Task …: rewards.… must be a whole number from … to ….` | A reward is not a whole number, or is out of range. | Use a whole number from -20 to 20. |
+| `Task …: episodes must be a whole number from 1 to ….` | `episodes` is not a whole number in range. | Use 1 to 500 (default 50). |
+| `Task …: senses must be a list of ….` | `senses` is not a list, or is empty. | List one or more senses. |
+| `Task …: senses has "…"; use … only.` | A sense is not one the robot has. | Use position, walls, treasure_direction, treasure_direction_4, pit_near, coin_direction. |
+| `Task …: maxSenses must be a whole number from 1 to ….` | `maxSenses` is not a whole number in range. | Use 1 to 6. |
+| `Task …: senses lists … senses but maxSenses is ….` | The starting `senses` has more entries than `maxSenses`. | Raise `maxSenses` or shorten `senses`. |
+| `Task …: testMaps must be a list of maps (each a list of rows of text).` | `testMaps` is not a list, or is empty. | List one or more maps. |
+| `Task …: testMaps can have at most … maps.` | More than 5 test maps. | Keep 5 or fewer. |
+| `Task …: testMaps map …: …` | A test map breaks a map rule (same messages as `map`, without "Task …:"). | Fix that map. |
+| `Task …: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.` | `race: true` with no `testMaps` (warning). | Add `testMaps`, or remove `race`. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

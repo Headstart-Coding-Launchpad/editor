@@ -21,6 +21,7 @@ import stationUi from './station/ui.jsx'
 import learningTreeUi from './learning_tree/ui.jsx'
 import recommenderUi from './recommender/ui.jsx'
 import networkPlaygroundUi from './network_playground/ui.jsx'
+import gameAgentUi from './game_agent/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -40,6 +41,7 @@ export const ACTIVITY_UIS = Object.freeze({
   learning_tree: learningTreeUi,
   recommender: recommenderUi,
   network_playground: networkPlaygroundUi,
+  game_agent: gameAgentUi,
 })
 
 const merged = new Map()

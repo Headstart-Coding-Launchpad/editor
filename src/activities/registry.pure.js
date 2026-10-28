@@ -22,6 +22,7 @@ import station from './station/definition.js'
 import learningTree from './learning_tree/definition.js'
 import recommender from './recommender/definition.js'
 import networkPlayground from './network_playground/definition.js'
+import gameAgent from './game_agent/definition.js'
 import { UNKNOWN_ACTIVITY_ID, getActivityId } from './resolve.js'
 
 const ACTIVITIES = [
@@ -42,6 +43,7 @@ const ACTIVITIES = [
   learningTree,
   recommender,
   networkPlayground,
+  gameAgent,
   unknown,
 ]
 

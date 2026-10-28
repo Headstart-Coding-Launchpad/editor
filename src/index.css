@@ -4437,6 +4437,125 @@ label.te-backdrop-tag,
   max-width: 16em;
 }
 
+/* Game agent: the grid, the reward steppers and the learning curve. */
+.act-ga-grid {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+
+.act-ga-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1rem, 4vw, 1.6rem);
+  line-height: 1;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+}
+
+/* The treasure under the robot: a small gem in the corner. */
+.act-ga-cell__gem {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 0.6em;
+  line-height: 1;
+}
+
+/* "What it learned": the best move from this square, big and centred so a class can read it. */
+.act-ga-cell__best {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--colour-primary);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* Robot's-eye view: everything but the robot is greyed out. */
+.act-ga-cell--dark {
+  background: var(--ui-surface-soft);
+  border-color: var(--ui-surface-soft);
+  opacity: 0.6;
+}
+
+.act-ga-senses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.act-ga-sense {
+  min-height: 44px;
+}
+
+.act-ga-learned {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+
+.act-ga-cell--wall {
+  background: var(--ui-surface-soft);
+}
+
+.act-ga-cell--trail {
+  background: var(--ui-surface-soft);
+  box-shadow: inset 0 0 0 3px var(--colour-ink-strong);
+}
+
+.act-ga-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.act-ga-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-ga-stepper__label {
+  min-width: 9em;
+  font-weight: 600;
+}
+
+.act-ga-stepper__value {
+  min-width: 3em;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.act-ga-curve {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 56px;
+  width: min(100%, 360px);
+  padding: 4px;
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+.act-ga-curve__bar {
+  flex: 1;
+  min-width: 2px;
+  background: var(--colour-ink-strong);
+  border-radius: 1px;
+}
+
 /* Keyboard */
 .act-practice {
   min-height: 96px;

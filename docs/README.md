@@ -373,6 +373,11 @@ Network Playground activity reference: dataset, layers and target fields, how tr
 
 **Load when:** authoring or editing a Network Playground activity task.
 
+### [authoring/activities/game_agent.md](authoring/activities/game_agent.md)
+Game agent activity reference (reinforcement learning on a grid): map, rewards, tries, how the robot learns, marking and hints, teacher tools, and a complete validated example lesson.
+
+**Load when:** authoring or editing a Game agent activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 
