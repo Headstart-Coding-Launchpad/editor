@@ -1727,7 +1727,7 @@ export default function StudentModal({
       {showTopicLibrary && topics?.length > 0 && (
         <TopicLibraryDialog
           topics={topics}
-          topicType={lesson?.type}
+          topicType={taskLesson?.type}
           renderMarkdown={({ content, textScale, topicType: tt }) => (
             <MarkdownRenderer content={content} textScale={textScale} topicType={tt} />
           )}

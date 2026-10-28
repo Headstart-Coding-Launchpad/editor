@@ -3,6 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { useAssets } from '../../shared/useAssets'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
+import { getComposedModuleTypes, isComposedLesson } from '../../shared/composedLesson'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useAuth } from '../../auth/useAuth'
 import { firestore } from '../../shared/firebase'
@@ -103,7 +104,17 @@ export default function LessonMetaPanel({
     const key = `${lesson.id}__${lesson.type}`
     if (key === lastAutoKeyRef.current) return
     lastAutoKeyRef.current = key
-    const merged = lessonAssets(lesson.id, lesson.type)
+    // A composed lesson has no module of its own: gather every module type's assets.
+    const types = isComposedLesson(lesson) ? getComposedModuleTypes(lesson) : [lesson.type]
+    const seen = new Set()
+    const merged = types
+      .flatMap((type) => lessonAssets(lesson.id, type))
+      .filter((asset) => {
+        const key = JSON.stringify(asset)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
     if (merged.length > 0) {
       onUpdate((prev) => ({ ...prev, assets: merged }))
     }

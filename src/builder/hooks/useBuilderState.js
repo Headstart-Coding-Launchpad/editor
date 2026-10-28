@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   flattenTasks,
   findGroupForTask,
@@ -262,7 +262,7 @@ export function useBuilderState({ lesson, onUpdate, defaultSprites = [] }) {
   }
 
   // Derived state
-  const { errors, warnings } = validateLesson(lesson)
+  const { errors, warnings } = useMemo(() => validateLesson(lesson), [lesson])
   const flatTasks = flattenTasks(lesson.tasks)
   const selectedTask =
     selectedTaskId != null ? flatTasks.find((t) => t.id === selectedTaskId) : null
