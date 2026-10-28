@@ -491,6 +491,16 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: testMaps map …: …` | A test map breaks a map rule (same messages as `map`, without "Task …:"). | Fix that map. |
 | `Task …: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.` | `race: true` with no `testMaps` (warning). | Add `testMaps`, or remove `race`. |
 
+### Mind Reader ([activities/rps_mind_reader.md](activities/rps_mind_reader.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: rounds must be a whole number from 5 to 100.` | `rounds` is not a whole number in range. | Use a whole number from 5 to 100, or leave it out for 30. |
+| `Task …: lookBack must be a whole number from 1 to 5.` | `lookBack` is not a whole number in range. | Use 1 to 5, or leave it out for 3. |
+| `Task …: panels must only list network, history or lookback.` | `panels` is not a list, or names something else. | Write `panels: [network, history]` (add `lookback` for the Remembers dial). |
+| `Task …: passAt must be a whole number of 1 or more.` | `passAt` is not a whole number of at least 1. | Use a whole number such as `20`. |
+| `Task …: passAt cannot be more than rounds.` | `passAt` is higher than the number of `rounds`, so the task could never pass. | Use a `passAt` up to `rounds`, or raise `rounds`. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

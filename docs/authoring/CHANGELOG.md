@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-28
 
+- **New activity: Mind Reader (`type: rps_mind_reader`).** The student plays rock-paper-scissors
+  against a tiny neural network. Each round it locks in its pick from the student's last moves (a
+  face-down card, "It has chosen"), the student taps, the card flips and the network learns from
+  that one move, so its read-rate visibly climbs. The diagram shows the last moves going in, the
+  neurons glowing and the outputs. After two lost rounds in a row it tips "Try playing randomly"
+  (true randomness beats it). Task fields, all optional: `rounds` (5 to 100, default 30),
+  `lookBack` (1 to 5, default 3), `panels` (`network`, `history`, `lookback`; default network and
+  history; `lookback` adds the **Remembers 1 … 5** dial) and `passAt` (rounds played to pass, win
+  or lose; default `rounds`). The tutor card shows `round 18 · You 7–11 It · read 70%` and the
+  report adds `mindReaderResults`. See [activities/rps_mind_reader.md](activities/rps_mind_reader.md).
+  - Affects: rps_mind_reader · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-rock-paper-scissors-mind-reader-a-neural-network-that-learns.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every

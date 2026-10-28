@@ -9252,3 +9252,139 @@ label.te-backdrop-tag,
   min-width: 88px;
   text-align: center;
 }
+
+/* Mind Reader (rps_mind_reader): the brain diagram, the face-down card, the three big moves. */
+.act-mr__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-mr__net {
+  width: 100%;
+  max-width: 520px;
+  max-height: 300px;
+}
+
+.act-mr__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.act-mr__last {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--colour-ink-strong);
+}
+
+.act-mr__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.act-mr__card-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 84px;
+  border-radius: 10px;
+  border: 3px solid #4c1d95;
+  background: repeating-linear-gradient(45deg, #7c3aed, #7c3aed 6px, #6d28d9 6px, #6d28d9 12px);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  transition: transform 0.35s ease;
+}
+
+.act-mr__card--up .act-mr__card-face {
+  background: #fff;
+  color: #111827;
+  border-color: #16a34a;
+  transform: rotateY(360deg);
+}
+
+.act-mr__card-label {
+  font-size: 0.8rem;
+  color: #475569;
+  max-width: 110px;
+  text-align: center;
+}
+
+.act-mr__moves {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.act-mr__move {
+  min-height: 72px;
+  min-width: 64px;
+  border: 2px solid var(--colour-primary);
+  border-radius: var(--ui-radius);
+  background: #fff;
+  font-size: 2.6rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--colour-primary-dark);
+}
+
+.act-mr__move:hover:not(:disabled) {
+  background: #f5f3ff;
+}
+
+.act-mr__move:focus-visible {
+  outline: 3px solid var(--colour-primary-dark);
+  outline-offset: 2px;
+}
+
+.act-mr__move:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.act-mr__score-main {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--colour-ink-strong);
+}
+
+.act-mr__score-sub {
+  font-size: 0.95rem;
+  color: #475569;
+}
+
+.act-mr__dial {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.act-mr__dial-label {
+  font-weight: 600;
+}
+
+.act-mr__chart {
+  margin: 0;
+}
+
+.act-mr__chart svg {
+  width: 100%;
+  max-width: 260px;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act-mr__card-face {
+    transition: none;
+  }
+
+  .act-mr__card--up .act-mr__card-face {
+    transform: none;
+  }
+}

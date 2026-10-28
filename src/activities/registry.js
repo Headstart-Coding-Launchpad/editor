@@ -22,6 +22,7 @@ import learningTreeUi from './learning_tree/ui.jsx'
 import recommenderUi from './recommender/ui.jsx'
 import networkPlaygroundUi from './network_playground/ui.jsx'
 import gameAgentUi from './game_agent/ui.jsx'
+import rpsMindReaderUi from './rps_mind_reader/ui.jsx'
 
 export const ACTIVITY_UIS = Object.freeze({
   binary: binaryUi,
@@ -42,6 +43,7 @@ export const ACTIVITY_UIS = Object.freeze({
   recommender: recommenderUi,
   network_playground: networkPlaygroundUi,
   game_agent: gameAgentUi,
+  rps_mind_reader: rpsMindReaderUi,
 })
 
 const merged = new Map()

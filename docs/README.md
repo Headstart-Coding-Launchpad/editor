@@ -378,6 +378,11 @@ Game agent activity reference (reinforcement learning on a grid): map, rewards, 
 
 **Load when:** authoring or editing a Game agent activity task.
 
+### [authoring/activities/rps_mind_reader.md](authoring/activities/rps_mind_reader.md)
+Mind Reader activity reference: rock-paper-scissors against a small neural network that locks in its pick and learns the student's moves; rounds, lookBack, panels, passAt, teacher tools and a complete validated example lesson.
+
+**Load when:** authoring or editing a Mind Reader activity task.
+
 ### [authoring/python-tasks.md](authoring/python-tasks.md)
 Python code task field reference: `starterCode`, `completeCode`, role-based `codeStages`, `carryCodeFrom`, `interactionMode`, and the `tests` array (automated `input()`-driven test cases). Includes a minimal full-lesson example.
 

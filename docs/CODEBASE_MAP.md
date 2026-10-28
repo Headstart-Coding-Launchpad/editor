@@ -730,6 +730,10 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `learning_tree/definition.js` | Learning Tree activity definition wrapping `learning_tree.js`: default task, state, grading, progress, tutor card summary, session-report fields, print |
 | `learning_tree/ui.jsx` | Learning Tree StudentView: example form, the drawn tree (nested boxes), Try it results; read-only for the tutor |
 | `learning_tree/LearningTreeBuilderEditor.jsx` | Builder editor for Learning Tree: features, labels, max examples/depth, passAt and the test items |
+| `rps_mind_reader/rps_mind_reader.js` | Pure Mind Reader logic: task fields (`rounds`, `lookBack`, `panels`, `passAt`), validation, the saved game (moves and locked-in picks as digit strings), scoring, read-rate series, grading |
+| `rps_mind_reader/mind.js` | The Mind Reader brain: hand-written tiny MLP (one-hot look-back inputs, 6 tanh neurons, 3 softmax outputs), online SGD, seeded init, replay of a game from its moves |
+| `rps_mind_reader/definition.js` | Mind Reader activity definition wrapping `rps_mind_reader.js`: default task, fields, validation, state, grading at `passAt` rounds, card summary (`round 18 · You 7–11 It · read 70%`), report summary, print |
+| `rps_mind_reader/ui.jsx` | Mind Reader StudentView: brain diagram (SVG), face-down card that flips after the tap, three move buttons, score, Remembers dial, read-rate chart |
 
 | `recommender/recommender.js` | Pure Recommender logic: seeded made-up raters, similarity, recommend (feed of 4), Why? text, bubble meter, validation, grading |
 | `recommender/definition.js` | Recommender activity definition wrapping `recommender.js`: default task, validation, state, change classification, grading, progress, card summary, print |

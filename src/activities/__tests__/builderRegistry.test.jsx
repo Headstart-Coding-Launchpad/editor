@@ -37,6 +37,7 @@ describe('registry helpers for the Builder (plan 2.4)', () => {
       'recommender',
       'network_playground',
       'game_agent',
+      'rps_mind_reader',
     ])
   })
 
