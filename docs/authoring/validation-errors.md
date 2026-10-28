@@ -426,6 +426,12 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: maxDepth must be a whole number from 1 to ….` | `maxDepth` is there but is not a whole number in range. | Fix it, or leave it out (default 3). |
 | `Task …: studentDepth must be true or false.` | `studentDepth` is there but is not `true` or `false`. | Use `true` or `false`, or leave it out (default `true`). |
 | `Task …: studentPicksFeatures must be a whole number from 1 to the number of features (…).` | `studentPicksFeatures` is there but is not a whole number from 1 up to the number of `features`. | Fix it, or leave it out (the tree then uses every feature). |
+| `Task …: deck needs … to … cards.` | `deck` is not a list of 4 to 16 cards. | Give 4 to 16 cards, or leave `deck` out for the add-an-example form. |
+| `Task …: studentLabels must be true or false.` / `Task …: twentyQuestions must be true or false.` | `studentLabels` or `twentyQuestions` is not a boolean. | Use `true` or `false`. |
+| `Task …: studentLabels and twentyQuestions need a deck.` | `studentLabels` or `twentyQuestions` is set on a task with no `deck`. | Add a `deck`, or remove them. |
+| `Task … card …: name is required (1 to … characters).` | A deck card has no name, or one that is too long. | Give it a short name. |
+| `Task … card …: emoji is required.` | A deck card has no emoji. | Add one emoji (up to 8 characters). |
+| `Task … card …: yes must list only the task's features, each once.` | A deck card's `yes` is not a list, names a feature that is not in `features`, or repeats one. | List only features from `features`, each once. |
 | `Task …: testItems needs … to … items.` | `testItems` is missing or has too few or too many items. | Give 2 to 12 test items. |
 | `Task … item …: name is required (1 to … characters).` | A test item has no name, or a name that is too long. | Give it a short name. |
 | `Task … item …: label must be one of the task's labels.` | A test item's `label` is not in `labels`. | Use one of the `labels`. |

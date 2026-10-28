@@ -17,6 +17,8 @@ import {
   labelsOf,
   normalizeState,
   depthOf,
+  deckOn,
+  twentyQuestionsOn,
   maxDepthOf,
   chosenFeaturesOf,
   picksOf,
@@ -57,10 +59,10 @@ export default defineActivity({
       {
         name: 'features',
         type: 'array',
-        required: true,
+        required: false,
         authored: true,
         description:
-          'The yes/no features, 1 to 6 names such as has_fur. Underscores show as spaces and the tree asks "has fur?".',
+          'The yes/no features, 1 to 6 names such as has_fur (required unless the task has a deck, which then supplies every tag it uses). Underscores show as spaces and the tree asks "has fur?".',
       },
       {
         name: 'labels',
@@ -80,6 +82,7 @@ export default defineActivity({
           { name: 'name', type: 'string', required: true, authored: true },
           { name: 'yes', type: 'array', required: true, authored: true },
           { name: 'label', type: 'string', required: true, authored: true },
+          { name: 'emoji', type: 'string' },
         ],
       },
       {
@@ -103,6 +106,30 @@ export default defineActivity({
         type: 'number',
         description:
           'Let the student choose which features the tree may use, up to this many (1 to the number of features). The examples still record every feature. Leave out for the tree to use all of them.',
+      },
+      {
+        name: 'deck',
+        type: 'array',
+        authored: true,
+        description:
+          'Deck mode: 4 to 16 ready-made cards the student sorts into the label bins (drag, or tap a card then a bin) while the tree regrows. Each card is { name, emoji, yes }.',
+        itemFields: [
+          { name: 'name', type: 'string', required: true, authored: true },
+          { name: 'emoji', type: 'string', required: true, authored: true },
+          { name: 'yes', type: 'array', required: true, authored: true },
+        ],
+      },
+      {
+        name: 'studentLabels',
+        type: 'boolean',
+        description:
+          'Deck mode: the student can rename the bins. 20 Questions then passes on the rounds the student marks right.',
+      },
+      {
+        name: 'twentyQuestions',
+        type: 'boolean',
+        description:
+          'Deck mode: a Play 20 Questions test. The tree asks about a test item one question at a time and guesses its bin.',
       },
       {
         name: 'passAt',
@@ -171,6 +198,15 @@ export default defineActivity({
   // The tutor's card: examples, how deep the tree grew, and the test score once tried.
   summarize: (task, state) => {
     const g = gradeTask(task, normalizeState(task, state))
+    if (deckOn(task)) {
+      const sorted = `sorted ${g.count}`
+      if (g.count === 0) return { text: 'No cards sorted yet', tone: 'neutral' }
+      if (!g.tried) return { text: `${sorted} · not tried yet`, tone: 'neutral' }
+      const test = twentyQuestionsOn(task)
+        ? `20Q ${g.correct} of ${g.playedCount}`
+        : `test ${g.correct}/${g.total}`
+      return { text: `${sorted} · ${test}`, tone: g.passed ? 'success' : 'neutral' }
+    }
     if (g.count === 0) return { text: 'No examples yet', tone: 'neutral' }
     const chosen = depthOf(task, normalizeState(task, state))
     const cap = chosen < maxDepthOf(task) ? ` (set to ${chosen})` : ''
