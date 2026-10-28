@@ -86,7 +86,7 @@ describe('validateNextWordTask', () => {
     expect(validateNextWordTask({ panels: ['stats', 'silly', 'voices'] }, 1)).toEqual([])
     expect(validateNextWordTask({ panels: [] }, 1)).toEqual([])
     expect(validateNextWordTask({ panels: ['stats', 'wheel'] }, 1)).toEqual([
-      'Task 1: panels has "wheel", which is not one of stats, silly, voices.',
+      'Task 1: panels has "wheel", which is not one of stats, silly, voices, lookback.',
     ])
     expect(validateNextWordTask({ panels: 'stats' }, 1)).toEqual(['Task 1: panels must be a list.'])
   })
