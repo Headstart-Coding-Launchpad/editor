@@ -103,17 +103,32 @@ export function lastWordOf(prompt) {
   return tokens[tokens.length - 1] ?? ''
 }
 
-// { tokens, successors: Map<word, Map<nextWord, count>> }
+// Most words back the model can look (the look-back setting).
+export const MAX_LOOK_BACK = 3
+export const DEFAULT_LOOK_BACK = 1
+
+// { tokens, successors: Map<word, Map<nextWord, count>>, contexts }
+// `contexts` holds the longer look-backs: contexts.get(2).get('the big') is the Map of words
+// that followed the two words "the big" (and 3 likewise). A context never crosses a sentence end.
 export function buildModel(text) {
   const tokens = tokeniseWithEnds(text)
   const successors = new Map()
-  for (let i = 0; i < tokens.length - 1; i++) {
-    const word = tokens[i]
-    if (!successors.has(word)) successors.set(word, new Map())
-    const next = successors.get(word)
-    next.set(tokens[i + 1], (next.get(tokens[i + 1]) ?? 0) + 1)
+  const contexts = new Map()
+  for (let n = 2; n <= MAX_LOOK_BACK; n++) contexts.set(n, new Map())
+  const bump = (table, key, next) => {
+    if (!table.has(key)) table.set(key, new Map())
+    const counts = table.get(key)
+    counts.set(next, (counts.get(next) ?? 0) + 1)
   }
-  return { tokens: tokens.length, firstWord: tokens[0] ?? '', successors }
+  for (let i = 0; i < tokens.length - 1; i++) {
+    bump(successors, tokens[i], tokens[i + 1])
+    for (let n = 2; n <= MAX_LOOK_BACK && n <= i + 1; n++) {
+      const words = tokens.slice(i - n + 1, i + 1)
+      if (words.some(isEndMark)) continue
+      bump(contexts.get(n), words.join(' '), tokens[i + 1])
+    }
+  }
+  return { tokens: tokens.length, firstWord: tokens[0] ?? '', successors, contexts }
 }
 
 const modelCache = new Map()
@@ -133,7 +148,10 @@ export function modelFor(text) {
 // ties in alphabetical order. `total` is 0 when the word is never followed by anything.
 export function nextOptions(model, word) {
   const key = keyOf(word)
-  const counts = model?.successors?.get(key)
+  return optionsFromCounts(key, model?.successors?.get(key))
+}
+
+function optionsFromCounts(key, counts) {
   if (!counts) return { word: key, total: 0, options: [] }
   let total = 0
   for (const count of counts.values()) total += count
@@ -141,6 +159,52 @@ export function nextOptions(model, word) {
     .map(([next, count]) => ({ word: next, count, share: count / total }))
     .sort((a, b) => b.count - a.count || (a.word < b.word ? -1 : a.word > b.word ? 1 : 0))
   return { word: key, total, options }
+}
+
+// The last words of a sentence, up to `lookBack` of them, never reaching back over a sentence end.
+export function contextWordsOf(sentence, lookBack = DEFAULT_LOOK_BACK) {
+  const tokens = tokeniseWithEnds(sentence)
+  const out = []
+  for (let i = tokens.length - 1; i >= 0 && out.length < lookBack; i--) {
+    if (isEndMark(tokens[i])) break
+    out.unshift(tokens[i])
+  }
+  return out
+}
+
+// What follows the last `lookBack` words of the sentence, falling back to fewer words when that
+// context was never seen. Returns the nextOptions shape ({ word, total, options }) where `word` is
+// the context actually used, plus:
+//   asked     - the context the look-back asked for ("the big red"; shorter if the sentence is)
+//   used      - how many words the context used has (0 when nothing matched at all)
+//   fellBack  - true when `asked` was never seen and a shorter context answered (or none did)
+// With lookBack 1 this is nextOptions on the last word.
+export function nextOptionsLookBack(model, sentence, lookBack = DEFAULT_LOOK_BACK) {
+  const wanted = Math.min(MAX_LOOK_BACK, Math.max(1, Math.floor(lookBack) || 1))
+  const context = contextWordsOf(sentence, wanted)
+  const asked = context.join(' ')
+  if (context.length === 0) {
+    // Empty, or the sentence has ended: what follows the end mark, as with a look-back of 1.
+    const end = lastWordOf(sentence)
+    if (!end) return { word: '', total: 0, options: [], asked, used: 0, fellBack: false }
+    return { ...nextOptions(model, end), asked: end, used: 1, fellBack: false }
+  }
+  for (let n = context.length; n >= 1; n--) {
+    const words = context.slice(context.length - n)
+    const key = words.join(' ')
+    const counts = n === 1 ? model?.successors?.get(key) : model?.contexts?.get(n)?.get(key)
+    if (counts) {
+      return { ...optionsFromCounts(key, counts), asked, used: n, fellBack: n < context.length }
+    }
+  }
+  return {
+    word: context[context.length - 1],
+    total: 0,
+    options: [],
+    asked,
+    used: 0,
+    fellBack: false,
+  }
 }
 
 // Every word tied for the highest count after `word` (empty when nothing follows it).

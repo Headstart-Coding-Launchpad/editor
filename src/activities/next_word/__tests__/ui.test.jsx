@@ -271,3 +271,81 @@ describe('Next Word UI: the tutor view', () => {
     expect(screen.queryByRole('button', { name: 'Next word' })).not.toBeInTheDocument()
   })
 })
+
+describe('look-back panel', () => {
+  const LOOK_TASK = { ...TASK, panels: ['stats', 'lookback'], guesses: 5, lookBack: 1 }
+  const TEXT = 'the big dog ran. the big dog sat. the big cat ran. a big red ball.'
+  const withState = (task, patch = {}) => ({
+    ...definition.initialState(task),
+    own: TEXT,
+    ...patch,
+  })
+
+  it('shows 1, 2 and 3 buttons, at least 44px, and starts on the task value', () => {
+    const task = { ...LOOK_TASK, lookBack: 2 }
+    renderView({ task, initialState: withState(task) })
+    expect(screen.getByRole('button', { name: 'Look back 2 words' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByRole('button', { name: 'Look back 1 word' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    expect(screen.getByRole('button', { name: 'Look back 3 words' }).style.minHeight).toBe('44px')
+    expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('2 words')
+  })
+
+  it('the - and + buttons change it and stop at the ends', () => {
+    renderView({ task: LOOK_TASK, initialState: withState(LOOK_TASK) })
+    expect(screen.getByRole('button', { name: 'Look back one word less' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Look back one word more' }))
+    expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('2 words')
+    fireEvent.click(screen.getByRole('button', { name: 'Look back one word more' }))
+    expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('3 words')
+    expect(screen.getByRole('button', { name: 'Look back one word more' })).toBeDisabled()
+  })
+
+  it('maxLookBack limits the buttons', () => {
+    const task = { ...LOOK_TASK, maxLookBack: 2 }
+    renderView({ task, initialState: withState(task) })
+    expect(screen.queryByRole('button', { name: 'Look back 3 words' })).not.toBeInTheDocument()
+  })
+
+  it('has no look-back controls without the panel', () => {
+    renderView()
+    expect(screen.queryByTestId('next_word-lookback')).not.toBeInTheDocument()
+  })
+
+  it('the tutor sees the look-back but cannot change it', () => {
+    renderView({
+      task: LOOK_TASK,
+      readOnly: true,
+      initialState: withState(LOOK_TASK, { lookBack: 3 }),
+    })
+    expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('3 words')
+    expect(screen.getByRole('button', { name: 'Look back 1 word' })).toBeDisabled()
+  })
+
+  it('says in words when it falls back to fewer words', () => {
+    renderView({
+      task: LOOK_TASK,
+      readOnly: true,
+      initialState: withState(LOOK_TASK, { lookBack: 3, sentence: 'the big red' }),
+    })
+    expect(screen.getByTestId('next_word-fallback')).toHaveTextContent(
+      'Never saw \u201cthe big red\u201d, using \u201cbig red\u201d.'
+    )
+  })
+
+  it('shows multi-word contexts in the stats', () => {
+    renderView({
+      task: LOOK_TASK,
+      readOnly: true,
+      initialState: withState(LOOK_TASK, { lookBack: 2, sentence: 'the big' }),
+    })
+    expect(screen.getByTestId('next_word-stats')).toHaveTextContent('After \u201cthe big\u201d')
+    expect(screen.getByText(/dog: 2 of 3 times/)).toBeInTheDocument()
+    expect(screen.queryByTestId('next_word-fallback')).not.toBeInTheDocument()
+  })
+})

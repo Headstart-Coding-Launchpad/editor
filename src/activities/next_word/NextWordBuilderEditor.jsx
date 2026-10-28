@@ -1,6 +1,15 @@
 import definition from './definition.js'
 import { MAX_TEXT_CHARS } from './ngram.js'
-import { DEFAULT_GUESSES, DEFAULT_TEXT_EMOJI, MAX_GUESSES, PANELS, panelsOf } from './next_word.js'
+import {
+  DEFAULT_GUESSES,
+  DEFAULT_TEXT_EMOJI,
+  MAX_GUESSES,
+  MAX_LOOK_BACK,
+  PANELS,
+  maxLookBackOf,
+  panelsOf,
+  startLookBackOf,
+} from './next_word.js'
 import { Field, InlineField, ValidationMessages, useActivityValidation } from '../ui/builderKit.jsx'
 
 // Builder editor for Next Word tasks: how many guesses make the round, which extra parts show
@@ -13,6 +22,7 @@ const PANEL_LABELS = {
   stats: 'Stats: bars of which words followed the last word',
   silly: 'Silly: a Sensible to Silly slider',
   voices: 'Voices: switch between the texts below and My writing',
+  lookback: 'Look-back: the student picks how many words back it looks (1 to 3)',
 }
 
 function TextRows({ texts, onChange }) {
@@ -143,6 +153,50 @@ export default function NextWordBuilderEditor({ task, onUpdate }) {
           />
         ))}
       </Field>
+
+      {panels.includes('lookback') && (
+        <Field
+          label="Look-back"
+          hint="starting value, and the most words back the student can pick"
+        >
+          <label className="te-act-inline">
+            <span>Starts at</span>
+            <input
+              className="te-input"
+              style={{ ...CONTROL, width: 80 }}
+              type="number"
+              min={1}
+              max={maxLookBackOf(task)}
+              value={startLookBackOf(task)}
+              aria-label="Look-back start"
+              onChange={(e) =>
+                onUpdate({
+                  ...task,
+                  lookBack: e.target.value === '' ? undefined : Number(e.target.value),
+                })
+              }
+            />
+          </label>
+          <label className="te-act-inline">
+            <span>At most</span>
+            <input
+              className="te-input"
+              style={{ ...CONTROL, width: 80 }}
+              type="number"
+              min={1}
+              max={MAX_LOOK_BACK}
+              value={maxLookBackOf(task)}
+              aria-label="Look-back maximum"
+              onChange={(e) =>
+                onUpdate({
+                  ...task,
+                  maxLookBack: e.target.value === '' ? undefined : Number(e.target.value),
+                })
+              }
+            />
+          </label>
+        </Field>
+      )}
 
       <TextRows texts={task.texts} onChange={(texts) => onUpdate({ ...task, texts })} />
     </div>
