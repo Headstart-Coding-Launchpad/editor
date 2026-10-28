@@ -120,7 +120,8 @@ jobs:
   # Playwright smoke: the landing page and the Builder load in a real browser
   # (e2e/). Catches a blank page or a broken route that unit tests miss.
   smoke:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright has no Chromium build for ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
