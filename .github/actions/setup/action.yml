@@ -1,5 +1,5 @@
 name: Set up Node and dependencies
-description: Installs Node 22 and restores node_modules from cache, running npm install only when the lockfile changed.
+description: Installs Node 22 and restores node_modules from cache, running npm ci only when the lockfile changed.
 
 runs:
   using: composite
@@ -22,4 +22,4 @@ runs:
     - name: Install dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
-      run: npm install
+      run: npm ci
