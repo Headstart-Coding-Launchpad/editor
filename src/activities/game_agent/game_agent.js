@@ -52,6 +52,14 @@ const ALPHA = 0.5
 const GAMMA = 0.9
 const SEED = 20241023
 
+// Training on random courses (randomCourses with the usual brain): each try is on the next course
+// of a separate training stream, so the robot sees many layouts instead of one. The same table
+// learns from a different world every try, so it learns more gently (a smaller step), explores for
+// longer, and one press of Train runs several times the tries.
+export const COURSE_TRIES_FACTOR = 5
+const COURSE_ALPHA = 0.05
+const courseEpsilon = (episode) => Math.max(0.05, 0.9 * Math.pow(0.995, episode))
+
 const isWhole = (n) => typeof n === 'number' && Number.isInteger(n)
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
 
@@ -298,8 +306,13 @@ function nextRandom(agent) {
 
 // The table is a Map from situation (stateKey) to the four move values. `visits` counts how
 // often each situation came up (to list the commonest in "what it learned").
-export function newAgent(env, senses = ['position']) {
-  return { q: new Map(), visits: new Map(), env, senses, rng: SEED, episodes: 0 }
+export function newAgent(env, senses = ['position'], onCourses = false) {
+  const agent = { q: new Map(), visits: new Map(), env, senses, rng: SEED, episodes: 0 }
+  if (onCourses) {
+    agent.alpha = COURSE_ALPHA
+    agent.epsilon = courseEpsilon
+  }
+  return agent
 }
 
 const rowOf = (agent, key) => {
@@ -367,7 +380,7 @@ export function stepEpisode(env, rewards, agent, ep) {
   const row = rowOf(agent, key)
   agent.visits.set(key, (agent.visits.get(key) ?? 0) + 1)
   const a =
-    nextRandom(agent) < epsilonFor(agent.episodes)
+    nextRandom(agent) < (agent.epsilon ?? epsilonFor)(agent.episodes)
       ? Math.floor(nextRandom(agent) * 4)
       : bestAction(agent, key)
   const out = stepWorld(env, rewards, s, a, ep.taken)
@@ -376,7 +389,7 @@ export function stepEpisode(env, rewards, agent, ep) {
     const nextRow = agent.q.get(stateKey(env, out.s, agent.senses, ep.taken))
     future = nextRow ? Math.max(...nextRow) : 0
   }
-  row[a] += ALPHA * (out.reward + GAMMA * future - row[a])
+  row[a] += (agent.alpha ?? ALPHA) * (out.reward + GAMMA * future - row[a])
   ep.s = out.s
   ep.steps += 1
   ep.score += out.reward
@@ -409,9 +422,12 @@ export function trainEpisodes(env, rewards, agent, n) {
 }
 
 // A robot that has had `trained` episodes (replayed, so a saved state need not hold the table).
-export function agentAfter(env, rewards, trained, senses = ['position']) {
-  const agent = newAgent(env, senses)
-  trainEpisodes(env, rewards, agent, trained)
+// With `courseEnvFor` (a function from the try number to a course) every try runs on that course.
+export function agentAfter(env, rewards, trained, senses = ['position'], courseEnvFor = null) {
+  const agent = newAgent(env, senses, !!courseEnvFor)
+  for (let i = 0; i < trained; i += 1) {
+    runEpisode(courseEnvFor ? courseEnvFor(i) : env, rewards, agent)
+  }
   return agent
 }
 
@@ -550,10 +566,25 @@ export function episodesOf(task) {
     : DEFAULT_EPISODES
 }
 
+// How the robot learns: 'reward' (the default, Q-learning from points) or 'copy' (a neural
+// network that learns from the student's driving; see copybot.js).
+export const BRAINS = ['reward', 'copy']
+export const brainOf = (task) => (task?.brain === 'copy' ? 'copy' : 'reward')
+export const isCopyBrain = (task) => brainOf(task) === 'copy'
+export const PANELS = ['network']
+export const hasNetworkPanel = (task) =>
+  Array.isArray(task?.panels) && task.panels.includes('network')
+
+// Tries one press of Train runs: with random courses (and the usual brain) it is several times as many.
+export const triesPerTrain = (task) =>
+  hasCourses(task) && !isCopyBrain(task) ? episodesOf(task) * COURSE_TRIES_FACTOR : episodesOf(task)
+
 // The starting senses (the student can change them when the task offers the choice).
 export function sensesOf(task) {
   const given = Array.isArray(task?.senses) ? task.senses.filter((x) => SENSE_KEYS.includes(x)) : []
-  return given.length ? SENSE_KEYS.filter((x) => given.includes(x)) : ['position']
+  if (given.length) return SENSE_KEYS.filter((x) => given.includes(x))
+  // A copy-bot leaves `position` out unless the author asks for it: a square number is no use on a new course.
+  return isCopyBrain(task) ? ['walls', 'treasure_direction'] : ['position']
 }
 
 export const maxSensesOf = (task) =>
@@ -573,9 +604,10 @@ export function testMapsOf(task) {
 
 // Does the task run the trained robot on random courses? (The settings are checked in courses.js.)
 export const hasCourses = (task) =>
-  !!task?.randomCourses &&
-  typeof task.randomCourses === 'object' &&
-  !Array.isArray(task.randomCourses)
+  isCopyBrain(task) ||
+  (!!task?.randomCourses &&
+    typeof task.randomCourses === 'object' &&
+    !Array.isArray(task.randomCourses))
 
 export const showLearningOf = (task) => task?.showLearning !== false
 export const hasPit = (env) => !!env && env.cells.includes('pit')
@@ -635,6 +667,20 @@ export function validateGameAgentTask(task, n) {
       })
     }
   }
+  if (task?.brain !== undefined && !BRAINS.includes(task.brain)) {
+    errors.push(`${where}: brain must be ${BRAINS.join(' or ')}.`)
+  }
+  if (task?.panels !== undefined) {
+    if (!Array.isArray(task.panels)) {
+      errors.push(`${where}: panels must be a list like [network].`)
+    } else {
+      for (const panel of task.panels) {
+        if (!PANELS.includes(panel)) {
+          errors.push(`${where}: panels has "${panel}"; use ${PANELS.join(', ')} only.`)
+        }
+      }
+    }
+  }
   if (task?.episodes !== undefined) {
     if (!isWhole(task.episodes) || task.episodes < 1 || task.episodes > MAX_EPISODES) {
       errors.push(`${where}: episodes must be a whole number from 1 to ${MAX_EPISODES}.`)
@@ -645,6 +691,17 @@ export function validateGameAgentTask(task, n) {
 
 export function validateGameAgentWarnings(task, n) {
   const warnings = []
+  if (isCopyBrain(task) && Array.isArray(task.testMaps) && task.testMaps.length) {
+    warnings.push(`Task ${n}: testMaps are not used when brain is copy (it drives on courses).`)
+  }
+  if (isCopyBrain(task) && Array.isArray(task.senses) && task.senses.includes('position')) {
+    warnings.push(
+      `Task ${n}: a copy-bot that senses position cannot tell one course from another; leave position out.`
+    )
+  }
+  if (task?.panels !== undefined && !isCopyBrain(task) && hasNetworkPanel(task)) {
+    warnings.push(`Task ${n}: the network panel is only drawn when brain is copy.`)
+  }
   if (task?.race && testMapsOf(task).length === 0 && !hasCourses(task)) {
     warnings.push(
       `Task ${n}: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.`
@@ -677,6 +734,8 @@ export function initialGameAgentState(task) {
     testSteps: null,
     testBest: null,
     courses: [],
+    drives: [],
+    driveCourse: 0,
   }
 }
 
@@ -690,6 +749,24 @@ function normalizeCourses(raw) {
     .filter((c) => c && isWhole(c.n) && c.n > 0 && Number.isFinite(c.score))
     .map((c) => ({ n: c.n, score: c.score, reached: c.reached === true }))
     .slice(-MAX_COURSE_LOG)
+}
+
+// The copy-bot's drives: [{ c, moves }], the course number and the letters driven on it. At most
+// MAX_DRIVES courses and MAX_DRIVE_MOVES moves in all.
+export const MAX_DRIVES = 6
+export const MAX_DRIVE_MOVES = 200
+function normalizeDrives(raw) {
+  if (!Array.isArray(raw)) return []
+  let room = MAX_DRIVE_MOVES
+  const out = []
+  for (const d of raw) {
+    if (!d || !isWhole(d.c) || d.c < 0 || typeof d.moves !== 'string' || out.length >= MAX_DRIVES)
+      continue
+    const moves = d.moves.replace(/[^URDL]/g, '').slice(0, room)
+    room -= moves.length
+    out.push({ c: d.c, moves })
+  }
+  return out
 }
 
 export function normalizeGameAgentState(task, raw) {
@@ -725,6 +802,9 @@ export function normalizeGameAgentState(task, raw) {
     testSteps: numOrNull(raw.testSteps),
     testBest: numOrNull(raw.testBest),
     courses: normalizeCourses(raw.courses),
+    drives: normalizeDrives(raw.drives),
+    driveCourse:
+      isWhole(raw.driveCourse) && raw.driveCourse > 0 ? Math.min(raw.driveCourse, 1000) : 0,
   }
 }
 
@@ -807,8 +887,15 @@ export function solutionFor(task) {
 // ---------------------------------------------------------------- grading
 
 // Plain-words hint for a robot that did not find the treasure.
-export function hintFor(state) {
+export function hintFor(state, task = null) {
   const { rewards } = state
+  if (isCopyBrain(task)) {
+    if (!(state.drives ?? []).some((d) => d.moves.length))
+      return 'Drive the robot to the treasure with the arrows.'
+    if (state.trained === 0) return 'Press Train so the robot learns from your driving.'
+    if (state.tests === 0) return 'Press Watch it drive to see it drive on a new course.'
+    return 'It got lost, so it copied something that did not help. Drive more courses, then train it again.'
+  }
   if (state.trained === 0) return 'Press Train to let the robot practise.'
   if (state.goes === 0 && state.tests === 0) return 'Press Go! to see where the robot goes.'
   if (state.tests > 0 && !state.testReached) {
@@ -832,7 +919,7 @@ export function gradeTask(task, state) {
     testBest: s.testBest,
     bestScore: s.bestScore,
     bestSteps: s.bestSteps,
-    hint: passed ? null : hintFor(s),
+    hint: passed ? null : hintFor(s, task),
   }
 }
 
@@ -840,6 +927,17 @@ export function gradeTask(task, state) {
 export function summaryOf(task, state) {
   const s = normalizeGameAgentState(task, state)
   const g = gradeTask(task, s)
+  if (isCopyBrain(task)) {
+    const moves = s.drives.reduce((n, d) => n + d.moves.length, 0)
+    if (moves === 0) return { text: 'Not driven yet', tone: 'neutral' }
+    const last = s.courses[s.courses.length - 1]
+    const ran = last ? ` · course ${last.n}: ${last.reached ? `${last.score} pts` : 'lost'}` : ''
+    const before = s.trained === 0 ? ' · not trained yet' : ''
+    return {
+      text: `copy-bot · ${moves} moves${before}${ran}`,
+      tone: g.passed ? 'success' : 'neutral',
+    }
+  }
   if (s.trained === 0) return { text: 'Not trained yet', tone: 'neutral' }
   if (hasCourses(task) && s.courses.length > 0) {
     // Each shared course by number, so the tutor can compare students on the same course.

@@ -12,7 +12,6 @@ import {
   cellsOfMoves,
   describeSituation,
   envOf,
-  episodesOf,
   finishEpisode,
   greedyRun,
   hasCoin,
@@ -32,8 +31,11 @@ import {
   withCourseResult,
   withTestResult,
   hasCourses,
+  isCopyBrain,
+  triesPerTrain,
 } from './game_agent.js'
-import { courseFor } from './courses.js'
+import { courseFor, trainingCourseFor } from './courses.js'
+import CopyBotView from './CopyBotView.jsx'
 
 // Game agent UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev => next)`,
 // `readOnly` (teacher views and review). Never write to Firebase or storage here.
@@ -154,13 +156,11 @@ function Curve({ scores }) {
   )
 }
 
-export function GameAgentStudentView({
-  task,
-  state: stateProp,
-  onChange,
-  readOnly = false,
-  lessonId = null,
-}) {
+export function GameAgentStudentView(props) {
+  return isCopyBrain(props.task) ? <CopyBotView {...props} /> : <RewardBotView {...props} />
+}
+
+function RewardBotView({ task, state: stateProp, onChange, readOnly = false, lessonId = null }) {
   const env = useMemo(() => envOf(task), [task])
   const courseMode = hasCourses(task)
   const newThing = courseMode ? 'course' : 'map'
@@ -177,6 +177,7 @@ export function GameAgentStudentView({
   // "work it out from the saved state" (a reload, or the tutor's view).
   const [lastLocal, setLastLocal] = useState(undefined)
   const agentRef = useRef(null)
+  const coursesRef = useRef(new Map())
   const stopRef = useRef(false)
   const frameRef = useRef(null)
   const timerRef = useRef(null)
@@ -202,10 +203,24 @@ export function GameAgentStudentView({
   if (!env) return <p>This task has no usable map yet.</p>
 
   // The robot as the saved state describes it (replayed when this device has not built it yet).
+  // With random courses every try runs on the next course of the training stream (never the
+  // courses "Try a new course" uses).
+  function trainingEnv(i) {
+    const held = coursesRef.current
+    if (!held.has(i)) held.set(i, trainingCourseFor(task, lessonId, i).env)
+    return held.get(i)
+  }
+
   function getAgent() {
     const held = agentRef.current
     if (held && held.key === rewardsKey && held.agent.episodes === state.trained) return held.agent
-    const agent = agentAfter(env, state.rewards, state.trained, state.senses)
+    const agent = agentAfter(
+      env,
+      state.rewards,
+      state.trained,
+      state.senses,
+      courseMode ? trainingEnv : null
+    )
     agentRef.current = { key: rewardsKey, agent }
     return agent
   }
@@ -235,7 +250,8 @@ export function GameAgentStudentView({
     if (readOnly || running || !onChange) return
     const agent = getAgent()
     const rewards = state.rewards
-    const total = episodesOf(task)
+    const total = triesPerTrain(task)
+    let epEnv = env
     const scores = [...state.scores]
     const startTrained = state.trained
     let done = 0
@@ -269,8 +285,11 @@ export function GameAgentStudentView({
       frameRef.current = null
       let budget = fast ? FAST_STEPS : SLOW_STEPS
       while (budget > 0 && done < total && !stopRef.current) {
-        if (!ep) ep = beginEpisode(env)
-        stepEpisode(env, rewards, agent, ep)
+        if (!ep) {
+          epEnv = courseMode ? trainingEnv(agent.episodes) : env
+          ep = beginEpisode(epEnv)
+        }
+        stepEpisode(epEnv, rewards, agent, ep)
         budget -= 1
         if (ep.done) {
           scores.push(Math.round(finishEpisode(agent, ep)))
@@ -288,7 +307,8 @@ export function GameAgentStudentView({
         kind: 'train',
         trained: startTrained + done,
         scores: scores.slice(-MAX_SCORES),
-        pos: ep ? ep.s : env.start,
+        pos: ep ? ep.s : epEnv.start,
+        env: courseMode ? epEnv : null,
       })
       if (Date.now() - lastCommit >= COMMIT_MS) commit(true)
       frameRef.current = requestAnimationFrame(tick)
@@ -348,7 +368,7 @@ export function GameAgentStudentView({
     run?.kind === 'train' ? { ...state, trained: run.trained, scores: run.scores } : state
   const trained = state.trained > 0
   const showMystery = !!mystery && !run && trained
-  const viewEnv = showMystery ? mystery.env : env
+  const viewEnv = showMystery ? mystery.env : (run?.kind === 'train' && run.env) || env
   const savedCells = state.moves ? cellsOfMoves(env, state.moves) : []
   const trail = showMystery
     ? mystery.cells

@@ -49,9 +49,11 @@ tasks:
 | `senses` | No | What the robot senses to tell situations apart (and the starting choice): `position` (its square), `walls` (the four sides), `treasure_direction` (8-way compass), `treasure_direction_4` (4-way compass), `pit_near`, `coin_direction` (compass to the nearest coin not yet picked up). Setting `senses` or `maxSenses` shows the sense buttons so the student can switch senses on and off. Default `[position]`: the old behaviour, the robot only knows its square. |
 | `maxSenses` | No | The most senses on at once (1 to 6). Default 6. |
 | `testMaps` | No | A sealed list (at most 5) of maps, same characters as `map`, that nobody trains on. See "The mystery map". |
-| `episodes` | No | How many practice tries one press of **Train** runs (1 to 500). Default 50. The student can press Train again to practise more. |
+| `episodes` | No | How many practice tries one press of **Train** runs (1 to 500). Default 50. With `randomCourses` a press runs 5 times as many (each try on a new training course). Not used with `brain: copy`. The student can press Train again to practise more. |
 | `showLearning` | No | Show the learning curve (one small bar per try, the last 40). Default true. |
 | `randomCourses` | No | Random solvable courses for **Try a new course**: `{ size, walls, pits, coins, seed }`, every part optional. `size` 5 to 9 (default 7), `walls` 0 to 0.4 (the share of squares that are walls, default 0.25), `pits` 0 to 3 (default 1), `coins` 0 to 3 (default 0), `seed` `class` (default) or a whole number. Replaces `testMaps` (setting both warns). See "Random courses". |
+| `brain` | No | How the robot learns: `reward` (default; Q-learning from points) or `copy` (a small neural network that learns from the student's driving). See "Copy-bot". |
+| `panels` | No | Extra pictures on the stage. `network` draws the copy-bot network (needs `brain: copy`). |
 | `race` | No | Race v1: the tutor card shows each student's best mystery-map score (`mystery map: 8 pts`) so the tutor can rank the class. Needs `testMaps` (a warning if missing). There is no class ranking screen yet; see "Teacher tools". |
 
 ## How the robot learns
@@ -159,10 +161,63 @@ the result line says which course it was ("Found it on the new course (course 3)
   that uses it. In the Builder preview there is no lesson id, so the courses come from the task id.
   Each student walks through the sequence in order, one course per press. New rewards or senses make
   the robot forget everything and the sequence starts again at course 1.
-- **How well the robot does.** The robot only knows the situations it met while training on the
-  task's `map`, so a robot can get lost on a fair course. Expect `treasure_direction` alone to do
-  best, `walls` plus `treasure_direction` less well, and `position` to get lost on almost every
-  course. A map where the treasure can be reached from several directions trains it better.
+- **Train practises on courses too.** With `randomCourses` (and the usual `brain`), each practice try
+  runs on the next course of a separate **training stream** (a different seed from the courses
+  **Try a new course** uses, so those stay unseen) instead of only the task's `map`; the `map` is
+  just the first thing on screen. One press of Train runs `episodes` x 5 tries (default 250), the
+  robot learns with a smaller step and explores for longer, and the grid shows the course it is
+  practising on. The same training courses come back after a reload (the robot is rebuilt from the
+  try count). Without `randomCourses` nothing changes.
+- **How well the robot does.** A robot that only senses can still get lost on a fair course; with
+  3 presses of Train on the 5 x 5 setting (`walls: 0.15`, no pits) `walls` plus `treasure_direction`
+  clears about 70% of new courses, `treasure_direction` alone about 55%, and `position` about 15%.
+  Bigger, wall-heavy courses are harder for every sense.
+
+## Copy-bot
+
+`brain: copy` swaps reward learning for imitation: the student **drives** the robot, and a small
+neural network learns to copy them. It is how early self-driving cars learned.
+
+    - type: game_agent
+      brain: copy
+      senses: [walls, treasure_direction]   # the default for a copy-bot; position is left out
+      panels: [network]
+      randomCourses: { size: 5, walls: 0.15, pits: 0, seed: class }   # optional; defaults apply
+
+- **Drive.** The arrow keys, or the four on-screen arrow buttons (48px, no drag), move the robot on a
+  practice course. Each move is an example: what the robot senses there (the sense vector) and the
+  way the student went. A move into a wall is an example too. A course ends at the treasure or a pit;
+  **Next course** moves to the next practice course (up to 6 courses and 200 moves in all). The
+  screen says "You've shown it 34 moves on 2 courses". The practice courses come from the training
+  stream described above, the same for the class with `seed: class`.
+- **Train** fits the network on all the examples: 8 hidden neurons, 4 outputs (up, right, down,
+  left), stochastic gradient descent, 600 steps, 60 per animation frame so the page stays smooth.
+  It is seeded, so a reload rebuilds the same network from the drives. The button reads **Train
+  again** once the student has driven more.
+- **Watch it drive** runs the network on the next unseen class course (the courses **Try a new
+  course** uses), one move per step, taking the most lit output. It does not walk into the same
+  wall twice from one square and slightly prefers squares it has not stood on (so it does not circle
+  for ever); everything else is what it copied. It stops after 120 moves.
+- **Passes** when the copy-bot reaches the treasure on a new course (no Check button). A lost run
+  says to drive more courses and train again.
+- **Drive badly and it copies the mistakes.** It learns only from the examples: always driving right
+  gives a bot that mostly drives right. This is the fun moment, and the unit tests hold both ways: a
+  good driver (shortest way) on 3 courses gives a bot that clears about 78% of the first 5 unseen
+  class courses (5 x 5 setting), and an always-right driver about 39%.
+- **`panels: [network]`** draws the network under the grid: input neurons (one per sense light, named
+  such as "wall up"), the hidden neurons, and four outputs (the arrows). Each dot is as dark as the
+  number it holds and the output it picks has a ring; it lights as the bot decides on each step of a
+  Watch it drive, and shows what it would do on the practice square once trained.
+- **Defaults.** `senses` defaults to `[walls, treasure_direction]` (a square number means nothing on
+  a new course); `randomCourses` defaults apply when it is left out; the rewards are not shown (the
+  score on a course uses the default rewards); `testMaps` are ignored.
+- **Race v1 (two tasks).** Put a `brain: copy` task and a `brain: reward` task (with `randomCourses`)
+  in one lesson with `seed: class`. Both run on the class courses, and the tutor card of each shows
+  its score by course number (`copy-bot · 34 moves · course 3: 8 pts` and `course 3: 5 pts · 250
+  tries`), so the two can be compared on the same course numbers. There is no ranking screen.
+- **Tutor visibility.** The shared state carries the drives (course and moves), so the tutor sees
+  the driving live, the number of moves, whether it is trained and each new-course result, and can
+  use **Stage -> Start again**, hints and badges as for the other Game agent tasks.
 
 ## Marking and hints
 
@@ -175,6 +230,7 @@ the result line says which course it was ("Found it on the new course (course 3)
 - The student card shows the tries and the best score, e.g. `50 episodes · best 8 (3 steps)`, or
   `training` while a Train is running. With `race: true` and a mystery-map run it reads
   `mystery map: 8 pts · 50 tries` (or `lost`), so cards can be compared for a race.
+- With `brain: copy` the card reads `copy-bot · 34 moves · course 3: 8 pts` (`not trained yet` before Train, `Not driven yet` before any move).
 - With `randomCourses` the card lists the last four courses by number, e.g.
   `course 1: 8 pts · course 2: lost · course 3: 5 pts · 50 tries`, so the tutor can compare students
   on the same course. There is no ranking screen.

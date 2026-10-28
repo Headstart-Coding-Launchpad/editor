@@ -25,6 +25,7 @@ export const COURSE_PITS_MAX = 3
 export const COURSE_COINS_MAX = 3
 export const COURSE_DEFAULTS = { size: 7, walls: 0.25, pits: 1, coins: 0, seed: 'class' }
 export const TRAP_NEAR = 3
+export const TRAIN_STREAM = 0x5bd1e995
 export const MAX_ATTEMPTS = 200
 
 const isWhole = (n) => typeof n === 'number' && Number.isInteger(n)
@@ -51,12 +52,13 @@ function hashString(text) {
   return h >>> 0
 }
 
-export const hasRandomCourses = (task) => isObject(task?.randomCourses)
+// A copy-bot task (brain: copy) always has courses; without randomCourses it uses the defaults.
+export const hasRandomCourses = (task) => isObject(task?.randomCourses) || task?.brain === 'copy'
 
 // The task's settings with defaults filled in, or null when the task has no randomCourses.
 export function courseSpecOf(task) {
   if (!hasRandomCourses(task)) return null
-  const given = task.randomCourses
+  const given = isObject(task.randomCourses) ? task.randomCourses : {}
   const num = (v, lo, hi, fallback, whole) =>
     typeof v === 'number' && Number.isFinite(v) && (!whole || isWhole(v))
       ? Math.min(hi, Math.max(lo, v))
@@ -183,6 +185,15 @@ export function generateCourse(spec, seed, index) {
 export function courseFor(task, lessonId, count) {
   const spec = courseSpecOf(task)
   return spec ? generateCourse(spec, courseSeedOf(task, lessonId), count) : null
+}
+
+// The courses Train practises on and a copy-bot is driven on: a second stream from the same settings
+// and a different seed, so the courses "Try a new course" runs stay unseen.
+export function trainingCourseFor(task, lessonId, index) {
+  const spec = courseSpecOf(task)
+  return spec
+    ? generateCourse(spec, (courseSeedOf(task, lessonId) ^ TRAIN_STREAM) >>> 0, index)
+    : null
 }
 
 // Authoring checks. Messages are listed in docs/authoring/validation-errors.md (`…` for each ${...}).

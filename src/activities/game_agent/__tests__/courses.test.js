@@ -8,7 +8,9 @@ import {
   initialGameAgentState,
   normalizeGameAgentState,
   parseMap,
+  COURSE_TRIES_FACTOR,
   summaryOf,
+  triesPerTrain,
   withCourseResult,
 } from '../game_agent.js'
 import {
@@ -18,6 +20,7 @@ import {
   courseSpecOf,
   generateCourse,
   hasDeadEndTrap,
+  trainingCourseFor,
   validateRandomCourses,
 } from '../courses.js'
 
@@ -100,31 +103,65 @@ describe('class seed', () => {
   })
 })
 
-describe('Fun moment: a robot with senses clears more class courses than a position-only one', () => {
-  // The task's own map: the treasure in the middle, the robot in a corner.
+describe('Fun moment: a robot with senses clears most class courses it never practised on', () => {
+  // The task's own map is tiny; Train practises on random courses from a separate stream.
   const OWN = ['R....', '.....', '..T..', '.....', '.....']
   const t = task({ map: OWN, randomCourses: { size: 5, walls: 0.15, pits: 0, seed: 'class' } })
   const rewards = { ...DEFAULT_REWARDS }
-  // Fraction of the first 5 class courses cleared, over 20 different classes (lessons).
+  const LESSONS = 60
+  // Fraction of the first 5 class courses cleared after 3 presses of Train, over 60 classes.
   const cleared = (senses) => {
-    const agent = agentAfter(parseMap(OWN).env, rewards, 300, senses)
+    const own = parseMap(OWN).env
     let n = 0
-    for (let lesson = 0; lesson < 20; lesson += 1) {
+    for (let lesson = 0; lesson < LESSONS; lesson += 1) {
+      const id = `lesson-${lesson}`
+      const tries = 3 * triesPerTrain(t)
+      const agent = agentAfter(own, rewards, tries, senses, (i) => trainingCourseFor(t, id, i).env)
       for (let i = 0; i < 5; i += 1) {
-        const { env } = courseFor(t, `lesson-${lesson}`, i)
-        if (greedyRun(env, rewards, agent, { unseen: true }).reached) n += 1
+        if (greedyRun(courseFor(t, id, i).env, rewards, agent, { unseen: true }).reached) n += 1
       }
     }
-    return n / 100
+    return n / (LESSONS * 5)
   }
 
-  it('walls + treasure compass beats position-only, and the compass alone clears most', () => {
-    const naive = cleared(['position'])
+  it('walls + treasure compass clears 60% and beats the compass alone and position alone', () => {
     const walls = cleared(['walls', 'treasure_direction'])
     const compass = cleared(['treasure_direction'])
+    const naive = cleared(['position'])
+    expect(walls).toBeGreaterThanOrEqual(0.6)
+    expect(walls).toBeGreaterThan(compass + 0.05)
+    expect(compass).toBeGreaterThan(naive)
     expect(walls).toBeGreaterThan(naive * 2)
-    expect(compass).toBeGreaterThanOrEqual(0.5)
-    expect(compass).toBeGreaterThan(walls)
+  }, 120000)
+
+  it('practises on training courses that are not the class test courses', () => {
+    const seen = new Set()
+    for (let i = 0; i < 40; i += 1) seen.add(trainingCourseFor(t, 'lesson-1', i).rows.join('/'))
+    const tests = new Set()
+    for (let i = 0; i < 40; i += 1) tests.add(courseFor(t, 'lesson-1', i).rows.join('/'))
+    expect(trainingCourseFor(t, 'lesson-1', 3).rows).toEqual(
+      trainingCourseFor(t, 'lesson-1', 3).rows
+    )
+    expect(seen.size).toBeGreaterThan(20)
+    expect([...tests].filter((rows) => seen.has(rows)).length).toBeLessThan(6)
+  })
+
+  it('runs more tries per Train press with courses, and the usual number without', () => {
+    expect(triesPerTrain(t)).toBe(50 * COURSE_TRIES_FACTOR)
+    expect(triesPerTrain({ map: OWN })).toBe(50)
+  })
+
+  it('replays to the same robot every time (a saved state rebuilds it)', () => {
+    const own = parseMap(OWN).env
+    const make = () =>
+      agentAfter(
+        own,
+        rewards,
+        60,
+        ['walls', 'treasure_direction'],
+        (i) => trainingCourseFor(t, 'x', i).env
+      )
+    expect([...make().q.entries()]).toEqual([...make().q.entries()])
   })
 })
 

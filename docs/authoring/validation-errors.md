@@ -495,6 +495,12 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: randomCourses.walls must be a number from 0 to ….` | `walls` is not a number from 0 to 0.4. | Use e.g. `0.25`. |
 | `Task …: randomCourses.seed must be class or a whole number from 0 up.` | `seed` is something other than `class` or a whole number. | Write `seed: class` (the same courses for everyone in the lesson) or a number. |
 | `Task …: testMaps are not used when randomCourses is set.` (warning) | The task has both `randomCourses` and `testMaps`; the courses win. | Remove `testMaps`, or remove `randomCourses`. |
+| `Task …: brain must be ….` | `brain` is something other than `reward` or `copy`. | Write `brain: copy` (a network that learns from the student's driving) or leave it out. |
+| `Task …: panels must be a list like [network].` | `panels` is not a list. | Write `panels: [network]`. |
+| `Task …: panels has "…"; use … only.` | A `panels` entry is not a panel the activity draws. | Use `network`. |
+| `Task …: testMaps are not used when brain is copy (it drives on courses).` (warning) | A `brain: copy` task also has `testMaps`; the copy-bot is tested on `randomCourses`. | Remove `testMaps`. |
+| `Task …: a copy-bot that senses position cannot tell one course from another; leave position out.` (warning) | `brain: copy` with `position` in `senses`. A square number means nothing on a new course. | Use `walls` and `treasure_direction`, the default. |
+| `Task …: the network panel is only drawn when brain is copy.` (warning) | `panels: [network]` on a task that learns from rewards. | Add `brain: copy`, or remove `panels`. |
 
 ## Code-arrange tasks
 

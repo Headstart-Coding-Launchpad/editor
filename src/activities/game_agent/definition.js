@@ -6,10 +6,12 @@
 // last Go! route, all small and all shared, so the tutor sees the robot's progress live.
 import { defineActivity } from '../defineActivity.js'
 import {
+  COURSE_TRIES_FACTOR,
   DEFAULT_EPISODES,
   DEFAULT_REWARDS,
   episodesOf,
   gradeTask,
+  isCopyBrain,
   hasCourses,
   initialGameAgentState,
   normalizeGameAgentState,
@@ -20,6 +22,7 @@ import {
   validateGameAgentWarnings,
 } from './game_agent.js'
 import { validateRandomCourses } from './courses.js'
+import { copySolutionFor } from './copybot.js'
 
 function parse(raw) {
   if (raw == null || raw === '') return null
@@ -83,9 +86,21 @@ export default defineActivity({
           'Random solvable courses: { size (5 to 9, default 7), walls (0 to 0.4, default 0.25), pits (0 to 3, default 1), coins (0 to 3, default 0), seed (class or a whole number, default class) }. "Try a new course" runs the trained robot once, with no training, on the next course; the task passes when it reaches the treasure. With seed class every student in the lesson gets the same courses in the same order. Courses are always solvable and have no dead-end trap on the way to the treasure. Replaces testMaps.',
       },
       {
+        name: 'brain',
+        type: 'string',
+        description:
+          'How the robot learns: reward (default, Q-learning from points) or copy (a small neural network that learns from the student driving it). With copy the student drives the robot on practice courses with the arrow keys or on-screen arrows, presses Train, then Watch it drive runs the network on the next unseen course; the task passes when it reaches the treasure there. Uses randomCourses (the defaults when it is left out), ignores testMaps and rewards, and the senses default to [walls, treasure_direction] (position is left out).',
+      },
+      {
+        name: 'panels',
+        type: 'array',
+        description:
+          'Extra pictures on the stage. network draws the copy-bot network: input neurons (the senses), hidden neurons and the 4 outputs, lit as it decides. Only used when brain is copy.',
+      },
+      {
         name: 'episodes',
         type: 'number',
-        description: `How many practice tries one press of Train runs (1 to 500). Default ${DEFAULT_EPISODES}.`,
+        description: `How many practice tries one press of Train runs (1 to 500). Default ${DEFAULT_EPISODES}. With randomCourses each try runs on a new training course and a press of Train runs ${COURSE_TRIES_FACTOR} times as many. Not used when brain is copy.`,
       },
       {
         name: 'showLearning',
@@ -122,7 +137,7 @@ export default defineActivity({
   },
 
   initialState: (task) => initialGameAgentState(task),
-  solutionState: (task) => solutionFor(task),
+  solutionState: (task) => (isCopyBrain(task) ? copySolutionFor(task) : solutionFor(task)),
 
   serialize: (state) => JSON.stringify(state ?? null),
   serializeShared: (state) => JSON.stringify(sharedState(state)),
@@ -153,7 +168,8 @@ export default defineActivity({
   // Episodes trained, then the treasure found: two steps.
   getProgress: (task, state) => {
     const g = gradeTask(task, state)
-    const filled = (g.trained > 0 ? 1 : 0) + (g.reached ? 1 : 0)
+    const filled =
+      (g.trained > 0 ? 1 : 0) + ((isCopyBrain(task) ? g.testReached : g.reached) ? 1 : 0)
     return { kind: 'items', filled, total: 2, correct: filled }
   },
 
