@@ -3,12 +3,16 @@ import {
   collection,
   collectionGroup,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
+
+// Lesson feedback grows forever; read only the newest items (newest first).
+export const FEEDBACK_LIMIT = 500
 
 function builderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -70,6 +74,8 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   const [allLesson, setAllLesson] = useState([])
   const [loadingPlatform, setLoadingPlatform] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
     const q = query(collection(firestore, 'platformFeedback'), orderBy('submittedAt', 'desc'))
@@ -79,14 +85,22 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         setPlatform(
           snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() }))
         )
+        setLoadError(null)
         setLoadingPlatform(false)
       },
-      () => setLoadingPlatform(false)
+      (err) => {
+        setLoadError(`Could not load platform feedback: ${err.message}`)
+        setLoadingPlatform(false)
+      }
     )
   }, [])
 
   useEffect(() => {
-    const q = collectionGroup(firestore, 'feedback')
+    const q = query(
+      collectionGroup(firestore, 'feedback'),
+      orderBy('submittedAt', 'desc'),
+      limit(FEEDBACK_LIMIT)
+    )
     return onSnapshot(
       q,
       (snap) => {
@@ -99,21 +113,36 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
           }))
         items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
         setAllLesson(items)
+        setLoadError(null)
         setLoadingLesson(false)
       },
-      () => setLoadingLesson(false)
+      (err) => {
+        setLoadError(`Could not load lesson feedback: ${err.message}`)
+        setLoadingLesson(false)
+      }
     )
   }, [])
 
+  async function archive(ref) {
+    setActionError(null)
+    try {
+      await updateDoc(ref, { archived: true })
+    } catch (err) {
+      setActionError(`Could not archive the feedback: ${err.message}`)
+    }
+  }
+
   function handleDeletePlatform(id) {
-    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
-    updateDoc(doc(firestore, 'platformFeedback', id), { archived: true })
+    if (!window.confirm('Archive this feedback? It will be hidden from this list but not deleted.'))
+      return
+    return archive(doc(firestore, 'platformFeedback', id))
   }
 
   function handleDeleteLesson(item) {
     if (!item.lessonId) return
-    if (!window.confirm('Archive this feedback? This cannot be undone.')) return
-    updateDoc(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id), { archived: true })
+    if (!window.confirm('Archive this feedback? It will be hidden from this list but not deleted.'))
+      return
+    return archive(doc(firestore, 'lessons', item.lessonId, 'feedback', item.id))
   }
 
   const lessonItems = allLesson.filter((item) => !item.taskId)
@@ -153,6 +182,12 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         </button>
       </div>
 
+      {loadError && <p style={s.error}>{loadError}</p>}
+      {actionError && <p style={s.error}>{actionError}</p>}
+      {allLesson.length >= FEEDBACK_LIMIT && subTab !== 'platform' && (
+        <p style={s.empty}>Showing the newest {FEEDBACK_LIMIT} lesson feedback items only.</p>
+      )}
+
       {loading ? (
         <p style={s.empty}>Loading…</p>
       ) : items.length === 0 ? (
@@ -183,6 +218,12 @@ const s = {
     fontWeight: 700,
     fontSize: '1.1rem',
     color: 'var(--colour-text)',
+    margin: 0,
+  },
+  error: {
+    fontFamily: 'var(--font-body)',
+    color: '#dc2626',
+    fontSize: '0.9rem',
     margin: 0,
   },
   empty: {

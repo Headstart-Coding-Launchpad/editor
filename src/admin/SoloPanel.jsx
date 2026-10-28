@@ -3,7 +3,7 @@
 // `soloLog` (src/shared/soloLog.js), side-quests from the stored session reports. The download is
 // anonymised ("Student N", no names) like a session report.
 import { useEffect, useMemo, useState } from 'react'
-import { collection, collectionGroup, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, collectionGroup, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { readSoloLog } from '../app/soloLogService'
@@ -16,6 +16,9 @@ import {
   AdminTable,
   adminUiStyles,
 } from './AdminUi'
+
+// Side-quests are read from the newest stored reports only; the collection grows forever.
+export const SIDE_QUEST_REPORT_LIMIT = 300
 
 const formatDateTime = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
 
@@ -50,24 +53,35 @@ export default function SoloPanel() {
   const [soloLog, setSoloLog] = useState(null)
   const [reports, setReports] = useState([])
   const [error, setError] = useState(null)
+  const [reportsError, setReportsError] = useState(null)
   const [classId, setClassId] = useState('')
   const [lessonId, setLessonId] = useState('')
 
   useEffect(() => {
-    return onSnapshot(collection(firestore, 'lessons'), (snap) => {
-      setLessons(snap.docs.map((d) => ({ id: d.id, ...decodeLessonFromFirestore(d.data()) })))
-    })
+    return onSnapshot(
+      collection(firestore, 'lessons'),
+      (snap) => {
+        setLessons(snap.docs.map((d) => ({ id: d.id, ...decodeLessonFromFirestore(d.data()) })))
+      },
+      (err) => setError(`Could not load lessons: ${err.message}`)
+    )
   }, [])
 
   useEffect(() => {
-    const q = query(collectionGroup(firestore, 'sessionReports'), orderBy('startedAt', 'desc'))
+    const q = query(
+      collectionGroup(firestore, 'sessionReports'),
+      orderBy('startedAt', 'desc'),
+      limit(SIDE_QUEST_REPORT_LIMIT)
+    )
     return onSnapshot(
       q,
-      (snap) =>
+      (snap) => {
         setReports(
           snap.docs.map((d) => ({ lessonId: d.ref.parent.parent?.id ?? null, ...d.data() }))
-        ),
-      () => {}
+        )
+        setReportsError(null)
+      },
+      (err) => setReportsError(err.message)
     )
   }, [])
 
@@ -134,6 +148,14 @@ export default function SoloPanel() {
       subtitle="Who did the Solo Challenges and side-quests, per lesson"
     >
       {error && <AdminMessage tone="error">{error}</AdminMessage>}
+      {reportsError && (
+        <AdminMessage tone="error">Could not load side-quest reports: {reportsError}</AdminMessage>
+      )}
+      {reports.length >= SIDE_QUEST_REPORT_LIMIT && (
+        <AdminMessage>
+          Side-quests come from the newest {SIDE_QUEST_REPORT_LIMIT} session reports only.
+        </AdminMessage>
+      )}
       {!soloLog && !error && <AdminMessage>Loading solo log…</AdminMessage>}
       <div style={s.filters}>
         <label style={s.label}>
