@@ -734,6 +734,7 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `rps_mind_reader/mind.js` | The Mind Reader brain: hand-written tiny MLP (one-hot look-back inputs, 6 tanh neurons, 3 softmax outputs), online SGD, seeded init, replay of a game from its moves |
 | `rps_mind_reader/definition.js` | Mind Reader activity definition wrapping `rps_mind_reader.js`: default task, fields, validation, state, grading at `passAt` rounds, card summary (`round 18 · You 7–11 It · read 70%`), report summary, print |
 | `rps_mind_reader/ui.jsx` | Mind Reader StudentView: brain diagram (SVG), face-down card that flips after the tap, three move buttons, score, Remembers dial, read-rate chart |
+| `rps_mind_reader/RpsMindReaderBuilderEditor.jsx` | Builder editor for Mind Reader tasks: rounds, moves it sees, pass point and panel toggles |
 
 | `recommender/recommender.js` | Pure Recommender logic: seeded made-up raters, similarity, recommend (feed of 4), Why? text, bubble meter, validation, grading |
 | `recommender/definition.js` | Recommender activity definition wrapping `recommender.js`: default task, validation, state, change classification, grading, progress, card summary, print |
