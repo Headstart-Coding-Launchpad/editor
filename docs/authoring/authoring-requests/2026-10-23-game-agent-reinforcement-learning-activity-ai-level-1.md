@@ -1,6 +1,7 @@
 # Game agent (reinforcement learning) activity (AI Level 1)
 
-- **Status:** built on branch feature/game-agent (not merged)
+- **Status:** planned
+- **Branch:** feature/game-agent (built, not merged)
 - **Kind:** activity
 - **Requested by:** Ryan (approved by Ryan), 2026-10-23
 - **Lessons blocked:** none yet
