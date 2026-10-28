@@ -113,3 +113,27 @@ describe('Recommender UI', () => {
     expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 })
+
+describe('Recommender UI with startRatings', () => {
+  const START = { ...TASK, startRatings: { football: 'up', cat: 'down' }, minRated: 2 }
+
+  it('tags given ratings, counts only the students own, and clears the tag on change', () => {
+    const { state } = renderActivityUi(RecommenderStudentView, {
+      task: START,
+      initialState: definition.initialState(START),
+    })
+    expect(screen.getByTestId('recommender-given-football')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Like Football' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    expect(screen.getByText(/Rated 0 of 2/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Dislike Football' }))
+    expect(state().ratings).toEqual({ football: -1 })
+    expect(screen.queryByTestId('recommender-given-football')).not.toBeInTheDocument()
+    expect(screen.getByText(/Rated 1 of 2/)).toBeInTheDocument()
+    // tapping a given rating again takes it back
+    fireEvent.click(screen.getByRole('button', { name: 'Dislike Cats' }))
+    expect(state().ratings).toEqual({ football: -1, cat: 0 })
+  })
+})

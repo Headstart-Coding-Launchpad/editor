@@ -4,6 +4,7 @@
 import { defineActivity } from '../defineActivity.js'
 import {
   bubbleInfo,
+  effectiveRatings,
   feedKinds,
   FEED_SIZE,
   generateRaters,
@@ -13,6 +14,8 @@ import {
   needsWhy,
   ratedCount,
   recommend,
+  startFeedKinds,
+  startRatingsOf,
   summaryText,
   triedGoalsOf,
   validateRecommender,
@@ -107,6 +110,12 @@ export default defineActivity({
           'A switch for what the feed aims for, from like (what the student will like, the default), watching (keep me watching: leans hard on their most-liked kind) and new (something new: mixes in kinds they have not rated). 1 to 3 goals. Leave out for the usual feed.',
       },
       {
+        name: 'startRatings',
+        type: 'object',
+        description:
+          'Ratings already set when the task opens: { itemId: up | down }. They show a "set for you" tag, the student can change them, and minRated counts only the own ratings of the student (changed or new). The report shows the kinds in the feed at the start and at the end.',
+      },
+      {
         name: 'minRated',
         type: 'number',
         description: 'How many items the student must rate. Default 6.',
@@ -129,7 +138,13 @@ export default defineActivity({
   validateTask: (task, { n } = {}) => validateRecommender(task, n),
 
   // { ratings: { itemId: 1 | -1 }, why } - about 15 bytes a rating.
-  initialState: () => ({ v: 1, ratings: {}, why: false }),
+  // With startRatings it also keeps how many kinds the feed showed at the start.
+  initialState: (task) => ({
+    v: 1,
+    ratings: {},
+    why: false,
+    ...(Object.keys(startRatingsOf(task)).length ? { startKinds: startFeedKinds(task, null) } : {}),
+  }),
 
   solutionState: (task) => ({
     v: 1,
@@ -172,9 +187,12 @@ export default defineActivity({
   summarize: (task, state) => {
     const { passed } = gradeTask(task, state)
     // The tutor sees the feed the student sees: how many kinds it shows.
+    const given = Object.keys(startRatingsOf(task)).length > 0
     const feed =
-      ratedCount(state) > 0
-        ? ` · ${feedKinds(task, state).text.replace('Your feed has ', 'feed ')}`
+      ratedCount(state) > 0 || given
+        ? ` · ${feedKinds(task, state).text.replace('Your feed has ', 'feed ')}${
+            given ? ` (started at ${startFeedKinds(task, state)})` : ''
+          }`
         : ''
     return { text: `${summaryText(task, state)}${feed}`, tone: passed ? 'success' : 'neutral' }
   },
@@ -196,9 +214,10 @@ export default defineActivity({
       const students = states.map((state) => ({
         rated: ratedCount(state),
         kinds: bubbleInfo(
-          recommend(items, raters, state.ratings ?? {}, FEED_SIZE, goalOf(task, state)),
+          recommend(items, raters, effectiveRatings(task, state), FEED_SIZE, goalOf(task, state)),
           items
         ).kinds,
+        startKinds: startFeedKinds(task, state),
         why: state.why === true,
         tried: triedGoalsOf(task, state),
       }))
@@ -212,6 +231,12 @@ export default defineActivity({
           students: students.length,
           avgRated: mean('rated'),
           avgFeedKinds: mean('kinds'),
+          ...(Object.keys(startRatingsOf(task)).length
+            ? {
+                avgStartFeedKinds: mean('startKinds'),
+                openedUpCount: students.filter((s) => s.kinds > s.startKinds).length,
+              }
+            : {}),
           openedWhyCount: students.filter((s) => s.why).length,
           bubbleCount: students.filter((s) => s.kinds <= 1 && s.rated > 0).length,
           ...(goalsOf(task).length ? { goalCounts } : {}),

@@ -352,7 +352,7 @@ Each activity's definition can add fields through `report.summaryFields(task, pe
 | `optionDistribution[]` | Poll quiz | See [Ungraded tasks](#ungraded-tasks). | 2026-10-01 |
 | `tileMisses[]` | Code Arrange | `{ slotId, tileId, count, studentCount }` per blank and dropped tile, most common first, from the students' `tileMisses`. Omitted when nobody dropped a known-wrong tile. | 2026-10-09 |
 | `itemResults[]` | Real or AI | `{ itemId, tell, reliable, revealed, rightPick }` per pair, counts of students (latest attempt each) who played it and picked the AI side. Omitted when nobody submitted. | 2026-10-22 |
-| `recommenderResults` | Recommender | `{ students, avgRated, avgFeedKinds, openedWhyCount, bubbleCount }` from each student's latest attempt: items rated, groups in their feed, who opened Why?, and who ended in a one-kind bubble. Omitted when nobody submitted. | 2026-10-28 |
+| `recommenderResults` | Recommender | `{ students, avgRated, avgFeedKinds, openedWhyCount, bubbleCount }` (plus `avgStartFeedKinds` and `openedUpCount` when the task has `startRatings`) from each student's latest attempt: items rated, groups in their feed, who opened Why?, and who ended in a one-kind bubble. Omitted when nobody submitted. | 2026-10-28 |
 | `avgItemProgress` | Every `taskType: activity` (Binary, Keyboard, Mouse, …) | Mean of `correct / total` over students with `itemProgress`, 2 dp (0–1). Added by the report itself, not `summaryFields`. Omitted when nobody submitted. | 2026-09-28 |
 
 A new activity that adds summary fields documents them here (and in its own authoring page).

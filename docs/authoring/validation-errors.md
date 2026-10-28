@@ -449,6 +449,9 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: bubble must be true or false.` | `bubble` is not a boolean. | Write `bubble: true` or `false`. |
 | `Task …: goals must list 1 to 3 different goals from like, watching and new.` | `goals` is not a list of 1 to 3 different names from `like`, `watching`, `new`. | Write `goals: [like, watching, new]` (or fewer), or leave it out for the usual feed. |
 | `Task …: minRated must be a whole number from 1 to the number of items.` | `minRated` is not a whole number in range. | Use e.g. `6`, or remove it for the default. |
+| `Task …: startRatings must be a list of item id: up or down.` | `startRatings` is not a map (for example a list or a string). | Write `startRatings: { football: up, pizza: down }`, or remove it. |
+| `Task …: startRatings has "…", which is not an item id.` | A key in `startRatings` matches no item `id`. | Use the `id` of one of the task's `items`. |
+| `Task …: startRatings "…" must be up or down.` | A `startRatings` value is something other than `up` or `down`. | Write `up` or `down`. |
 | `Task …: recommender works best with … to … items.` (warning) | Fewer than 12 items, so the feed has little to choose from. | Add items up to 12 to 20. |
 | `Task …: recommender needs at least … different groups to show a bubble.` (warning) | Fewer than 3 different `group` values. | Use 3 to 5 groups. |
 

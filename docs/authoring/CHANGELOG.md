@@ -39,6 +39,16 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-28
 
+- **Recommender: `startRatings`, open with ratings already set.** New optional map on a
+  `recommender` task: `{ itemId: up | down }`. Those ratings are in place when the task opens (each
+  card says **set for you**), so the feed starts as a bubble or any shape you choose. The student can
+  change or take back a given rating; `minRated` counts only the student's own ratings. The tutor card
+  adds `(started at 1)`, the shared state carries `startKinds`, and the report adds
+  `avgStartFeedKinds` and `openedUpCount` beside `avgFeedKinds`. Leave the field out for the old
+  behaviour (no ratings). See [activities/recommender.md](activities/recommender.md).
+  - Affects: recommender · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-recommender-start-with-ratings-already-set-for-get-out-of-yo.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every
