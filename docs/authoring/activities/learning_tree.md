@@ -4,7 +4,7 @@ A Learning Tree task is an **activity**: a bounded exercise that can sit anywher
 between code tasks of any module. The student gives a tree **labelled examples** (a name, a tick for
 each yes/no feature, a label such as pet or wild). The tree **builds itself**: it picks the best
 yes/no questions from the examples and redraws every time an example is added or removed. Then
-the student presses **Try it on new things** and the tree sorts the lesson's unseen test items.
+the student presses **Try it on new animals** and the tree sorts the lesson's unseen test items.
 It teaches "a tree learns its own questions from examples, and you can read why it decided".
 There is no Run button, no personal sandbox, no sharing and no carry-through. Everything runs in
 the browser; there is no AI model and nothing is downloaded.
@@ -73,20 +73,36 @@ tasks:
 
 ## How it works for the student
 
-1. **Add an example.** Type a name (optional, up to 16 characters), tap the features that are true
-   for it (they turn green), tap a label, press **Add example**. Up to `maxExamples`; a ✕ on each
-   example removes it.
+The screen has the tree on the left (the picture) and the controls on the right. On a narrow
+screen (a tablet held upright, the tutor's student view) it stacks: tree, Try it, tip, add form,
+animals.
+
+1. **Add an animal.** The add form is open at the start: type a name (optional, up to 16
+   characters), tap the features that are true for it (a dashed chip gets a ✓ and a solid outline),
+   then tap a label button (**+ pet** / **+ wild**). The label button adds the animal, so there is
+   no separate Add button. Up to `maxExamples`. After 4 animals the form folds to one bar
+   ("+ Add an animal, 4 of 20"); tap the bar to open it again. **Your animals** shows each one as a
+   chip in its label's colour with a × to remove it (hover or long-press shows its ticks).
 2. **Watch the tree grow.** After every change the tree is rebuilt and redrawn: a question box
    ("has fur?") with **yes** and **no** branches, ending in coloured answer boxes holding the
-   label and how many examples landed there. It scrolls sideways if it is wide.
-3. **Try it on new things.** Runs the tree on the `testItems` and shows each as right or wrong
-   with what the tree said, and "Your tree got 4 of 5 right". Adding or removing an example
-   clears the result (the tree changed), so the student presses Try it again.
+   label and how many animals landed there. It scrolls sideways if it is wide. Above the tree,
+   **Max questions** (a − 3 + stepper, with "using 2" beside it) sets how deep it may go; it is
+   hidden with `studentDepth: false`.
+3. **Try it on new animals.** The one main button: outlined until there are 2 animals, then filled.
+   It runs the tree on the `testItems` and shows "Your tree got 4 of 5 right" and a chip per
+   test item under the tree (✓ Hamster, ✗ Shark said pet). Tapping a chip lights that item's path
+   through the tree (no sentence). Adding or removing an animal clears the result (the tree
+   changed) and the button says **Try it again**. One yellow tip line under the button says what to
+   do next ("It got Shark wrong. Add an animal like it.").
 
-With `studentPicksFeatures`, a **Features the tree may use (up to N)** row of toggles sits above the
-tree. Ticking or unticking one regrows the tree and clears the Try it result (press it again). Once N
-are ticked the others are greyed out until one is unticked. This is the "useless feature" moment: tick a feature that does
-not separate the labels and the tree gets test items wrong.
+With `studentPicksFeatures`, a **Tree may use** row of chips sits above the tree. Ticking or
+unticking one regrows the tree and clears the Try it result (press it again). Picking more than N
+gently shakes the row (not with reduced motion) and the tip says "Untick one first"; chips are never
+greyed out. This is the "useless feature" moment: tick a feature that does not separate the labels
+and the tree gets test items wrong.
+
+The default screen has 5 controls (name, "Which are true?", "Add it as", Max questions, Try it);
+with the form folded it has 4, and 5 with `studentPicksFeatures`.
 
 ### How the tree is built
 

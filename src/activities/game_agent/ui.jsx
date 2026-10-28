@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import ActivityLayout, { ActChip, ActSegmented, ActStepper } from '../ui/ActivityLayout.jsx'
 import GameAgentBuilderEditor from './GameAgentBuilderEditor.jsx'
 import {
   REWARD_MAX,
   REWARD_MIN,
   MAX_SCORES,
   SENSE_KEYS,
-  SENSE_LABELS,
   agentAfter,
   beginEpisode,
   bestMoveOf,
   cellsOfMoves,
-  countSituations,
   describeSituation,
   envOf,
   episodesOf,
@@ -53,11 +52,45 @@ const ARROWS = ['↑', '→', '↓', '←']
 const ARROW_NAMES = ['up', 'right', 'down', 'left']
 
 const REWARD_LABELS = {
-  treasure: ['Treasure', '💎'],
+  treasure: ['Find the treasure', '💎'],
   step: ['Each step', '👣'],
-  wall: ['Hit a wall', '🧱'],
+  wall: ['Bump a wall', '🧱'],
   pit: ['Fall in a pit', '🕳️'],
   coin: ['Pick up a coin', '🪙'],
+}
+
+// Sense chips: the child sees one compass per lesson, always called "Treasure compass".
+const SENSE_CHIP_LABELS = {
+  position: ['Where I am', '📍'],
+  walls: ['Walls next to me', '🧱'],
+  treasure_direction: ['Treasure compass', '🧭'],
+  treasure_direction_4: ['Treasure compass', '🧭'],
+  pit_near: ['Pit next to me', '🕳️'],
+  coin_direction: ['Coin compass', '🪙'],
+}
+
+const COMPASS_8 = ['→', '↗', '↑', '↖', '←', '↙', '↓', '↘']
+const COMPASS_4 = ['→', '↑', '←', '↓']
+
+// The arrow from one square towards another (null when they are the same square).
+function arrowTo(env, from, to, ways) {
+  if (to == null || to < 0 || from === to) return null
+  const dr = Math.floor(to / env.cols) - Math.floor(from / env.cols)
+  const dc = (to % env.cols) - (from % env.cols)
+  const angle = Math.atan2(-dr, dc)
+  const step = ways === 4 ? Math.PI / 2 : Math.PI / 4
+  const n = ways === 4 ? 4 : 8
+  const i = (((Math.round(angle / step) % n) + n) % n) | 0
+  return (ways === 4 ? COMPASS_4 : COMPASS_8)[i]
+}
+
+// Which sides of a square are walls or the edge (up, right, down, left).
+function blockedSides(env, pos) {
+  const r = Math.floor(pos / env.cols)
+  const c = pos % env.cols
+  const open = (rr, cc) =>
+    rr >= 0 && cc >= 0 && rr < env.rows && cc < env.cols && env.cells[rr * env.cols + cc] !== 'wall'
+  return [!open(r - 1, c), !open(r, c + 1), !open(r + 1, c), !open(r, c - 1)]
 }
 
 function reducedMotion() {
@@ -67,38 +100,30 @@ function reducedMotion() {
   )
 }
 
-function Stepper({ name, value, onChange, disabled, readOnly }) {
+function RewardRow({ name, value, onChange, disabled, readOnly }) {
   const [label, icon] = REWARD_LABELS[name]
-  const set = (n) => onChange(Math.max(REWARD_MIN, Math.min(REWARD_MAX, n)))
+  const text = value > 0 ? `+${value}` : `${value}`
   return (
-    <div className="act-ga-stepper" data-testid={`ga-reward-${name}`}>
-      <span className="act-ga-stepper__label">
+    <div className="act-ga-row" data-testid={`ga-reward-${name}`}>
+      <span className="act-ga-row__label">
         <span aria-hidden="true">{icon}</span> {label}
       </span>
-      {!readOnly && (
-        <button
-          type="button"
-          className="btn-ghost-outline act-btn"
-          aria-label={`Less ${label}`}
-          disabled={disabled || value <= REWARD_MIN}
-          onClick={() => set(value - 1)}
-        >
-          -
-        </button>
-      )}
-      <output className="act-ga-stepper__value" aria-label={`${label} reward`}>
-        {value > 0 ? `+${value}` : value}
-      </output>
-      {!readOnly && (
-        <button
-          type="button"
-          className="btn-ghost-outline act-btn"
-          aria-label={`More ${label}`}
-          disabled={disabled || value >= REWARD_MAX}
-          onClick={() => set(value + 1)}
-        >
-          +
-        </button>
+      {readOnly ? (
+        <output className="act-ga-row__value" aria-label={`${label} reward`}>
+          {text}
+        </output>
+      ) : (
+        <ActStepper
+          name={label}
+          value={value}
+          min={REWARD_MIN}
+          max={REWARD_MAX}
+          disabled={disabled}
+          lessLabel={`Less: ${label}`}
+          moreLabel={`More: ${label}`}
+          valueText={text}
+          onChange={(n) => onChange(Math.max(REWARD_MIN, Math.min(REWARD_MAX, n)))}
+        />
       )}
     </div>
   )
@@ -135,8 +160,13 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   // { kind: 'go', cells, upTo } or null.
   const [run, setRun] = useState(null)
   const [fast, setFast] = useState(false)
-  const [showBest, setShowBest] = useState(false)
-  const [eyeView, setEyeView] = useState(false)
+  // The view switch on the map: 'map' | 'learned' | 'senses'.
+  const [view, setView] = useState('map')
+  // The mystery map on show: { env, cells } after "Try a new map" (until "Back to my map").
+  const [mystery, setMystery] = useState(null)
+  // What the last press of Watch it try / Try a new map did; null after training; undefined means
+  // "work it out from the saved state" (a reload, or the tutor's view).
+  const [lastLocal, setLastLocal] = useState(undefined)
   const agentRef = useRef(null)
   const stopRef = useRef(false)
   const frameRef = useRef(null)
@@ -192,12 +222,6 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     })
   }
 
-  function forget() {
-    if (readOnly || running) return
-    agentRef.current = null
-    onChange?.((prev) => withRewards(task, normalizeGameAgentState(task, prev), state.rewards))
-  }
-
   function train() {
     if (readOnly || running || !onChange) return
     const agent = getAgent()
@@ -210,6 +234,8 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     let committed = startTrained
     let lastCommit = Date.now()
     stopRef.current = false
+    setMystery(null)
+    setLastLocal(null)
     setRun({ kind: 'train', trained: startTrained, scores, pos: env.start })
 
     const commit = (training) => {
@@ -270,6 +296,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     const result = greedyRun(env, state.rewards, getAgent())
     const finish = () => {
       onChange((prev) => withGoResult(normalizeGameAgentState(task, prev), result))
+      setLastLocal({ kind: 'go', reached: result.reached })
       setRun(null)
     }
     if (reducedMotion()) {
@@ -296,15 +323,28 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     if (readOnly || running || !onChange || state.trained === 0 || !testEnv) return
     const result = greedyRun(testEnv, state.rewards, getAgent(), { unseen: true })
     onChange((prev) => withTestResult(normalizeGameAgentState(task, prev), result))
+    setMystery({ env: testEnv, cells: result.cells })
+    setLastLocal({ kind: 'test', reached: result.reached })
+    setView('map')
   }
 
-  // What to draw: the robot, and the trail of the last Go!.
+  // What to draw: the robot, and the trail of the last Watch it try.
   const shown =
     run?.kind === 'train' ? { ...state, trained: run.trained, scores: run.scores } : state
+  const trained = state.trained > 0
+  const showMystery = !!mystery && !run && trained
+  const viewEnv = showMystery ? mystery.env : env
   const savedCells = state.moves ? cellsOfMoves(env, state.moves) : []
-  const trail = run?.kind === 'go' ? run.cells.slice(0, run.upTo + 1) : run ? [] : savedCells
-  const robotAt =
-    run?.kind === 'train'
+  const trail = showMystery
+    ? mystery.cells
+    : run?.kind === 'go'
+      ? run.cells.slice(0, run.upTo + 1)
+      : run
+        ? []
+        : savedCells
+  const robotAt = showMystery
+    ? mystery.cells[mystery.cells.length - 1]
+    : run?.kind === 'train'
       ? run.pos
       : run?.kind === 'go'
         ? run.cells[run.upTo]
@@ -323,37 +363,249 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   const hasTests = !!testMapFor(task, 0)
   const choosable = sensesChoosable(task)
   const maxSenses = maxSensesOf(task)
-  const situations = countSituations(env, state.senses)
+  const activeView = trained && !showMystery && (view !== 'senses' || choosable) ? view : 'map'
+  const showBest = activeView === 'learned'
+  const eyeView = activeView === 'senses'
   const showList = showBest && !state.senses.includes('position')
-  const seeing = describeSituation(stateKey(env, robotAt, state.senses, new Set()))
-  const lastGo = state.goes > 0 && !run
+  const seeing = describeSituation(stateKey(viewEnv, robotAt, state.senses, new Set()))
   // What it learned so far: while training, the live robot; otherwise the saved one (replayed).
   const learner = showBest ? (run?.kind === 'train' ? agentRef.current?.agent : getAgent()) : null
   const heard = showList && learner ? topSituations(learner, 5) : []
 
-  return (
-    <div className="act-panel" data-testid="game_agent-activity">
+  // What the last Watch it try / Try a new map did (null while there is nothing to show).
+  const derived =
+    state.goes > 0
+      ? { kind: 'go', reached: state.reached }
+      : state.tests > 0
+        ? { kind: 'test', reached: state.testReached }
+        : null
+  const last =
+    run || (state.goes === 0 && state.tests === 0)
+      ? null
+      : lastLocal === undefined
+        ? derived
+        : lastLocal
+  const lost = !!last && !last.reached
+
+  let result = null
+  if (last?.kind === 'go') {
+    result = last.reached ? (
+      <div className="act-result--good" data-testid="ga-result">
+        <span aria-hidden="true">💎</span> Found it in {state.moves.length} steps! Score{' '}
+        {state.goScore}
+      </div>
+    ) : (
+      <div className="act-result--bad" data-testid="ga-result">
+        <span aria-hidden="true">😵</span> Lost! It did not find the treasure. Score {state.goScore}
+      </div>
+    )
+  } else if (last?.kind === 'test') {
+    result = last.reached ? (
+      <div className="act-result--good" data-testid="ga-test-result">
+        <span aria-hidden="true">💎</span> Found it on the new map in {state.testSteps} steps! Score{' '}
+        {state.testScore}
+      </div>
+    ) : (
+      <div className="act-result--bad" data-testid="ga-test-result">
+        <span aria-hidden="true">😵</span> Lost on the new map!
+        {choosable ? ' Try giving it senses.' : ''} Score {state.testScore}
+      </div>
+    )
+  }
+
+  // One tip line (the child's screen only).
+  let tip = null
+  if (!readOnly) {
+    if (run?.kind === 'train') tip = 'The robot is practising. Press Pause to stop.'
+    else if (!trained) tip = 'Press Train and watch the robot practise.'
+    else if (!last) tip = 'Press Watch it try to see where the robot goes.'
+    else if (lost && !(last.kind === 'test' && choosable))
+      tip = hintFor(state).replace(/Go!/g, 'Watch it try')
+  }
+
+  // The one main button moves along: Train, Pause, Watch it try, Try a new map. When the robot
+  // got lost, Train more takes over as the main button.
+  let action = null
+  if (!readOnly) {
+    const busy = running
+    const trainBtn = {
+      label: 'Train',
+      icon: '▶',
+      onClick: train,
+      disabled: busy,
+      testId: 'ga-train',
+    }
+    const moreBtn = {
+      label: 'Train more',
+      icon: '▶',
+      onClick: train,
+      disabled: busy,
+      testId: 'ga-train-more',
+    }
+    const watchBtn = {
+      label: 'Watch it try',
+      icon: '👀',
+      onClick: go,
+      disabled: busy || !trained,
+      testId: 'ga-watch',
+    }
+    const newMapBtn = {
+      label: 'Try a new map',
+      icon: '🗺️',
+      onClick: goNew,
+      disabled: busy || !trained,
+      testId: 'ga-go-new',
+    }
+    if (run?.kind === 'train') {
+      action = { main: { label: 'Pause', icon: '⏸', onClick: stop, testId: 'ga-pause' } }
+    } else if (!trained) {
+      action = { main: trainBtn }
+    } else if (!last) {
+      action = { main: watchBtn, secondary: moreBtn }
+    } else if (lost) {
+      action = { main: moreBtn, secondary: last.kind === 'test' ? newMapBtn : watchBtn }
+    } else {
+      action = { main: hasTests ? newMapBtn : watchBtn, secondary: moreBtn }
+    }
+    if (showMystery) {
+      action = {
+        ...action,
+        link: { label: 'Back to my map', onClick: () => setMystery(null), testId: 'ga-back' },
+      }
+    }
+  }
+
+  // Sense drawings on the robot's square ("What it senses" view).
+  const compassWays = state.senses.includes('treasure_direction_4')
+    ? 4
+    : state.senses.includes('treasure_direction')
+      ? 8
+      : 0
+  function senseMarks() {
+    const marks = []
+    if (compassWays) {
+      const a = arrowTo(viewEnv, robotAt, viewEnv.treasure, compassWays)
+      if (a) marks.push(`💎${a}`)
+    }
+    if (state.senses.includes('coin_direction')) {
+      let best = null
+      let bestDist = Infinity
+      for (const coin of viewEnv.coins ?? []) {
+        if (trailSet.has(coin)) continue
+        const d =
+          Math.abs(Math.floor(coin / viewEnv.cols) - Math.floor(robotAt / viewEnv.cols)) +
+          Math.abs((coin % viewEnv.cols) - (robotAt % viewEnv.cols))
+        if (d < bestDist) {
+          bestDist = d
+          best = coin
+        }
+      }
+      const a = best == null ? null : arrowTo(viewEnv, robotAt, best, 8)
+      if (a) marks.push(`🪙${a}`)
+    }
+    if (state.senses.includes('pit_near')) {
+      const r = Math.floor(robotAt / viewEnv.cols)
+      const c = robotAt % viewEnv.cols
+      const near = [
+        [r - 1, c],
+        [r, c + 1],
+        [r + 1, c],
+        [r, c - 1],
+      ].some(
+        ([rr, cc]) =>
+          rr >= 0 &&
+          cc >= 0 &&
+          rr < viewEnv.rows &&
+          cc < viewEnv.cols &&
+          viewEnv.cells[rr * viewEnv.cols + cc] === 'pit'
+      )
+      if (near) marks.push('🕳️!')
+    }
+    return marks
+  }
+  const edges =
+    eyeView && state.senses.includes('walls')
+      ? blockedSides(viewEnv, robotAt)
+      : [false, false, false, false]
+  const marks = eyeView ? senseMarks() : []
+
+  const stageTop = readOnly ? null : (
+    <>
+      {trained && !showMystery && (
+        <ActSegmented
+          label="View"
+          testId="ga-view"
+          value={activeView}
+          onChange={setView}
+          options={[
+            { value: 'map', label: 'Map' },
+            { value: 'learned', label: 'What it learned' },
+            ...(choosable ? [{ value: 'senses', label: 'What it senses' }] : []),
+          ]}
+        />
+      )}
+      <div className="act-ga-speed">
+        <ActSegmented
+          label="Speed"
+          testId="ga-speed"
+          value={fast ? 'fast' : 'slow'}
+          onChange={(v) => setFast(v === 'fast')}
+          options={[
+            {
+              value: 'slow',
+              label: (
+                <>
+                  <span aria-hidden="true">🐢</span> Slow
+                </>
+              ),
+              ariaLabel: 'Slow',
+            },
+            {
+              value: 'fast',
+              label: (
+                <>
+                  <span aria-hidden="true">⚡</span> Fast
+                </>
+              ),
+              ariaLabel: 'Fast',
+            },
+          ]}
+        />
+      </div>
+    </>
+  )
+
+  const stage = (
+    <>
+      {showMystery && (
+        <p className="act-ga-ribbon" data-testid="ga-mystery">
+          <span aria-hidden="true">🗺️</span> Mystery map
+        </p>
+      )}
       <div
         className="act-ga-grid"
-        style={{ gridTemplateColumns: `repeat(${env.cols}, 1fr)`, maxWidth: `${env.cols * 52}px` }}
+        style={{
+          gridTemplateColumns: `repeat(${viewEnv.cols}, 1fr)`,
+          maxWidth: `${viewEnv.cols * 80}px`,
+        }}
         role={showBest ? 'group' : 'img'}
-        aria-label={`Grid ${env.cols} by ${env.rows}. The robot is at row ${Math.floor(robotAt / env.cols) + 1}, column ${(robotAt % env.cols) + 1}.`}
+        aria-label={`Grid ${viewEnv.cols} by ${viewEnv.rows}. The robot is at row ${Math.floor(robotAt / viewEnv.cols) + 1}, column ${(robotAt % viewEnv.cols) + 1}.`}
         data-testid="ga-grid"
       >
-        {env.cells.map((kind, i) => {
+        {viewEnv.cells.map((kind, i) => {
           const isRobot = i === robotAt
           const cls = [
             'act-ga-cell',
             kind === 'wall' ? 'act-ga-cell--wall' : '',
             eyeView && !isRobot ? 'act-ga-cell--dark' : '',
-            trailSet.has(i) && !isRobot && i !== env.treasure ? 'act-ga-cell--trail' : '',
+            trailSet.has(i) && !isRobot && i !== viewEnv.treasure ? 'act-ga-cell--trail' : '',
           ]
-          const onTreasure = isRobot && i === env.treasure
+          const onTreasure = isRobot && i === viewEnv.treasure
           const face = isRobot
             ? '🤖'
             : eyeView
               ? ''
-              : i === env.treasure
+              : i === viewEnv.treasure
                 ? '💎'
                 : kind === 'wall'
                   ? '🧱'
@@ -364,10 +616,10 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
                       : ''
           const best =
             learner &&
-            !eyeView &&
+            !showMystery &&
             state.senses.includes('position') &&
             kind !== 'wall' &&
-            i !== env.treasure
+            i !== viewEnv.treasure
               ? bestMoveOf(learner, i)
               : -1
           return (
@@ -392,6 +644,20 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
                   {ARROWS[best]}
                 </span>
               )}
+              {isRobot &&
+                eyeView &&
+                edges.map((on, side) =>
+                  on ? (
+                    <span
+                      key={side}
+                      className={`act-ga-edge act-ga-edge--${ARROW_NAMES[side]}`}
+                      aria-hidden="true"
+                    />
+                  ) : null
+                )}
+              {isRobot && eyeView && marks.length > 0 && (
+                <span className="act-ga-cell__marks">{marks.join(' ')}</span>
+              )}
             </span>
           )
         })}
@@ -402,124 +668,6 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           The robot sees: {seeing || 'nothing'}.
         </p>
       )}
-
-      {choosable && (
-        <div className="act-ga-senses" role="group" aria-label="Senses" data-testid="ga-senses">
-          <p className="act-hint">
-            What can your robot sense? (up to {maxSenses}). Changing a sense makes it forget.
-          </p>
-          {SENSE_KEYS.map((sense) => {
-            const on = state.senses.includes(sense)
-            const [label, icon] = SENSE_LABELS[sense]
-            return (
-              <button
-                key={sense}
-                type="button"
-                className="btn-ghost-outline act-btn act-ga-sense"
-                aria-pressed={on}
-                disabled={readOnly || running || (!on && state.senses.length >= maxSenses)}
-                onClick={() => toggleSense(sense)}
-                data-testid={`ga-sense-${sense}`}
-              >
-                <span aria-hidden="true">{icon}</span> {label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-      <p className="act-ga-stats" data-testid="ga-situations">
-        Your robot has <strong>{situations}</strong> situation{situations === 1 ? '' : 's'} to
-        learn.
-      </p>
-
-      <div className="act-ga-rewards" aria-label="Rewards">
-        {names.map((name) => (
-          <Stepper
-            key={name}
-            name={name}
-            value={state.rewards[name]}
-            readOnly={readOnly}
-            disabled={running}
-            onChange={(v) => setReward(name, v)}
-          />
-        ))}
-      </div>
-      {!readOnly && (
-        <p className="act-hint">
-          Change a reward and the robot forgets everything and starts again.
-        </p>
-      )}
-
-      {!readOnly && (
-        <div className="act-row">
-          {run?.kind === 'train' ? (
-            <button type="button" className="btn-primary act-btn" onClick={stop}>
-              Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              disabled={running}
-              onClick={train}
-            >
-              Train ({episodesOf(task)} tries)
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn-primary act-btn"
-            disabled={running || state.trained === 0}
-            onClick={go}
-          >
-            Go!
-          </button>
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            aria-pressed={fast}
-            onClick={() => setFast((f) => !f)}
-          >
-            Fast: {fast ? 'on' : 'off'}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            disabled={running || state.trained === 0}
-            onClick={forget}
-          >
-            Start again
-          </button>
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            aria-pressed={showBest}
-            onClick={() => setShowBest((v) => !v)}
-          >
-            Show what it learned
-          </button>
-          <button
-            type="button"
-            className="btn-ghost-outline act-btn"
-            aria-pressed={eyeView}
-            onClick={() => setEyeView((v) => !v)}
-          >
-            Robot’s-eye view
-          </button>
-          {hasTests && (
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              disabled={running || state.trained === 0}
-              onClick={goNew}
-              data-testid="ga-go-new"
-            >
-              Go on a new map
-            </button>
-          )}
-        </div>
-      )}
-
       {heard.length > 0 && (
         <ul className="act-ga-learned" data-testid="ga-learned">
           {heard.map((row) => (
@@ -530,36 +678,8 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
           ))}
         </ul>
       )}
-      {showList && heard.length === 0 && state.trained > 0 && (
+      {showList && heard.length === 0 && trained && (
         <p className="act-hint">It has no favourite moves yet.</p>
-      )}
-
-      <p className="act-ga-stats" role="status" data-testid="ga-stats">
-        Tries: <strong>{shown.trained}</strong>
-        {state.training && readOnly ? ' (training now)' : ''}
-        {' · '}Best score:{' '}
-        <strong>
-          {state.bestScore == null ? '-' : `${state.bestScore} (${state.bestSteps} steps)`}
-        </strong>
-      </p>
-      {showLearningOf(task) && <Curve scores={shown.scores} />}
-
-      {lastGo && (
-        <p className="act-hint" data-testid="ga-result">
-          {state.reached
-            ? `Go! found the treasure in ${state.moves.length} steps. Score ${state.goScore}.`
-            : `Go! missed the treasure. Score ${state.goScore}. ${hintFor(state)}`}
-        </p>
-      )}
-      {state.tests > 0 && !run && (
-        <p className="act-hint" data-testid="ga-test-result">
-          {state.testReached
-            ? `On the new map the robot found the treasure in ${state.testSteps} steps. Score ${state.testScore}.`
-            : `On the new map the robot got lost. Score ${state.testScore}. ${hintFor(state)}`}
-        </p>
-      )}
-      {!lastGo && !run && state.trained === 0 && !readOnly && (
-        <p className="act-hint">Press Train and watch the robot practise.</p>
       )}
       {graded.passed && (
         <ActivityCorrect>
@@ -568,6 +688,109 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
             : 'Your robot found the treasure'}
         </ActivityCorrect>
       )}
+    </>
+  )
+
+  const controls = (
+    <>
+      <section className="act-ga-card" aria-label="Rewards">
+        <h3 className="act-ga-card__title">What does it get points for?</h3>
+        <div className="act-ga-rewards">
+          {names.map((name) => (
+            <RewardRow
+              key={name}
+              name={name}
+              value={state.rewards[name]}
+              readOnly={readOnly}
+              disabled={running}
+              onChange={(v) => setReward(name, v)}
+            />
+          ))}
+        </div>
+        {!readOnly && <p className="act-ga-note">Changing anything makes it forget.</p>}
+      </section>
+      {readOnly && (
+        <p className="act-ga-stats" role="status" data-testid="ga-stats">
+          Tries: <strong>{shown.trained}</strong>
+          {state.training ? ' (training now)' : ''}
+          {' · '}Best score:{' '}
+          <strong>
+            {state.bestScore == null ? '-' : `${state.bestScore} (${state.bestSteps} steps)`}
+          </strong>
+        </p>
+      )}
+      {showLearningOf(task) && shown.scores.length > 0 && (
+        <section className="act-ga-card" aria-label="Score each try">
+          <div className="act-ga-card__head">
+            <h3 className="act-ga-card__title">Score each try</h3>
+            {state.bestScore != null && (
+              <span className="act-ga-note" data-testid="ga-best">
+                best {state.bestScore}
+              </span>
+            )}
+          </div>
+          <Curve scores={shown.scores} />
+          <p className="act-ga-note">Taller bar = better try</p>
+        </section>
+      )}
+    </>
+  )
+
+  const compassKey =
+    state.senses.includes('treasure_direction_4') ||
+    (task?.senses?.includes?.('treasure_direction_4') &&
+      !task.senses.includes('treasure_direction'))
+      ? 'treasure_direction_4'
+      : 'treasure_direction'
+  const chipKeys = [
+    'position',
+    'walls',
+    compassKey,
+    ...(hasPit(env) || state.senses.includes('pit_near') ? ['pit_near'] : []),
+    ...(hasCoin(env) || state.senses.includes('coin_direction') ? ['coin_direction'] : []),
+  ]
+  const senseFold = {
+    id: 'senses',
+    title: 'What can it sense?',
+    summary: state.senses
+      .map((k) => `${SENSE_CHIP_LABELS[k][1]} ${SENSE_CHIP_LABELS[k][0]}`)
+      .join(', '),
+    revealed: choosable && !readOnly,
+    children: (
+      <>
+        <p className="act-ga-note">Pick up to {maxSenses}. Changing one makes it forget.</p>
+        <div className="act-ga-chips" role="group" aria-label="Senses" data-act-control="group">
+          {chipKeys.map((sense) => {
+            const on = state.senses.includes(sense)
+            const [label, icon] = SENSE_CHIP_LABELS[sense]
+            return (
+              <ActChip
+                key={sense}
+                pressed={on}
+                disabled={readOnly || running || (!on && state.senses.length >= maxSenses)}
+                onClick={() => toggleSense(sense)}
+                data-testid={`ga-sense-${sense}`}
+              >
+                <span aria-hidden="true">{icon}</span> {label}
+              </ActChip>
+            )
+          })}
+        </div>
+      </>
+    ),
+  }
+
+  return (
+    <div className="act-panel act-ga" data-testid="game_agent-activity">
+      <ActivityLayout
+        stageTop={stageTop}
+        stage={stage}
+        result={result}
+        action={action}
+        tip={tip}
+        controls={controls}
+        folds={[senseFold]}
+      />
     </div>
   )
 }

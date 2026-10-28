@@ -111,14 +111,13 @@ describe.skipIf(!getActivityDefinition('learning_tree'))(
       const add = async (name, feature, label) => {
         await user.type(await screen.findByLabelText('Item name'), name)
         await user.click(screen.getByRole('button', { name: feature }))
-        await user.click(screen.getByRole('radio', { name: label }))
-        await user.click(screen.getByRole('button', { name: 'Add example' }))
+        await user.click(screen.getByRole('button', { name: `+ ${label}` }))
       }
       await add('cat', 'has fur?', 'pet')
       await add('owl', 'can fly?', 'wild')
       expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Try it on new things' }))
+      await user.click(screen.getByRole('button', { name: /Try it on new animals/ }))
       expect(await screen.findByText('Your tree got 2 of 2 right')).toBeInTheDocument()
       await waitFor(() =>
         expect(mocks.session.writeStudentRun).toHaveBeenCalledWith(

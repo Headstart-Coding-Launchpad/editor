@@ -4,11 +4,11 @@ A Game agent task is an **activity**: a bounded exercise that can sit anywhere i
 student sees a small grid world with a robot (`R`) and a treasure (`T`). They set the **rewards**
 (how much the treasure, each step and bumping a wall are worth), press **Train**, and the robot
 practises over many tries, learning by itself which move is worth most from each square
-(reinforcement learning, Q-learning). **Go!** then runs what it learned once and shows the route
+(reinforcement learning, Q-learning). **Watch it try** then runs what it learned once and shows the route
 and the score. Set silly rewards and it does something daft; fix them and it finds the way.
 
 There is no Run button, no code, no sharing and no carry-through. Progress is saved on the device,
-mirrored to the teacher's student card, and marked as you go: the task passes when a Go! reaches
+mirrored to the teacher's student card, and marked as you go: the task passes when a Watch it try reaches
 the treasure. Data stays on the device; there is no AI model, only a small table the robot fills in.
 
 Write `type: game_agent` on the task (the YAML shorthand for `taskType: activity` +
@@ -25,7 +25,7 @@ description: A short lesson using the Game agent activity.
 tasks:
   - title: Teach the robot
     type: game_agent
-    description: Set the rewards, press Train, then press Go! to see if your robot finds the treasure.
+    description: Set the rewards, press Train, then press Watch it try to see if your robot finds the treasure.
     map:
       - "#####"
       - "#R..#"
@@ -64,47 +64,77 @@ tasks:
   random number generator makes it deterministic: the same rewards and the same number of tries
   always give the same robot, so a saved state only needs the rewards and the try count.
 - **Changing a reward makes the robot forget everything** (and clears the best score, since scores
-  made with other rewards cannot be compared). **Start again** forgets without changing rewards.
+  made with other rewards cannot be compared). There is no Start again on the child's screen; the
+  tutor clears a robot with **Stage -> Start again** (see Teacher tools).
 - Training is paced so it can be watched: a few moves per animation frame, with the robot drawn on
-  the grid. **Fast** does a big batch of moves per frame and skips the drawing. The work per frame
-  is capped, so it stays smooth on a low-end Chromebook.
-- **Go!** runs the learned moves greedily (no exploring) once from `R`, walks the route on the grid
-  and shows its score. If the robot ends on the treasure, a small 💎 stays in the cell corner.
-- **Show what it learned** (off by default) draws a small arrow in each open square for the move
-  the robot currently rates best there (no arrow where it has no opinion yet, or on walls and the
-  treasure). It updates live while training. Student-side only; the tutor view is unchanged.
+  the map. The **Fast** side of the Slow / Fast switch does a big batch of moves per frame and skips
+  the drawing. The work per frame is capped, so it stays smooth on a low-end Chromebook.
+- **Watch it try** runs the learned moves greedily (no exploring) once from `R`, walks the route on
+  the map and shows the result on the map's bottom edge. If the robot ends on the treasure, a small
+  💎 stays in the cell corner.
+- **What it learned** (a view on the map, after the first Train) draws a small arrow in each open
+  square for the move the robot currently rates best there (no arrow where it has no opinion yet, or
+  on walls and the treasure). It updates live while training. Student-side only.
+
+## The screen
+
+Built on the shared `ActivityLayout` (see the Layout briefs): the map on the left, one column on
+the right, 5 controls on the default screen and at most 7 after the first Train.
+
+- **Map** (left): the grid, with the result banner on its bottom edge (green "Found it in 5 steps!
+  Score 10", red "Lost! ..."). On the map's top edge: the **Slow / Fast** switch (always) and, after
+  the first Train, the view switch **Map | What it learned | What it senses** ("What it senses" only
+  when the task sets `senses` or `maxSenses`).
+- **Right column**, top to bottom: the one **main button** (Train, then Pause while training, then
+  Watch it try, then Try a new map when `testMaps` is set; if the robot got lost, **Train more**
+  becomes the main button and Watch it try the outline one); **Train more** as the outline button
+  after training; one yellow tip line; the **What does it get points for?** card (Find the
+  treasure, Each step, Bump a wall, plus Fall in a pit / Pick up a coin only when the map has `X` /
+  `C`, with the caption "Changing anything makes it forget"); the **What can it sense?** fold
+  (closed by default; only when the task sets `senses` or `maxSenses`; its header shows the senses
+  that are on); and the **Score each try** chart (only when `showLearning` is on, display only).
+- Words kept off the child's screen: "50 tries", "situations to learn", "8 ways" / "4 ways", "Go!",
+  "Fast: on" and "Robot's-eye view". The tutor card keeps the tries count.
+- Below 900px of panel width the layout stacks: map, main button, tip, rewards, fold, chart.
 
 ## Senses
 
 The robot's table is keyed by what its senses report, not by the square. With only `position` it
 memorises one map. With `walls` + `treasure_direction` it learns rules ("wall up and treasure to the
 right, go right") that still work on a map it has never seen. More senses means more situations to
-learn, so slower learning ("too many senses make slow learners"). The student sees **Your robot has N
-situations to learn** (the number of different situations the chosen senses can report on this map).
+learn, so slower learning ("too many senses make slow learners"). The tutor's card and the Builder keep the number of situations; the child's screen does not show it.
 
-- Sense buttons are at least 44px high and toggle on and off (at least one stays on, at most
-  `maxSenses`). **Changing a sense makes the robot forget everything**, the same as changing a reward.
-- **Robot's-eye view** greys the grid and writes what the robot's senses report from where it
-  stands ("walls: up, left; treasure is down and right").
-- **Show what it learned**: arrows per square when `position` is a sense, otherwise a short list
+- The senses are picture chips in the **What can it sense?** fold: Where I am, Walls next to me and
+  one **Treasure compass** per lesson (8-way, or 4-way when the task's `senses` lists
+  `treasure_direction_4` and not `treasure_direction`), plus Pit next to me / Coin compass when the
+  map has `X` / `C`. They toggle on and off (at least one stays on, at most `maxSenses`) and are at
+  least 44px high. **Changing a sense makes the robot forget everything**, the same as changing a
+  reward.
+- **What it senses** (a view on the map) dims the map and draws the robot's own square bright with
+  what it senses: red edges where it feels a wall, an arrow towards the treasure (or the nearest
+  coin), and a pit warning. A line under the map says it in words ("walls: up, left; treasure is
+  down and right").
+- **What it learned**: arrows per square when `position` is a sense, otherwise a short list
   "When it sees ..., it goes ..." of the situations it meets most.
 
 ## The mystery map
 
-When `testMaps` is set, **Go on a new map** appears. It runs the trained robot once on one of the
+When `testMaps` is set, **Try a new map** joins the main-button chain (after a Watch it try that
+found the treasure). The map swaps in place with a "Mystery map" ribbon and a **Back to my map**
+link. Under the hood it It runs the trained robot once on one of the
 sealed maps (they take turns), with no exploring and no training. In a situation the robot never met, it
 does what it learned for the closest situation it knows (a compass point next door counts as half
 alike), and it won't walk into the same wall twice from one square. Knowing nothing like it, it
 guesses. A square number (`position`) means nothing on another map, so a robot that only knows its
 square gets lost, while `walls` plus `treasure_direction` usually finds the way first time. The run
 stops after 120 moves. The task passes (no Check button) when
-that run reaches the treasure; **Go!** on the training map no longer decides the pass. Without
-`testMaps` the old rule applies (a Go! reaches the treasure).
+that run reaches the treasure; **Watch it try** on the training map no longer decides the pass. Without
+`testMaps` the old rule applies (a Watch it try reaches the treasure).
 
 ## Marking and hints
 
-- The task passes (no Check button) when a Go! reaches the treasure within the step limit.
-- A missed Go! shows a plain-words hint that points at the mistake: treasure worth nothing, steps
+- The task passes (no Check button) when a Watch it try (Go! in the saved data) reaches the treasure within the step limit.
+- A lost run shows a plain-words tip that points at the mistake: treasure worth nothing, steps
   that earn a bonus (so it wanders), or "train it some more".
 
 ## Teacher tools
@@ -117,10 +147,10 @@ that run reaches the treasure; **Go!** on the training map no longer decides the
 - No class ranking screen exists. Activities have no class-wide tutor view hook, only per-student
   cards, so the race is ranked by reading the card text. A proper ranking screen needs a class-level
   activity summary hook (a ranked list across `perStudent` states, live, on the tutor's view).
-- The student modal shows the grid with the last Go! route, the rewards, the tries, the best score
-  and the learning curve, live while the student trains (the count updates about every 2 seconds
+- The student modal shows the grid with the last route, the rewards (read-only), the tries, the best
+  score and the learning curve (no switches or fold), live while the student trains (the count updates about every 2 seconds
   while watched).
-- Teachers can award badges, use **Stage -> Start again** to clear the robot, and **Complete (show
+- Teachers can award badges, use **Stage -> Start again** to clear the robot (the child cannot do this any more), and **Complete (show
   answers)** to fill in a trained robot. There is no Edit answers.
 - Reports show `itemProgress` (trained, then found the treasure), the tries trained, the best score
   and whether the last Go! reached the treasure; the class summary adds how many trained, how many

@@ -4871,15 +4871,76 @@ label.te-backdrop-tag,
   opacity: 0.6;
 }
 
-.act-ga-senses {
+/* The sense chips inside the fold. */
+.act-ga-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
+  gap: 8px;
 }
 
-.act-ga-sense {
-  min-height: 44px;
+/* Speed switch sits at the right end of the map's top edge. */
+.act-ga-speed {
+  margin-left: auto;
+}
+
+.act-ga-ribbon {
+  align-self: flex-start;
+  margin: 0 0 6px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--colour-primary-dark, #4c1d95);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  width: fit-content;
+}
+
+/* "What it senses": the red edges of the robot's square where it feels a wall, and its badges. */
+.act-ga-edge {
+  position: absolute;
+  background: #dc2626;
+  pointer-events: none;
+}
+
+.act-ga-edge--up,
+.act-ga-edge--down {
+  left: 0;
+  right: 0;
+  height: 5px;
+}
+
+.act-ga-edge--up {
+  top: 0;
+}
+
+.act-ga-edge--down {
+  bottom: 0;
+}
+
+.act-ga-edge--left,
+.act-ga-edge--right {
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+
+.act-ga-edge--left {
+  left: 0;
+}
+
+.act-ga-edge--right {
+  right: 0;
+}
+
+.act-ga-cell__marks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font-size: 0.7em;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .act-ga-learned {
@@ -4902,20 +4963,49 @@ label.te-backdrop-tag,
   gap: 6px;
 }
 
-.act-ga-stepper {
+.act-ga-card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+.act-ga-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.act-ga-stepper__label {
-  min-width: 9em;
+.act-ga-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.act-ga-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-text-muted, #4b5563);
+}
+
+.act-ga-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.act-ga-row__label {
   font-weight: 600;
 }
 
-.act-ga-stepper__value {
+.act-ga-row__value {
   min-width: 3em;
-  text-align: center;
+  text-align: right;
   font-weight: 700;
   font-size: 1.1rem;
 }
@@ -4925,7 +5015,7 @@ label.te-backdrop-tag,
   align-items: flex-end;
   gap: 2px;
   height: 56px;
-  width: min(100%, 360px);
+  width: 100%;
   padding: 4px;
   background: var(--ui-surface-soft);
   border: 1px solid var(--ui-border);
@@ -8448,32 +8538,86 @@ label.te-backdrop-tag,
 
 /* Learning Tree activity: nested boxes, no animation. */
 .act-lt-form {
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  padding: 12px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.act-lt-toggle[aria-pressed='true'] {
-  background: var(--colour-success-bg);
-  border-color: var(--colour-success-text);
+.act-lt-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
-.act-lt-label[aria-checked='true'] {
+.act-lt-card {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  padding: 10px 12px;
+  background: var(--ui-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-lt-formrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.act-lt-formlabel {
+  font-weight: 600;
+  min-width: 96px;
+}
+
+.act-lt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The label buttons add the animal, so they wear the label colours (a filled accent box is
+   reserved for the main button). */
+.act-lt-add {
+  min-height: 44px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--ui-border);
+  font: inherit;
+  font-weight: 700;
+  color: var(--colour-ink-strong, #111827);
+  cursor: pointer;
+}
+
+.act-lt-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.act-lt-add:focus-visible,
+.act-lt-remove:focus-visible,
+.act-lt-result:focus-visible {
   outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
 }
 
 .act-lt-heading {
   font-size: 1.05rem;
-  margin: 0 0 6px;
+  margin: 0;
 }
 
 .act-lt-empty,
 .act-lt-count-text {
   color: var(--colour-text-muted, #64748b);
   font-size: 0.95rem;
+  margin: 0;
 }
 
 .act-lt-list {
@@ -8481,27 +8625,126 @@ label.te-backdrop-tag,
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .act-lt-chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: var(--ui-radius-sm);
+  gap: 6px;
+  padding: 2px 4px 2px 12px;
+  border-radius: 999px;
   border: 1px solid var(--ui-border);
 }
 
+.act-lt-chip__feat {
+  font-size: 0.85rem;
+}
+
 .act-lt-remove {
-  padding: 4px 10px;
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.act-lt-picks,
+.act-lt-depthrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.act-lt-picks__label,
+.act-lt-depthrow__label {
+  font-size: 0.9rem;
+  color: var(--colour-text-muted, #64748b);
+}
+
+.act-lt-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.act-lt-results {
+  border: 2px dashed var(--ui-border);
+  border-radius: var(--ui-radius);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-lt-score {
+  margin: 0;
+  font-weight: 700;
+  color: var(--colour-success-text);
+}
+
+.act-lt-resultlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.act-lt-result {
+  min-height: 44px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--ui-border);
+  background: var(--ui-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.act-lt-result--miss {
+  border-color: #dc2626;
+  color: #991b1b;
+}
+
+.act-lt-result[aria-pressed='true'] {
+  border-color: var(--colour-primary);
+  box-shadow: 0 0 0 2px var(--colour-primary);
+  font-weight: 700;
+}
+
+/* Picking more features than the lesson allows: a gentle shake (and the tip says why). */
+@media (prefers-reduced-motion: no-preference) {
+  .act-lt-shake {
+    animation: act-lt-shake 0.35s ease-in-out;
+  }
+}
+@keyframes act-lt-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .act-lt-scroll {
   overflow-x: auto;
   padding: 8px 0;
+  display: flex;
+  justify-content: safe center;
 }
 
 .act-lt-node {
@@ -8602,17 +8845,6 @@ label.te-backdrop-tag,
 .act-lt-branch.act-lt-on {
   color: var(--colour-primary);
   text-decoration: underline;
-}
-
-.act-lt-result[aria-pressed='true'] {
-  border-color: var(--colour-primary);
-  background: var(--colour-primary);
-  color: #fff;
-  box-shadow: 0 0 0 2px var(--colour-primary);
-}
-
-.act-lt-route {
-  font-weight: 600;
 }
 
 .act-lt-count {

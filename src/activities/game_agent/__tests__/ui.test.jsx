@@ -1,9 +1,10 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GameAgentStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { solutionFor } from '../game_agent.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
+import { countControls } from '../../../test/countControls.js'
 
 // UI tests for the Game agent StudentView with local state (src/test/activityUiHarness.jsx).
 // Timers are faked so the paced Train and Go! animations can be stepped. jsdom can't prove
@@ -46,40 +47,56 @@ describe('Game agent UI', () => {
   it('shows the grid, the three rewards (no pit) and has no Check button', () => {
     renderView()
     expect(screen.getByTestId('ga-grid').children).toHaveLength(20)
-    expect(screen.getByLabelText('Treasure reward')).toHaveTextContent('+10')
-    expect(screen.getByLabelText('Each step reward')).toHaveTextContent('-1')
-    expect(screen.getByLabelText('Hit a wall reward')).toHaveTextContent('-5')
-    expect(screen.queryByLabelText('Fall in a pit reward')).not.toBeInTheDocument()
+    expect(screen.getByText('What does it get points for?')).toBeInTheDocument()
+    expect(screen.getByTestId('ga-reward-treasure')).toHaveTextContent(/Find the treasure.*\+10/)
+    expect(screen.getByTestId('ga-reward-step')).toHaveTextContent(/Each step.*-1/)
+    expect(screen.getByTestId('ga-reward-wall')).toHaveTextContent(/Bump a wall.*-5/)
+    expect(screen.queryByTestId('ga-reward-pit')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Go!' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Train$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Watch it try/ })).not.toBeInTheDocument()
+    // No tries count, situations or "ways" on the child's screen, and no Start again.
+    expect(screen.queryByText(/50 tries|situation|ways/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Start again/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps the default screen to 5 controls and 7 after training', async () => {
+    const { container } = renderView()
+    // 3 reward steppers, Train, Slow/Fast switch.
+    expect(countControls(container)).toBeLessThanOrEqual(5)
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
+    await advance(30000)
+    // Adds the view switch and Train more; the main button is now Watch it try.
+    expect(screen.getByRole('button', { name: /Watch it try/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Train more/ })).toBeInTheDocument()
+    expect(countControls(container)).toBeLessThanOrEqual(7)
   })
 
   it('steps a reward up and down within -20..20 and forgets the learning', async () => {
     const { state } = renderView({ initialState: { ...solutionFor(TASK) } })
-    fireEvent.click(screen.getByRole('button', { name: 'More Treasure' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More: Find the treasure' }))
     expect(state().rewards.treasure).toBe(11)
     expect(state()).toMatchObject({ trained: 0, reached: false, bestScore: null })
     for (let i = 0; i < 30; i++)
-      fireEvent.click(screen.getByRole('button', { name: 'More Each step' }))
+      fireEvent.click(screen.getByRole('button', { name: 'More: Each step' }))
     expect(state().rewards.step).toBe(20)
-    expect(screen.getByRole('button', { name: 'More Each step' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'More: Each step' })).toBeDisabled()
     for (let i = 0; i < 45; i++)
-      fireEvent.click(screen.getByRole('button', { name: 'Less Each step' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Less: Each step' }))
     expect(state().rewards.step).toBe(-20)
   })
 
   it('trains the set number of tries, then Go! finds the treasure and passes', async () => {
     const { state } = renderView()
-    fireEvent.click(screen.getByRole('button', { name: 'Train (50 tries)' }))
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
     expect(state().training).toBe(true)
-    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Pause/ })).toBeInTheDocument()
     await advance(30000)
     expect(state()).toMatchObject({ trained: 50, training: false })
     expect(state().scores).toHaveLength(40)
     expect(screen.getByTestId('ga-curve')).toBeInTheDocument()
-    expect(screen.getByTestId('ga-stats')).toHaveTextContent('Tries: 50')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go!' }))
+    fireEvent.click(screen.getByRole('button', { name: /Watch it try/ }))
     expect(state().goes).toBe(0) // the robot is still walking
     await advance(3000)
     expect(state()).toMatchObject({
@@ -89,24 +106,24 @@ describe('Game agent UI', () => {
       bestScore: 8,
       bestSteps: 3,
     })
-    expect(screen.getByTestId('ga-result')).toHaveTextContent('found the treasure in 3 steps')
+    expect(screen.getByTestId('ga-result')).toHaveTextContent('Found it in 3 steps')
     expect(definition.grade(TASK, state()).passed).toBe(true)
     expect(screen.getByText('Your robot found the treasure')).toBeInTheDocument()
   })
 
   it('Fast trains in a few frames and Stop keeps what has been learned', async () => {
     const { state } = renderView()
-    fireEvent.click(screen.getByRole('button', { name: 'Fast: off' }))
-    expect(screen.getByRole('button', { name: 'Fast: on' })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(screen.getByRole('button', { name: 'Train (50 tries)' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Fast' }))
+    expect(screen.getByRole('radio', { name: 'Fast' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
     await advance(100)
     expect(state().trained).toBe(50)
 
-    // Slow: stop after a moment.
-    fireEvent.click(screen.getByRole('button', { name: 'Fast: on' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Train (50 tries)' }))
+    // Slow: pause after a moment.
+    fireEvent.click(screen.getByRole('radio', { name: 'Slow' }))
+    fireEvent.click(screen.getByRole('button', { name: /Train more/ }))
     await advance(200)
-    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    fireEvent.click(screen.getByRole('button', { name: /Pause/ }))
     await advance(100)
     expect(state().training).toBe(false)
     expect(state().trained).toBeGreaterThan(50)
@@ -120,22 +137,29 @@ describe('Game agent UI', () => {
         rewards: { treasure: 0, step: 5, wall: -5, pit: -10 },
       },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Fast: off' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Train (50 tries)' }))
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
     await advance(40000)
-    fireEvent.click(screen.getByRole('button', { name: 'Go!' }))
+    fireEvent.click(screen.getByRole('button', { name: /Watch it try/ }))
     await advance(10000)
     expect(state()).toMatchObject({ goes: 1, reached: false })
-    expect(screen.getByTestId('ga-result')).toHaveTextContent('missed the treasure')
-    expect(screen.getByTestId('ga-result')).toHaveTextContent('worth nothing')
+    expect(screen.getByTestId('ga-result')).toHaveTextContent('Lost!')
+    expect(document.body).toHaveTextContent('worth nothing')
     expect(definition.grade(TASK, state()).passed).toBe(false)
   })
 
-  it('Start again forgets the learning but keeps the rewards', () => {
-    const { state } = renderView({ initialState: solutionFor(TASK) })
-    fireEvent.click(screen.getByRole('button', { name: 'Start again' }))
-    expect(state()).toMatchObject({ trained: 0, reached: false })
-    expect(state().rewards).toEqual({ treasure: 10, step: -1, wall: -5, pit: -10 })
+  it('a lost robot makes Train more the main button and Watch it try the outline one', async () => {
+    renderView({
+      initialState: {
+        ...definition.initialState(TASK),
+        rewards: { treasure: 0, step: 5, wall: -5, pit: -10 },
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
+    await advance(40000)
+    fireEvent.click(screen.getByRole('button', { name: /Watch it try/ }))
+    await advance(10000)
+    expect(screen.getByTestId('ga-train-more')).toHaveClass('act-btn--main')
+    expect(screen.getByTestId('ga-watch')).toHaveClass('act-btn--secondary')
   })
 
   it('clears a stale training flag left by a reload', () => {
@@ -149,7 +173,7 @@ describe('Game agent UI', () => {
     renderView({
       task: { ...TASK, map: ['#####', '#R.X#', '#.#T#', '#...#'] },
     })
-    expect(screen.getByLabelText('Fall in a pit reward')).toHaveTextContent('-10')
+    expect(screen.getByTestId('ga-reward-pit')).toHaveTextContent(/Fall in a pit.*-10/)
   })
 
   it('hides the learning curve when showLearning is false', () => {
@@ -166,9 +190,10 @@ describe('Game agent UI', () => {
       initialState: { ...solutionFor(TASK), training: true },
     })
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('ga-reward-treasure')).getByRole('status')).toBeTruthy()
     expect(screen.getByTestId('ga-stats')).toHaveTextContent('(training now)')
     expect(screen.getByTestId('ga-stats')).toHaveTextContent('Best score: 8 (3 steps)')
-    expect(screen.getByTestId('ga-result')).toHaveTextContent('found the treasure')
+    expect(screen.getByTestId('ga-result')).toHaveTextContent('Found it in')
   })
 
   it('keeps the treasure visible when the robot stands on it', () => {
@@ -180,10 +205,10 @@ describe('Game agent UI', () => {
     expect(cell).toContainElement(screen.getByTestId('ga-gem'))
   })
 
-  it('Show what it learned draws best-move arrows in open squares only', () => {
+  it('What it learned draws best-move arrows in open squares only', () => {
     renderView({ initialState: solutionFor(TASK) })
     expect(screen.queryByRole('img', { name: /best move/ })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Show what it learned' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'What it learned' }))
     const arrows = screen.getAllByRole('img', { name: /^best move: (up|right|down|left)$/ })
     expect(arrows.length).toBeGreaterThan(0)
     const grid = screen.getByTestId('ga-grid')
@@ -191,21 +216,43 @@ describe('Game agent UI', () => {
     expect(grid.querySelector('[data-cell="13"] .act-ga-cell__best')).toBeNull() // treasure
   })
 
-  it('offers senses, the situation count, the eye view and Go on a new map', () => {
+  it('offers senses in a closed fold with one compass', () => {
     const task = {
       ...TASK,
       senses: ['walls'],
       maxSenses: 2,
       testMaps: [['#####', '#R.T#', '#####']],
     }
-    const { state } = renderView({ task, initialState: definition.initialState(task) })
-    expect(screen.getByTestId('ga-situations')).toHaveTextContent('situations to learn')
+    const { state, container } = renderView({ task, initialState: definition.initialState(task) })
+    // The fold is closed: its chips are not on the screen yet.
+    expect(screen.queryByTestId('ga-sense-walls')).not.toBeInTheDocument()
+    expect(screen.getByTestId('act-fold-senses')).toHaveTextContent('Walls next to me')
+    expect(countControls(container)).toBeLessThanOrEqual(6) // 5 plus the fold header
+    fireEvent.click(screen.getByRole('button', { name: /What can it sense/ }))
     expect(screen.getByTestId('ga-sense-walls')).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(screen.getByTestId('ga-sense-pit_near'))
-    expect(state().senses).toEqual(['walls', 'pit_near'])
+    expect(screen.getByTestId('ga-sense-treasure_direction')).toHaveTextContent('Treasure compass')
+    expect(screen.queryByTestId('ga-sense-pit_near')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('ga-sense-treasure_direction'))
+    expect(state().senses).toEqual(['walls', 'treasure_direction'])
     expect(screen.getByTestId('ga-sense-position')).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: /eye view/ }))
+  })
+
+  it('What it senses shows on the map, and Try a new map swaps the map in place', () => {
+    const task = {
+      ...TASK,
+      senses: ['walls', 'treasure_direction'],
+      testMaps: [['#####', '#R.T#', '#####']],
+    }
+    const { state } = renderView({ task, initialState: { ...solutionFor(task) } })
+    fireEvent.click(screen.getByRole('radio', { name: 'What it senses' }))
     expect(screen.getByTestId('ga-eye')).toBeInTheDocument()
-    expect(screen.getByTestId('ga-go-new')).toBeDisabled()
+    const before = state().tests ?? 0
+    fireEvent.click(screen.getByTestId('ga-go-new'))
+    expect(state().tests).toBe(before + 1)
+    expect(screen.getByTestId('ga-mystery')).toBeInTheDocument()
+    expect(screen.getByTestId('ga-test-result')).toBeInTheDocument()
+    expect(screen.getByTestId('ga-grid').children).toHaveLength(15)
+    fireEvent.click(screen.getByRole('button', { name: 'Back to my map' }))
+    expect(screen.getByTestId('ga-grid').children).toHaveLength(20)
   })
 })

@@ -116,17 +116,17 @@ describe.skipIf(!getActivityDefinition('game_agent'))(
     it('trains, goes, and passes when the robot reaches the treasure (no Run or Check button)', async () => {
       render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
       await advance(100)
-      const train = screen.getByRole('button', { name: 'Train (50 tries)' })
+      const train = screen.getByRole('button', { name: /Train$/ })
       expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
 
       fireEvent.click(train)
       await advance(30000)
-      expect(screen.getByTestId('ga-stats')).toHaveTextContent('Tries: 50')
+      expect(screen.getByTestId('ga-curve')).toBeInTheDocument()
       // Training progress is never written as a pass.
       expect(mocks.session.writeStudentRun).not.toHaveBeenCalled()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Go!' }))
+      fireEvent.click(screen.getByRole('button', { name: /Watch it try/ }))
       await advance(3000)
       await advance(1000) // the host debounces the answer write
       const calls = mocks.session.writeStudentRun.mock.calls

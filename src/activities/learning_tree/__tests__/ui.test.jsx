@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { countControls } from '../../../test/countControls.js'
 import { LearningTreeStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
@@ -20,31 +21,54 @@ function renderView(options = {}) {
 function addExample(name, features, label) {
   fireEvent.change(screen.getByLabelText('Item name'), { target: { value: name } })
   for (const f of features) fireEvent.click(screen.getByRole('button', { name: f }))
-  fireEvent.click(screen.getByRole('radio', { name: label }))
-  fireEvent.click(screen.getByRole('button', { name: 'Add example' }))
+  // The label button adds the animal.
+  fireEvent.click(screen.getByRole('button', { name: `+ ${label}` }))
 }
 
 describe('Learning Tree UI', () => {
-  it('starts empty with Add example and Try it disabled', () => {
-    renderView()
-    expect(screen.getByText('Add examples and the tree grows by itself.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add example' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Try it on new things' })).toBeDisabled()
+  it('starts empty with Try it disabled and at most 5 controls on the default screen', () => {
+    const { container } = renderView()
+    expect(screen.getByText('Add an animal and the tree grows by itself.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Try it on new animals/ })).toBeDisabled()
+    expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 
-  it('needs a label before an example can be added, then stores it and resets the form', () => {
+  it('adds the animal when a label button is pressed, then resets the form', () => {
     const { state } = renderView()
     fireEvent.change(screen.getByLabelText('Item name'), { target: { value: 'cat' } })
     fireEvent.click(screen.getByRole('button', { name: 'has fur?' }))
-    expect(screen.getByRole('button', { name: 'Add example' })).toBeDisabled()
-    fireEvent.click(screen.getByRole('radio', { name: 'pet' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add example' }))
+    expect(state().examples).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: '+ pet' }))
     expect(state().examples).toEqual([{ n: 'cat', f: '100', l: 0 }])
     expect(screen.getByLabelText('Item name')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'has fur?' })).toHaveAttribute(
       'aria-pressed',
       'false'
     )
+  })
+
+  it('folds the add form after 4 animals and opens it again from the bar', () => {
+    renderView()
+    for (let i = 0; i < 3; i += 1) addExample(`a${i}`, [], 'pet')
+    expect(screen.getByLabelText('Item name')).toBeInTheDocument()
+    addExample('a3', [], 'pet')
+    expect(screen.queryByLabelText('Item name')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Add an animal/ }))
+    expect(screen.getByLabelText('Item name')).toBeInTheDocument()
+  })
+
+  it('makes Try it the filled main button from 2 animals and says Try it again after a change', () => {
+    renderView()
+    addExample('cat', ['has fur?'], 'pet')
+    expect(screen.getByRole('button', { name: /Try it on new animals/ })).toHaveClass(
+      'act-btn--secondary'
+    )
+    addExample('owl', ['can fly?'], 'wild')
+    const tryBtn = screen.getByRole('button', { name: /Try it on new animals/ })
+    expect(tryBtn).toHaveClass('act-btn--main')
+    fireEvent.click(tryBtn)
+    addExample('dog', ['has fur?'], 'pet')
+    expect(screen.getByRole('button', { name: /Try it again/ })).toBeInTheDocument()
   })
 
   it('draws the tree and redraws it when an example is added or removed', () => {
@@ -64,17 +88,17 @@ describe('Learning Tree UI', () => {
     addExample('dog', ['has fur?'], 'pet')
     addExample('owl', ['can fly?'], 'wild')
     addExample('whale', ['lives in water?'], 'wild')
-    fireEvent.click(screen.getByRole('button', { name: 'Try it on new things' }))
+    fireEvent.click(screen.getByRole('button', { name: /Try it on new animals/ }))
     expect(state().tried).toBe(true)
     expect(screen.getByText('Your tree got 4 of 5 right')).toBeInTheDocument()
-    expect(screen.getByText(/Goldfish: tree says wild/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Goldfish: tree says wild/ })).toBeInTheDocument()
     expect(screen.getByText('Your tree works!')).toBeInTheDocument()
   })
 
   it('clears the Try it result when an example changes', () => {
     const { state } = renderView()
     addExample('cat', ['has fur?'], 'pet')
-    fireEvent.click(screen.getByRole('button', { name: 'Try it on new things' }))
+    fireEvent.click(screen.getByRole('button', { name: /Try it on new animals/ }))
     expect(state().tried).toBe(true)
     addExample('owl', ['can fly?'], 'wild')
     expect(state().tried).toBe(false)
@@ -85,7 +109,8 @@ describe('Learning Tree UI', () => {
     renderView({ task: { ...TASK, maxExamples: 4 } })
     for (let i = 0; i < 4; i += 1) addExample(`a${i}`, [], 'pet')
     expect(screen.getByText(/4 of 4 \(full\)/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add example' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /Add an animal/ }))
+    expect(screen.getByRole('button', { name: '+ pet' })).toBeDisabled()
   })
 
   it('is read-only for the tutor: examples, tree and results, no controls', () => {
@@ -102,19 +127,29 @@ describe('Learning Tree UI', () => {
     expect(screen.getByTestId('lt-tree')).toBeInTheDocument()
     expect(screen.getByTestId('lt-results')).toBeInTheDocument()
     expect(screen.queryByLabelText('Item name')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add example' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '+ pet' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument()
   })
 
-  it('shows the path a test item took after Try it', () => {
+  it('lights the path a test item took after Try it', () => {
     renderView()
     addExample('cat', ['has fur?'], 'pet')
     addExample('owl', ['can fly?'], 'wild')
-    expect(screen.queryByTestId('lt-route')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Try it on new things' }))
+    expect(document.querySelectorAll('.act-lt-box.act-lt-on')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: /Try it on new animals/ }))
     fireEvent.click(screen.getByRole('button', { name: /Hamster: tree says/ }))
-    expect(screen.getByTestId('lt-route').textContent).toMatch(/^Hamster: .*yes → pet$/)
     expect(document.querySelectorAll('.act-lt-box.act-lt-on').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shakes and says "Untick one first" when too many features are picked', () => {
+    renderView({ task: { ...TASK, studentPicksFeatures: 1 } })
+    const chips = screen.getByRole('group', { name: 'Tree may use' })
+    const [first, second] = chips.querySelectorAll('button')
+    fireEvent.click(first)
+    fireEvent.click(second)
+    expect(screen.getByText('Untick one first')).toBeInTheDocument()
+    expect(chips).toHaveClass('act-lt-shake')
+    expect(second).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('lets the student change the depth, and hides the dial when the author says so', () => {
