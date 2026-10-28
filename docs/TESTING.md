@@ -273,8 +273,9 @@ Its jobs run in parallel:
 - **coverage:** waits for the shards, merges their reports with `vitest --merge-reports
   --coverage`, applies the coverage floors and uploads the `coverage` artifact.
 - **rules:** the security rules tests (see above).
-- **smoke:** Playwright (`e2e/`) in Chromium: the landing page and the Builder load in a real
-  browser. A failure uploads the `playwright-report` artifact.
+- **smoke:** Playwright `e2e/smoke.spec.js` in Chromium, with a dummy Firebase config: the
+  landing page and the login page render in a real browser. A failure uploads the
+  `playwright-report` artifact. The older `e2e/` specs predate the current app and are not run.
 
 Every job installs through `.github/actions/setup`, which caches `node_modules` against the
 lockfile hash and only runs `npm install` when the lockfile changes. It uses `npm install`, not
