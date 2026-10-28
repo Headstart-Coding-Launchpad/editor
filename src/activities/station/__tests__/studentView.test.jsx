@@ -116,7 +116,11 @@ beforeEach(() => {
   }
 })
 
-describe.skipIf(!getActivityDefinition('station'))('Station StudentView click-through', () => {
+describe('Station StudentView click-through', () => {
+  it('is registered', () => {
+    expect(getActivityDefinition('station')).toBeDefined()
+  })
+
   it('lights a section and picks a colour, marks the task as you go and shares the goals', async () => {
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
     await screen.findByTestId('station-activity')

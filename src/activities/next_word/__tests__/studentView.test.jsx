@@ -109,7 +109,11 @@ afterEach(() => {
   delete window.matchMedia
 })
 
-describe.skipIf(!getActivityDefinition('next_word'))('Next Word StudentView click-through', () => {
+describe('Next Word StudentView click-through', () => {
+  it('is registered', () => {
+    expect(getActivityDefinition('next_word')).toBeDefined()
+  })
+
   it('renders in the classroom, has no Run or Check button and passes after the guesses', async () => {
     const user = userEvent.setup()
     render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
