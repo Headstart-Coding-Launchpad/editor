@@ -37,6 +37,26 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-28
+
+- **Classifier for AI Level 1: grid size, "Test on what it learned", one thing and "not sure".**
+  Four new `panels` and one new field. `gridSize: 4 | 8 | 16` sets the grid the model looks at
+  (default 16) and the `gridsize` panel lets the student pick 4, 8 or 16: their own drawings are
+  re-read at the new size with no redrawing. The `selftest` panel adds a **Test on what it
+  learned** button that scores every training drawing, shown beside the round's real score and not
+  counted for passing. `classes` may now hold **one** name in the live round: the model answers
+  "<thing>" or "not a <thing>", and the `close` panel shows how near a drawing is to the cut-off.
+  The `unsure` panel (off by default) lets the model answer "not sure". The cut-off is automatic
+  (1.5 x the median nearest-neighbour distance among the student's own drawings of a thing, with a
+  floor) and recomputed as drawings are added. The tutor card and modal and the session report show
+  the grid size, both scores and the "not sure" / "not a <thing>" counts per student. See
+  [activities/classifier.md](activities/classifier.md).
+  - Affects: classifier · Existing lessons: no changes needed (the new panels are off by default and
+    `gridSize` defaults to 16) · Resolves:
+    authoring-requests/2026-10-28-classifier-student-picked-grid-size-4x4-8x8-16x16.md,
+    authoring-requests/2026-10-28-classifier-test-on-what-it-learned-button.md,
+    authoring-requests/2026-10-28-classifier-only-one-thing-mode-and-an-i-m-not-sure-answer.md
+
 ## 2026-10-27
 
 - **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,
