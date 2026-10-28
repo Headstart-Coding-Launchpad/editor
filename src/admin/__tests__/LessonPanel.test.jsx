@@ -438,11 +438,10 @@ describe('LessonPanel', () => {
     expect(screen.getByText('Clarify the example.')).toBeInTheDocument()
   })
 
-  it('reads only the newest session reports and feedback', () => {
+  it('reads only the newest 300 session reports', () => {
     render(<LessonPanel />)
 
     expect(limit).toHaveBeenCalledWith(300)
-    expect(limit).toHaveBeenCalledWith(500)
   })
 
   it('shows an error when the session reports or feedback listeners fail', () => {

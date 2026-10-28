@@ -3,16 +3,12 @@ import {
   collection,
   collectionGroup,
   doc,
-  limit,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
-
-// Lesson feedback grows forever; read only the newest items (newest first).
-export const FEEDBACK_LIMIT = 500
 
 function builderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -96,11 +92,7 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   }, [])
 
   useEffect(() => {
-    const q = query(
-      collectionGroup(firestore, 'feedback'),
-      orderBy('submittedAt', 'desc'),
-      limit(FEEDBACK_LIMIT)
-    )
+    const q = collectionGroup(firestore, 'feedback')
     return onSnapshot(
       q,
       (snap) => {
@@ -184,9 +176,6 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
 
       {loadError && <p style={s.error}>{loadError}</p>}
       {actionError && <p style={s.error}>{actionError}</p>}
-      {allLesson.length >= FEEDBACK_LIMIT && subTab !== 'platform' && (
-        <p style={s.empty}>Showing the newest {FEEDBACK_LIMIT} lesson feedback items only.</p>
-      )}
 
       {loading ? (
         <p style={s.empty}>Loading…</p>

@@ -4,7 +4,6 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import FeedbackPanel from '../FeedbackPanel.jsx'
 
 const updateDocMock = vi.fn()
-const limitMock = vi.fn((n) => ({ __limit: n }))
 const snapshotErrors = { current: null }
 
 vi.mock('firebase/firestore', () => ({
@@ -12,7 +11,6 @@ vi.mock('firebase/firestore', () => ({
   collectionGroup: vi.fn(() => ({ kind: 'lessonFeedback' })),
   doc: vi.fn((...args) => args),
   orderBy: vi.fn(() => ({})),
-  limit: (n) => limitMock(n),
   query: vi.fn((q) => q),
   updateDoc: (...args) => updateDocMock(...args),
   onSnapshot: (q, next, onError) => {
@@ -43,7 +41,6 @@ vi.mock('../../shared/firebase', () => ({ firestore: {} }))
 describe('FeedbackPanel — destructive delete confirmation', () => {
   afterEach(() => {
     updateDocMock.mockReset()
-    limitMock.mockClear()
     snapshotErrors.current = null
     vi.restoreAllMocks()
   })
@@ -65,12 +62,6 @@ describe('FeedbackPanel — destructive delete confirmation', () => {
     fireEvent.click(screen.getByTitle('Archive feedback'))
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
-  })
-
-  it('limits the lesson feedback listener to the newest 500 items', () => {
-    render(<FeedbackPanel subtab="lesson" onSubtabChange={vi.fn()} />)
-
-    expect(limitMock).toHaveBeenCalledWith(500)
   })
 
   it('shows an error instead of an empty list when a listener fails', () => {

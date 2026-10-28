@@ -215,10 +215,9 @@ function makeLessonFamilyGroups(lessons) {
   return [...families, ...orphanFamilies]
 }
 
-// The report and feedback collections grow forever, so the Admin reads only the newest of each
-// (newest first) instead of every document on every open.
+// The report collection grows forever, so the Admin reads only the newest reports (newest first)
+// instead of every document on every open.
 export const REPORT_LIMIT = 300
-export const FEEDBACK_LIMIT = 500
 
 export default function LessonPanel({ view = 'lessons' }) {
   const user = useAuth()?.user
@@ -316,11 +315,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }, [])
 
   useEffect(() => {
-    const q = query(
-      collectionGroup(firestore, 'feedback'),
-      orderBy('submittedAt', 'desc'),
-      limit(FEEDBACK_LIMIT)
-    )
+    const q = collectionGroup(firestore, 'feedback')
     return onSnapshot(
       q,
       (snap) => {
@@ -546,10 +541,9 @@ export default function LessonPanel({ view = 'lessons' }) {
       {reportsError && <p style={s.error}>Could not load session reports: {reportsError}</p>}
       {feedbackError && <p style={s.error}>Could not load feedback: {feedbackError}</p>}
       {resolveError && <p style={s.error}>{resolveError}</p>}
-      {(reports.length >= REPORT_LIMIT || feedback.length >= FEEDBACK_LIMIT) && (
+      {reports.length >= REPORT_LIMIT && (
         <p style={s.muted}>
-          Showing only the newest {REPORT_LIMIT} session reports and {FEEDBACK_LIMIT} feedback
-          items; older ones are not listed.
+          Showing only the newest {REPORT_LIMIT} session reports; older ones are not listed.
         </p>
       )}
       {!loading && !error && visibleLessons.length === 0 && (
