@@ -449,6 +449,22 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: recommender works best with … to … items.` (warning) | Fewer than 12 items, so the feed has little to choose from. | Add items up to 12 to 20. |
 | `Task …: recommender needs at least … different groups to show a bubble.` (warning) | Fewer than 3 different `group` values. | Use 3 to 5 groups. |
 
+### Network Playground ([activities/network_playground.md](activities/network_playground.md))
+
+| Message | Meaning | Fix |
+|---|---|---|
+| `Task …: dataset must be two_blobs, circle or spiral.` | `dataset` is missing or not one of the three patterns. | Set `dataset` to `two_blobs`, `circle` or `spiral`. |
+| `Task …: maxNeurons must be a whole number from 1 to 8.` | `maxNeurons` is not a whole number in range. | Use a whole number from 1 to 8, or leave it out for 6. |
+| `Task …: layers must list 1 or 2 hidden layers.` | `layers` is not a list of one or two numbers (an empty list is only allowed with `allowZeroLayers: true`). | Write `layers: [3]` or `layers: [4, 3]`. |
+| `Task …: each layer in layers must be a whole number from 1 to maxNeurons.` | A layer has no neurons or more than `maxNeurons`. | Use whole numbers from 1 up to `maxNeurons`. |
+| `Task …: target must be a number above 0.5 and up to 1.` | `target` is not an accuracy above 0.5 and up to 1. | Use a number such as `0.9`. |
+| `Task …: allowAddLayer must be true or false.` | `allowAddLayer` is not a boolean. | Use `true` or `false`. |
+| `Task …: allowZeroLayers must be true or false.` | `allowZeroLayers` is not a boolean. | Use `true` or `false`. |
+| `Task …: testDots must be true or false.` | `testDots` is not a boolean. | Use `true` or `false`. |
+| `Task …: allowInputs must list 1 to 4 different inputs from x, y, x2 and y2.` | `allowInputs` is not a list of 1 to 4 different names from `x`, `y`, `x2`, `y2`. | Write `allowInputs: [x, y, x2, y2]` (or fewer). |
+| `Task …: inputs must list 1 to 4 different inputs from x, y, x2 and y2.` | `inputs` is not a list of 1 to 4 different names from `x`, `y`, `x2`, `y2`. | Write `inputs: [x, y]`. |
+| `Task …: every input in inputs must also be in allowInputs.` | `inputs` starts the network with an input the student cannot switch to. | Add it to `allowInputs`, or take it out of `inputs`. |
+
 ## Code-arrange tasks
 
 | Message | Meaning | Fix |

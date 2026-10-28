@@ -734,6 +734,12 @@ Self-contained exercises that can sit anywhere in a lesson (see `docs/architectu
 | `recommender/ui.jsx` | Recommender StudentView: rating grid, Your feed, Why?, bubble meter (controlled by `ActivityHost`) |
 | `recommender/RecommenderBuilderEditor.jsx` | Builder editor for Recommender: items, minRated, Why? and bubble switches |
 
+| `network_playground/network.js` | Pure maths for the Network Playground: seeded datasets (two_blobs, circle, spiral), a hand-written tiny network (tanh hidden layers, sigmoid output), plain SGD, accuracy, and flatten/rebuild of the weights |
+| `network_playground/network_playground.js` | Pure Network Playground logic: task defaults and validation, the saved state (layers, accuracy, weights), grading and hints |
+| `network_playground/definition.js` | Network Playground activity definition wrapping `network_playground.js`: default task, state, change classification (training updates continuous, start/stop/layers/pass discrete), grading, tutor summary, report fields |
+| `network_playground/ui.jsx` | Network Playground StudentView: canvas heatmap and dots, SVG network diagram, requestAnimationFrame training loop (one pass a frame), Train/Pause, neuron and layer buttons; the tutor's read-only view rebuilds the network from the state |
+| `network_playground/NetworkPlaygroundBuilderEditor.jsx` | Builder editor: dots, starting layers, neuron limit, target, add-a-layer switch |
+
 ---
 
 ## Badges (`src/badges/`)

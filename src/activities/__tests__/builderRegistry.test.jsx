@@ -35,6 +35,7 @@ describe('registry helpers for the Builder (plan 2.4)', () => {
       'station',
       'learning_tree',
       'recommender',
+      'network_playground',
     ])
   })
 
