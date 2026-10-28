@@ -10,12 +10,22 @@ import { defineActivity } from '../defineActivity.js'
 import { roundSummaryText } from '../round.js'
 import {
   DEFAULT_GUESSES,
+  CARDS,
+  DEFAULT_CARD,
+  DEFAULT_MAX_WORDS,
   DEFAULT_PANELS,
+  DEFAULT_PASS_AT,
+  MAX_MAX_WORDS,
+  MAX_PASS_AT,
+  MIN_MAX_WORDS,
+  MODES,
   MAX_GUESSES,
   DEFAULT_LOOK_BACK,
   MAX_LOOK_BACK,
   PANELS,
   gradeTask,
+  isWriteMode,
+  passAtOf,
   initialNextWordState,
   lookBackOf,
   nextWordBadgeResult,
@@ -54,9 +64,32 @@ export default defineActivity({
   fields: {
     task: [
       {
+        name: 'mode',
+        type: 'string',
+        values: MODES,
+        description:
+          'guess (default): the guessing round. write: the bot writes a sentence word by word (Go!) on a styled card, and the student keeps the best cards.',
+      },
+      {
+        name: 'maxWords',
+        type: 'number',
+        description: `Write mode: the most words the bot writes before it stops (${MIN_MAX_WORDS} to ${MAX_MAX_WORDS}, default ${DEFAULT_MAX_WORDS}). It also stops at a sentence end.`,
+      },
+      {
+        name: 'card',
+        type: 'string',
+        values: CARDS,
+        description: `Write mode: how the output looks: headline (newspaper), post (social post) or commentary (speech line). Default ${DEFAULT_CARD}.`,
+      },
+      {
+        name: 'passAt',
+        type: 'number',
+        description: `Write mode: how many kept cards pass the task (1 to ${MAX_PASS_AT}, default ${DEFAULT_PASS_AT}).`,
+      },
+      {
         name: 'guesses',
         type: 'number',
-        description: `How many "Guess what it says next" rounds make the task (1 to ${MAX_GUESSES}, default ${DEFAULT_GUESSES}). It passes when that many guesses are made, right or wrong (right means the likeliest word); more are bonus.`,
+        description: `Guess mode: how many "Guess what it says next" rounds make the task (1 to ${MAX_GUESSES}, default ${DEFAULT_GUESSES}). It passes when that many guesses are made, right or wrong (right means the likeliest word); more are bonus.`,
       },
       {
         name: 'panels',
@@ -87,7 +120,7 @@ export default defineActivity({
             type: 'string',
             required: true,
             authored: true,
-            description: 'Up to 4000 characters.',
+            description: 'Up to 4000 characters (6000 with mode: write).',
           },
           { name: 'emoji', type: 'string', description: 'One emoji for the voice card.' },
         ],
@@ -147,7 +180,19 @@ export default defineActivity({
   // Writing the sentences and moving the slider are continuous; a tap, a press, a voice switch
   // and Start again are discrete.
   classifyChange: (prev, next) => {
-    const keys = ['voice', 'sentence', 'pending', 'guesses', 'right', 'lookBack']
+    const keys = [
+      'voice',
+      'sentence',
+      'pending',
+      'guesses',
+      'right',
+      'lookBack',
+      'startWord',
+      'finished',
+      'kept',
+      'copied',
+    ]
+    if (prev?.cards?.length !== next?.cards?.length) return 'discrete'
     if (keys.some((key) => prev?.[key] !== next?.[key])) return 'discrete'
     if (JSON.stringify(prev?.last ?? null) !== JSON.stringify(next?.last ?? null)) return 'discrete'
     if (prev?.own !== next?.own || prev?.temperature !== next?.temperature) return 'continuous'
@@ -156,6 +201,12 @@ export default defineActivity({
 
   grade: (task, state) => {
     const { done, goal, core } = gradeTask(task, state)
+    if (isWriteMode(task)) {
+      return {
+        passed: done,
+        suggestion: done ? null : `Keep a card you like: ${goal - core} more to go.`,
+      }
+    }
     return {
       passed: done,
       suggestion: done ? null : `Guess what it says next: ${goal - core} more to go.`,
@@ -168,6 +219,21 @@ export default defineActivity({
   },
 
   summarize: (task, state) => {
+    if (isWriteMode(task)) {
+      const { goal, core, done } = gradeTask(task, state)
+      const norm = normalizeNextWordState(task, state)
+      const latest = norm.cards[norm.cards.length - 1]?.text
+      const parts = [
+        `${norm.cards.length} of ${goal} cards kept`,
+        `looked back ${norm.usedLookBack || lookBackOf(task, state)}`,
+        norm.copies > 0 ? `${norm.copies} copied` : null,
+        latest ? `latest: “${latest.length > 70 ? `${latest.slice(0, 69)}…` : latest}”` : null,
+      ]
+      return {
+        text: parts.filter(Boolean).join(' · '),
+        tone: done || core >= goal ? 'success' : 'neutral',
+      }
+    }
     const { goal, guesses, right, done } = gradeTask(task, state)
     const words = ownWordsOf(state)
     const parts = [
@@ -179,7 +245,48 @@ export default defineActivity({
     return { text: parts.filter(Boolean).join(' · '), tone: done ? 'success' : 'neutral' }
   },
 
+  report: {
+    typeFields: () => ({ taskType: 'activity', activityType: 'next_word' }),
+    normalizeSubmission: (task, submission) => {
+      const raw = parse(submission)
+      return raw ? normalizeNextWordState(task, raw) : null
+    },
+    // Write mode: across each student's latest attempt, the cards kept, the look-back they used
+    // and how many runs were copies word for word. Nothing for the guessing round.
+    summaryFields: (task, perStudent) => {
+      if (!isWriteMode(task)) return {}
+      let students = 0
+      let cards = 0
+      let copied = 0
+      const lookBacks = {}
+      for (const t of perStudent ?? []) {
+        const latest = t.distinctAttempts?.[t.distinctAttempts.length - 1]?.submission
+        const state = normalizeNextWordState(
+          task,
+          typeof latest === 'object' ? latest : parse(latest)
+        )
+        if (state.runs === 0 && state.cards.length === 0) continue
+        students += 1
+        cards += state.cards.length
+        copied += state.copies
+        const used = state.usedLookBack || state.lookBack
+        lookBacks[used] = (lookBacks[used] ?? 0) + 1
+      }
+      return {
+        nextWordWriteResults: {
+          writtenCount: students,
+          avgCardsKept: students ? Number((cards / students).toFixed(1)) : null,
+          copiedCount: copied,
+          lookBackUsed: lookBacks,
+        },
+      }
+    },
+  },
+
   printHtml: (task, { esc }) => {
+    if (isWriteMode(task)) {
+      return `<p>Press Go! and the bot writes a sentence. Keep ${passAtOf(task)} cards you like.</p>`
+    }
     const texts = (task.texts ?? []).map((text) => `<li>${esc(text.title)}</li>`).join('')
     const goal = Number.isInteger(task.guesses) ? task.guesses : DEFAULT_GUESSES
     return `<p>Guess what the next word will be, ${goal} times.</p>${texts ? `<p>Voices:</p><ul>${texts}</ul>` : ''}`

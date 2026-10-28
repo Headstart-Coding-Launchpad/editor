@@ -1,8 +1,10 @@
 ﻿import { useEffect, useId, useRef, useState } from 'react'
 import NextWordBuilderEditor from './NextWordBuilderEditor.jsx'
+import LookBackPanel from './LookBackPanel.jsx'
+import NextWordWriteView from './WriteView.jsx'
 import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import { BonusBanner } from '../ui/RoundProgress.jsx'
-import ActivityLayout, { ActButton, ActChip, ActFold, ActSegmented } from '../ui/ActivityLayout.jsx'
+import ActivityLayout, { ActButton, ActChip, ActFold } from '../ui/ActivityLayout.jsx'
 import { roundText } from '../round.js'
 import { prefersReducedMotion } from '../../shared/motion.js'
 import {
@@ -14,6 +16,7 @@ import {
   gradeGuess,
   gradeTask,
   guessGoalOf,
+  isWriteMode,
   initialNextWordState,
   lookBackOf,
   maxLookBackOf,
@@ -123,29 +126,6 @@ function StatsPanel({ model, sentence, lookBack = 1, previous = false }) {
   )
 }
 
-// The look-back control: one segmented switch, 1 / 2 / 3 words. `value` is the number of words
-// the model looks back.
-function LookBackPanel({ value, max, disabled, onPick }) {
-  const label = value === 1 ? '1 word' : `${value} words`
-  return (
-    <section className="act-nw-card" aria-label="Look back" data-testid="next_word-lookback">
-      <h3 className="act-nw-heading">How many words back should it look?</h3>
-      <ActSegmented
-        label="Words to look back"
-        value={value}
-        disabled={disabled}
-        onChange={onPick}
-        options={Array.from({ length: max }, (_, i) => i + 1).map((n) => ({
-          value: n,
-          label: n === 1 ? '1 word' : `${n} words`,
-          ariaLabel: n === 1 ? 'Look back 1 word' : `Look back ${n} words`,
-        }))}
-      />
-      <p data-testid="next_word-lookback-label">It looks back {label}.</p>
-    </section>
-  )
-}
-
 // Round progress dots for the guesses: a green tick for a right guess, a plain filled dot for a
 // wrong one (RoundProgress can't tell them apart), and "3 of 5 done".
 function GuessDots({ task, state, goal, core, right }) {
@@ -188,13 +168,7 @@ function GuessDots({ task, state, goal, core, right }) {
   )
 }
 
-export function NextWordStudentView({
-  task,
-  state: rawState,
-  onChange,
-  readOnly = false,
-  teacher,
-}) {
+function NextWordGuessView({ task, state: rawState, onChange, readOnly = false, teacher }) {
   // A tutor (read-only view, or editing a student's answers) only watches.
   const watching = readOnly || teacher === true
   const groupId = useId()
@@ -604,6 +578,15 @@ export function NextWordStudentView({
         controls={controls}
       />
     </div>
+  )
+}
+
+// Write mode (mode: write) has its own view (./WriteView.jsx); everything else is the guessing round.
+export function NextWordStudentView(props) {
+  return isWriteMode(props.task) ? (
+    <NextWordWriteView {...props} />
+  ) : (
+    <NextWordGuessView {...props} />
   )
 }
 

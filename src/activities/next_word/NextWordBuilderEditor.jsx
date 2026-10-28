@@ -1,14 +1,22 @@
 import definition from './definition.js'
-import { MAX_TEXT_CHARS } from './ngram.js'
 import {
+  CARDS,
+  DEFAULT_CARD,
   DEFAULT_GUESSES,
+  DEFAULT_MAX_WORDS,
+  DEFAULT_PASS_AT,
+  MAX_MAX_WORDS,
+  MAX_PASS_AT,
+  MIN_MAX_WORDS,
   DEFAULT_TEXT_EMOJI,
   MAX_GUESSES,
   MAX_LOOK_BACK,
   PANELS,
+  isWriteMode,
   maxLookBackOf,
   panelsOf,
   startLookBackOf,
+  textCapOf,
 } from './next_word.js'
 import { Field, InlineField, ValidationMessages, useActivityValidation } from '../ui/builderKit.jsx'
 
@@ -25,7 +33,7 @@ const PANEL_LABELS = {
   lookback: 'Look-back: the student picks how many words back it looks (1 to 3)',
 }
 
-function TextRows({ texts, onChange }) {
+function TextRows({ texts, cap, onChange }) {
   const list = Array.isArray(texts) ? texts : []
   const update = (index, patch) =>
     onChange(list.map((text, i) => (i === index ? { ...text, ...patch } : text)))
@@ -82,7 +90,7 @@ function TextRows({ texts, onChange }) {
                   />
                 </InlineField>
                 <span className="te-act-note" aria-live="polite">
-                  {length} of {MAX_TEXT_CHARS} characters
+                  {length} of {cap} characters
                 </span>
               </div>
             </div>
@@ -127,21 +135,98 @@ export default function NextWordBuilderEditor({ task, onUpdate }) {
     <div className="te-act-editor" data-activity-editor="next_word">
       <ValidationMessages messages={validation.general} />
 
-      <Field label="Guesses" hint="the round: 'Guess what it says next' this many times">
-        <input
+      <Field
+        label="Mode"
+        hint="guess: the guessing round. write: the bot writes, the student keeps cards"
+      >
+        <select
           className="te-input"
-          style={{ ...CONTROL, width: 96 }}
-          type="number"
-          min={1}
-          max={MAX_GUESSES}
-          value={task.guesses ?? DEFAULT_GUESSES}
-          aria-label="Guesses"
-          onChange={(e) => {
-            const value = e.target.value === '' ? undefined : Number(e.target.value)
-            onUpdate({ ...task, guesses: value })
-          }}
-        />
+          style={{ ...CONTROL, width: 160 }}
+          value={isWriteMode(task) ? 'write' : 'guess'}
+          aria-label="Mode"
+          onChange={(e) =>
+            onUpdate({ ...task, mode: e.target.value === 'write' ? 'write' : undefined })
+          }
+        >
+          <option value="guess">Guess</option>
+          <option value="write">Write (Go!)</option>
+        </select>
       </Field>
+
+      {isWriteMode(task) && (
+        <Field label="Write mode" hint="how long it writes, how it looks, cards to pass">
+          <label className="te-act-inline">
+            <span>Most words</span>
+            <input
+              className="te-input"
+              style={{ ...CONTROL, width: 80 }}
+              type="number"
+              min={MIN_MAX_WORDS}
+              max={MAX_MAX_WORDS}
+              value={task.maxWords ?? DEFAULT_MAX_WORDS}
+              aria-label="Most words"
+              onChange={(e) =>
+                onUpdate({
+                  ...task,
+                  maxWords: e.target.value === '' ? undefined : Number(e.target.value),
+                })
+              }
+            />
+          </label>
+          <label className="te-act-inline">
+            <span>Card</span>
+            <select
+              className="te-input"
+              style={{ ...CONTROL, width: 150 }}
+              value={task.card ?? DEFAULT_CARD}
+              aria-label="Card style"
+              onChange={(e) => onUpdate({ ...task, card: e.target.value })}
+            >
+              {CARDS.map((card) => (
+                <option key={card} value={card}>
+                  {card}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="te-act-inline">
+            <span>Cards to pass</span>
+            <input
+              className="te-input"
+              style={{ ...CONTROL, width: 80 }}
+              type="number"
+              min={1}
+              max={MAX_PASS_AT}
+              value={task.passAt ?? DEFAULT_PASS_AT}
+              aria-label="Cards to pass"
+              onChange={(e) =>
+                onUpdate({
+                  ...task,
+                  passAt: e.target.value === '' ? undefined : Number(e.target.value),
+                })
+              }
+            />
+          </label>
+        </Field>
+      )}
+
+      {!isWriteMode(task) && (
+        <Field label="Guesses" hint="the round: 'Guess what it says next' this many times">
+          <input
+            className="te-input"
+            style={{ ...CONTROL, width: 96 }}
+            type="number"
+            min={1}
+            max={MAX_GUESSES}
+            value={task.guesses ?? DEFAULT_GUESSES}
+            aria-label="Guesses"
+            onChange={(e) => {
+              const value = e.target.value === '' ? undefined : Number(e.target.value)
+              onUpdate({ ...task, guesses: value })
+            }}
+          />
+        </Field>
+      )}
 
       <Field label="Parts to show" hint="keep it simple: only what this lesson needs">
         {PANELS.map((panel) => (
@@ -198,7 +283,11 @@ export default function NextWordBuilderEditor({ task, onUpdate }) {
         </Field>
       )}
 
-      <TextRows texts={task.texts} onChange={(texts) => onUpdate({ ...task, texts })} />
+      <TextRows
+        texts={task.texts}
+        cap={textCapOf(task)}
+        onChange={(texts) => onUpdate({ ...task, texts })}
+      />
     </div>
   )
 }

@@ -17,11 +17,16 @@ import {
   MAX_PASTE_CHARS,
   MAX_TEMPERATURE,
   MAX_TEXT_CHARS,
+  MAX_WRITE_TEXT_CHARS,
   MIN_TEMPERATURE,
   endsSentence,
   isEndMark,
+  joinTokens,
   lastWordOf,
   modelFor,
+  normaliseWord,
+  pickOption,
+  tokeniseWithEnds,
   nextOptions,
   nextOptionsLookBack,
   startingWords,
@@ -34,12 +39,25 @@ export const DEFAULT_PANELS = ['stats']
 export const DEFAULT_GUESSES = 5
 export const MAX_GUESSES = 20
 export const MAX_CANDIDATES = 5
+// Write mode (Go auto-write): the bot writes a sentence word by word and the student keeps cards.
+export const MODES = ['guess', 'write']
+export const CARDS = ['headline', 'post', 'commentary']
+export const DEFAULT_CARD = 'headline'
+export const DEFAULT_MAX_WORDS = 15
+export const MIN_MAX_WORDS = 3
+export const MAX_MAX_WORDS = 40
+export const DEFAULT_PASS_AT = 3
+export const MAX_PASS_AT = 10
+export const WRITE_LOOK_BACK = 2
+export const MAX_CARDS = 10
+export const MAX_CARD_CHARS = 200
 export const OWN_VOICE = 'own'
 export const OWN_LABEL = 'My writing'
 export const OWN_EMOJI = '✏️'
 export const DEFAULT_TEXT_EMOJI = '📖'
 const MAX_EMOJI_CHARS = 12
 
+export const textCapOf = (task) => (task?.mode === 'write' ? MAX_WRITE_TEXT_CHARS : MAX_TEXT_CHARS)
 const isBlank = (value) => typeof value !== 'string' || !value.trim()
 
 // The texts a task offers as voices, as { title, body, emoji } (tolerant of a missing list).
@@ -58,6 +76,24 @@ export function panelsOf(task) {
   return PANELS.filter((panel) => task.panels.includes(panel))
 }
 
+// 'write' (Go auto-write) or 'guess' (the guessing round, the default).
+export function modeOf(task) {
+  return task?.mode === 'write' ? 'write' : 'guess'
+}
+export const isWriteMode = (task) => modeOf(task) === 'write'
+
+const wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max
+
+export function maxWordsOf(task) {
+  return wholeIn(task?.maxWords, MIN_MAX_WORDS, MAX_MAX_WORDS) ? task.maxWords : DEFAULT_MAX_WORDS
+}
+export function cardOf(task) {
+  return CARDS.includes(task?.card) ? task.card : DEFAULT_CARD
+}
+export function passAtOf(task) {
+  return wholeIn(task?.passAt, 1, MAX_PASS_AT) ? task.passAt : DEFAULT_PASS_AT
+}
+
 // The most words back the student can look: maxLookBack (1 to 3, default 3).
 export function maxLookBackOf(task) {
   const max = task?.maxLookBack
@@ -68,7 +104,8 @@ export function maxLookBackOf(task) {
 export function startLookBackOf(task) {
   const start = task?.lookBack
   const ok = Number.isInteger(start) && start >= 1 && start <= MAX_LOOK_BACK
-  return Math.min(ok ? start : DEFAULT_LOOK_BACK, maxLookBackOf(task))
+  const fallback = isWriteMode(task) ? WRITE_LOOK_BACK : DEFAULT_LOOK_BACK
+  return Math.min(ok ? start : fallback, maxLookBackOf(task))
 }
 
 // The look-back in use: the student's choice with the lookback panel, else the task's own.
@@ -89,6 +126,18 @@ export function guessGoalOf(task) {
 // the `voices` panel there is only their own writing.
 export function voicesOf(task) {
   const own = { id: OWN_VOICE, label: OWN_LABEL, emoji: OWN_EMOJI, body: '' }
+  if (isWriteMode(task)) {
+    // The pack is the voice; what the student writes is added to it (see modelBodyOf), so My
+    // writing is not a voice of its own here (unless there is no pack at all).
+    const packs = textsOf(task).map((text, i) => ({
+      id: `text:${i}`,
+      label: text.title,
+      emoji: text.emoji,
+      body: text.body,
+    }))
+    if (packs.length === 0) return [own]
+    return panelsOf(task).includes('voices') ? packs : packs.slice(0, 1)
+  }
   if (!panelsOf(task).includes('voices')) return [own]
   return [
     ...textsOf(task).map((text, i) => ({
@@ -110,7 +159,9 @@ export function voiceOf(task, state) {
 // The text the model learns from right now.
 export function modelBodyOf(task, state) {
   const voice = voiceOf(task, state)
-  return voice.id === OWN_VOICE ? String(state?.own ?? '') : voice.body
+  if (voice.id === OWN_VOICE) return String(state?.own ?? '')
+  // Write mode: the student's own sentences are added to the pack.
+  return isWriteMode(task) && state?.own ? `${voice.body} ${state.own}` : voice.body
 }
 
 // The model, or null when there are fewer than two words (no word pairs yet).
@@ -160,6 +211,135 @@ function clipSentence(words) {
   return list.join(' ')
 }
 
+// ---- Write mode -------------------------------------------------------------------------------
+
+// The training sentences of a text, each as its normalised words joined by spaces.
+export function trainingSentencesOf(text) {
+  const out = []
+  let words = []
+  const flush = () => {
+    if (words.length) out.push(words.join(' '))
+    words = []
+  }
+  for (const token of tokeniseWithEnds(text)) {
+    if (isEndMark(token)) flush()
+    else words.push(token)
+  }
+  flush()
+  return out
+}
+
+// True when `output` is a training sentence word for word (case and punctuation ignored).
+export function isCopiedSentence(text, output) {
+  const words = tokenise(output)
+  if (words.length < 2) return false
+  return trainingSentencesOf(text).includes(words.join(' '))
+}
+
+// Words that start sentences in the text, busiest first (for the "Start with" picker).
+export function openingWordsOf(model, limit = 8) {
+  const count = new Map()
+  const add = (word, n) => word && !isEndMark(word) && count.set(word, (count.get(word) ?? 0) + n)
+  add(model?.firstWord, 1)
+  for (const option of nextOptions(model, '.').options) add(option.word, option.count)
+  return [...count.entries()]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, limit)
+    .map(([word]) => word)
+}
+
+// Go: writes a whole sentence from the model, as a list of tokens (words, then an end mark if it
+// ended). Starts at `start` (a word) or one of the busiest sentence starters. Stops at a sentence
+// end, a dead end or `maxWords` words. Pure: the UI reveals the tokens one at a time.
+export function writeTokens(
+  model,
+  {
+    start = '',
+    lookBack = WRITE_LOOK_BACK,
+    temperature = DEFAULT_TEMPERATURE,
+    maxWords = DEFAULT_MAX_WORDS,
+    random = Math.random,
+  } = {}
+) {
+  const first = normaliseWord(start) || startWordOf(model, random)
+  if (!first) return []
+  const tokens = [first]
+  let words = 1
+  while (words < maxWords) {
+    const info = nextOptionsLookBack(model, joinTokens(tokens), lookBack)
+    const pick = pickOption(info.options, temperature, random)
+    if (!pick) break
+    tokens.push(pick.word)
+    if (isEndMark(pick.word)) break
+    words += 1
+  }
+  return tokens
+}
+
+// writeTokens as text; `copied` when `source` (the training text) is given and the output is one
+// of its sentences word for word.
+export function writeText(model, options = {}) {
+  const text = joinTokens(writeTokens(model, options))
+  return { text, copied: options.source != null ? isCopiedSentence(options.source, text) : false }
+}
+
+// Why the word at `index` of a written text was picked: the context it looked at and the counts.
+// { first: true } for the first word. Else { context, used, fellBack, word, count, total } (count
+// 0 when the model cannot explain it, for example after the student changed what it reads).
+export function whyWord(model, text, index, lookBack = WRITE_LOOK_BACK) {
+  const words = String(text ?? '')
+    .split(' ')
+    .filter(Boolean)
+  if (index < 0 || index >= words.length) return null
+  const word = normaliseWord(words[index])
+  if (index === 0) return { first: true, word }
+  const info = nextOptionsLookBack(model, words.slice(0, index).join(' '), lookBack)
+  const found = info.options.find((option) => option.word === word)
+  return {
+    first: false,
+    word,
+    context: info.word,
+    used: info.used,
+    fellBack: info.fellBack,
+    count: found?.count ?? 0,
+    total: info.total,
+  }
+}
+
+// Kept cards: { text, copied, lookBack }, tolerant of anything.
+function cleanCards(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((card) => card && typeof card.text === 'string' && card.text.trim())
+    .slice(0, MAX_CARDS)
+    .map((card) => ({
+      text: card.text.slice(0, MAX_CARD_CHARS),
+      copied: card.copied === true,
+      lookBack: Number.isInteger(card.lookBack) && card.lookBack >= 1 ? card.lookBack : 1,
+    }))
+}
+
+// Adds the finished output to the kept cards (once per output). Cap 10 cards.
+export function keepCard(task, state) {
+  const base = state ?? {}
+  const text = String(base.sentence ?? '').trim()
+  if (!text || base.kept === true || !base.finished) return base
+  const cards = cleanCards(base.cards)
+  if (cards.length >= MAX_CARDS) return base
+  return {
+    ...base,
+    kept: true,
+    cards: [
+      ...cards,
+      {
+        text: text.slice(0, MAX_CARD_CHARS),
+        copied: base.copied === true,
+        lookBack: base.usedLookBack || lookBackOf(task, base),
+      },
+    ],
+  }
+}
+
 // The blank state.
 export function initialNextWordState(task) {
   const voices = voicesOf(task)
@@ -177,6 +357,14 @@ export function initialNextWordState(task) {
     last: null,
     temperature: DEFAULT_TEMPERATURE,
     lookBack: startLookBackOf(task),
+    startWord: '',
+    cards: [],
+    runs: 0,
+    copies: 0,
+    finished: false,
+    copied: false,
+    kept: false,
+    usedLookBack: 0,
   }
 }
 
@@ -223,6 +411,14 @@ export function normalizeNextWordState(task, raw) {
       Number.isInteger(raw.lookBack) && raw.lookBack >= 1
         ? Math.min(raw.lookBack, maxLookBackOf(task))
         : base.lookBack,
+    startWord: typeof raw.startWord === 'string' ? raw.startWord.slice(0, 40) : '',
+    cards: cleanCards(raw.cards),
+    runs: count(raw.runs),
+    copies: count(raw.copies),
+    finished: raw.finished === true,
+    copied: raw.copied === true,
+    kept: raw.kept === true,
+    usedLookBack: count(raw.usedLookBack, MAX_LOOK_BACK),
   }
 }
 
@@ -314,6 +510,18 @@ export function dotsOf(task, state = {}) {
 
 // Whole-task progress: { goal, guesses, right, core, bonus, done }.
 export function gradeTask(task, state = {}) {
+  if (isWriteMode(task)) {
+    const goal = passAtOf(task)
+    const kept = cleanCards(state?.cards).length
+    return {
+      goal,
+      guesses: kept,
+      right: kept,
+      core: Math.min(kept, goal),
+      bonus: Math.max(0, kept - goal),
+      done: kept >= goal,
+    }
+  }
   const goal = guessGoalOf(task)
   const guesses = count(state?.guesses)
   return {
@@ -330,6 +538,10 @@ export function gradeTask(task, state = {}) {
 // round's guesses and how many were right (both capped at the core), how many words the student
 // has written of their own, and how many words the model added from them.
 export function nextWordBadgeResult(task, state) {
+  if (isWriteMode(task)) {
+    const { goal, core } = gradeTask(task, state)
+    return { core: goal, tries: core, right: 0, ownWords: ownWordsOf(state), generated: 0 }
+  }
   const { goal, core, right } = gradeTask(task, state)
   return {
     core: goal,
@@ -342,6 +554,14 @@ export function nextWordBadgeResult(task, state) {
 
 // The state that completes the round (for Complete / show answers).
 export function solutionStateFor(task) {
+  if (isWriteMode(task)) {
+    const cards = Array.from({ length: passAtOf(task) }, (_, i) => ({
+      text: `Card ${i + 1}`,
+      copied: false,
+      lookBack: startLookBackOf(task),
+    }))
+    return { ...initialNextWordState(task), cards, finished: true, kept: true, runs: cards.length }
+  }
   const goal = guessGoalOf(task)
   return {
     ...initialNextWordState(task),
@@ -376,8 +596,8 @@ export function validateNextWordTask(task, n) {
     if (isBlank(text?.title)) errors.push(`${label}: title is required.`)
     if (isBlank(text?.body)) {
       errors.push(`${label}: body is required.`)
-    } else if (text.body.length > MAX_TEXT_CHARS) {
-      errors.push(`${label}: body is longer than ${MAX_TEXT_CHARS} characters.`)
+    } else if (text.body.length > textCapOf(task)) {
+      errors.push(`${label}: body is longer than ${textCapOf(task)} characters.`)
     } else if (tokenise(text.body).length < 2) {
       errors.push(`${label}: body needs at least 2 words.`)
     }
@@ -420,6 +640,23 @@ export function validateNextWordTask(task, n) {
     (!Number.isInteger(task.guesses) || task.guesses < 1 || task.guesses > MAX_GUESSES)
   ) {
     errors.push(`${where}: guesses must be a whole number from 1 to ${MAX_GUESSES}.`)
+  }
+  if (task?.mode != null && !MODES.includes(task.mode)) {
+    errors.push(`${where}: mode must be one of ${MODES.join(', ')}.`)
+  }
+  if (task?.maxWords != null && !wholeIn(task.maxWords, MIN_MAX_WORDS, MAX_MAX_WORDS)) {
+    errors.push(
+      `${where}: maxWords must be a whole number from ${MIN_MAX_WORDS} to ${MAX_MAX_WORDS}.`
+    )
+  }
+  if (task?.card != null && !CARDS.includes(task.card)) {
+    errors.push(`${where}: card must be one of ${CARDS.join(', ')}.`)
+  }
+  if (task?.passAt != null && !wholeIn(task.passAt, 1, MAX_PASS_AT)) {
+    errors.push(`${where}: passAt must be a whole number from 1 to ${MAX_PASS_AT}.`)
+  }
+  if (isWriteMode(task) && textsOf(task).length === 0) {
+    errors.push(`${where}: mode write needs at least one text to write like.`)
   }
   return errors
 }
