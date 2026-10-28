@@ -1,1137 +1,2274 @@
 # CODEBASE_MAP.md
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 One-line role for every source file. When a pull request adds, moves, or removes a source component or test target, update this map and consider the corresponding inventory in `TESTING.md`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Referenced from `AGENTS.md`. Use this as a navigation index: search headings or open only the section relevant to the current task instead of loading the whole file by default.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Entry Points
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/main.jsx` | App DOM entry — renders App into #root |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/playground/:type`, `/admin`, `/builder`, and fallback to LandingPage |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, composed-lesson creation, restore/save dialogs |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Auth (`src/auth/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AuthContext.jsx` | `AuthProvider` — `onAuthStateChanged` listener; provides `{ user, role, loading }` via React context |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useAuth.js` | `useAuth()` hook — thin re-export of `AuthContext` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ProtectedRoute.jsx` | Route guard — shows loading screen, then redirects to `/login?redirect=…` if unauthenticated; a signed-in account without the role sees "You need an admin (or tutor) account to see this page" with Go back and a sign-in link |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `safeRedirect.js` | `safeRedirect(raw)` — the login page's `?redirect=` value if it is an in-app path, else `/` (rejects `//host` and `/\host`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AccountSettings.jsx` | Authenticated account page where teachers/admins change their own Firebase Auth password |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Admin Portal (`src/admin/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AdminPortal.jsx` | Admin portal shell: header with account/sign-out actions and tab switcher between Lessons, Levels, Classes, Sessions, Topics, Shared Assets, Badges, Shared Work, Accounts, and Feedback panels |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedWorkPanel.jsx` | Shared Work tab: Firestore `sharedWork` share links from Export work (`listShareLinks`), newest first, live by default or all; title (opens `/share/:id`), module, date, live/expired/revoked with days left, and Revoke (`revokeShareLink`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AccountManagement.jsx` | Firestore `users` real-time list; create/role/password/disable/enable/delete via Cloud Functions |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonPanel.jsx` | Firestore `lessons`, `lessonLevels`, `classes`, `sessionReports`, and feedback collection-group view; lessons grouped by level and ordered with `src/shared/lessonOrder.js` ("9 · Title", Solo Challenges under their parent and its level); reusable level/class management (each class's **Students** button opens `ClassRosterEditor`), class fork creation, lesson actions, report/feedback collapsibles |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ClassRosterEditor.jsx` | Admin → Classes → Students: one class's roster (`useClassRoster`), add / rename / delete entries (delete confirms that saved work and typing scores go too); each entry's **Typing** button shows its saved typing scores (`listTyping`, `TypingHistoryTable`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SoloPanel.jsx` | Solo & side-quests tab: per class and lesson, each solo student's started / finished / tasks passed / first-attempt passes (RTDB `soloLog` via `readSoloLog`, `src/shared/soloLog.js`) and the side-quests opened in ended sessions (flattened from stored session reports); "Download (no names)" |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SessionsPanel.jsx` | Realtime Database `sessions` list filtered to non-`ended` states; shows lesson, state, paused flag, student/online counts, and open duration; "Close Session" removes the session node so teachers who left a session open can be cleaned up |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TopicLibraryPanel.jsx` | Firestore `topicLibrary` CRUD editor: searchable topic list, full topic form with MarkdownFieldEditor for description/syntax fields |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `FeedbackPanel.jsx` | Firestore `platformFeedback` real-time list; displays date, teacher email, lesson/task context, and feedback text |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedAssetsPanel.jsx` | `lessonTypeAssets` Firestore CRUD: per-type Firebase Storage file upload/delete and Scratch default sprite/backdrop library editors (`DefaultSpritesEditor`, `DefaultBackdropsEditor`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BadgesPanel.jsx` | Badges tab: the built-in registry badges read-only (emoji, title, blurb, exact rule, rule-backed / tutor-only, auto-awardable) and the Firestore `badgeCatalogue` editor (add, edit, archive, restore) via `src/badges/catalogueService.js`; save runs `validateCatalogueBadge` (no registry-id collision, emoji unique across every badge, archived included) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AppVersionFooter.jsx` | Admin Portal footer showing `LaunchPad vMAJOR.MINOR.BUILD · commit · built date` (from `shared/appVersion.js`) with a Copy button; clicking the label toggles the "What's new" list from `releaseNotes.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `releaseNotes.js` | `RELEASE_NOTES`: milestone release notes, newest first; the newest entry must match MAJOR.MINOR in `package.json` (enforced by `AppVersionFooter.test.jsx`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Classroom Views (`src/app/views/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LandingPage.jsx` | Entry screen: student enters a lesson ID, opens `.launchpad` code, or chooses a standalone playground |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShotView.jsx` | `#/shot`: the page `lessons screenshot` captures. Renders `StudentView` (`forceSolo previewMode showPreviewBanner={false}`) from `window.__HSC_SHOT__` (`{ lesson, taskId }`, set by Playwright, never from the URL); no session or writes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PlaygroundView.jsx` | Local-only Python, Arcade Kit, Electronics, and Scratch playground route built from the existing student workspaces |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedWorkView.jsx` | `/share/:id`: public read-only page for an Export work share link — `loadShareLink` (gone when missing, expired, revoked or refused by the rules), then the module exporter's `ShareView` with the frozen payload; no login, nothing written |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView. `?live=true` is a deprecated no-op (bare URL now smart-joins); `?solo=true` forces solo unconditionally; `?preview=true` (auth-gated like `?teacher=true`) renders an ephemeral, unrestricted-navigation solo StudentView, used by the Admin Portal's Preview link |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentView.jsx` | Main student experience: all phases (loading → choice → waiting → name-entry → lesson/sandbox/solo → ended); `forceSolo` prop (from `?solo=true`) is combined with the lesson's `soloOnly` flag into the internal `soloMode` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherView.jsx` | Teacher dashboard: collapsible 3-panel layout, session lifecycle controls, student grid; the task explainer (only) slides between tasks via `TaskSlideTransition`; the class roster (`resolveSessionClass`, `useClassRoster`, `useRosterWorkSaver`, `useTypingHistory`, `MatchStudentsDialog`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Classroom Modules (`src/app/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers; tutor timing-run localStorage helpers (`loadTimingRun`, `saveTimingRun`, `clearTimingRun`), raw per-file record helpers (`loadSavedFileRecord`, `saveFileRecord`, `loadPersonalSandboxFileRecord`, `savePersonalSandboxFileRecord`, ephemeral equivalents) for the storage adapters |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Check/Submit); defers to a run-checked module's `checking.buildContext` (Electronics adds `circuit` so code checks read the MicroPython source), else `{ ...extras, code }` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentTaskContent.js` | `prepareClassroomLesson(lesson)` — the classroom copy of a lesson with line-hint markers stripped (StudentView/TeacherView apply it after any session override; TeacherView keeps the authored lesson for Edit Lesson). Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, dispatched to each module's `lifecycle.resetTarget` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `reportBadgeFormat.js` | Pure formatters for the session report's live-badge columns and callout: `formatReportDuration`, `formatTimeToFirstEdit`, `formatErrorStudents`, `formatTopicOpens`, `formatFirstRealPass`, `studentTaskSignalLabels`, `teacherSandboxCallout` ("The class spent 14 min in the teacher sandbox after …") |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `dashboardLivePayload.js` | `buildDashboardLivePayload`: the `teacherLive` payload for a Go Live started from the tutor dashboard (`publisher: 'dashboard'`, `layout`, work through the module wire) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `components/TutorLiveBanner.jsx` | Student-side "Your tutor is live" bar and the fading "Live has ended" note |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `views/teacher/TeacherGoLiveControl.jsx` | Dashboard Go Live / Stop live button, Live chip and forced-layout control |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentLiveDisplay.js` | Pure student teacher-live/view display selection and live HTML file conversion helpers; `displayOutputCollapsed` mirrors the broadcast source's output/preview panel collapse state to a forced-live viewer (`null` when not forced-live) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentQuizContent.js` | Adapter re-exporting the quiz activities' `buildQuizSubmission` / `getQuizSuggestion` (`src/activities/quiz/quizActivity.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentCodeExports.js` | Pure selection of browser-saved Python code tasks for `.launchpad` backup exports |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `teacherSandboxWork.js` | Pure teacher-sandbox work helpers for TeacherView (plan step 4.6): the per-`capabilities.sandboxState` work slots, restore order (draft, then the live session via `wire.fromCode` / decoded `sandboxFiles`, then `lifecycle.sandboxStarter`), draft copies, and the `enterSandbox` / `pushSandboxCode` / `pushSandboxFiles` fields via `wire.toCode` on the module's `wire.sandboxChannel`; `taskStarterWork` is the displayed task's Starter-tab work (`workSlot.teacherStarter`, step 4.8) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `teacherLivePayload.js` | Pure student-to-teacherLive broadcast payload construction (`mode: 'panel'` for "Show to class (keep coding)") |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentHints.js` | The hint a student is being shown, mirrored for the teacher: `buildStudentHintState` (student side: `studentHint` / `hintOffer` from the check feedback and stage offers), `readStudentHint` / `readHintOffer` (teacher side, current task only, hidden once passed), `hintPlainText`, `summariseCommonHints` (the common-hints strip's groups), `lastErrorLine` / `clipRunError` (a crashed run's `lastRunError`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentActivity.js` | What each student is doing now, for the teacher: `studentActivities` (peer help, watching/trying a Show-to-class broadcast, shared work, topic, sandbox; most important first), `classActivities`, `summariseClassActivities` (the class strip's groups) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `needsYou.js` | The tutor's "Needs you" strip (Hub #224): `needsYouState` (help, error loop, stuck, finished, most urgent first), `nextErrorRuns` (the same crash counted on the tutor's screen from `lastRunAt`/`lastRunError`), `needsYouEntries` (rows, help first then longest wait), `waitWords`. Reads only what the tutor already receives; writes nothing |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scrubResult.js` | `scrubResultOf(student)`: the checks' verdict after the student's last scrub (`lastScrubPassed`), or null once a later Run has replaced it (`lastScrubAt` vs `lastRunAt`); shown as the card's "Scrub fails" chip and the modal's "after scrub" badge |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelpAnchors.js` | Peer help: `peerHelpCapability` / `supportsPeerHelp` (the module's `capabilities.peerHelp`), `peerHelpAnchors` (code lines, or Scratch scripts per sprite, as `{ file, line, label, text, editable }`), `findAnchor`, `describeItem` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelpSnapshot.js` | `encodeHelpSnapshot` / `decodeHelpSnapshot`: a peer help snapshot with Firebase-safe file keys |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `afterClassFeedback.js` | `saveAfterClassFeedback`: the one after-class step's save — rating + two notes merged as `teacherFeedback` on the run's report, each per-task note added to `lessons/{lessonId}/feedback` with `reportId` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `nudgeAlert.js` | Best-effort browser attention effects for teacher nudges: `startTitleFlash` (tab title + favicon), `playChime(preset)` with `CHIME_PRESETS` (`nudge`, the softer `badge`, and the rising `complete`), `playNudgeChime` / `playBadgeChime` / `playCompleteChime` / `playTimesUpChime` (Web Audio; `timesUp` is the falling class-countdown chime), `showNudgeNotification` (only with granted permission) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `soundSettings.js` | The student's one device-wide Sounds mute: `SOUNDS_MUTED_KEY` (`headstart_sounds_muted`), `readSoundsMuted()` / `setSoundsMuted(muted)` (try/catch, in-memory fallback) and `useSoundsMuted()` → `[muted, setMuted]`, kept in sync across consumers and tabs (`storage` event). Used by the badge and complete chimes, `SoundsToggleButton` and the 🎖️ popover |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `throttledMirrorWriter.js` | Leading + trailing throttle for mirrored "latest value" writes (watched student output); re-checks nothing itself — callers gate on watch state per write |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskItemProgress.js` | Pure teacher-only filled/correct item counts for Match and Fill in the Gaps quizzes (via the quiz activity's `getProgress`) and filled-slot counts for Code Arrange (StudentCard + StudentModal header) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sharedWorkspacePayload.js` | Pure workspace-share snapshot construction, size limit, index entry building, and newest-first share sorting |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `joiningStudents.js` | Name-entry joining-marker helpers shared by NameEntry, useStudentPhase, StudentGrid and TeacherView: `NAME_MAX_LENGTH` (30, matches the rules), `TYPED_NAME_THROTTLE_MS` (750), `normaliseJoinName`, `applyNameSuffix` (duplicate-name `-2` suffixing), `listJoiningStudents` (markers → oldest-first list) and `readAdmitName` (a teacher admit's name, or null when it predates the marker or is unusable) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Classroom Components (`src/app/components/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TopBar.jsx` | Header: lesson title, level badge, "Lesson N" when the lesson has a `lessonNumber`, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted; measures itself and falls back to an "x/y" counter; `compact` (student top bar) uses smaller dots (34px on a touch device) and scrolls sideways when at least five fit but not all: the row is narrowed to whole dots, the current (or viewed) dot is scrolled into view by whole dots on entry and on every task change, swiping snaps per dot, and the edge with more dots fades |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ExplainerPanel.jsx` | Collapsible Markdown explainer panel above the editor; `disableCopy` prop blocks selection/copy (used for student-facing renders only); `entranceKey` drops the panel in and slides its bullets in on the task's first view (`useFirstView`), not on a ▲/▼ toggle or a same-task edit; `inkSurfaceId` makes the content annotatable from the Presentation window (`src/app/liveInk/`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CopyCodePanel.jsx` | Student-facing read-only reference code block titled "⌨️ Type this out", with selection/copy blocked, shown for Python/HTML tasks with `copyCode` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `MustSeeSkipDialog.jsx` | The "Skip “…”?" confirm TeacherView shows before the class skips a `mustSee` task (Go to it / Skip anyway; `src/shared/mustSee.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CopyCodeEditDialog.jsx` | The tutor's editor for a task's "Type this out" text, opened from StudentModal > More: save for this student or the whole class, or drop the student's own version (`setCopyCodeOverride`; `src/shared/copyCodeOverrides.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SupportStagePanel.jsx` | Student-facing read-only code-stage reference panel with reveal control and copy/selection blocking; shows the stage's line hints as faded text after their lines (`lineHintsFor`, `stageHintsByLine`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `OutputPanel.jsx` | Python output with retro typing animation (via `useTypewriterOutput`) and inline `input()` prompt; `onInputChange` fires per keystroke (for live-mirroring to a watching teacher); `inputReadOnly`+`mirroredInputValue` swap the prompt row to a plain-text, externally-driven mirror instead of an editable input, used by `StudentWorkspaceBody.jsx`. The header status (`outputStatus()`) reads "Waiting for your answer" during `input()` ("Waiting for an answer" on a mirror), "Running…", "Ran OK", "Error" or "Not run yet"; an empty output under "Ran OK" says the code printed nothing (`outputPlaceholder()`). `splitEmojiRuns()` (exported for testing) grapheme-splits the output so emoji render a bit larger than the surrounding monospace text, via `Intl.Segmenter` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ErrorHelp.jsx` | Plain-words help under a crashed Python or Turtle run (`OutputPanel` `errorHelp`, Hub #225): a title and line, then a hint ladder opened one rung at a time (where to look, the idea, an example, the fix last), from `src/shared/pythonErrors.js`. The raw error stays in the output; nothing for an error it can't explain |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `IframePreview.jsx` | Sandboxed iframe output with console log capture tab (receives postMessage from iframe); with an `inspector` prop, adds the HTML Inspector toggle and layer (`modules/html/inspector/HtmlInspector.jsx`) over the iframe |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CollapsibleIframePreview.jsx` | Slide-in toggle wrapper around IframePreview |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `QuizTask.jsx` | Polymorphic quiz: multiple-choice (grid), match (drag-drop), fill-blank (drag/type), short-answer, confidence (1–5 rating), poll (`PollQuiz`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CodeArrangeTask.jsx`, `CodeArrangeTaskContainer.jsx` | Thin re-exports of the code_arrange activity's tile board and module workspace (moved to `src/activities/code_arrange/`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CheckFeedbackBanner.jsx` | Pass/fail popup (floating in the bottom-left corner via `.check-feedback-popup` in `src/index.css`, smaller on a tablet, clear of the Run button, file tabs, code and output; auto-dismisses after 45s or via its own close button — not inline in the layout) with optional hint and "see complete code" action; points at the top bar's Help button by name (`HELP_BUTTON_LABEL`) rather than hosting its own button; a pass spins the ✓ icon once and a fail wobbles the banner (positioned with left/bottom, not a transform) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AfterClassFeedbackForm.jsx` / `AfterClassFeedbackModal.jsx` | The after-class feedback step (rating, what worked / didn't, per-task notes): inside the end-of-session report, before End & Go to Home (with Skip), and as Add / Edit feedback on past reports |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NamedBadgeExportButton.jsx` | Tutor-only "⬇ Badges with names (CSV)" button (hidden when no badge was earned) on the end-of-session report, the End & Go to Home feedback step and the live in-progress report; downloads `src/badges/namedBadgeExport.js`'s CSV |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CarryHoldNotice.jsx` | "Waiting for your tutor to find your Lesson N work…" card that `LessonTaskContent` shows in place of the workspace while a cross-lesson carry holds |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + "Your tutor is getting ready" with three animated dots (`.activity-dots`); shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson (the highlighted, primary choice) or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `VideoCallPrompt.jsx` | Modal shown when the teacher pushes the video call: one student via "📹 Send Video Call Link" (`students/{id}/videoCallLinkPushedAt`) or everyone via "📹 Send to all" (`videoCallBroadcastAt`); shown on name entry, the waiting room and the lesson page, timed by `useVideoCallPrompt` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (YouTube recording, authorable on any lesson). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback; shares the trimmed name being typed via `onNameTyping` (throttled, for the teacher's joining list) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `JoiningStudentsList.jsx` | Teacher grid list of students still on the name screen ("Jamie (typing…)" / "Someone (typing…)"), each with **Pull in** → inline name editor → `onAdmit(tempId, name)`; a per-view **Hide names** toggle masks typed names |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/MatchStudentsDialog.jsx` | Tutor's Match students panel: the session's class (a fork's own, or a picker with "No class" for a stock lesson; changing it clears matches), then each joined student → a class-list select (entries matched to someone else disabled; "— Not matched —" unmatches) or **New student** (adds an entry and matches it). Manual only: no auto-match or suggestions |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentGrid.jsx` | Grid of StudentCards with collapse toggle and check conditions display. Title line: "Students (n)", a ⋯ `DropdownMenu` (🔔 Nudge Away (n), 🏅 Suggestions (n) → `BadgeSuggestionsPanel`, ☑ Select, 📺 Show it (pick up to 3 cards, `onShowIt` / `onStopShowIt`, "■ Stop showing" bar), 👥 Match students, 📖 Reference → topic library), a "👥 n unmatched" / "👥 Pick class" chip from `rosterStatus` (opens Match students) with an attention dot while someone is Away or a suggestion is pending, and the › collapse; a wrapping status row under it holds the joining / roster / ✓ ✕ ⚠ count chips and ⛶ Fullscreen All. `ShareRequestsBanner` sits above the cards. The folded rail (a tablet's default) opens from anywhere, with a labelled Show button and ✋ help / 📤 share counts. Select mode is for multi-award (select cards → 🏅 Award badge → `BadgeAwardDialog` with one shared `bulkId`; Done exits). `joiningStudents` (from `listJoiningStudents`) drives the header "n joining…" count and `JoiningStudentsList` above the cards; `onAdmitJoining` is the Pull in writer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PresenceBadge.jsx` | Shared online/away/offline/waiting badge used by StudentCard and StudentModal (Away = connected but window unfocused); while the session waits it reads "Waiting" with the real presence on its dot (`data-presence`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NudgeBanner.jsx` | Student-side half of a teacher nudge: `NudgeBanner` (in-page "your teacher is asking for your attention" banner) and `NudgePermissionPrompt` (one-time opt-in for OS notifications on a white card; "Not now" is `btn-ghost-outline` and remembered in localStorage) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentCard.jsx` | Compact card: name, status chips as single icons (`IconChip`: words on hover and as the accessible name), a "Now:" line for what the student is doing (`activities`, from `studentActivity.js`; the rest as icons), an outline when its class-strip or common-hints group is clicked (`highlighted`), a ⚠ Error chip for a crashed run (with `lastRunError` on hover) kept apart from ✕ Failed, a 💬 hint chip (the hint the student sees, "Your hint" for an override, or an unopened hint offer; `studentHints.js`), teacher-only item progress badge (`taskItemProgress.js`), teacher-only live badge count "🏅 n" with a dot while a suggestion is pending (`badgeAwardedCount` / `badgePendingCount`), a one-tap "Award <top badge>" pill (`OneTapAwardButton`, from `badgeSuggestionList` / `onDecideBadge` / `onRevokeBadge`) and `TipButton` labels on its icon buttons, select-mode checkbox role (`selectMode` / `selected` / `onToggleSelect`), teacher-only 👥? marker while the session has a class roster and the student isn't matched (`rosterUnmatched`, opens Match students; the matched `rosterName` shows on the name's hover), code/output snippet (per the module's `capabilities.cardSummary`) or the activity/quiz answer summary (the activity UI's `CardSummary`), expand button |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedWorkspacePreview.jsx` | Read-only render of a frozen share snapshot; maps a snapshot to each module's TeacherLiveView props |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedWorkspacePanel.jsx` | Student-facing "Shared work" gallery button, new-share toast, and share list |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShareRequestsBanner.jsx` | Tutor prompt above the student grid for each student asking to share (`shareRequestedAt`): Review (opens the student modal's approve panel) and Not now (declines) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ConfidenceSpreadStrip.jsx` | Collapsible "Class confidence · N of M answered" strip above the student grid on a confidence check (an activity with a `ratingScale`): one red-to-green column per level with its count (`tallyConfidenceSpread`); hover names, click outlines those cards (the grid's shared highlight, group `confidence:<level>`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CommonHintsStrip.jsx` | Collapsible "Common hints right now" list above the student grid: hints two or more students on the current task are seeing, with a count; hover names, click outlines those cards (shares the grid's highlight with `ClassActivityStrip`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NeedsYouStrip.jsx` | "Needs you" above the student grid in a live session (not the sandbox): help requests, error loops (same crash 3 runs in a row) and stuck students (3 failed checks in a row), longest wait first with why and how long, then one "Finished, ready for a stretch" line. A row opens the student; "I'm on it" hides it until their state changes. Wait times start when this tutor screen first saw the state (`needsYou.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ClassActivityStrip.jsx` | Teacher's one-line class summary above the student grid ("🤝 Hal → Sam · 👀 6 looking at Sam's work"); hover names, click outlines those cards |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentLivePanelBar.jsx` | Student bar for a "Show to class (keep coding)" broadcast: "📺 Look at Sam's work!", 👀 Look / ← Back to my code, ▶ Try it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/HelpRequestButton.jsx` | The student's one-tap ✋ Help / Help requested button |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/helpLabel.js` | `HELP_BUTTON_LABEL`: the Help button's label, shared by the button and the check fail text |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelpAskBubble.jsx` | After ✋ Help where peer help is possible: "Can a classmate help too? 👍 Yes / No thanks" (bottom-right with the other peer-help cards; closes itself after 30s) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelpLineList.jsx` | Helper's main view: the classmate's code, big, with 👍 Good / 👎 Look again / 💡 Hint per line (or Scratch script); 💡 opens up to six hint cards |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/HelperPromiseDialog.jsx` | The once-per-session helper promise: three emoji lines, I promise |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelpOfferToast.jsx` | "A classmate is stuck on this task. Can you help?" for finished students |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelperWorkspace.jsx` | Helper view: `PeerHelpLineList`, ▶ Run their code (a copy-blocked `SharedWorkspaceViewer`), ✓ Done, what was sent; fetches the latest code on opening |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelpFeedbackRail.jsx` | Switched off (`PEER_HELP_EDITS_AND_NOTES`): helper rail for suggested edits (👎 lines, ≤ 3) and word-filtered notes for the teacher to approve |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/PeerHelpInbox.jsx` | Stuck student's card: status, items with their line, Thanks 👍 and a small 🚩 each, one big I'm OK now |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/TeacherPeerHelpMenu.jsx` | Teacher top-bar 🤝 Peer help: Not OK alerts, review queue (Approve/Reject), who is helping whom, filter-blocked notes, notes switch, End all peer help |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/TeacherPeerHelpStudentPanel.jsx` | StudentModal peer help: check the snapshot, Offer to classmates / Not this time, End, "Can help classmates today" |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp/TeacherPeerHelpAlertBanner.jsx` | Teacher banner for a stuck student's 🚩 Not OK, with Stop them helping today / Seen |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sideQuests/SideQuestPrompt.jsx` | "🎉 You've finished! Try a side-quest" bar above a passed task, one button per side-quest (✓ when marked Done) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sideQuests/SideQuestWorkspace.jsx` | One side-quest in the workspace slot: a throwaway `useStudentCodeState` copy (previewMode, namespaced lessonId, no-op writers, task from `buildSideQuestTask` (markers stripped with `stripTaskLineHints`)) rendering `LessonTaskContent`; seeds/saves its code in localStorage (`sideQuestStorageKey`), counts runs and errors, banner with ✓ I've done it! and ← Back to my task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sideQuests/useSideQuestLiveSync.js` | Mirrors the open side-quest's work to the tutor (`students/{id}/sideQuestCode`): on every Run and when it ends (output, drawing, `errorStreak`), per keystroke only while watched (activeStudentView) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedWorkspaceViewer.jsx` | Non-destructive editable copy of a classmate's shared workspace; renders the student's own `LessonTaskContent` surface via a throwaway `useStudentCodeState` (previewMode, namespaced lessonId, no-op session writers), seeded from the snapshot; optional "Copy to my editor" |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentModal.jsx` | Full-width modal: student workspace view + teacher actions (Go Live, Remote Reset, Check Override, Rename, Remove, Send Video Call Link); remote run, live edit (`capabilities.teacherEditor`, rendered through the module's `TeacherLiveView`), code highlights and the stage reveal are gated by the task module's capabilities. One fixed-height header line: name, the teacher-only matched class-list name ("👥 Jamie B.", `rosterName`), then status chips (presence, LIVE, teacher-only "🏅 n" badge count, …; they scroll sideways rather than wrap), ← → student switching, the four common actions (`OneTapAwardButton` "Award <top badge>", 👍 Thumbs up, 📺 Show to class, ✉ Help = message) and one **More ▾** menu (Nudge, Go Live for All, share, edit, topic, video call, fullscreen, Mark the task via `OverrideItems` / `OverrideFailModal`, Run on student, Edit answers, Highlight tiles, Support (Reveal and Set stage), 🎁 Export work → `ExportWorkDialog`, and a "Point at their screen" section via `PaneFocusControls` and `ControlHighlightControls`); the picker (`BadgeAwardDialog`) opens from the Award button when nothing is suggested; ✕; Stop Live, Done editing and Done highlighting stay in the header while on |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeChip.jsx` | Live badges: `BadgeChip({ badge, showTitle, size, title })` (emoji + title) and `BadgeEmoji({ badge, size })` (emoji only, with the title as its accessible name); `badge` is a registry definition or `resolveBadge()` result |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeCelebration.jsx` | The recipient's card: `BadgeCelebration({ award, badge, onDone })`, a small card that drops down top-centre under the top bar (`sv-badge-layer--top`, card-sized layer, no pointer blocking), flips in with one shine sweep, docks into `[data-badge-dock]` after `CELEBRATION_CARD_MS`, then calls `onDone`; never focusable, cancels mousedown, always-mounted polite live region; `prefersReducedMotion()` adds `sv-badge-card--reduced` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeClassToast.jsx` | `BadgeClassToast({ toast, badge, presentation, onDone })`: the silent bottom-left class toast ("🎖️ Alex earned a badge: 🐛 Bug Hunter" / "🎖️ 12 students earned a badge: ⌨️ Keyboard Wizard"), slide-in with a soft glow, blurb in `title`, `CLASS_TOAST_MS` 4 s (`PRESENTATION_TOAST_MS` 4.5 s and scaled up with `presentation`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/CodingMomentsPill.jsx` | `CodingMomentsPill({ moments, muted, onMutedChange, soundsOff })`: the student's compact icon-only 🎖️ top-bar button (no count; hidden until the first moment) opening a popover with the sticker sheet and the speaker toggle for the shared Sounds mute (`useSoundsMuted`, wired by `StudentView`); the card's dock target |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SoundsToggleButton.jsx` | `SoundsToggleButton({ soundsOff })`: the student's 🔊/🔇 top-bar button (solo and live; `aria-pressed`, "Mute sounds" / "Turn sounds on") for the shared Sounds mute (`useSoundsMuted`); disabled with "Your teacher has turned sounds off" under the tutor's `soundsOff`. Not rendered in the presentation window or previews |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeStickerSheet.jsx` | `BadgeStickerSheet({ moments, animate, entrance, staggerMs, label })`: a grid of `{ badgeId, badge }` stickers (emoji, title, blurb), optionally flipping in one by one (`entrance="tumble"`: `motion-tumble-in` instead, and a sticker added after mount drops in plainly); used by the pill, the session-end screen and the Badge Summary task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeSummaryTask.jsx` | The Badge Summary task ("Today's Coding Moments"): `BadgeSummaryTask({ task, lesson, decisions, students, viewerId, variant, catalogueBadges })` — `student` (own sticker sheet, then the class wall; a warm line when they have none), `teacher` (projector wall + Copy class summary), `presentation` (wall only), no `decisions` = the Builder preview note; first-view entrance (stickers tumble then the wall drops; teacher/presentation emoji tumble then rows drop), later rows/stickers only drop in; `ClassWall({ wall, emptyText, rowMotion })` is reused by the report |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/CopyClassSummaryButton.jsx` | "📋 Copy class summary": copies the given plain text to the clipboard with Copied / failed feedback |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badges/BadgeAwardDialog.jsx` | The tutor's manual badge picker: `BadgeAwardDialog({ students, decisions, catalogueBadges, taskId, onDecideBadge, onRevokeBadge, onClose })`, portalled to `<body>` with `role="dialog"` on the overlay (purple header, light body). Sections from `BADGE_PICKER_GROUPS`: "Suggested by rules", "Tutor-awarded", "Admin badges" (non-archived `catalogueBadges`, only when present); full two-line names; greys ones every selected student holds. Select, then confirm: a tile click selects it (`aria-pressed`) and shows its blurb and rule (hover previews), and the **Award** button awards with `source: 'manual'` and `replaceStatuses: ['dismissed', 'revoked']` (several students share one `bulkId`). For one student it lists their awards with Revoke; Escape closes it without closing the student modal |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherMessageToast.jsx` | Friendly dismissible toast shown to a student when a teacher sends them a personal message |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ThumbsUpToast.jsx` | `ThumbsUpToast({ shownAt })`: the student's non-blocking "👍 You're on the right track!" pill (bottom-centre, `motion-pop-in`, `role="status"`, `pointer-events: none`); visibility comes from `useThumbsUp` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherTimers.jsx` | Timer strip for elapsed lesson time, planned duration, the class countdown card (`ClassCountdownPill variant="teacher"`), and active-task countdown |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ClassCountdownPill.jsx` | `ClassCountdownPill({ countdown, serverTimeOffset, variant })`: the teacher's class countdown (`session.classCountdown`) as a self-ticking pill — `student` (top bar), `presentation` (large) or `teacher` (TeacherTimers card); amber in the last minute, "Time's up" at zero |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ClassCountdownControl.jsx` | The teacher's "⏱ Countdown" popover in `TeacherSessionControls`: 1/2/5/10 min presets, custom minutes, +1 min and Stop |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TimesUpBanner.jsx` | `TimesUpBanner({ shownAt, presentation })`: non-blocking "⏰ Time's up!" banner (`motion-pop-in`, `role="status"`, `pointer-events: none`); visibility comes from `useClassCountdown` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ClassProgressStrip.jsx` | `ClassProgressStrip({ session, task })`: thin "Task title · N of M done" strip on the presentation window and on students' screens while Go Live is on; counts from `shared/classProgress.js` `countCurrentTaskDone` (checkPassed or tutor-passed, presenter excluded), never names; hidden with no students or on an information task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TimingRunControl.jsx` | `TimingRunControl({ lessonId, lesson, taskId })`: tutor timing run bar (Start / Pause / Finish / Download JSON), shown only in the admin preview (`previewMode` without a `lessonProp`). Logic lives in `src/app/timingRun/` (`timingRun.js` pure state + payload, `useTimingRun.js` hook with visibilitychange pause and localStorage, `taskList.js`, `saveTimingRun.js` one Firestore write) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskChangeFlash.jsx` | `TaskChangeFlash({ taskKey, number, title, enabled })`: full-width "Task 4 · Title" band when the class moves to a new task (live lesson and presentation window; not on first load, browsing back or solo). Polite live region; `pointer-events: none`; fade-only under reduced motion (`MOTION_MS.taskFlash`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherSessionControls.jsx` | Teacher top-bar task navigation, presentation/share links, session action controls, and a "📹 Video Call" popover to set/edit the session's `videoCallLink`, plus "📹 Send to all" (`videoCallBroadcastAt`) once a link is set, the "⏱ Countdown" control (`ClassCountdownControl`) and the "📊 Poll" control (`polls/TeacherPollControl.jsx`) while the session runs |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherCodeTabs.jsx` | Starter/stage/complete tab strip shown above teacher code editors; includes "Send to all" action |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherPreviewBanner.jsx` | Status banner shown when the teacher previews a task without moving students |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherSandboxBanner.jsx` | Status banner shown in sandbox staging/live mode with action buttons |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherEndSessionModal.jsx` | Confirmation modal for ending a live session, with End and End+Home actions |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherFeedbackModal.jsx` | Two-tab modal for submitting lesson feedback (per-task, stored in Firestore subcollection) or platform feedback (stored in `platformFeedback` collection) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherReportModal.jsx` | Post-session report modal shown right after ending a session: per-student per-task results (including any live `teacherRating` on a task), distinct attempts, activity item progress, the live-badge sections (`ReportBadgeSections.jsx`) and task/student columns, YAML export via `reportToYamlText`; when `onSaveFeedback` is supplied and no feedback is saved yet, shows an editable star-rating/notes form that calls it (used only for the just-ended session's report, not historical ones) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StarRatingFeedbackFields.jsx` | Shared 1-5 star rating input/display + "what worked well"/"what didn't work" textareas, used by both `TeacherReportModal`'s end-of-session lesson rating and `TaskRatingPanel`'s live per-task rating |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherReportsPanel.jsx` | Persistent list of past session reports for a lesson, reachable any time from the Reports button; queries `sessionReports` ordered by `startedAt` desc and opens `TeacherReportModal` per report |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `EditLessonModal.jsx` | Reuses the builder's `TaskList`/`TaskEditor`/`GroupEditor`/`useBuilderState` to edit a lesson's tasks from TeacherView; "Apply for This Session" broadcasts via the session's `lessonOverrideTasks` (teacher and admin), "Save Permanently" (admin only) also writes Firestore |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ReportBadgeSections.jsx` | The session report's live-badge sections: `CodingMomentsSection` (class wall grouped by badge, Copy class summary, `badgeSummary` counts, shortcut summary), `TeacherSandboxSection` (a "possible lesson gap" callout per visit, expanding to the explainer, pushes and student snapshots; the size note), `QuizGroupsSection`, `StudentBadgeDetails` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `polls/TeacherPollControl.jsx` | Teacher's live class poll button + popover: the launch form (question, 2–6 options, `normalizePollDraft`), then the live tally (`tallyPoll`: counts, who chose each option, who hasn't answered) with Close poll, Show results to the class, Remove from screens and New poll; calls `useSession`'s `launchPoll` / `closePoll` / `setPollShowResults` / `dismissPoll` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `polls/ClassPollCard.jsx` | The active class poll on `StudentView`: a corner card (minimisable to a pill) where the student picks/changes one option while it is open (`answerPoll`); for a public poll (`showResults`, the default) the result bars appear once the student has voted or the poll closed; `presentation` variant shows the question, answer count and, for a public poll, live larger result bars |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/PollTaskClassContext.js` | `PollTaskClassContext`: `StudentView` provides `{ session, anonymousId, presentation }` in a live lesson so `quiz/PollQuiz.jsx` can show a poll task's class split (`tallyPollTask` in `src/shared/classPolls.js`) and `quiz/ShortAnswerQuiz.jsx` the answers the teacher showed on the presentation window; null in solo, Builder preview and the teacher's modals |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShowItPanel.jsx` | "Show it" overlay on `StudentView` (presentation window and student screens): 1-3 tiles labelled Build 1/2/3, each a student's record (name and id stripped) rendered read-only by `student-modal/StudentWorkspaceBody`; reads `session.showIt` via `getShowIt` / `getShowItBuilds`; builds are shown unmarked (`showMarks={false}`, activities via `ActivityView presentation`), side by side or one at a time (`showIt.view`/`index`, `ShowItControls` also used by `StudentGrid`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShowItPlay.jsx` | Show it "▶ Play" runners (presentation window only), one per playing tile: `PythonPlay` (module `runtime.run`, input in the tile), `HtmlPlay` (live `IframePreview`), `TurtlePlay` (shared turtle player replay); local, no Firebase writes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/ShownResponsesWall.jsx` | Presentation-only grid of the short answers the teacher picked to show (`getShownResponses` in `src/shared/shownResponses.js`), names only where turned on |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `polls/PollResultBars.jsx` | Horizontal result bars (`{ index, text, count }` options, percent of votes, the viewer's own answer highlighted), shared by the teacher tally, student card, presentation and report |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `polls/ReportPollsSection.jsx` | The session report's "Class polls" section (`report.polls`), rendered in `TeacherReportModal` (so also the Reports panel and Admin) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ReportShareLinksSection.jsx` | The session report's "Share links for parents" section (`report.shareLinks`, made at End Session): Open, Copy, Copy all and Revoke per link, labelled by `studentKey` → `studentLabel`; rendered in `TeacherReportModal` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `InformationTask.jsx` | Read-only information/introduction task rendering for lesson flow; `informationType: badges` renders `BadgeSummaryTask` with the `badgeWall` prop (`{ decisions, students, viewerId, variant }`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonCompleteScreen.jsx` | "Lesson complete!" screen shown after Next off the last task in solo mode, with an Open Playground button for playground-supported lesson types — see `docs/agents/classroom-behaviours.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CollapsiblePanelControls.jsx` | Shared collapse/expand tab controls for classroom and builder panels |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PanelTabs.jsx` | Generic `role="tablist"` tab switcher (`PanelTabs`, `PanelTabPanel`); inactive panels are hidden via `display:none`, never unmounted; arrow / Home / End keys with a roving tab stop; optional `idPrefix`, per-tab `badge` and `trailing` controls; styled by `.ui-tabs`/`.ui-tab` in index.css |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskSlideTransition.jsx` | Direction-aware slide transition wrapper used when switching between tasks (`LessonTaskContent.jsx`, the teacher's explainer in `TeacherView.jsx`): `order` (the task's flat index) picks forward (enter from the right) or backward (enter from the left); timing is `MOTION_MS.slow` / `--motion-slow`. `useIsLeavingTaskSlide()` marks the inert leaving copy, see `docs/agents/classroom-behaviours.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentEditorHeader.jsx` | Shared editor header bar (Code label + Run/Submit/Reset buttons) for HTML task editors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LoadingScreen.jsx` | Branded reusable spinner/loading/error message screen for route, auth, and StudentView phases |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SessionEndedScreen.jsx` | "Session ended" screen with Continue Solo action — rendered when phase === 'ended'; opens with a small celebration (tasks worked on, coding moments), `moments` shows the student's live badges as a `BadgeStickerSheet`, and one "Saved only on this device" notice covers both downloadable Python code and other saved work |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentStatusBanners.jsx` | Teacher-live, viewing-previous, and personal-sandbox notification banners shown above the task body |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonTaskContent.jsx` | Task content area: TaskSlideTransition wrapper, ExplainerPanel, CheckFeedbackBanner, and task-type dispatch via `getLessonModule()` registry (Quiz, Information, and Code Arrange rendered inline; other code types delegated to their module's `StudentWorkspace`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SoloNav.jsx` | Bottom prev/next navigation bar for solo mode; includes Open Sandbox shortcut. Next gets a static `btn-next-success` look once the check passes and spins once (`usePassMoment`) only when the student watched the pass |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Presentation Annotations (`src/app/liveInk/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 The teacher's live pointer, fading ink and text highlights from the Presentation window, shown to the class on information tasks and code-task explainers. Data at the top-level RTDB node `liveInk/{lessonId}` (see `docs/agents/runtime-model.md`, "Presentation Annotations"; behaviour in `docs/agents/classroom-behaviours.md`).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LiveInkProvider.jsx` | Wraps `StudentView`'s page: subscribes to `liveInk/{lessonId}` (via `useSession().subscribeLiveInk`) for the teacher role (Presentation window) and student role (live lesson phase), owns the tool state, surface registry, Escape handling and the explainer force-open (`pushClassPaneCommand`), and renders the toolbar |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `liveInkContext.js` | The two contexts: config (role, tool, writer; changes rarely) and data (changes at ~12Hz, read only by the overlay) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `InkSurface.jsx` | Marks a block of content as annotatable (`id` like `info:3`, `explainer:7`); handles the teacher's pointer, ink capture and highlight selection; renders `LiveInkOverlay`. Inert (renders children only) without a provider |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LiveInkOverlay.jsx` | Draws one surface's pointer (lerp-smoothed), fading strokes (SVG) and highlights (CSS Custom Highlight API, rect fallback); students' off-screen edge chip |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PresentationInkToolbar.jsx` | Floating 🔴 Pointer / ✏️ Ink / 🖍️ Highlight / Clear toolbar (Presentation window only) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `geometry.js` | Pure helpers: point ↔ fractions of an element box, text-anchored points (`{ c, dx, dy }`: character offset + em offset; encode/decode, segment splitting where text reflowed), stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, caret lookup, character boxes, text-offset ranges, selection description, scroll container) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `liveInkData.js` | Node shape, paths, surface ids, timing constants, snapshot normalisation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `liveInkWriter.js` | The Presentation window's RTDB writes: throttled pointer (`createThrottledMirrorWriter`, ~12Hz), strokes (auto-removed after the fade), highlights, clear, disconnect cleanup |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Quiz Components (`src/app/components/quiz/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `MultipleChoiceQuiz.jsx` | Multiple-choice quiz renderer with stable per-task option shuffle and answer reveal states |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `MatchQuiz.jsx` | Drag/tap match quiz renderer using `useTileDragAndDrop` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `FillBlankQuiz.jsx` | Fill-in-the-blank quiz renderer for drag and typed modes, including inline/code-block blank parsing |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShortAnswerQuiz.jsx` | Short-answer quiz renderer with submit and result feedback |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ConfidenceQuiz.jsx` | Confidence-scale quiz renderer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PollQuiz.jsx` | Poll quiz renderer: `MultipleChoiceQuiz` never locked, judged or revealed, with a "you can change your answer" footer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quizUtils.js` | Shared quiz logic: answer parsing, option lookup, fill-blank segment parsing, option fit/shrink helpers, and the question panel |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quizStyles.js` | Quiz presentation: answer-option state colours, base/interaction/confidence style objects (incl. `interactionStyles.tutorHighlight`, the tutor tile highlight outline) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TutorTileHighlightNote.jsx` | "👀 Look again" line (plus the tutor's note) under a blank the tutor highlighted; used by MatchQuiz, FillBlankQuiz and CodeArrangeTask (`src/shared/tutorTileHighlights.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Student Modal Sub-components (`src/app/components/student-modal/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `DropdownMenu.jsx` | Reusable popover/dropdown primitive used by StudentModal actions (Support, More, Override), TeacherView and the StudentGrid header's ⋯ menu; props `caret`, `ariaLabel`, `title`, `indicator` (attention dot), `panelStyle`; Escape closes the menu without closing the modal behind it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentHintPanel.jsx` | Read-only "Amy sees" panel above the modal body: the hint on the student's feedback banner (Markdown), "Your hint" for an override, the fail streak and any unopened hint offer (`studentHints.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `OverrideDropdown.jsx` | Teacher check-override items (`OverrideItems`, inside StudentModal's More) and the fail-hint modal (`OverrideFailModal`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `../TipButton.jsx` | Button whose `aria-label`/`title` also shows as a bubble on touch long-press; 44px on touch |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `../badges/OneTapAwardButton.jsx` | One-tap award of a student's top ranked suggestion with a 6 s Undo toast (revoke); `src/badges/suggestionRanking.js` holds the pure ranking |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `MessageCompose.jsx` | Personal teacher message composer for one student |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ExportWorkDialog.jsx` | 🎁 Export work (More menu, lazy-loaded): this task or the whole lesson, Code files / Pictures / "Include first name in file names" (off) / "Make a share link" (current task only); collects the work once on open (`collect.js`), runs `runExport` and downloads one file or a `.zip`, then shows notes (e.g. Scratch blocks left out of the .sb3) and the share link with Copy and Revoke. Tutor-only; nothing is written to the student |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PaneFocusDropdown.jsx` | Checkbox picker + Highlight/Force actions for `teacherPaneCommand`: `PaneFocusControls` is the Focus section of StudentModal's More menu; the default `PaneFocusDropdown` wraps it as TeacherView's whole-class "Focus Class" menu; options are Instructions plus the module's `capabilities.focusPanes` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ControlHighlightMenu.jsx` | Tutor "Highlight" choices for control highlights: `ControlHighlightControls` (the Highlight section of StudentModal's More menu, one student) and the default `ControlHighlightDropdown` (TeacherView's "Highlight Class"); lists the task's module `capabilities.highlightTargets` (Scratch categories as chips) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CodeStageSplit.jsx` | The `code` mirror's editor plus the student's Python Stage drawing (`currentStageResult`): side by side when the modal body is at least 640 px wide (the code keeps its full height), stacked when narrower; a **Bigger picture** toggle gives the drawing more room (request #92) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentWorkspaceBody.jsx` | Student workspace display inside the teacher modal, chosen by the module's `capabilities.studentMirror` (`code` / `files` inline editors, `blocks` / `view` through the module's `TeacherLiveView` passed in by StudentModal); the `code` mirror's `OutputPanel` mirrors `currentInputPrompt`/`currentInput` read-only while a watched student has a pending `input()` prompt. The `code` / `files` editors (and a `view` module's `TeacherLiveView`, e.g. Turtle) get the task's 💡 line hints via `mirrorLineHints.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TypingHistoryPanel.jsx` | Tutor-only "📈 Typing history" in the modal on a typing task: last / best / first from the pushed `typingHistory` node and the student's recent saved entries; exports `TypingHistoryTable` (also used by Admin → Classes) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShareRequestPanel.jsx` | Teacher review of a pending workspace share: fetches the frozen snapshot, previews it read-only, approves or declines |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentSideQuestView.jsx` | The student's open side-quest in the modal: `SideQuestViewToggle` (Main task / 🗺️ Side-quest) and the default view (status: runs, errors, done, probably stuck; their side-quest work read-only from `sideQuestCode` through `StudentWorkspaceBody`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TileHighlightBar.jsx` | Strip above a drag-and-drop board for tutor tile highlights: in "👀 Highlight tiles" mode the instructions, the optional note for the next tap, Clear all and Done; otherwise the count and Clear all while any is on |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `constants.js` | StudentModal highlight emoji options and shared modal constants |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mirrorLineHints.js` | `getMirrorLineHintSets(task, { mirror, file, isSessionSandbox })` — the task's line hint sets for the mirrored code/file (same `getTaskLineHintSets` the student editor uses; none in a session sandbox); `countShownLineHints(code, sets)` for the modal header's 💡 chip. Display only, no new data |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Teacher View Sub-modules (`src/app/views/teacher/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherEditorPanel.jsx` | Module-generic teacher editor/live-view panel, including starter/stage/complete tabs, a read-only note, the answer-key note on a finished activity preview, and an `information-task-host` size container for information tasks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sandboxModuleLabel.js` | `sandboxModuleLabel(module)`: the Sandbox module picker's option text ("Python", "Warm-up (Python)"), never the raw type twice |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CheckConditionsPanel.jsx` | Collapsible teacher-facing display of current task check conditions |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SideQuestsPanel.jsx` | Collapsible 🗺️ Side-quests panel for the class's current task: each side-quest's title, kind, explainer and starter, with On it now / Done / Probably stuck counts (`summariseSideQuestClass`); a count lists students, a student opens their StudentModal on the side-quest (via StudentGrid's `openSideQuestRequest`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BadgeSuggestionsPanel.jsx` | Collapsible centre-column panel (above the editor) of live badge suggestions grouped by student: emoji, title, the task it came from as visible text (`suggestionTaskLabel`: title, "Sandbox" or "No task"; left out when the reason already quotes it), reason, Award / Dismiss (`source: 'rule'`), an "Announce" checkbox (default on), "Award all (n)" for a badge suggested to several students (one shared `bulkId`; one task tag, or each student's task beside their name when they differ), and the session's Auto-award / Sounds off toggles (`setBadgeSettings`); a `committed: false` decision (another tab first) shows a note, not an error. `open` / `onOpenChange` / `focusRequest` are controlled by `TeacherView` so the grid button can open it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskRatingPanel.jsx` | "⭐ Rate this task" top-bar button opening a portalled, fixed-position popover that lets the teacher rate the current task live (1-5 stars + notes) via `setTaskRating`; follows the teacher between tasks (switching task closes it) and stays out of the centre column's layout |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checkFormatting.js` | Human-readable check formatting helper used by `CheckConditionsPanel` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Classroom Hooks (`src/app/hooks/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useIdentity.js` | Anonymous ID and display name management; localStorage persistence; session timestamp comparison |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCrossTabPresence.js` | BroadcastChannel-based ping/pong presence check for the same student+lesson open in another tab; returns a boolean, informational only |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `usePeerHelp.js` | Peer help Firebase layer (`src/shared/peerHelp.js` data model): student side (own request, inbox, `requestPeerHelp`, `flagNotOk`, the claim, helper sends, "Get latest" answering) and teacher side (every request, `offerToClass`, approve/reject, end, helper switch, notes, pause/resume, ending requests on a task change, `readPeerHelpForReport`); `clearPeerHelpData` for session create/end |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSideQuests.js` | Student side-quest state on the current task (`src/shared/sideQuests.js`): which are offered (`canShowSideQuests`), the open one (closes itself when the task changes), Done ticks, and the live status writes (`writeSideQuestOpen`, `recordSideQuestOpened`, `recordSideQuestRun`, `setSideQuestDone`), plus `watched` and `syncCode` (the tutor's live copy via `writeSideQuestCode`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentControlHighlight.js` | StudentView's control highlight: picks the task's `highlight` field (once per task) or the tutor's latest live command (`teacherControlHighlight` / `teacherClassControlHighlight`, ignoring other tasks and commands over 20 s old) and runs it through `useControlHighlight`; `mergeHighlightedPanes` adds its reveal panes to the pane highlight |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useClassRoster.js` | `useClassRoster(classId)`: one class's live roster (`subscribeRoster`), never the previous class's while the next loads; `useClassList(enabled)`: active class records for a stock lesson's class picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTypingHistory.js` | Tutor-side typing history: per matched student, reads saved typing entries once, saves each new finished typing result (`collectTypingEntries`) under its dedupe id, and pushes last / best / first from earlier sessions to `sessions/{lessonId}/typingHistory/{anonymousId}` (clearing unmatched students'); returns entries per student for the StudentModal |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useRosterWorkSaver.js` | Tutor-side saver: for matched students, saves the newer of their last Run and latest attempt per task to `classes/{classId}/roster/{rosterId}/work/…` (`collectRosterWorkCandidates`), debounced 3 s, flushed on task change / session state change / page hide, skipping unchanged work by hash |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCarryInboxWriter.js` | Tutor-side cross-lesson carry: for every matched, joined student and every task with `carryCodeFromLesson` / `carryBlocksFromLesson`, fills their carry inbox once per tab (`collectCarryInboxRequests` → `fillCarryInbox`); never overwrites a status |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCrossLessonCarry.js` | Student-side cross-lesson carry for the loading task: `{ state, carry, work, taskId, sourceLabel }` (`resolveCrossLessonCarry`; 'found' stays 'hold' until the inbox payload is read, 'missing' if unreadable); own-work check once per task load; fetches the source lesson's number for the hold message |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSession.js` | Firebase session listener and full command layer: session lifecycle, student sync, sandbox, teacherLive, remote reset, carry fallback/support reveal/task rating logging (`setTaskRating`), session-only lesson task override (`pushLessonOverride`/`clearLessonOverride`), workspace share request/approve/remove, live class polls (`launchPoll`, `closePoll`, `setPollShowResults`, `dismissPoll`, student `answerPoll`); Show it (`startShowIt`, `stopShowIt`); live badges: decisions (`decideBadge` write-if-absent transaction, `revokeBadge`), `setBadgeSettings`, the student signal writers (`recordTopicOpenSignal`, `recordShortcutSignal`, `recordAutocompleteSignal`, `recordEmojiRunSignal`, `recordFirstEditSignal`, `recordCompleteShownSignal`, `recordSandboxRunSignal`, `flagSandboxRunError`, `addSandboxTimeSignal`), `attemptLog.error` / `flagAttemptError`, `pasteLog.firstAt`, the session report's `typingLog` writer (`recordStudentTyping`) and `taskTimeline` (written with `startSession` / `setTaskId` / `exitSandbox`), and the teacher-sandbox archive (`sessionArchive/{lessonId}`: written by the sandbox actions, `archiveSandboxStudentSnapshot`, one-shot `readSessionArchive`); the class countdown (`startClassCountdown` / `addClassCountdownTime` / `clearClassCountdown`, written in server time) and `serverTimeOffset` (from `.info/serverTimeOffset`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTeacherPresence.js` | Marks the tutor's tab on an open session (`teacherPresence/{tabId}`, removed on disconnect, which also stamps `teacherLeftAt`), re-marking when the session is recreated; TeacherView calls it. See `staleSessions.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useLessonLoader.js` | Firestore lesson fetch (or lessonProp pass-through); returns `{ lesson, lessonLoading, firstTaskId }` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentPhase.js` | Student phase state machine (loading → choice → waiting → name-entry → lesson → sandbox → solo → ended); owns `phase`, `currentTaskId`, `viewingTaskId`. A returning student reloading within `END_SCREEN_RESTORE_MS` of the session ending goes back to `ended` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentCodeState.js` | All student editor/code workspace state: code, files, output, check results, personal sandbox, run/stop handlers, and the Pyodide warm-up effect; composes the sub-hooks below. Every module shares the generic `work` slot and `handleWorkChange` pipeline driven by its definition (html's per-file `{ files, activeFile }`, Scratch's workspace-owned states with `reportRun` for its own checks) — `cs.code` / `cs.arcadeDesign` / `cs.files` / `cs.activeFile` / `handleCodeChange` / `handleFileChange` / `handleScratchChange` / `handleScratchCheck` / `handleArcadeRun` / `scratchExternalState` are aliases over it (`docs/architecture/lesson-type-modules.md`, "checking and the generic work slot"); `handleRun` dispatches on `capabilities.run` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runWithRuntime.js` | `runWithRuntime(ctx)` — the `'runtime'` branch of `handleRun` (Pyodide / MicroPython): output streaming and throttled teacher mirror, `input()` prompts, stop handling, the task check with feedback, the run-record save, `writeStudentRun` and the attempt log. Per-module differences come from the definition's `runResult` flags and `checking.buildContext` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useLatestRef.js` | `useLatestRef(value)` — a ref holding the latest render's value, for stale-closure-safe reads inside async handlers, timers and event listeners |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentBadgeSignals.js` | Records this student's live badge signals (topic opens, Keyboard Wizard shortcuts on the work area, first real edit per task timed on the device, complete code shown, sandbox runs and time, the first Run of code with an emoji via `reportRunCode` and `src/shared/emojiInCode.js`) through the `useSession` signal writers; gated off for the presentation window, previews and solo. Called inside `useStudentCodeState` (`cs.badgeSignals`); `workAreaSurfaceOf` / `workAreaShortcutFor` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentTypingStats.js` | Session report typing measures: adds up the shared CodeEditor's keystroke inserts, Backspace/Delete presses and autocomplete accepts per task on the student's device (`reportTyping`, on `BadgeSignalsContext`) and writes one aggregated `typingLog/{taskId}` record on Run (`noteRun`, which also takes the first Run's copyCode distance), task change or a hidden tab (`recordStudentTyping`), never per keystroke; live lesson python/turtle/html tasks on keyboard devices only. Called inside `useStudentCodeState` (`cs.typingStats`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useBadgeSuggestions.js` | Teacher side of live badges: `useBadgeSuggestions({ session, lesson, enabled, topics })` → `{ suggestions, suggestionsByStudent, pendingCountByStudent, awardedCountByStudent, decisions }`, memoised on `badgeEvaluationInputKey` and the lesson's content (not object identity); `useBadgeAutoAward({ suggestions, settings, decideBadge })` awards `autoAwardable` suggestions with `source: 'auto'` while `badgeSettings.autoAward` is on, once per student/badge per tab; pure `groupBadgeSuggestions`, `pickAutoAwards`, `autoAwardDecision`. Called in `TeacherView` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSandboxArchiveSnapshots.js` | Teacher side of the sandbox archive: while the class is in the teacher sandbox, copies each student's latest sandbox run (`currentCode` / `currentFiles`, on a new `lastRunAt`) into `sessionArchive` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useStudentPresenceReporting.js` | Reports this student's window state to the teacher: connected, focused, fullscreen, recently active. Presentation windows report nothing and remove themselves from the roster |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useBadgeCatalogue.js` | `useBadgeCatalogue(enabled)` → the Admin badge catalogue (`fetchBadgeCatalogue`), read once; `[]` until it loads or when the read fails. Called in `TeacherView`, which passes it on as `catalogueBadges` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useBadgeCelebrations.js` | Student side of live badges: `useBadgeCelebrations({ ready, enabled, decisions, viewerId, students, soundsOff, catalogueBadges })` → `{ moments, card, cardDone, toast, toastDone, muted, setMuted }`. Load baseline (no replay), recipient card queue with `playBadgeChime` (skipped for `soundsOff` or the shared Sounds mute, `useSoundsMuted`), class toast queue via `mergeClassToasts`; `viewerId: null` (presentation) gets toasts only. Called in `StudentView` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useClassCountdown.js` | `useClassCountdown({ countdown, serverTimeOffset, enabled, playSound, soundsOff })` → `{ timesUpAt }`: one timer to the class countdown's server-time deadline, fires the "Time's up" moment only for a deadline it watched (no replay on load), plays `playTimesUpChime` unless muted / `soundsOff` / `playSound` false, clears after `TIMES_UP_VISIBLE_MS` (5 s). `useCountdownRemaining(countdown, serverTimeOffset)` is the ticking remaining-ms hook for the pill |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useThumbsUp.js` | `useThumbsUp({ ready, enabled, pushedAt, soundsOff })` → `{ thumbsUpAt }`: reacts to a teacher 👍 (`students/{id}/thumbsUpPushedAt`); load baseline (no replay), ignores pushes older than `THUMBS_UP_MAX_AGE_MS` (30 s), plays `playBadgeChime` unless muted / `soundsOff`, clears after `THUMBS_UP_VISIBLE_MS` (2.5 s) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCompleteChime.js` | `useCompleteChime({ enabled, passed, taskKey, soundsOff })` → `{ skipTask }`: plays `playCompleteChime` the first time a task's checks pass while the student watches (`usePassMoment`, `COMPLETE_CHIME_ARRIVAL_GRACE_MS` arrival grace, once per task key per screen); respects `useSoundsMuted` and the tutor's `soundsOff`. Called in `StudentView` (disabled for presentation, preview and the personal sandbox) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useNudgeAlert.js` | Reacts to a teacher nudge (`students/{id}/nudgePushedAt` always; session `nudgeAwayPushedAt` only when the window is unfocused): banner, chime, and — while unfocused — tab flash until focus plus an OS notification. Timestamps present at load are a baseline and never replay |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useVideoCallPrompt.js` | When the student's `VideoCallPrompt` shows: per-student `videoCallLinkPushedAt` or session `videoCallBroadcastAt`, on name entry / waiting room / lesson / sandbox. Load baseline (no replay), stale-push guard, closes on phase change |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSandboxCodePush.js` | Loads content the teacher pushes into the sandbox, keyed off the session's push timestamps: on the module's code channel `wire.fromCode(sandboxCode)` → `onPushedWork(work)`, on the files channel the decoded `sandboxFiles` (else the lesson's `sandboxStarterFiles`) → `onPushedFiles(files)` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTypewriterOutput.js` | `useTypewriterOutput(output)` — reveals program output with the retro typing animation, chunking faster as the remaining text grows; shared by `OutputPanel` and `BuilderOutputPanel` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCheckFeedback.js` | Check result state (`checkPassed`, `checkAttempted`, `checkSuggestion`, `repeatedSuggestionCount`, `testResults`); `resetCheckFeedback` / `applyCheckFeedback`; teacher check-override effect |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `studentOutputBuffer.js` | Buffered output helper used by student run state to batch streaming output updates |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `createStudentPersistence.js` | Conditional localStorage save helpers: routes each write (one shared `routeSave`) to the sandbox or normal task key based on `inPersonalSandboxRef`, or the in-memory store in presentation/preview. Adapter-driven `saveWork` / `readWork` / `saveSandboxWork` / `readSandboxWork` map a module's work through its definition's `storage` adapter; `saveRunRecord` writes the code editor / run record (`{ code, ...fields }`, sandbox keeps only the code); the per-type named savers/readers remain for existing callers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useVariablesPanel.js` | The name-tag panel's student state (`showVariables`) and the run counts' (`runCounts`, `src/shared/runCounts.js`): the last run (`receiveRun`, called by `runWithRuntime` with the code that ran, returns the `variablePredictions` and `runCounts` check contexts; `countRun` the last run's counts), predictions (`setPrediction`, `setTypePrediction`, `setCountPrediction`, `commitPredictions`), `clear`, the synced state for Go Live (`syncedRef`); writes `currentVariables` and `predictionLog` (live lesson only) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTeacherLivePublish.js` | Teacher-live broadcast helpers (`canPublishTeacherLive`, `currentTeacherLivePayload`, `publishTeacherLive`), `teacherLiveIframeSrc` and `htmlPreviewCollapsed` state, and the two teacher-live sync effects; `publishOutputCollapsed(collapsed)` merge-updates just `teacherLive.outputCollapsed`, standalone from the main payload, so a source's output/preview panel collapse state mirrors continuously to forced-live viewers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useCourseLog.js` | Turtle course runs for the session report, called inside `useStudentCodeState` and handed to `runWithRuntime` (`recordCourseRun(turtle.course)` after each Run): one `students/{id}/courseLog/{taskId}` update per Run (`runs`, `goalRuns`, `crashes` by `increment`; last `pickups` / `lastGoalReached`), live lessons only. Loads Firebase on first use |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSlowMoLog.js` | Scratch slow-mo use for the session report, called inside `useStudentCodeState` (`cs.recordSlowMoUse({ kind: 'run' \| 'step' })`): batched `students/{id}/slowMoLog/{taskId}` counts (live lessons only). Loads Firebase on first use |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useScrubLog.js` | Editor scrubbing use for the session report, called inside `useStudentCodeState` (`cs.recordScrub({ kind: 'number' \| 'colour' })`, the editor's `onScrubCommit`): batched `students/{id}/scrubLog/{taskId}` counts (live lessons only). Loads Firebase on first use |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useScrubAfterPass.js` | `scrub.afterPass`, called inside `useStudentCodeState`: holds a task's scrub boxes and `#@lock-values` values shut until its first pass (`cs.scrubHeld`, used with `freezeValueLocks` in `src/shared/lockedLines.js`), remembers the pass in the `__scrub_open__` aux file, and drives the "Now make it yours" cue (`cs.scrubJustOpened`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useScrubPreview.js` | Live preview re-runs while a value is scrubbed (`cs.scrubPreview(code, fileName?, { notify }?)` → `'preview'` \| `'press-run'` \| `'press-run-answers'`, `cs.settleScrubPreview()` awaited by Run): runtime modules run through their runtime and show output + Stage / turtle drawing; html rebuilds the student's own preview iframe. No attempt, checks, save or live writes; throttled (about every 200 ms while a drag moves) and never overlapping (`previewScheduler.js`). `input()` programs replay the last Run's answers (`rememberRunAnswers`, `scrubReplayAnswers` for the note); `scrubCommitted()` runs the checks on release through `handleRun({ source: 'scrub' })` (`scrub.checkOnRelease`); the task's `runOnOpen` preview once the runtime is ready; `typedEdit(code)` (from `handleCodeChange`) re-runs the preview 500 ms after typing pauses on a scrub / `runOnOpen` / `#@lock-values` task, keeping the last picture when it errors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useHtmlInspectorLive.js` | The HTML Inspector's live side, called inside `useStudentCodeState` (`cs.liveInspector`, `cs.publishInspector`, `cs.recordInspectorUse`): the Go Live state kept in `inspectorRef` (sent in every payload by the html wire's `liveExtras`, explicit null when cleared) and written straight to `teacherLive/inspector` so a click doesn't rebuild viewers' preview iframes; batched `students/{id}/inspectorLog/{taskId}` counts for the report (live lessons only). Loads Firebase on first use |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useActivityState.js` | State, persistence and live sync for hosted activity and quiz tasks (owned by `useStudentCodeState`): loads/saves the `__activity_state__` aux file, discrete changes mirror `currentAnswer` debounced, continuous changes only while `activeStudentView` is this student (throttled, flushed when the teacher starts watching), submit/auto grading → `applyCheckFeedback` + `writeStudentRun` + `logAttempt`, `remoteResetAction` starter/complete, `teacherAnswerEdit`, teacher-live `answer` payload |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTileDragAndDrop.js` | Shared drag-and-drop + tap-to-place hook for tile-based quizzes (MatchQuiz, FillBlankQuiz); also exports `setLiftedDragImage` and `removeTileFromState` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useBoardTileHighlights.js` | Tutor tile highlights on the student's own board (ActivityHost, CodeArrangeTaskContainer): the ones still on their tile, and removal (`cs.dismissTileHighlights`) when the student changes what a highlighted blank holds |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Builder Views (`src/builder/views/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BuilderView.jsx` | Main builder layout: 3-pane (meta / task list / editor), download/upload/print/publish handlers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PreviewView.jsx` | Preview mode: wraps StudentView read-only so teacher can test the student experience |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Builder Modules (`src/builder/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonUtils.js` | Builder lesson validation — the shared core (`src/shared/lessonValidation.js`) plus the Builder-only extras (duplicate task-id warnings, browser-only module rules such as Scratch toolbox XML, the untested-check reminder) — and export normalisation rules |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `printLesson.js` | `buildPrintHtml(lesson)` — generates printable HTML string from lesson JSON (no DOM); quizzes and activities print their own fields (`printHtml`), activities also their name and description; a code task's module section comes from its module's `authoring.printTask` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `showVariablesAuthoring.js` | Builder helpers for a task's `showVariables`: `setShowVariablesEnabled`, `updateShowVariables` (drops fields the mode doesn't use, keeps a `variables_predicted` check's names in step), `setPredictionCheck`, name-list and target-line parsing |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badgeHints.js` | Builder helpers for a task's `badgeHints`: `listBadgeHints`, `toggleBadgeHint(hints, 'suggest' \| 'suppress', badgeId)` (one list per badge, empty → undefined), `patternBadgesFor(task)` (badges the `taskActivity` pattern triggers) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskFormat.js` | Builder format switching: `COMMON_TASK_FIELDS` / `commonTaskFields` (kept across formats) and `convertTaskToActivity` (UI `builderConvert` or `defaultTask`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Builder Hooks (`src/builder/hooks/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useBuilderState.js` | Task CRUD state and handlers (add, duplicate, delete, reorder, subtasks) plus derived state (errors, warnings, flatTasks, selectedTask/Group) — no DOM, independently unit-testable |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTaskEditorState.js` | Run/check/output state and handlers for the task editor: `handleRun`, `handleRunTests`, `handleStop`, `handleTestChecks`, `handleQuizPreviewSelect`, `handleInputSubmit`, `resetRunState`; what Run does comes from the module's `authoring.builderRun` (`runsPyodide` / `runsNothing`, else the HTML preview) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Builder Components (`src/builder/components/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonMetaPanel.jsx` | Lesson-level metadata: id, type, title, description, level, lesson number, topic summary/proposals, assets (shared type assets for `authoring.sharedTypeAssets` modules), sandbox config modals |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `LessonTopicSummary.jsx` | Derived existing/missing/unused topic report and editor for lesson-level topic proposals |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskList.jsx` | Left sidebar: task/group tree with drag-reorder, selection, creation, validation summary; task icons/tooltips for quizzes and activities come from the activity registry |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskEditor.jsx` | Task editor composition root: orchestrates sub-components and workspace panels; task format grid Code / Information / Quiz / Activity (+ Arrange in composed lessons) via `getTaskFormat`, with the quiz picker, activity gallery and quiz `BuilderEditor`s from the activity registry; dispatches to lesson-type `BuilderWorkspace` via registry; module gates (stage tabs, draft notice, Code button, copy-code placeholder, preview assets, reset-to-starter) come from the definition's `capabilities.unifiedStages` and `authoring` group; delegates run/check state to `useTaskEditorState`; re-exports `ScratchToolboxPicker`, `SpriteManager`, `BackdropManager` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ExplainerEditor.jsx` | Markdown editor with Edit/Preview tabs; live rendering via MarkdownRenderer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `FileManager.jsx` | HTML file list: add/delete/type-change, entry file picker, HTML+CSS+JS template generator (templates from `modules/html/fileTemplates.js`; re-exports `HTML_ONLY`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BuilderOutputPanel.jsx` | Output panel with check results, retro typing animation (via `useTypewriterOutput`), and `input()` prompt for builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BuilderToolbar.jsx` | Top toolbar: branding, dirty indicator, and all action buttons (new/upload/preview/print/download/publish) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Lesson Meta Sub-components (`src/builder/components/lesson-meta/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SandboxStarterModal.jsx` | Lesson sandbox starter editor and summary, chosen by the module's `authoring.sandboxStarterEditor` (`code`, `blocks`, `fs`, `circuit`, `files`); composed lessons get one tab per module |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StorageAssetUploader.jsx` | Firebase Storage upload/delete UI for lesson-level assets |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SharedAssetsSelector.jsx` | Lesson-level selector for type-wide shared HTML assets |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AssetSummary.jsx` | Lesson asset summary and embedded read-only asset browser |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `Field.jsx` | Shared labelled field wrapper for lesson metadata forms |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `Modal.jsx` | Shared modal shell used by lesson metadata editors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `styles.js` | Shared inline style objects for lesson metadata sub-components |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Task Editor Sub-modules (`src/builder/components/task-editor/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskEditorFields.jsx` | Shared primitives: `Field`, `QuizTypeIcon`, `TaskFormatIcon`, `CodeWorkspaceTabs`, `Modal`, `CarryThroughPicker`, `SpriteManager`, `CostumeManager`, `BackdropManager` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `QuizEditors.jsx` | Thin re-export for older imports: `QuizTypePicker` (from `ActivityPickers.jsx`) and each quiz sub-type's editor (now in `src/activities/quiz_*/ui.jsx`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ActivityPickers.jsx` | Registry-driven `QuizTypePicker` (category `quiz` activities) and `ActivityGallery` (every `taskType: 'activity'` activity: icon, label, description; unknown-activity hint) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ActivitySection.jsx` | Builder section for an activity task: gallery, description field, the activity's `BuilderEditor`, and the `ActivityPreview` student preview |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CheckEditors.jsx` | Check utilities and editors: `subjectOpFromType`, `typeFromSubjectOp`, `getOperatorOptions`, `makeCheckSkeleton`, `CheckValueEditor`, `CheckListEditor`, feedback priority/stage-offer controls, and `CheckFeedbackControls` (the shared feedback mode/show pair, also used by the electronics, filesystem and scratch check editors) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TestsEditor.jsx` | Builder sub-module: `TestsEditor` — CRUD UI for Python task test cases (inputs + check per test) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskPreviewPanel.jsx` | Titled wrapper panel used to render the student-facing quiz/information preview in the builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskCheckResults.jsx` | Pass/fail check result banner plus a non-mutating student-feedback preview for linked stage offers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskRunControls.jsx` | Run/Stop/Run Tests button row for the Python task builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskTestResults.jsx` | Output + test-suite results panel for the Python task builder; wraps `BuilderOutputPanel` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StageTargetField.jsx` | "Stage target" in the task editor (modules declaring the `stageTarget` task field: Python): on/off, the target's Python, ghost shown at start |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScrubField.jsx` | "Live scrubbing" in the task editor (modules declaring the `scrub` task field: Python, Turtle, HTML): on/off, numbers, colours, per-line slider ranges |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ShowVariablesField.jsx` | "Name-tag panel" in the task editor (modules declaring the `showVariables` task field: Python, Turtle): on/off, mode, `at` (end / `#@peek`), hide list, predict names with the "every prediction is right" check toggle, target lines |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BadgeHintsField.jsx` | "Badge hints" in the task editor's authoring metadata (not information tasks): toggles for `badgeHints.suggest` (hintable pattern badges) and `badgeHints.suppress` (rule-backed badges), plus a read-only line naming the badges the task's `taskActivity` pattern triggers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskOptionsSection.jsx` | Collapsible "Task options" section: carry-through, interaction mode, completion check (via module `CheckEditor` + `defaultCheck`), feedback checks with targeted stage offers, and tests; all type-specific behaviour driven by module properties (`supportsInteractionMode`, `supportsIncorrectChecks`, `supportsTests`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CrossLessonCarryField.jsx` | "Carry from an earlier lesson" in Task options (modules with `capabilities.rosterWork`): stock lesson id + task id for `carryCodeFromLesson` / `carryBlocksFromLesson`, a soft lookup of the source, and clearing the in-lesson carry it can't be combined with |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SideQuestsEditor.jsx` | "Side-quests" in Task options (modules with `capabilities.sideQuests`): up to three side-quests, each a title, kind, Markdown explainer and starter; removing the last removes `sideQuests` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `InspectorField.jsx` | "HTML Inspector" in Task options (modules with `capabilities.previewInspector`): enable, start in inspect mode, pre-selected element, sections |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PythonTaskWorkspace.jsx` | Python code editor + run controls panel for the builder (starter/complete/stage tabs) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `FilesystemTaskWorkspace.jsx` | Filesystem tree editor panel for the builder (starter/complete/stage tabs) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `DesktopTaskWorkspace.jsx` | Desktop starter/complete filesystem tree editor panel for the builder (reuses `FsTreeEditor` against `starterDesktop.fs`/`completeDesktop.fs`), plus `startsInDir` and an `availableApps` checkbox picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `HtmlTaskWorkspace.jsx` | HTML editor with file manager + live preview split pane for the builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScratchTaskSetup.jsx` | Scratch block editor modal and setup summary; owns all scratch-specific state and handlers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Check Editor Helpers (`src/builder/components/task-editor/check-editors/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checkEditorUtils.js` | Pure check editor mapping helpers: subject/operator/type conversion, option lists, check skeletons, regex detection, and failure formatting |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Lesson Type Modules (`src/modules/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Each lesson type is a self-contained module folder. Adding a new type requires only a new folder plus one line each in `definitions.js` and `registry.js`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `registry.js` | Maps `lesson.type` strings → module objects; exports `getLessonModule`, `getStudentWorkspace`, `getBuilderWorkspace`, `getCheckEditor` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checks.js` | Check evaluation dispatcher: canonical `type` + `operator` aliases, feedback-check precedence, `evaluateSingleCheck`, `evaluateCheck`, `evaluateCheckResults`, `evaluateCheckWithFeedback`, `normalizeChecks`. Builds `checkRegistry` from `CORE_CHECKS` + every module's `CHECKS`; `evaluateSingleCheck` normalises core aliases then does a registry lookup + call, and `CHECK_TYPES.RUN_REQUIRED` / `SUBMIT_ALLOWED` are derived from the definitions. The core `code` definition routes to the electronics evaluator when `context.circuit` is present, so it runs against Micro Controller MicroPython source instead of raw circuit JSON |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checkRegistry.js` | Pure, Node-safe check-type registry: `createCheckRegistry(defs)` validates definitions (`type`, `owner`, `timing`, `requiresRun`, `submitAllowed`, `evaluate`, optional `aliases`/`subject`/`operators`/`fields`/`contextKey`/`validate`), throws on duplicate type ids or aliases, and provides alias-aware `get`/`has`/`canonicalType`/`typeIds`/`evaluate` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sharedStyles.js` | Shared lesson-module layout style factories used by scroll-style modules |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `defineModule.js` | Pure: `defineModule(def)` validates a module definition (type, `meta` — `label`, `order`, `shortLabel`, `icon`, `pickerHint`, `language`, `playground`, optional `surfaceLabels` / `pickerOrder` (defaults to `order`) — `capabilities` (including `run`: `runtime` / `preview` / `workspace` / `none`, defaulting to `none`, with `runResult` flags for runtime modules, and the step 4.7 UI gates `stageReveal`, `teacherStageReveal`, `highlights`, `downloadCode`, `fixedExplainer`, `topicLibrary`, `studentMirror`, optional `cardSummary` / `focusPanes` / `teacherEditor` — the last paired with `workSlot.teacherEdit` and `meta.teacherEditCopy` — and the step 4.8 optional booleans `teacherFillHeight`, `teacherSandboxRow`, `teacherUnifiedStageTabs`, `explainerBlockMenu`, defaulting to false), required hooks and flags, the contract v2 `lifecycle` (plus optional `playgroundTask`, required exactly for `meta.playground` modules) / `storage` / `wire` groups, the Builder `authoring` group (`defaultTypeFields`, `missingStarter`, `copyStarterToComplete`, `printTask`, `sandboxStarterEditor`, `builderRun`, optional `codeFormat` / `copyCodePlaceholder` / flags), and the optional paired `checking` / `workSlot` groups that put a module on the generic work slot (hook form, or field form whose source hooks it derives; a record slot on the code channel or a per-file slot on the files channel; `workspaceOwned` needs the `workspace` trigger; optional `teacherStarter` defaults to `starter`) — `getSandboxState` is set as an alias of `lifecycle.sandboxStarter`) and freezes it; `defineUiModule(def, ui)` merges the UI half (workspaces, check editors, `getLayoutStyles`, `runtime`) into the object the registry returns |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `moduleTaskValidation.js` | Pure building blocks for each module definition's `validateTask`: check-field rules (`validateCodeChecks`, `validateScratchChecks`), stage-state and HTML starter-file rules, Python test rules, complete-solution warnings, starter/check-value helpers, and `validateRegisteredChecks` (calls a check-registry definition's optional `validate`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `moduleContract.js` | Pure builders for the contract v2 hook groups: lifecycle helpers (`stageForAction`, `codeResetTarget`, `codeHasComplete`, `alwaysPersonalSandbox`, `personalSandboxWhenLessonHas(field)`), `TEACHER_EDIT_CODE_COPY`, storage adapters (`recordStorage({ workKey, taskMeta, sandboxMeta })`, `perFileStorage()`) mapping work onto the runtime-model localStorage shapes, wire codecs (`codeStringWire`, `jsonWire`, `filesWire`, `noLiveExtras`), and work-slot builders (`codeWorkSlot`, `codeCheckContext`, `starterCodeOf` / `completeCodeOf`, `identityStored` / `identityFromStored`, `fieldWorkSlotHooks`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `moduleAuthoring.js` | Pure builders for the `authoring` group: `codeDefaultTypeFields`, `codeCopyStarterToComplete`, `never`, `noUpdates`, the copy-code placeholders |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `printHelpers.js` | Pure helpers for `authoring.printTask`: `printCodeStringTask` (python, turtle, arcade), `printCarryFrom`, `printCopyCode`, `printNothing`, and the shared `parseObjectLike` / `sortByPath` / `snippet` / `formatSummary` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `definitions.js` | Pure, Node-safe registry of every `<type>/definition.js`: `MODULE_TYPES` (registry order), `getModuleDefinitions()`, `getModuleDefinition(type)`, plus the derivation helpers core code uses instead of hand-maintained type lists — `getModuleTypesWhere(predicate)`, `getModuleTypesWithCapability(name)`, `CARRY_THROUGH_FIELDS`, `getModuleLabel(type, surface)`, `getModuleAuthoring(type)`, `SPRITE_LIBRARY_MODULE_TYPE`; used by `registry.js`, `src/shared/composedLesson.js`, `taskUtils.js` and the CLI |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `<type>/definition.js` | Pure, Node-safe half of each module (python, html, scratch, filesystem, electronics, arcade, turtle, desktop): `meta`, authoring/carry-through/state/sandbox/display hooks, the contract v2 `lifecycle` (`resetTarget`, `hasComplete`, `teacherCompleteTab`, `sandboxStarter`, `composedSandboxFields`, `hasPersonalSandbox`), `storage` and `wire` groups, the Builder `authoring` group, the `checking` / `workSlot` groups (every module), and capability flags; no JSX, React, DOM or runtimes, and explicit `.js` import extensions. `<type>/index.js` wraps it with `defineUiModule` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/index.js` | Python module: layout styles, `makeCodeTaskFields`, `makeNewStage`, `initCompleteTab`, `defaultCheck`, capability flags |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/checks.js` | Python-exclusive check evaluation: `PYTHON_CHECK_TYPES`, `evaluatePythonCheck`, registry `CHECKS` — all `variable_*` types |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/PythonEditor.jsx` | Python CodeEditor wrapper with Pyodide loading/error status; shows a tap-to-insert row of common Python symbols above the editor on touch devices (`useIsTouchDevice`) plus an always-visible `EmojiPickerButton`, both while interactive, inserting via `CodeEditor`'s `insertAtCursor` ref API; a **Blocks** toggle (also read-only) for the block brackets (`useBlockGuidesOn`), hidden with the brackets when the caller passes `showBlocks={false}` (`taskShowsBlocks(task)`). Shared by Turtle, Arcade, and Electronics student/live views since they reuse this component for their Python/MicroPython code |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/StudentWorkspace.jsx` | Student Python editor + Run/Stop/Output panel (extracted from `LessonTaskContent`); Stage, name tags and console side by side on wide screens, or a tabbed result pane (`src/shared/resultPane/`) on tablets and small screens |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/BuilderWorkspace.jsx` | Re-export of `PythonTaskWorkspace` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/CheckEditor.jsx` | `CheckListEditor` wrapper with Python-appropriate flags |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/pyodide.js` | Pyodide Web Worker manager: `initPyodide()`, `runPython()`, `stopPython()`, `provideInput()`, `isPyodideReady()`, `renderStage(code)` (a stageTarget run silently; never overlaps a run), `isPythonRunning()`, `getStopCount()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/stageTarget.js` | A task's Python Stage target: `stageTargetCode` / `stageTargetGhostOn`, `loadStageTarget(code)` (rendered once through `renderStage`, cached by code), `useStageTarget(task, { ready })` for the workspace's ghost |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/stagePictureBridge.js` | `createStagePictureBridge`: the worker side of Image Lab — `prepare(code)` fetches the library pictures a program names (cached for the worker's life), `image()` answers `load_image()` at once (synchronous request for a name the scan missed), `snapshot()`, `colour()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/variableCapture.py.js` | Python source (a string) the worker runs before each run: `_hs_encode_value` (value → capped JSON node tree), `_hs_snapshot` (visible variables of a namespace: no modules, callables, dunders or hidden names), `_hs_frame_namespace` (the `__hs_run__` frame's locals plus a student function's), `_HsLineWatch` (a `sys.settrace` line watcher on `<student>` frames, removable mid-run) — the capture path for the name-tag panel and any later step recorder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/pyodide.worker.js` | Web Worker: run counts (`capture.countLines`: the same `_HsLineWatch` 'line' events counted per listed line, `__hsSetLineCounts`, `done.lineCounts`; `normalizeCaptureConfig`), slow-mo recording (`record`: a `_hs_rec_*` line recorder on `_HsLineWatch`, `__hsSlowMoStep` / `__hsSlowMoLoops` bridges adding output, Turtle and Stage marks; the 2,000-step cap raises `_HsStopRun` and reports `done` as `stopped`; `normalizeRecordConfig`), Pyodide loader (registers the Python Stage's `stage` module in `sys.modules` once), top-level `import *` expansion, the `__hsStageCall` bridge and `stage_render` message, Image Lab's `__hsStageImage` / `__hsStageSnapshot` / `__hsStageColour` bridges (`stagePictureBridge.js`, pictures fetched before each run), AST-based async `input()` transform, stdout/stderr event streaming (via `createUtf8ByteDecoder()`, a streaming UTF-8 decoder — Pyodide's raw callbacks deliver one byte at a time, so multi-byte characters like emoji or `£` must be reassembled rather than decoded byte-by-byte); `formatPythonError()` parses the failing `<student>` line for the error-line highlight |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/index.js` | HTML module definition |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/checks.js` | HTML-exclusive check evaluation: `HTML_CHECK_TYPES`, `evaluateHtmlCheck`, registry `CHECKS` (canonical `html_*` types own the legacy `element_*` ids as aliases) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/iframe.js` | `buildIframeSrc()`: Blob URL filesystem, cross-reference rewriting, CSP + console interceptor injection; `resolveIframeErrorLocation()` maps a reported runtime error back to `{ file, line }` for the error-line highlight |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/HtmlEditor.jsx` | Tabbed HTML/CSS/JS editor with optional asset browser drawer; shows an `EmojiPickerButton` above the editor while interactive |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/StudentWorkspace.jsx` | Student HTML editor + iframe preview; handles mobile/desktop split; owns `useTypeAssets` call |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/BuilderWorkspace.jsx` | Re-export of `HtmlTaskWorkspace` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/CheckEditor.jsx` | `CheckListEditor` wrapper with HTML flags; includes `allowDomChecks` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/fileTemplates.js` | Pure: `HTML_FILE_TYPE`, `isHtmlFileType`, `isHtmlEntryCandidate`, and the `HTML_ONLY` / `HTML_WITH_CSS` / `HTML_WITH_CSS_JS` file templates (Builder file manager, sandbox starter editor, `authoring.defaultTypeFields`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/print.js` | Pure: `printHtmlTask` — the HTML module's printable-lesson section |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/config.js` | Pure: the HTML Inspector's task field — `getInspectorConfig` (`inspector: { enabled, open, focus, show }`, off unless enabled), `INSPECTOR_PROPERTIES` (the "Why this …?" list, plain-words labels, longhands, inherited), `normalizeInspectorLiveState` (the Go Live `{ on, selector, property }`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/specificity.js` | Pure: `selectorSpecificity` ([ids, classes, types]; `:is`/`:not`/`:has` take their most specific argument, `:where` adds nothing, pseudo-elements ignored), `compareSpecificity`, `splitSelectorList` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/cascade.js` | `explainProperty(el, property)`: walks the preview document's stylesheets (cross-origin sheets skipped and counted), matches selectors with `element.matches`, ranks by !important, style attribute, specificity and source order, falls back to inheritance from the nearest parent or "the browser's default"; plain-words loser reasons (`REASONS`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/boxModel.js` | Pure: `computeBoxes` / `computeBoxBands` (margin, border, padding, content rings from a border box), `readBoxSizes`, `formatSides`; Okabe–Ito `BOX_COLOURS` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/layout.js` | Flex and grid guides: `computeFlexGuides` (main/cross axes, gaps between children), `computeGridLines` (numbered lines, gaps), `parseTrackList`; `readLayout(el)` gathers them from a live element |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/selectorPath.js` | `selectorPathFor(el)` (a stable `body > div:nth-of-type(2) > p:nth-of-type(1)` path, or a unique `#id`), `resolveSelector` and `isInspectable`, so a selection survives a Run and travels in Go Live |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/previewFileNames.js` | Blob URL → the student's file name, recorded by `iframe.js` for each build, so the Inspector names `style.css` instead of a blob URL |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/HtmlInspector.jsx` | `useHtmlInspector`: the Inspect toggle and the layer IframePreview places over the iframe; owns inspect mode, the chosen element (a selector path, re-found after each Run), the "Why this …?" property, `focus` pre-selection, and the Go Live report (`onLiveChange`, explicit null when it goes away) / follow (`live`, read-only) and use (`onUse`). Never adds anything to the student's page |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/inspector/InspectorLayer.jsx` | The Inspector layer: parent-drawn SVG box bands with px labels (Okabe–Ito colours, text labels), flex/grid guides, the inspect-mode pointer catcher (hover, click/tap to choose, wheel scrolls the page), and the panel — a side panel, or a bottom sheet on narrow previews — with tag/id/classes, Parent/Child/Previous/Next, and Box, Why this…? and Layout sections |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/index.js` | Scratch module definition |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/blockInputs.js` | Pure (Blockly-free): `VALUE_INPUT_DEFAULTS` — each block's value inputs and default shadows; read by the lesson validator, re-exported from `scratch.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/checks.js` | Pure Scratch check evaluation: `evaluateScratchCheck`, `compare`, `createSpriteState`, `DEFAULT_SPRITES`, `normalizeSequenceItem`, and the shared block matcher `matchesOpcodeSpec` / `opcodeAlternatives` (an `opcode` may be one opcode or a list of alternatives) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/checkDispatch.js` | Pure per-sprite check dispatch shared by `ScratchWorkspace.jsx` and the CLI: `evaluateScratchCheckForSprites` (spriteName targeting, first-sprite fallback, any-sprite pass), `partialEvaluateScratchCheckForSprites` (after_block_placed pass/pending/fail), `findScratchCheckTarget`, `isScratchStaticCheck` / `SCRATCH_STATIC_CHECK_TYPES` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/jsonWorkspace.js` | Pure: wraps saved Blockly workspace JSON in the duck-typed workspace interface the checks read (`createJsonWorkspace`, `buildJsonSpriteWorkspaces`, `parseScratchBlocksState`), so checks run in plain Node |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/checkVerification.js` | Pure static verification of a task's Scratch checks against its complete / starter / Complete-role stages, plus Support-role stages in `verifyScratchTask` (warns when one passes completion) (`verifyScratchTask`, `evaluateScratchStage`, `explainScratchCheck`, `getScratchVerificationStages(task, { includeSupport })`); used by `cli/check-tests.mjs` and `warnCompleteBlocks` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/checkCases.js` | `evaluateScratchCheckCase` (the module's `testCheckCase`): one `lessons test-checks --cases` Scratch case (whole `blocks`, or a `stage` plus `edits`) judged per check against `expect` (completion, blocking, feedback), with the still-building verdict; `toScratchSpriteStates` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/blockEdits.js` | `applyScratchBlockEdits(states, edits, { sprites })`: pure JSON edits to stored Scratch workspaces (`appendBlock`, `replaceOpcode`, `setField`, `removeBlock`), for `--cases` variations; throws `edit N (op): …` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/print.js` | Pure: `printScratchTask` — the Scratch module's printable-lesson section |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scratch.js` | Custom Scratch interpreter: block definitions, multi-sprite state, broadcast, sounds, `CREATE_VARIABLE_CALLBACK_KEY`/`addCreateVariableButtonToToolbox` flyout button injection; re-exports check/state helpers from `checks.js` and persistence helpers from `scratchPersistence.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scratchEditors.jsx` | Scratch toolbox data, `buildScratchToolboxXml`, `parseScratchToolboxXml`, `ScratchToolboxPicker`, `ScratchCheckListEditor`, `ScratchCheckEditor`, variables, and prebuilt stack editors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/graphicEffects.js` | Draws Scratch graphic effects (`effect_*` sprite state) on the stage: `applyGraphicEffectsToPixels` ports Scratch 3's sprite shader maths for all seven effects; `drawSpriteWithGraphicEffects` renders a sprite through an offscreen canvas, falling back to canvas alpha/CSS filters when a cross-origin costume taints the canvas |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/sandboxStarter.js` | The lesson-level Scratch sandbox: `parseScratchSandboxStarter` (a JSON string or the state object) and `scratchSandboxTask` (the lesson's `sandboxSprites` / `sandboxToolbox` / `sandboxBackdrops` as a task for the student's personal sandbox) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scratchSounds.js` | Per-sprite sounds: the built-in synth library (`SYNTH_SOUNDS`, Web Audio), audio-file playback with a decoded-buffer cache, `DEFAULT_SPRITE_SOUNDS` / `resolveSpriteSounds`, `normalizeSoundPresets` (admin `defaultSounds`), and `validateScratchSoundsAndTabs` (sprite `sounds` + the Costumes/Sounds tab flags) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/exportWork.js`, `scratch/ShareView.jsx` | Scratch exporter (Export work): `.sb3` + LaunchPad JSON copy, pictures (stage, scripts per sprite, costumes), share payload (`state` + `shareTaskFields(task)` + `assetsPath`); `ShareView` opens the project in a read-only `ScratchWorkspace` (green flag runs) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/export/sb3Translator.js` | Pure: Blockly 12 JSON → Scratch 3 `project.json` (`SB3_BLOCK_SPECS` for every LaunchPad opcode, `translateWorkspaceBlocks` with menu shadow blocks, compact primitives, obscured shadows, Stage variables/broadcasts, renames such as `sensing_touchingedge` → `sensing_touchingobject` `_edge_`; `buildSb3Project` with unique sprite names and variable monitors; unmapped opcodes are dropped, the stack closed up, and listed) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/export/projectModel.js` | `resolveScratchProject(task, state, spriteState)`: sprites (authored + `__meta__` additions), backdrops, variables with values, blocks per sprite and Stage, sprite states (live snapshot or start positions) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/export/sb3Assets.js` | Browser: `loadProjectImages` (CORS-safe), `drawCostumeCanvas` / `drawBackdropCanvas` (the stage's own emoji/shape drawing), sounds to files (synth → `renderSynthSound` → WAV; MP3/WAV fetched), MD5 asset names, `buildSb3` zips project.json + assets |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/export/stagePicture.js`, `scratch/export/scriptPictures.js`, `scratch/export/wav.js` | Stage PNG via `paintStage`; each sprite's scripts rendered off-screen read-only (zelos) → `scriptSvg.js` → PNG; pure mono 16-bit `encodeWav` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scriptSvg.js` | A rendered Blockly workspace as one standalone SVG (`workspaceToSvg`: computed styles inlined, Quicksand and images embedded; `SCRIPT_RENDER_OPTIONS`), shared by `cli/scratch-render/page.js` and the Export work script pictures |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/stillBuilding.js` | Pure "still building" rule for `after_block_placed` failures: `isScratchStillBuilding` (blocks unchanged since the task opened, ids/positions ignored, or a loose non-hat block), on stored workspace JSON so the CLI can reuse it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/startingBackdrop.js` | Pure: `getStartingBackdrop` / `getStartingBackdropName` (`backdrops[].current: true`, else the first), `setStartingBackdrop` (Builder), `validateStartingBackdrop` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/AddPickerPopover.jsx` | Student Add sprite / Add backdrop library list, portalled to `document.body` and anchored to the Add tile; closes on outside click / Escape, follows scroll and resize |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/pickerPosition.js` | Pure `computePickerPosition`: places the library picker below or above its tile with the height capped to the viewport |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scratchHighlight.js` | Scratch's part of control highlights: `scrollFlyoutToCategory` and `useScratchCategoryReveal` (scroll the palette to a highlighted category heading) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/gate.js` | Pure slow-mo gate (`createSlowMoGate`, injected timers): every block of a slow-mo run awaits `wait(scriptKey)` (scratch.js `signal.onBlockStart`); playing = each script at most `speed` blocks/s on its own clock; paused = one block per `step()`, round-robin across waiting scripts in first-asked order, one Step kept when all are busy; `dispose()` releases everything; `clampSlowMoSpeed` (0.25–4) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/config.js` | Pure: the `slowMo` task field — `normalizeSlowMo` (`{ speed, timeline }` or null, off unless `enabled`), `SLOW_MO_TIMELINE_FIELDS`, `validateScratchSlowMo` (Builder + CLI) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/timeline.js` | Pure: timeline snapshots — `captureSlowMoSnapshot` (whole stage copied for preview; costume, rounded x/y, backdrop, variables of the running sprite), `appendSlowMoSnapshot` (cap `SLOW_MO_SNAPSHOT_CAP` 500), `slowMoSnapshotFields`, `describeSlowMoSnapshot` (screen-reader label) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/glow.js` | `applySlowMoGlow`: puts `scratch-slowmo-glow` on several running blocks' SVG groups at once (one per script), removing stale ones; `sameSlowMoGlow` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/live.js` | Pure: the slow-mo live shape carried in the sprite-state payload (`spriteState.slowMo` / `currentSpriteState.slowMo`: mode, step, speed, glow) — `buildSlowMoLive`, `readSlowMoLive` (RTDB array-as-object safe), `slowMoStatusText` for mirrors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/useScratchSlowMo.js` | ScratchWorkspace's slow-mo state: `begin` / `attach(signal)` (onBlockStart → gate, onBlockEnd → redraw + snapshot, skips C blocks) / `finish` / `cancel`, Pause/Step/resume/speed, timeline preview (`selectSnapshot`, `backToNow`), glow painting (own run or a mirror's received glow) and the `live` payload; reports use through `onUse` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/SlowMoControls.jsx` | The four big slow-mo buttons (Slow-mo, Pause, Step, Restart; icon + word, ≥44px), speed slider and status line; `SlowMoMirrorStatus` (read-only "Slow-mo · step N · paused") |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/SlowMoTimeline.jsx` | The swipeable timeline strip under the stage (one labelled card per step, tap to preview, "Back to now", cap note) and `SlowMoPreviewBanner` over the stage |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/SlowMoField.jsx` | Builder control for `slowMo` (on/off, starting speed, timeline fields), in ScratchTaskSetup → Student additions |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/slowMo/slowMo.css` | Slow-mo styles: the running-block glow (short pulse then still outline; still outline only under reduced motion), buttons, timeline |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/CostumesSoundsPanel.jsx` | `CostumesTab` / `SoundsTab`: the selected sprite's Costumes and Sounds tabs beside the block editor, with the "Add" views (emoji picker + library costumes; synth + library sound files) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/scratchPersistence.js` | Workspace serialization and state migration: `saveWorkspace`, `loadWorkspace`, `migrateBroadcastState`, `migrateVariableFields` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/ScratchWorkspace.jsx` | Full Scratch IDE: multi-sprite Blockly workspaces, stage canvas, sprite drag, check evaluation; author-gated (`task.allowAddSprite`/`allowAddBackdrop`/`allowCreateVariable`) student "Add sprite"/"Add backdrop" pickers and a runtime "Make a Variable" flyout button — all decorative/check-invisible (`isSpriteCheckable`, `filterCheckableSpriteWorkspaces`, `isValidNewVariableName`), persisted under a `__meta__` key alongside the per-sprite Blockly state; optional Code/Costumes/Sounds tabs (`showCostumesTab`/`showSoundsTab`, adding gated by `allowAddCostume`/`allowAddSound`) with additions to any sprite saved as `__meta__.addedCostumes`/`addedSounds` (`collectAddedSpriteAssets`, `mergeAddedSpriteAssets`); below a measured or forced (`forceCompact`) width threshold, switches from side-by-side editor+stage to a Blocks/Stage `PanelTabs` layout; the stage canvas itself scales down on both width and height to fit whatever space it's given (`computeStageScale`) instead of a height threshold triggering that same switch; Blockly zoom is fully automatic (`computeBlockScale`, no manual wheel/on-canvas zoom) (see `docs/agents/classroom-behaviours.md`); exports its stage drawing (`paintStage`, `drawEmojiAtOrigin`, `drawScratchSpriteAtOrigin`, `drawBubble`, `initSpriteStates`, `STAGE_W`/`STAGE_H`) for Export work |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/StudentWorkspace.jsx` | Scratch workspace with Reset Blocks button (extracted from `LessonTaskContent`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/TeacherLiveView.jsx` | Read-only Scratch view for the teacher dashboard's "watch one student" modal (`StudentWorkspaceBody.jsx`); always renders `ScratchWorkspace` with `forceCompact` so it doesn't depend on the modal's own width |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/BuilderWorkspace.jsx` | Re-export of `ScratchTaskSetup` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratch/CheckEditor.jsx` | `ScratchCheckListEditor` wrapper |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/index.js` | Filesystem module definition |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/checks.js` | Filesystem check evaluation: `FS_CHECK_TYPES`, `FS_CHECK_DEFINITIONS`, `evaluateFsCheck`, registry `CHECKS` — all `fs_*` types |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/filesystem.js` | Virtual filesystem engine: flat path-map state, CRUD helpers, path normalization, and parent/child lookup |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/print.js` | Pure: `printFilesystemTask` — the Filesystem module's printable-lesson section (path/type/snippet tables) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/filesystemEditors.jsx` | Builder sub-module: `FsTreeEditor` visual starter/complete editor and `FsCheckListEditor` filesystem check builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/FilesystemTask.jsx` | Student-facing Windows Explorer-style virtual filesystem UI: folder tree, icon grid, drag-and-drop move, inline rename, CodeMirror file editor |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/StudentWorkspace.jsx` | `FilesystemTask` wrapper with initialDir derivation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/BuilderWorkspace.jsx` | Re-export of `FilesystemTaskWorkspace` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `filesystem/CheckEditor.jsx` | `FsCheckListEditor` wrapper |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/index.js` | Desktop module definition |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/desktopState.js` | Desktop state shape (`{ fs, recycleBin, windows }`), window CRUD helpers (`openWindow` — dedupes by `(appId, filePath)`, `moveWindow`, `resizeWindow`, `setWindowMinimized`, `setWindowMaximized`, `closeWindow`, `focusWindow`, `arrangeSideBySide`, `isWindowDirty`), serialize/deserialize |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/checks.js` | Desktop check evaluation: `DESKTOP_CHECK_TYPES`, `DESKTOP_CHECK_DEFINITIONS`, `evaluateDesktopCheck`, registry `CHECKS` — `fs_recycle_bin`, `window_state`, `windows_arranged_side_by_side` (`fs_*` checks route through the filesystem module's evaluator via `context.fs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/desktopEditors.jsx` | Builder check editor: `DesktopCheckListEditor`, unified over filesystem `fs_*`, desktop-specific and `input_*` check definitions (gesture/target/drop-target/combo/via/modifier/min fields) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/Desktop.jsx` | Desktop shell: background, app icon grid, taskbar with clock and open-window buttons |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/WindowManager.jsx` | Renders open windows for the current desktop state, wires drag/resize/minimize/maximize/close/focus to `desktopState.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/Window.jsx` | Window chrome: draggable title bar, resize handle, minimize/maximize/close controls |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/fileManager/FileManagerApp.jsx` | File Manager "app": wraps `FilesystemTask`, adds a Recycle Bin panel, search, and sort; calls `onOpenFile` on file open instead of showing `FilesystemTask`'s inline preview |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/fileManager/recycleBin.js` | Soft-delete/restore layered on the filesystem module's pure operations, without modifying them |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/textEditor/TextEditorApp.jsx` | Text Editor "app": plain-text editor with local `draftContent`/dirty tracking and explicit Open/Save/Save As (no autosave) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/imageViewer/ImageViewerApp.jsx` | Image Viewer "app": read-only image display, zoom, and Prev/Next across sibling images in a folder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/shared/FileDialog.jsx` | Shared Open/Save As dialog (folder navigation, New Folder, overwrite confirm) used by Text Editor and Image Viewer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/browser/BrowserApp.jsx` | Browser "app": simulated browser chrome (Back/Forward/Refresh/Home, address bar), search engine, and downloads over a lesson-authored `siteGraph` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/browser/siteGraph.js` | Pure helpers for the Browser's lesson-authored site graph: normalise, page lookup, free-text search ranking, URL lookup |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/apps/paint/PaintApp.jsx` | Paint "app": freehand canvas (brush/eraser, palette, sizes, undo, clear) with Text Editor's explicit Open/Save/Save As model; saves a PNG `data:` URL onto the file entry's `content` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/StudentWorkspace.jsx` | Mounts `Desktop` for the student, wiring `cs.handleDesktopChange`/`handleDesktopInteraction` and the file-open-to-app-window handler; when the task has `input_*` checks, records input on the surface (`useSurfaceInputRecorder`) and sends the summary as `interaction.input` (in memory only) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/BuilderWorkspace.jsx` | Re-export of `DesktopTaskWorkspace` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/CheckEditor.jsx` | `DesktopCheckListEditor` wrapper |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `desktop/TeacherLiveView.jsx` | Reuses `Desktop` read-only or sandbox-editable against `displayState` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/index.js` | Electronics module definition: breadboard state helpers, builder/student/teacher workspaces, checks, carry-through, sandbox state, and MicroPython runtime bridge |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/checks.js` | Electronics registry `CHECKS` for the `circuit_*` check types (evaluators live in `circuit.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/circuit.js` | Pure electronics circuit model helpers: default board, clone/parse/serialize, component creation, connectivity, short detection, simulated states, `circuit_*` check evaluation, and generic `code`-family check evaluation against the Micro Controller's MicroPython source |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/print.js` | Pure: `printElectronicsTask` — the Electronics module's printable-lesson section (parts, components, wires, MicroPython) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/ElectronicsWorkspace.jsx` | Shared breadboard UI shell: board state, selection, drag/drop, wiring interaction, fit-to-pane zoom, tabs, MicroPython Code tab, and output panel - draws on the five modules below |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/Inspector.jsx` | Right-hand panel for the selected wire or part: electrical readout, part properties, runtime controls, Micro Controller GPIO editing; handlers arrive bundled as `actions` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/ComponentArt.jsx` | How parts are drawn: palette glyphs, the part on the board with its live state and on-canvas controls, and the inspector's state readout. Keeps literal colours - it draws real components |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/wireRouting.js` | Orthogonal wire routing: obstacle-aware pathfinding over a lane graph, scored on overlap, crossings and bends |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/boardGeometry.js` | Board grid metrics and part geometry: part sizes, pin offsets, rotation, and the rectangles the wire router avoids |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/workspaceStyles.js` | Electronics chrome styles on the `--colour-*`/`--ui-*` tokens, plus the semantic colour constants the tokens do not cover |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/format.js` | Display formatting for resistance, voltage and current, shared by the inspector and the part drawings |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/StudentWorkspace.jsx` | Student electronics workspace wrapper: serialized circuit state, reset/check actions, teacher-live/read-only handling |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/BuilderWorkspace.jsx` | Builder electronics workspace: starter/complete/stage board tabs, board sizing, and available component controls |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/TeacherLiveView.jsx` | Read-only or sandbox-editable teacher electronics board view |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `electronics/CheckEditor.jsx` | Electronics check list editor for `circuit_*` completion and feedback checks, plus a Code subject that reuses `builder/components/task-editor/check-editors/checkEditorUtils.js` and `CheckEditors.jsx`'s `CheckValueEditor` for generic code checks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/index.js` | Arcade Kit module definition: single-file Python pixel-game task schema and classroom capabilities |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/StudentWorkspace.jsx` | Student Arcade Kit workspace: Python editor, sandboxed game canvas, lesson/type/local asset browser, and Run/Stop controls |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/BuilderWorkspace.jsx` | Builder Arcade Kit code-stage editor and on-demand game preview |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/ArcadePreview.jsx` | Isolated iframe host for rendering and restarting an Arcade Kit game safely |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/design.js` | Portable pixel-sprite and tilemap model, stage selection, generated image data URLs, and Python tilemap snippet creation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/ArcadeDesignStudio.jsx` | Shared Builder/student sprite editor, tilemap painter, per-tile-property editor, object-spawn list, and generated-asset list |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/runtime.js` | Builds the sandboxed Pyodide game document and exposes `headstart_arcade` (`game`, `Sprite`, `TileMap`, `keys`, `pointer`/`mouse`) to student code |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/CheckEditor.jsx` | Arcade Kit code-check editor wrapper (Output subject hidden; code checks run on Run game via `handleArcadeRun` in `useStudentCodeState.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `arcade/TeacherLiveView.jsx` | Teacher Arcade source view with read-only inspection of a watched student's art and map snapshot |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/index.js` | Turtle module definition: single-file Python turtle-graphics task schema and classroom capabilities |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/engine.js` | Pure turtle-graphics state machine (forward/turn/goto/home), no DOM/Pyodide — unit tested directly |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/shim.js` | Python-side fake `turtle` module (source-line array + `buildTurtleProgram`), same technique as `electronics`'s `MICROPYTHON_SHIM`, backed by `__hsTurtle*` bridge functions on the shared Pyodide worker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/recorder.js` | Pure run recorder behind the worker's `__hsTurtle*` bridge (`createTurtleRecorder`): state, the code-order command log (drawn `line`/`fill`/`dot`/`stamp`/`text` plus motion `move`/`turn`/`speed`/`visible` for playback; a fill sits where `begin_fill()` ran with `closedAt`) and the call log for checks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/draw.js` | Shared canvas renderer: maps the fixed logical turtle world onto a responsive canvas (`drawTurtleCommands`, `sizeCanvasToDisplay`), draws records in code order (`drawTurtleItems`, `drawTurtleItem`, `isTurtleFillShown`, `drawPartialTurtleLine`, pensize widths, dots) and the 🐢 position/heading marker (`drawTurtleMarker`, `turtleMarkerTransform`; a `drawMarker` option swaps it, an `underlay` draws under the drawing) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/playback.js` | Pure playback timing: `buildTurtleTimeline` (one step per command; no `speed()` = speed 10 squeezed to 4 s, `speed(1–10)` real turtle pace, `speed(0)` instant; `redrawAt` where fills close), `turtleTimelineFrame` (done count, active step, marker pose at a time), `normalizeTurtleSpeed`, `moveDurationMs` / `turnDurationMs` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/turtlePlayer.js` | Framework-free canvas player (`createTurtlePlayer`: `load`, `play`, `skip`, `resize`, `destroy`): rAF, incremental drawing onto a back canvas, partial line + pluggable marker per frame |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/useTurtlePlayback.js` | React hook over the player: plays a result whose `runId` is new (set per Run in `runWithRuntime.js`), shows anything else finished; `animate` off for tutor views; reduced motion → `canPlay` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/TurtlePicture.jsx` | Self-contained Turtle picture (canvas + Skip / Play 44 px buttons + `describe.js` aria-label); `onPlayingChange` lets the workspace hold the check result back while it plays |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/describe.js` | Pure screen-reader description of a Turtle drawing (`describeTurtleDrawing`, `describeHeading`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/checks.js` | Registry `CHECKS` + `turtle_position`/`turtle_heading`/`turtle_path_closed`/`turtle_segment_count`/`turtle_path_length`/`turtle_command_used`/`turtle_color_used`/`turtle_stamp_count` check evaluators |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/course.js` | Pure course mode model (task `course`): `getTaskCourse` (normalised `{ type, vehicle, maps }`), `buildCourseWorld` (grid text maps scaled to the 400 × 400 world; tracks with start, goal circle/box, line and box walls, pickups, `trackCode` walls, the picture's edge), grid helpers (`gridCellCentre`, `gridCellAt`, `gridStep`), track geometry (`sweepTrack` swept-circle collision, `isInTrackGoal`), `validateTurtleCourse`, `describeCourse` (screen-reader words), `courseRunSpec`; student-made maps (`course.studentMap`, `turtle.course_map`): `studentMapProblems` (plain messages), `normalizeStudentMapText`, `findStudentMapCall` / `readStudentMapFromCode` / `writeStudentMapToCode` (the map in the code), `courseMapsShown` (which maps a picture draws) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/trackCode.js` | Pure reader for a track's `trackCode` snippet (a fixed Turtle subset with `for … in range(n)` loops): `trackCodeSegments` → drawn lines as walls, or an error naming the line |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/courseDrive.js` | Pure course driving behind the recorder (`createCourseDrive`): grid squares / quarter turns, track sweeps, pickups, crashes (bump + `crash` record), sensors, move and sensor caps, bridge answers: empty, `error: …` or `stop: …` (sent as text with a bar), and the map's outcome (`result`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/courseRun.js` | `runTurtleTask` (the runtime's and Builder's run: once per course map, map set-up on program line 2, `── Map n of m ──` output headings, first-run options on map 1 only), `mergeCourseRunResults` (`turtle.course.maps`), `summarizeCourseResult`, `courseCardChip` (tutor card) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/courseChecks.js` | Registry defs + evaluators for `course_goal_reached` / `course_no_crash` / `course_pickups` / `course_max_moves` (every map), Builder default hints, `validate` (Turtle task with a course) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/vehicles.js` | Canvas-drawn top-down vehicles (turtle, car, rover, boat, drone) that turn with the heading: `drawVehicleShape`, `drawCourseVehicle` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/drawCourse.js` | Course rendering: `drawCourseMap` (under the drawing: road, hatched walls, chequered goal, track grid lines) and `drawCourseTop` (over it per frame: pickup stars / collected rings, crash burst, vehicle), `courseMarksAt` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/CoursePicture.jsx` | The task's Turtle picture: plain `TurtlePicture` without a course; with one, the map + vehicle (via `drawUnderlay` / `drawMarker`), maps played in turn after a Run with 44 px map tabs (tick / cross), outcome banner, polite live region and course description |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/CourseMapEditor.jsx` | Tap-to-paint map editor for `course.studentMap` tasks (opened from the Turtle StudentWorkspace): Wall / Road / Goal / Star / Start tools, 44 px squares, one start (tap to turn), rows and columns 3–30; writes `turtle.course_map("""…""")` into the student's code |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/sync.js` | `compactTurtleResultForSync` — rounds coordinates and caps the command log before a run result is synced live to a teacher, shared by both `useTeacherLivePublish.js` and `useSession.js`'s `writeStudentTurtleResult` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/StudentWorkspace.jsx` | Student Turtle workspace: Python editor, canvas, Run/Stop controls, collapsible output panel; a tabbed Picture · Tags · Console result pane (`src/shared/resultPane/`) on tablets and small screens |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/BuilderWorkspace.jsx` | Builder Turtle code-stage editor with a self-contained on-demand drawing preview (own Pyodide run, like Arcade Kit's Builder preview) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/CheckEditor.jsx` | Turtle check list editor with a Turtle/Code subject picker; code checks reuse `CheckValueEditor` and `checkEditorUtils.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/TeacherLiveView.jsx` | Teacher's read-only code + canvas view of a student's turtle task, driven by the synced `currentTurtleResult`/`turtleResult`; optional `lineHints` (StudentModal) shows the task's 💡 line hints |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `turtle/exportWork.js`, `turtle/ShareView.jsx` | Turtle exporter (Export work): `.py`, the drawing as PNG (`renderTurtlePng`, `draw.js` on an 800px canvas; live task only), share payload `{ code, turtleResult }`; `ShareView` shows the drawing and code |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `python/exportWork.js`, `python/ShareView.jsx` | Python exporter: `.py`, the Python Stage drawing as a PNG (`renderStagePng`, via `src/shared/stage/savePicture.js`: canvas, else via `stageToSvg`), share payload `{ code, output, stageJson? }` (the Stage as JSON text, since Firestore can't hold a grid's nested lists); `ShareView` shows the Stage (when drawn), code and output, and **Run** runs the code in the viewer's browser (Pyodide; `input()` in the output panel; the run's output and Stage replace the saved ones) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `html/exportWork.js`, `html/inlineHtml.js`, `html/ShareView.jsx` | HTML exporter: the files as `.zip` plus one self-contained `.html` (`inlineHtmlFiles` inlines the project's own stylesheets and scripts); `ShareView` shows a sandboxed (`allow-scripts`, no same-origin) `srcDoc` preview and the files |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `_template/definition.js`, `_template/index.js`, `_template/StudentWorkspace.jsx`, `_template/BuilderWorkspace.jsx`, `_template/CheckEditor.jsx`, `_template/TeacherLiveView.jsx`, `_template/checks.js` | Module scaffold copied by `npm run new:module` (`scripts/new-module.mjs`): a working "write text, press Check" module on the generic work slot (`run: 'workspace'`, `checking.trigger: 'run'`, `codeWorkSlot`, core code checks) with every contract v2 group filled with safe defaults and `TODO(new-module)` markers, its tests (definition, workspace UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; `moduleDefinitionsNode` / `validationErrorsDoc` skip `_`-prefixed folders (the definition still loads under Node) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Module interface
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Each `index.js` exports a default object with the following properties. UI surfaces (`StudentWorkspace`, `BuilderWorkspace`, `CheckEditor`, `FeedbackCheckEditor`, `TeacherLiveView`, `getLayoutStyles`, `runtime`) are declared in `index.js`; everything else comes from `definition.js` (plus `meta: { label, order }`).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | Property | Type | Purpose |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `type` | `string` | Matches `lesson.type` value |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StudentWorkspace` | `Component` | Student coding view |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BuilderWorkspace` | `Component` | Builder task editor |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CheckEditor` | `Component` | Check configuration UI |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TeacherLiveView` | `Component \| null` | Teacher-side live/sandbox view for the module |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `getDisplayState(task, stage, liveState, tab)` | `fn` | Selects the displayed state for starter/complete/stage tabs |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `getLayoutStyles(isMobile)` | `fn → {taskContentStyle, editorAreaStyle}` | CSS layout for the task area |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `makeCodeTaskFields(task)` | `fn → object` | Initial fields when switching a task to code format |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `makeNewStage(task, existing)` | `fn \| null` | Initial fields for a new code stage |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `initCompleteTab(task, ctx)` | `fn \| null` | Called when switching to the Complete tab in the builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `initStageTab(stage, ctx)` | `fn \| null` | Called when switching to a Stage tab in the builder |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `defaultCheck(interactionMode)` | `fn → check[]` | Default check array when enabling a check |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsInteractionMode` | `boolean` | Show Run/Submit mode picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsIncorrectChecks` | `boolean` | Show incorrect-checks section |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsTests` | `boolean` | Show TestsEditor; also gates `allowVariableChecks` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsVariableChecks` | `boolean` | Allow Python-style variable checks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsDomChecks` | `boolean` | Allow HTML DOM/element checks |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `supportsCopyCode` | `boolean` | Show the builder field and student copy-code panel for task-level `copyCode` snippets |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `carryThroughField` | `string` | Task field used for carry-through source selection |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `carryThroughLabel` | `string` | Builder label for the carry-through picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `getCarryThroughUpdates(sourceTask)` | `fn` | Produces starter-state updates when carrying from another task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `getNewStarterUpdates(task)` | `fn` | Produces starter-state updates for a fresh starter |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `stageLabels` | `{starterLabel, completeLabel}` | Tab label strings |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `explainerInlineCodeLanguages` | `string[]` | Languages offered in the explainer inline-code picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `defaultState` | `any` | Default student state value |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `initialState(task)` | `fn` | Initial student state for a task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `serializeState(state)` | `fn \| null` | Optional persistence serializer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `deserializeState(raw)` | `fn \| null` | Optional persistence deserializer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `getSandboxState(lesson, task)` | `fn` | Initial sandbox state |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `validateTask(task, { n, lesson, errors, warnings })` | `fn` | Pure type-specific lesson validation shared by the Builder and the CLI (pushes messages); see `src/shared/lessonValidation.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `hasStarterContent(task)` | `fn \| null` | Optional: whether the task has starter content (`null` = never warn about an empty editor) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `hasCheckValue(task)` | `fn \| null` | Optional: whether the completion check is worth the Builder's untested-check reminder (`null` = the generic code-check rule) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `validateTaskInBrowser(task, { n, errors, warnings })` | `fn \| null` | Optional Builder-only rules needing browser APIs (Scratch toolbox XML via `DOMParser`); the CLI never calls it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `verifyTaskChecks(task, label)` | `fn \| null` | Optional: the task's checks evaluated per check against its own authored stages, returning `{ taskId, title, stages, warnings }` — `lessons test-checks` without `--cases` (Scratch: `verifyScratchTask`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `testCheckCase(task, testCase, { taskId })` | `fn \| null` | Optional: one `lessons test-checks --cases` case in the module's own work shape, returning `{ taskId, name, expected, actual, mismatches, … }` (Scratch: `evaluateScratchCheckCase` — blocks, or a stage plus edits); null = source-code case |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runtime` | `object \| null` | Optional runtime bridge with `init`, `isReady`, `stop`, and module-specific helpers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork` | `fn \| absent` | Optional UI key: `() => import('./exportWork.js')`, the module's Export work exporter (`readLive`, `readSubmission`, `buildFiles`, optional `buildPictures`, `sharePayload`, `ShareView`; see `src/shared/exportWork/exporters.js`). python, turtle, html, scratch today; a new module adds pictures by declaring `buildPictures` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Activities (`src/activities/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Self-contained exercises that can sit anywhere in a lesson (see `docs/architecture/modular-activities-plan.md` and `docs/architecture/activities.md`). New activities (`taskType: 'activity'`) and legacy quizzes (`taskType: 'quiz'` + `quizType`, one activity per sub-type) run through `ActivityHost`. code_arrange (`taskType: 'code_arrange'`) is an activity hosted by a workspace module (`hostModules: ['python', 'html', 'turtle']`): its board replaces the module's StudentWorkspace (a Turtle or Stage arrangement instead sits inside that StudentWorkspace in the editor's place, `usesHostWorkspace`) and the assembled program runs through the module's own work slot and Run (plan step 4.9).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `defineActivity.js` | Activity contract: validates a pure activity definition and fills defaults (storage in the `__activity_state__` aux file, live state on `currentAnswer`, `serializeShared` = what leaves the device (defaults to `serialize`), report type fields) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `resolve.js` | `getActivityId(task)`: maps stored tasks to activity ids without changing formats (`quiz` + `quizType` → `quiz_<type>`, `code_arrange`, `activity` + `activityType`); `LEGACY_QUIZ_TASK_TYPE`, `isLegacyQuizRecord(task)` (any stored quiz, known quizType or not) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `registry.pure.js` | Node-safe activity registry (`getActivityDefinition(s)`, `getTaskActivity`, `ACTIVITY_IDS`, YAML shorthand lookup both ways (`activityIdForYamlType`, `yamlTypeForActivityTask`), `isHostedActivityTask` (ActivityHost tasks only), module-hosted activities (`getModuleHostedActivity`, `isModuleHostedActivityTask`, `getModuleHostedActivityDefinitions`), `isLegacyQuizTask`, `allowsStudentBroadcast`, Builder helpers `TASK_FORMATS`, `getTaskFormat`, `getQuizActivityDefinitions`, `getGalleryActivityDefinitions`); unknown `activityType` / `quizType` values resolve to the fallback |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/quizActivity.js` | Shared pure logic for the six quiz activities: `defineQuizActivity` (legacy shape, shared validation, `currentAnswer` formats, `{ taskType: 'quiz', quizType }` report fields), attempt submissions (`buildQuizSubmission`), feedback (`getQuizSuggestion`), item progress, report normalisers and per-item failure summaries, print tables |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/QuizActivityViews.jsx` | Quiz activity UI: `QuizActivityStudentView` hosts `QuizTask` (in-progress change → `onChange`, final answer → `onSubmit(answer, { passedOverride })`; teacher variant shows verdict + correct answers) and the StudentCard summaries (`ChoiceCardSummary`, items progress text, short-answer text, confidence badge) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_multiple_choice/definition.js` | Multiple-choice quiz activity: option-id state, graded by the `answer_equals` check, option feedback, print options table |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_match/definition.js` | Match quiz activity: pair map state, auto-marked when every tile is placed, teacher-editable, item progress, `pairFailures` report summary, print pairs table |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_fill_blank/definition.js` | Fill-in-the-gaps quiz activity: tile-id (drag) or typed-text map, auto-marked (drag) / Submit (type), teacher-editable, item progress, `blankFailures` report summary, print text/blanks/distractors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_short_answer/definition.js` | Short-answer quiz activity: free text, graded by its `answer_*` check or (ungraded) any non-blank answer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_confidence/definition.js` | Confidence quiz activity: `"1"`..`"10"` rating (`ratingScale: 10`), never marked (`completion: 'none'`), `ratingDistribution` + `ratingScale` report fields |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_poll/definition.js` | Poll quiz activity (`quizType: poll`): chosen option id, never marked (`completion: 'none'`), changeable, 2–6 options and no `check` (rules in `legacyValidation.js`), `optionDistribution` report summary, print options table |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz_*/ui.jsx` | Per-sub-type UI entries: `QuizActivityStudentView`, the matching `CardSummary`, `ownsLayout` (no activity header/frame), and the Builder parts: `BuilderEditor` (the sub-type's editor, moved from `QuizEditors.jsx`), `BuilderIcon`, `builderHint`, `builderConvert` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/quizBuilder.js` | Builder conversions for quizzes: `toQuizTask` (choosing the Quiz format) and `switchQuizType` (changing quiz sub-type), unchanged from the old TaskEditor handlers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quiz/QuizTypeIcon.jsx` | SVG icons for the Builder's quiz-type picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `binary/definition.js` | Binary activity definition wrapping `binary.js`: default task, validation, state, grading, progress, card summary, print |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/keyboard.js` | Pure Keyboard activity logic (`type_text`, `find_key`, `symbols`, `shortcuts`, `edit_text`, `type_code`, `falling_words`; UK layout; `keyboardItems` gives falling_words its one `round` item): validation incl. untypeable characters and browser-reserved shortcuts, grading from stored per-item results (Shift vs Caps Lock, optional accuracy/WPM targets, keys vs menu, hardware-only items) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/editText.js` | Pure `edit_text` logic: the edit model (`text`, per-character `orig` mask, `caret`, `anchor`) and `applyEditKey` (arrows, Home/End, Shift selection, Ctrl+A, Backspace, Delete, typing), `lcsLength` / `keptShare` (edited-not-retyped, `minKept`), `editSolution`, `gradeEditItem` hints, `validateEditItem`, `EDIT_REQUIRE_KEYS` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/typeCode.js` | Pure `type_code` logic: `normaliseCode` (tabs to spaces, final newline dropped), `applyTypeCodeKey` (Enter newline with no auto-indent, Tab/Backspace by tab stop in the indentation: 4 Python, 2 HTML), `markTypedCode`, `typeCodeStats` (accuracy, cpm, wpm), `gradeTypeCodeItem` hints, `validateTypeCodeItem` (1000 characters / 30 lines), `codeColourClasses` (display-only Python/HTML colouring) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/fallingWords.js` | Pure `falling_words` game: `createFallingGame` / `stepFallingGame` (seeded spawns, speed-up, reduced-motion slowdown, misses cost points) / `typeFallingKey` (exact match clears the lowest token), `fallingResult` (shared typing-result shape), `gradeFallingRound` (passes when the time runs out), `validateFallingWordsTask` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/definition.js` | Keyboard activity definition: needs a physical keyboard with an on-screen fallback; keystrokes classified as continuous, finished items as discrete |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mouse/mouse.js` | Pure Mouse activity logic: stage targets (0-1 positions), click/double-click/right-click/drag/scroll/hover items, touch policy (`equivalent`/`skip`/`block`), grading by the gesture that completed each item |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mouse/definition.js` | Mouse activity definition: grades with the device recorded in state (touch equivalents accepted, hover skipped on touch) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `legacyValidation.js` | Pure quiz (`validateQuizTask`) and code_arrange (`validateCodeArrangeTask`) validation plus starter/check-value helpers, looked up by `getLegacyTaskValidation(task)` from `src/shared/lessonValidation.js`; the quiz and code_arrange activity definitions' `validateTask` wrap the same rules |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/definition.js` | Code Arrange activity (legacy `taskType: 'code_arrange'`), hosted by the python / html / turtle modules (`hostModules`): slot-map state, `__code_arrange_slots__` aux file, `codeArrangeSlots` live channel (`currentCodeArrangeSlots`), slot progress ("X/N slots filled", `progressUnit`), `{ taskType: 'code' }` report fields plus the task's `tileMisses` summary, `lines` and `distractors` sealed, prints nothing of its own, offered only in composed lessons (`availableIn`); `hostModuleFor`; `usesHostWorkspace(task)` (Turtle, or Python that imports `stage` / has a `stageTarget`: the board sits in the module's own StudentWorkspace) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/ui.jsx` | Code Arrange UI: `ModuleWorkspace` (the container below, rendered by `LessonTaskContent` in place of the module's StudentWorkspace), `StudentView` (controlled tile board; the teacher's task panel shows the solution with it), `TeacherLiveView` (StudentModal board from `currentCodeArrangeSlots`, editable with Edit answers; a Turtle / Stage arrangement adds the student's last picture or Stage and name tags above the console), `BuilderEditor`, `builderConvert` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/CodeArrangeTask.jsx` | Presentational tile board: renders each authored line as either a whole-line drop slot or fixed text with small inline blanks in place (via `useTileDragAndDrop`), all fed from the one shared "Code tiles" pool below the program, Run button (`runLabel` overrides its idle words), Python output panel or HTML iframe preview (`showResult: false` leaves the result to a host workspace; `resultExtra` adds a picture above the console). Reused by the student container, teacher views and the Builder preview. Tile feedback: a blank holding a known-wrong tile (`getTileFlags`) turns red with its hint under the line. An indent-mode task renders `CodeArrangeIndentBoard` instead of the program + pool |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/CodeArrangeIndentBoard.jsx` | Indent mode (`arrangeMode: indent`) board: fixed lines as `role="slider"` chips offset by depth; Pointer Events sideways drag snapping to whole steps (one report on release), ← → buttons, ← → / ↑ ↓ keys; locked lines greyed; block brackets from `findPythonBlocks` + `blockGuideColour` with the device Blocks toggle (`useBlockGuidesOn`), hidden by `showBlocks: false` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/CodeArrangeTaskContainer.jsx` | Wires `CodeArrangeTask` to `useStudentCodeState` (`cs`): persists the tile arrangement (definition `storage` / `serialize`), pushes assembled code into `cs.handleCodeChange`/`handleFileChange`, and runs via `cs.handleRun` — the real Python/Turtle/HTML pipeline, unmodified; for a Turtle or Stage arrangement (`usesHostWorkspace`) it renders the module's StudentWorkspace with the board as `arrangeBoard({ onRun, runLabel })` (the host's "▶ Run (slow-mo)" on a slow-mo task) and `arrangeReady`, forwarding the Go Live display props; a student's drop of a known-wrong tile is logged via `cs.recordCodeArrangeTileMiss` (`getNewTileMisses`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/CodeArrangeBuilderEditor.jsx` | Visual Builder authoring + live preview for Arrange tasks: a reorderable line list where every line uses the same "parts composer" (fixed-text and blank-slot chips; a line with just one blank is the whole-line case), one shared task-level distractor-tile list (each with an optional tile-feedback hint), a per-blank **Tile feedback** list (`wrongTiles` / `alsoAccepts`, via `setSlotTileFeedback` in `codeArrangeBuilder.js`), entry file for HTML, the module's ordinary `CheckEditor`, and a drag-and-run preview using `getLessonModule(...).runtime` directly (Python Turtle as a Language; the preview draws the Turtle picture / course or the Stage) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `code_arrange/codeArrangeBuilder.js` | `convertToCodeArrange`: the Builder's conversion into the Arrange format (unchanged from the old TaskEditor handler) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `unknown/definition.js` | Fallback for an `activityType` this bundle doesn't know: ungraded "not available" notice, validation error pointing at `lessons capabilities` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `registry.js` | UI activity registry: merges each pure definition with its `ui.jsx` (`getActivityUi`, `getTaskActivityUi`, `getModuleHostedActivityUi`). Classroom only, never imported by the CLI |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ActivityHost.jsx` | Classroom host for a hosted activity task: picks the student's own state, an earlier task's saved state (review) or the teacher's broadcast (`teacherLive.answer`); applies `requires` / `touchFallback` (on-screen keyboard banner, "needs a mouse" block, touch notice, "I have a keyboard" override); unknown-activity notice. Also exports `ActivityView` (header + StudentView/TeacherLiveView) used by StudentModal and TeacherEditorPanel; both take an optional `assetsPath` (the lesson's resolved assets base) passed to the view for lesson pictures |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `state.js` | Pure helpers reading an activity's state from its serialised form (`deserializeActivityState`, `solutionOrInitialState`, `readActivityAnswer`, `readStudentActivityState` / `studentStateField` for the student record field of the activity's `liveChannel`, `summarizeActivityAnswer` for the teacher card) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `device.js` | Pure device helpers: `describeActivityDevice(state)` (touch / on-screen keyboard badge from the activity's own state) and `effectiveCapabilities` (keyboard override, tablets treated as keyboard-less) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `binary/ui.jsx` | Binary StudentView: bit tiles (switches) with place values, decimal answer box, carry row for addition, one item at a time |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `binary/BinaryBuilderEditor.jsx` | Binary `BuilderEditor`: mode (keeps item ids, drops options the mode doesn't use), bits, display options (place values, running decimal, carries, ASCII code format/table, picture size), per-mode items incl. a pixel-grid editor |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/KeyboardBuilderEditor.jsx` | Keyboard `BuilderEditor`: mode, fixed UK layout note, `type_text` options (Shift capitals, min accuracy, target WPM), `type_code` options (language, min accuracy, target cpm) and code boxes, `falling_words` words list and round length (no items), per-mode items with `hardwareOnly`; reserved-shortcut errors inline |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mouse/MouseBuilderEditor.jsx` | Mouse `BuilderEditor`: touch policy, targets (label/emoji/x/y/size; renaming updates items) with a click-to-place stage preview, items (action/target/to/prompt) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/builderKit.jsx` | Building blocks for activity BuilderEditors: `useActivityValidation` / `splitValidation` (validateTask messages next to their item or target), `ValidationMessages`, `RowListEditor` (optional `movable` Move up / down), `InlineField`, `ChoiceCards`, `nextItemId`, `readNumber` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/BuilderField.jsx` | The labelled `Field` row shared by the Builder task editor and activity editors |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ActivityPreview.jsx` | Builder student preview: plays a task through `ActivityHost` with in-memory state (kept per task while the page is open, restarted on edit), grades on Check, Start again / Show answers; writes nothing |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/ui.jsx` | Keyboard StudentView: `type_text` target overlay with accuracy/WPM (`typingStats`), `find_key` / `symbols` with the keyboard picture and hints, `shortcuts` practice box (keys vs right-click menu detection); on-screen keyboard input when there is no physical keyboard |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/TypingHistoryLine.jsx` | `showHistory` line beside a typing item ("Last time: 62 cpm, 91% · Best: 75 cpm") and, once finished, the trend ("New best! You went from 40 to 75 characters a minute.") |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/TypeCodeBlock.jsx` | `type_code` block: syntax-coloured monospace code with per-character right/wrong marks, caret, indentation dots and ↵ line ends |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/FallingWordsView.jsx` | `falling_words` round: frame loop over `fallingWords.js`, typed buffer, pause on hidden tab or lost focus, result written on each clear/miss and at time-up; read-only stats for the teacher |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `keyboard/OnScreenKeyboard.jsx` | UK on-screen keyboard: interactive fallback emitting virtual key events (one-shot Shift/Ctrl) or a non-interactive picture highlighting hinted keys |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mouse/ui.jsx` | Mouse StudentView: stage of positioned `data-input-id` targets, Pointer Events recording (incl. touch drag via `elementsFromPoint`), `recognizeGestures`, no native context menu on the stage, hover dwell timer (skipped on touch), `state.device.touch` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/RoundProgress.jsx` | Non-interactive round progress for activity StudentViews: tick-dots and one "3 of 5 done" line (`role="progressbar"`, aria-live), plus `RoundFinished` ("You did it! N done" + Play again) and `BonusBanner`. An activity task is one round with no in-task navigation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/useRoundFlow.js` | Auto-advance for a round: the first item not done is shown; a finished item lingers `DONE_MOMENT_MS` (700 ms) with its tick, then the next appears. Tutor views opt out (`readOnly`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/TutorItemPicker.jsx` | Tutor-only item picker for read-only / answer-editing views (students never see it) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/presentation.js` | Display mode context for Show it: `ActivityPresentationContext` / `usePresentation()`, provided by `ActivityView presentation`; marking pieces (`ActivityCorrect`, `SpinTick`, `RoundProgress`, `BonusBanner`, `TutorItemPicker`) render nothing in it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `round.js` | Pure round helpers: `coreCountOf` (task.coreItems), `roundText`, `roundSummaryText`, `validateCoreItems` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/choiceEntrance.jsx` | First-view answer entrance: `ChoiceEntranceProvider` (ActivityView wraps every activity in it, keyed by `entranceKey`) and `useChoiceEntrance()` → `entrance(i)` giving a choice `motion-rise-in motion-stagger` + `staggerStyle(i)` until the entrance has played; used by the multiple-choice, Match, fill-in-the-blank and confidence quizzes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/ActivityCorrect.jsx` | Shared "✓ Correct" result line (`role="status"`, custom text via children) and `SpinTick`, the ✓ that spins once when it appears; used by every activity StudentView |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ui/ActivityDeviceBadge.jsx` | Teacher badge (card and modal) showing a touch-screen or on-screen-keyboard attempt |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `binary/binary.js` | Pure Binary activity logic for `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii`, `pixels`: bit conversion, place values, carries, shared authoring validation, per-item grading with child-friendly hints, whole-task progress |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `_template/definition.js`, `_template/template_activity.js`, `_template/ui.jsx` | Activity scaffold copied by `npm run new:activity` (`scripts/new-activity.mjs`): a working "type the answer" activity with `TODO(new-activity)` markers, its tests (pure, UI, StudentView click-through that skips while unregistered) and `doc.md.tmpl`. Never registered; the registry, interface and validation-doc tests skip `_`-prefixed folders |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `real_or_ai/real_or_ai.js` | Pure Real or AI activity logic: authoring validation (pair fields, `coreItems`), solutions, per-pair grading (a tap is done and right or not), tell note and reveal text, the never-resetting right count, card summary text |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `real_or_ai/definition.js` | Real or AI activity definition wrapping `real_or_ai.js`: default task, validation, state (`{ pick, done }` per pair plus a `right` count), discrete changes, `completion: 'auto'` (passes at the core), sealed `items`, grading, progress, card summary, session-report `itemResults`, print |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `real_or_ai/RealOrAiBuilderEditor.jsx` | Builder editor for Real or AI: core pairs and the pairs (add / remove / reorder; kind, sides, alt text, answer, tell, reliable, extra note), inline validation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `real_or_ai/ui.jsx` | Real or AI StudentView (controlled by `ActivityHost`): two big tap targets (stacked on narrow screens), instant reveal with the tell note, `useRoundFlow` round (auto-advance after `READ_MOMENT_MS` or Next), finish card; the tutor's `teacher` view shows the picks and the answer key. Resolves picture paths with `assetsPath` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `next_word/next_word.js` | Pure Next Word activity logic: authoring validation (texts, panels, guesses), panels and voices, the model for the chosen voice, guess marking against the odds (`gradeGuess`), one step (`applyStep`), progress dots data (`dotsOf`), tolerant state, the shared state (own sentences included for the tutor), round progress |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `next_word/NextWordBuilderEditor.jsx` | Next Word `BuilderEditor`: guesses count, panels checkboxes, voices (texts with title, emoji, body and character count) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `next_word/ngram.js` | Pure word-pair (bigram) model for Next Word: word normalising, sentence-end tokens (`.` `!` `?`), counts, next-word odds, ties, seedable temperature sampling and text generation, size caps |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `next_word/definition.js` | Next Word activity definition wrapping `next_word.js`: default task, validation, state (own sentences are shared with the tutor via `serializeShared`), auto completion after the guesses, change classification, round progress, card summary (n/m guessed, right, own words), print |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `next_word/ui.jsx` | Next Word StudentView: own-sentences box, big Next word button, guess chips (one size while guessing, probability-sized after the press) with a short spin and a held landed chip, own right/wrong progress dots, sentence-end cheer, optional stats / silly slider / voices panels; the read-only tutor view shows the sentence, tapped guess and word count |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classifier/classifier.js` | Pure Classifier activity logic: drawing → 16x16 grid (`rasterize`, `encodeGrid`), in-house k-NN (`classify`, `guessOf` with a distance-weighted share per thing, k=7), emoji-led thing names (`splitLabel`), ready-when-taught (`readyOf`, no Train), the live round (`predictLive`, `recordLive` graded against what the student says they drew, `nextTarget`, `teachMiss`, `setPad`, misses kept on the device), `panels` (`panelsOf`), held-out / teacher tests, mix-ups (`mixupsOf`), `sharedState` (the only form sent to Firebase: counts, tries, rights, misses, the pad now and the last 3 misses as packed 16x16 grids via `packGrid`; no strokes or taught drawings), grading with hints, authoring validation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classifier/definition.js` | Classifier activity definition wrapping `classifier.js`: default task, validation, full local `serialize` vs summary-only `serializeShared`, change classification, grading (marked as you go), progress, the tutor card line (teaching counts, then `5/5 tried · 4 right`), report `classifierResults`, print |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classifier/DrawPad.jsx` | Classifier drawing pieces shared by the student view and the Builder editor: `DrawPad` (square SVG pad drawn on with Pointer Events; the stroke in progress is local, finished strokes go to the parent) and `GridThumb` (a drawing grid as one small picture) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classifier/ClassifierBuilderEditor.jsx` | Classifier Builder editor: who names the things, the test (the round / kept back / my test drawings), numbers, the `panels` checkboxes, and drawing teacher test drawings on a pad |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classifier/ui.jsx` | Classifier StudentView: thing cards with big emoji, teach prompt ("Draw 3 🐱"), Pointer Events pad, live guess bars, the round (Done, "What did you draw?" emoji buttons, tick or miss, Teach it this one, `RoundProgress`), pad left / guess panels right from 800px, optional grid / how-sure panels, results as a meter and mix-up thumbnails; read-only tutor summary (counts, tries, rights, mix-ups, the pad now and last misses as `GridThumb`s) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/station.js` | Pure Space station model: layout (3 power sections, the 18 art spots with `spotTakes` fit/hang rules, crew posts, colours), parts catalogue, `sceneForLesson` / `applyCarried`, `stationAction` (undo stack, goals marked with the method used), validation, grading (first-N core) and progress, and the build jobs (order, match, card, decoy crates with stickers, counts: `blockedBy`, `crateIdsFor`, `multiParts`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/definition.js` | Space station activity definition wrapping `station.js`: default task, validation, state, change classification, grading, progress, card summary, print |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/art.js` | Space station art: the PNG paths under `public/station/phase-1/` and the zoo and toy shop packs (`WORLD_ART`; built from `BASE_URL`), part id to file and glow, colour hex values, sticker shape paths. The only place art paths live |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `public/station/phase-1/*.png`, `parts.json` | Lesson Gen's Phase 1 station art (#109): 128 px cells, one PNG per state, a white `-glow` mask per part, `backdrop`, `hull-lit/dark/glow`, `interior-lit/dark`; `parts.json` is the 18-spot layout the model's `SPOTS` copies |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/ui.jsx` | Space station StudentView (controlled by `ActivityHost`): the art scene (backdrop, interior, crew, hull and hull colour, spots, "Station upgraded!" moment), power, crates, drag/pick-drop onto pads, Ctrl/Cmd+Z, catalogue, goals; the tutor's "Undo last change" while editing answers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/MiniStation.jsx` | Space station `CardSummary`: a tiny picture of the task's world (station, zoo or toy shop) and "3/5 goals" for the tutor's card |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/worlds/pack.js` | Turns a world pack (Lesson Gen's `parts.json` layout, kept as plain data) into the model's world: frozen spots, parts with labels, catalogue order (best last), enclosures as 0-1 boxes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/worlds/zoo.js`, `station/worlds/toyshop.js` | The zoo and toy shop world data (`PACK`, copied from `public/station/<world>/parts.json`; `worlds.test.js` checks they match) and the built world |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `public/station/zoo/*.png`, `public/station/toyshop/*.png`, `parts.json` | Lesson Gen's zoo and toy shop art (`backdrop`, the zoo's `zoo-base` and `enclosure-<kind>-glow` masks, one PNG and `-glow` per animal or toy) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `station/StationBuilderEditor.jsx` | Space station `BuilderEditor`: world and lesson pickers, goals filtered by lesson with matching targets, optional catalogue parts |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Badges (`src/badges/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs/authoring/badges.md`). Built-in badges are a code registry; rules read normalised per-student timelines, never Firebase or React, so they are pure and deterministic. PR 1 ships the registry, rules and authoring validation; PR 2 the live data (`docs/agents/runtime-model.md`, "Badge data"); PR 3 the engine that turns the session into suggestions (`liveTimeline.js`, `useBadgeSuggestions`); PR 4 the tutor UI (`BadgeSuggestionsPanel`, `BadgeAwardDialog`, `BadgeChip`, the grid button, card count and select mode); PR 5 the student celebration (`celebration.js`, `useBadgeCelebrations`, `BadgeCelebration`, `BadgeClassToast`, `CodingMomentsPill`, `BadgeStickerSheet`); PR 6 the Badge Summary task and the session report (`badgeSummary.js`, `reportMetrics.js`, `BadgeSummaryTask`, `ReportBadgeSections`); PR 7 the Admin catalogue (`catalogue.js`, `catalogueService.js`, Admin → Badges), Builder Badge hints, `npm run new:badge` and ADR 0011.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `defineBadge.js` | Badge contract: `defineBadge({ id, emoji, title, blurb, ruleText, rule?, reasonText?, autoAwardable?, examples? })`; tutor-only badges omit `rule`; rule-backed ones need `reasonText`, `ruleText` and 2+ `examples` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `definitions/*.js` | One file per built-in badge (`bug_hunter.js`, `code_builder.js`, `code_detective.js`, `challenge_solver.js`, `quiz_master.js`, `code_fixer.js`, `persistence.js`, `resourceful_coder.js`, `keyboard_wizard.js`, `ready_to_code.js`, `code_arranger.js`, `autocomplete_ace.js`, `early_bird.js`, `helpful_coder.js`, `side_quester.js`, `word_smith.js`, `emoji_artist.js`, `station_builder.js`, `ai_trainer.js`, `steady_hand.js`, `prediction_pro.js`, `perfect_round.js`, `real_spotter.js`, `ai_fooler.js`, `keyboard_ace.js`, `storyteller.js`, and tutor-only `problem_solver.js`, `experimenter.js`, `creative_coder.js`, `comedy_coder.js`, `focused_coder.js`, `project_explorer.js`, `knowledge_builder.js`, `great_question.js`, `sharp_shooter.js`, `word_wizard.js`, `design_master.js`, `independent_coder.js`, `honest_check_in.js`, `brave_coder.js`, `growing_coder.js`, `comeback_coder.js`, `show_and_tell.js`, `great_answer.js`, `code_teacher.js`, `teacher_trap.js`, `tidy_coder.js`, `edge_explorer.js`, `finisher.js`, `careful_checker.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `registry.pure.js` | Node-safe registry: `BADGE_IDS`, `getBadgeDefinition(s)`, `getRuleBackedBadges`, `getTutorOnlyBadges`, `getHintableBadges`, `getBadgesByPattern`, `getBadgesByActivity`; rejects duplicate ids and emoji |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `registry.js` | UI registry (re-exports the pure one until badges have UI parts), mirroring `src/activities/registry.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `catalogue.js` | The Admin badge catalogue, pure: `BADGE_CATALOGUE_COLLECTION`, `validateCatalogueBadge(entry, { catalogue, isNew })` (id format, no registry-id collision, emoji unique across registry and catalogue via `emojiKey`, title/blurb limits), `makeCatalogueId(title)`, `normaliseCatalogueRecord`, `sortCatalogue`, `catalogueBadgeSnapshot(badge)` (the `{ emoji, title, blurb }` copied onto a catalogue award) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `catalogueService.js` | Firestore `badgeCatalogue` access: `fetchBadgeCatalogue()`, `saveCatalogueBadge(entry, { catalogue, isNew, updatedBy })` (validates first; throws with `error.errors`), `setCatalogueBadgeArchived(id, archived, { updatedBy })` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `timeline.js` | Timeline event shapes (JSDoc typedefs) and constructors (`attemptEvent`, `sandboxRunEvent`, `topicOpenEvent`, `revealEvent`, `completeShownEvent`, `pasteEvent`, `overrideEvent`, `shortcutEvent`, `firstEditEvent`, `emojiRunEvent`, …), `filterTimelinesToRoster` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `rules.js` | Guards (`getPassGuard`, `isRealPass`, `getRealPass`, `getFirstTryRealPass`), `computeFirstInClass`, and the rule helpers `realPassOnPattern` (also the old `firstInClassOnPattern`, now unused by badges), `errorThenPass`, `uniqueFailsThenPass`, `anySignal` / `keyboardWizardSignal`, `firstEditWithin`, `joinedEarly`, `sideQuestsDone`, `firstTryOnEveryPatternTask` (📖 Word Smith), `quizGroupFirstTry`, and the activity rules `firstInClassOnActivity` / `activityRoundPass` (read an activity pass's `result`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `evaluate.js` | `evaluateBadgeRules({ timelines, lesson, decisions, options })` → suggestions `{ badgeId, studentId, taskId, taskTitle, reason, context, at }` (`taskTitle` looked up from `taskId` in the lesson index for every badge), once per student per badge, decided keys removed |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonIndex.js` | `buildBadgeLessonIndex(lesson)`: per-task pattern, activity id, effective module type, code / graded-quiz flags and `badgeHints`, plus quiz groups, via the shared task utilities (composed-lesson safe); `isGradedQuizTask` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badgeOptions.js` | `BADGE_OPTION_SPECS`, `DEFAULT_BADGE_OPTIONS`, `resolveBadgeOptions(lesson, overrides)` for the envelope's `badgeOptions` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `validation.js` | `validateBadgeOptions` / `validateBadgeHints`, called by `src/shared/lessonValidation.js` (messages in `validation-errors.md`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `shortcuts.js` | `KEYBOARD_WIZARD_SHORTCUTS` (the curated list), `matchKeyboardWizardShortcut(event, { inEditor })` (ignores AltGr / Alt), `DESKTOP_KEYBOARD_COMBOS` / `isDesktopKeyboardShortcut` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `signals.js` | Pure helpers for the recorded signals: contexts (`signalContextFor`, `sandboxKindForContext`), RTDB-safe keys (`signalKey`), `hashSubmission`, run errors (`runErrorName`, `runErrorFor`), the sandbox counter transactions (`applySandboxRun`, `applySandboxRunError`, `applySandboxTime`), `isBlocklyUserEdit` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sessionArchive.js` | Teacher-sandbox archive values: the 20 KB cap (`capArchiveText`, `archiveWorkFields`, `archiveExplainerFields`) and the reader shape (`normaliseSessionArchive`, missing `exitedAt` = `endedAt`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `liveTimeline.js` | The live timeline builder: `buildLiveTimelines({ session, lesson, topics })` → `{ [studentId]: event[] }` from the session snapshot (roster-only; tasks outside `liveBadgeLesson(lesson)`, the session-edited lesson's live tasks, dropped), `buildStudentTimeline`, `buildTaskLookup`, `buildTopicTitles`, an activity pass's `result` (its `badgeResult` hook), and the memo keys `studentTimelineInputKey` / `badgeEvaluationInputKey` (code text left out) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badgeDisplay.js` | Display and picking helpers shared by the tutor UI (and later the celebration and report): `resolveBadge(badgeId, catalogueBadges, decision)` (registry, else catalogue incl. archived, else the decision's `badge` snapshot, else a 🏅 placeholder), `listAwardableBadges(catalogueBadges)` (registry then non-archived catalogue), `normaliseCatalogueBadge`, `heldBadgeIds(decisions, studentId)`, `createBadgeBulkId(badgeId, prefix)`, `MANUAL_AWARD_REPLACES`, `suggestionTaskLabel(suggestion)` / `showSuggestionTaskLabel(suggestion)` (the panel's task tag) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `celebration.js` | Student-side decisions logic, pure: `awardKey`, `listAwards`, `collectAwardKeys` (the load baseline), `findNewAwards`, `listMyMoments(decisions, studentId, catalogueBadges)` (own awarded badges, oldest first, resolved), `isStillAwarded`, `mergeClassToasts(queue, newAwards, { viewerId, students, finishedBulkIds, cap })` (announce-only, recipient excluded, `bulkId` merge, queue cap), `classToastLabel` ("Alex earned a badge: 🐛 Bug Hunter", shown after `CLASS_TOAST_ICON`; a toast carries a catalogue badge's snapshot as `badge`), and the timing constants (`CELEBRATION_CARD_MS`, `CELEBRATION_DOCK_MS`, `CLASS_TOAST_MS`, `PRESENTATION_TOAST_MS`, `CLASS_TOAST_QUEUE_CAP`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `namedBadgeExport.js` | Tutor-only named badge export for Pencilcase (Hub 2026-10-18), pure plus a download helper: `buildNamedBadgeRows({ session, lesson, rosterNames, catalogueBadges })` (one row per held badge: roster name when matched, else the typed name; badge, emoji, lesson, task, local date, awarded by), `namedBadgeCsv` (BOM, quoting, formula-safe cells), `namedBadgeFilename`, `downloadNamedBadgeCsv`. Built from the live session in the tutor's browser before `endSession` wipes it; never saved, so session reports stay anonymous |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badgeSummary.js` | The class wall, pure: `buildClassWall(decisions, { nameFor, catalogueBadges })` (awarded only, grouped by badge in picker order, names only), `groupClassWall`, `rosterNameFor(students)`, `classWallText(wall, { title })` (Copy class summary), `reportClassWall(report)` (from the report's anonymised students), `CLASS_WALL_TITLE` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `reportMetrics.js` | The session report's live-badge metrics, called by `buildSessionReport`: `buildReportTimelines`, `studentBadgeFields`, `findFirstRealPasses`, `studentTaskBadgeFields`, `taskSummaryBadgeFields`, `buildQuizGroupReport`, `buildTeacherSandboxReport`, `buildBadgeSummary(decisions, pendingSuggestions)`, `buildShortcutSummary`, and the size cap `capSessionReportSize(report, maxBytes)` (`REPORT_MAX_BYTES` = 900 KB; drops student sandbox snapshots, then pushed code) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exampleLesson.js` | `EXAMPLE_LESSON` and `ACTIVITY_EXAMPLE_LESSON` (one task per activity the activity badges read), the lessons badge `examples` run against (by `__tests__/badgeRegistry.test.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Shared Modules (`src/shared/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `CodeEditor.jsx` | Shared CodeMirror React wrapper: language/readOnly via compartments, no remount on prop change; `errorLineField`/`setErrorLine` drive the red runtime-error-line highlight, cleared on any document change; `forwardRef` exposes an imperative `insertAtCursor(text)` (no-op while `readOnly`) for external "insert at cursor" UI, e.g. `PythonEditor.jsx`'s touch symbol row and `EmojiPickerButton`; `onUserEdit` (else `BadgeSignalsContext.reportUserEdit`) fires only for the user's own edits (`isUserEditUpdate`), never the external value sync; `blockGuides` (Python only) toggles `blockGuidesExtension()` through a compartment; `peekBand` places the `#@peek` stopped-here band (`peekBandEditor.js`); `runCounts` the run-count boxes and counts on `#@count` lines (`runCountsEditor.js`, handlers through a ref) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `blockGuides.js` | Python block brackets: pure `findPythonBlocks(lines, { tabSize, indentSize })` → `[{ header, colon, column, level, from, to }]` (string/bracket/triple-quote aware; a header with no indented body has no block), `blockGuideColour(level)` / `BLOCK_GUIDE_COLOURS`, `taskShowsBlocks(task)` (`showBlocks !== false`), and the CodeMirror `blockGuidesExtension()` (per-line background-gradient bars at the header's column plus a foot tick, colon mark), added by `CodeEditor`'s `blockGuides` prop. Meant to be shared with the code_arrange indent mode |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `blockGuidesSetting.js` | The device-wide Blocks toggle (`headstart_block_guides_off`): `useBlockGuidesOn()` → `[on, setOn]` via `useSyncExternalStore`, synced across editors and tabs, best-effort localStorage |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `extraClassToolsSetting.js` | The device-wide "Show extra class tools" toggle (`headstart_extra_class_tools`, off by default) that shows quick polls, Pause Coding and mid-class Edit Lesson: `useExtraClassToolsOn()` → `[on, setOn]`, set in Account Settings |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `EmojiPickerButton.jsx` | Toolbar button that opens an `emoji-picker-react` popover (native emoji style, no CDN calls) and calls `onInsert(emoji)` on pick; closes on pick or outside click. Used by `PythonEditor.jsx` and `HtmlEditor.jsx` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SplitPane.jsx` | Draggable two-pane splitter: [15%, 85%] clamped, collapsible right pane with fixed width option |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `md5.js` | Pure `md5(stringOrBytes)` → hex (RFC 1321), for `.sb3` asset names (WebCrypto has no MD5) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/exporters.js` | The module export hook: `hasExporter(type)`, `loadExporter(type)` / `loadExporters(types)` (cached lazy `exportWork()` loaders) and the exporter contract |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/collect.js` | `latestSubmission` (newest attemptLog entry, auto-check on leave included unless `realOnly`), `exportableTasks` (code tasks whose module has an exporter), `collectExportItems` (live mirror on the current task, else latest submission) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/runExport.js` | `runExport`: each item's `buildFiles` / `buildPictures` → one download (the file, or a `.zip`), problems as notes; `exportContext` (file stem, resolved `assetsPath`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/naming.js` | Pure file names: `exportFileStem` (`Title_YYYY-MM-DD`, first name only when asked), `slugifyTitle`, `firstNameForFile`, `uniqueFileName` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/zip.js` | `toZipEntries` (safe relative paths, repeats renamed) and `buildZip` (fflate via dynamic `import()`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/pictures.js` | Browser: `makeCanvas`, `canvasToPngBytes`, CORS-safe `fetchBytes` / `loadImage`, `svgToPngBytes`, `downloadFile` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/shareLink.js`, `exportWork/shareService.js` | Share links: pure helpers (`SHARE_TTL_DAYS` 30, `MAX_SHARE_PAYLOAD_BYTES` 900 KB, `checkSharePayload`, `isShareLive`, `shareStatus`, `shareDaysLeft`, `randomShareId`, `shareUrl`, `studentShareKey`) and Firestore `sharedWork` calls (`createShareLink`, `revokeShareLink`, `loadShareLink`, `listShareLinks`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/sessionShareLinks.js` | Share links made for every student at End Session (request #77): `makeSessionShareLinks` (one link per student with work, last task with work, via the Export work exporters and `createShareLink`), `sessionStudents`, `withTimeout`; called from `handleEndSession` in `TeacherView.jsx`, saved as `report.shareLinks` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exportWork/ShareParts.jsx` | Read-only pieces for module share viewers: `ShareCode`, `ShareOutput`, `SharePanel`, `shareStyles` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AssetBrowser.jsx` | Read-only lesson asset browser: file tree, click-to-copy paths, image hover preview |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `spritePresets.js` | Pure Scratch sprite/backdrop preset validation, unique lesson-sprite/backdrop creation, and admin-library-vs-author-subset resolution (`resolvePresetLibrary`) — shared by the builder's author-side "Add sprite"/"Add backdrop" pickers and the student-facing runtime pickers in `ScratchWorkspace.jsx` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `storageAssets.js` | Pure Firebase Storage asset metadata merge helper: folder listing is inventory, schema entries preserve per-file options |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useAssets.js` | Hook for fetching `public/assets/manifest.json` (returns empty arrays when absent); exposes `lessonAssets`, `sharedAssets`, `lessonFolderAssets` for static asset paths — currently returns empty everywhere |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useLessonStorageAssets.js` | Hook for listing `lessons/{lessonId}/assets/` in Firebase Storage and merging discovered files with optional `lesson.storageAssets` metadata |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useTypeAssets.js` | Hook for fetching `lessonTypeAssets/{type}` from Firestore; returns `typeStorageAssets`, `defaultSprites`, and `defaultBackdrops` for type-wide shared files and the Scratch sprite/backdrop libraries |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `topicLibrary.js` | Topic-library Firestore loader (`topicLibrary` collection) plus type-filtered search, wiki-link expansion, author suggestion helpers, and `clearTopicCache()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `topicAudit.js` | Shared topic-reference parsing, grouped-task audit, proposal matching, and lesson-stage publication rules |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TopicLibraryView.jsx` | Topic hover-card and searchable dialog presentation used by Markdown explanations; list picks and related-topic pills report topic opens through `BadgeSignalsContext` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `badgeSignalsContext.js` | `BadgeSignalsContext` / `useBadgeSignals()`: the live badge reporters (`reportUserEdit`, `reportTopicOpen`) and the session report's `reportTyping` for shared components deep in a lesson; only `StudentView` provides it, so elsewhere reporting is a no-op |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checkHelpers.js` | Generic check primitives: `wildcardContains`, `wildcardEquals`, `normalizeOutput`, `parseCheckValue`, `valueEquals`, `getVariableEntry`, `evaluateCodeCheck` (shared `code`-family evaluation reused by both `modules/checks.js` and `electronics/circuit.js`, avoiding a circular import), and related helpers — used by `modules/checks.js` and sub-module evaluators |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checkAuthoringValidation.js` | `validateFilesystemChecks`/`validateElectronicsChecks`/`validateTurtleChecks` (check-field-completeness validation) plus their shared target-selector helpers — called from the module definitions' `validateTask`, so the Builder and the CLI can't validate these checks differently |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonValidation.js` | Pure, Node-safe lesson validation core shared by the Builder (`validateLesson`) and the CLI (`validateLessonForMcp`), one wording for both: envelope, groups, task shape, feedback checks, carry-through, Firestore nesting depth of the lesson as stored (`firestoreDepth.js`); delegates type rules by each task's effective module type to the module definition's `validateTask`, `taskType: 'activity'` to the activity registry, and quiz / code_arrange to `activities/legacyValidation.js`. `validateLessonCore(lesson, { envelope, beforeTasks, afterTask })` hooks add each validator's own extras (ADR 0008) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `fileKeys.js` | Pure helpers for Firebase file key encoding: `encodeFileKey(name)` and `decodeFileKey(key)` — dots encoded as `__dot__` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codemirror.js` | CodeMirror config: `createBaseExtensions(type, readOnly)`, `getTabSize(type)`, `getLanguageExtension(type)` (editor-language maps; unknown languages get Python and a 2-space tab) — `headstartTheme` and `headstartHighlight` are internal-only, applied inside `createBaseExtensions`. Also the line-hint extension: `lineHintsExtension()` (💡 gutter marker + faded ghost-text widget per hinted line, never part of the document or undo history), driven by `setLineHints`; `lineHintsField` maps hints through edits and drops one when its line is deleted; `getLineHints(state)` reads what shows |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `fieldSpec.js` | Pure field declarations (a task shape as data): `normaliseFieldSpecs` (validates and freezes `{ name, type, required, authored, values, modes, itemFields }`), `authoredFieldPaths`, `fieldsForMode`, `describeFieldSpecs`. Used by `defineActivity` (`fields`), `defineModule` (`taskFields`) and `taskFields.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskActivity.js` | The platform copy of the Lesson Format Glossary: `TASK_ACTIVITY_FORMATS`, `TASK_ACTIVITY_PATTERNS` (stable ids such as `debug_code_task`, `quiz_what_is_the_error`), `parseTaskActivity(str)` → `{ format, pattern, known }` (tolerant of case, spacing and `,` vs `:`), `getTaskActivityPatternId(task)`; unrecognised patterns are a validation warning |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskFields.js` | `COMMON_TASK_FIELDS`, `TASK_TYPE_FIELDS` (information, group) and the `codeStagesField(payload)` helper modules use in their `taskFields` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelp.js` | Peer help data model and pure logic: `PEER_HELP_EDITS_AND_NOTES` (off), preset hints (`getPeerHints` to resolve, `getPeerHintCards` for the ≤ 6 cards; platform lists + task `peerHints`), eligibility (`visiblePeerHelpOffers`, `hasPassedCurrentTask`), snapshot lines, suggested-edit limits (`validatePeerEdit`, `applyPeerEdit`), teacher queues (`pendingReviewItems`, `notOkAlerts`, `peerHelpRolesByStudent`) and the report audit (`buildPeerHelpAudit`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exampleOpens.js` | "See example" opens (`exampleOpenLog/{id}/{taskId}/{index}`): `exampleOpenPath`, `normalizeExampleOpens`, `exampleOpenCount` (tutor card and StudentModal 🔍), `exampleOpenReportFields` / `summarizeExampleOpens` (session report `exampleOpens`, `exampleOpenStudentCount`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `soloLog.js` | Solo study log pure logic (`soloLog/{lessonId}/{studentId}`): `applySoloAttempt`, `summariseSoloEntry`, `buildSoloRows`, `buildSoloExport` / `anonymizeSoloRows` ("Student N", no names), `buildSideQuestRows` (side-quests flattened from stored session reports); writes in `src/app/soloLogService.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sideQuests.js` | Side-quests data model and pure logic: `getSideQuests`, `validateSideQuests`, `supportsSideQuests` (`capabilities.sideQuests`), `buildSideQuestTask` (the throwaway task), `canShowSideQuests` (unlock rules), localStorage records, `sideQuestStatus` (teacher card), `buildSideQuestReport` (session report), and the tutor view: `readSideQuestCode`, `studentOpenSideQuest`, `sideQuestStuckState`, `summariseSideQuestClass` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `controlHighlight.js` | Control highlights, pure: module targets (`listHighlightTargets`, `resolveHighlightTarget`, aliases, `category:<name>`), `validateTaskHighlight`, live command shape and pick, selectors, once-per-task memory |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useControlHighlight.js` / `ControlHighlightRing.jsx` | The DOM half: finds the visible `data-highlight-target` control (or a `data-highlight-reveal` one, or the pane to point at), draws the click-through ring, ends on use or after 20 s |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `emojiInCode.js` | Pure emoji detection for 🤩 Emoji Artist: `containsEmoji` (Extended_Pictographic, flags, keycaps; not digits, `#`, `*`, © ® ™), `pythonStringText` (string literal contents, no comments), `htmlContentText` (no `<!-- -->` or style/script comments), `stripCLikeComments`, `canDetectEmojiIn(language)`, `codeHasEmoji(work, language)` (a code string or project files, by extension), `emojiCounts`, `codeHasNewEmoji(work, language, given)` (only emoji beyond the given code's count) and `givenCodeOf(task, extra)` (code stages, legacy starters, `copyCode`, extra such as the sandbox code) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peerHelpFilter.js` | `findBlockedContent(text)`: the local word filter for peer help notes (swearing, unkind words, links, emails, phone numbers, social handles) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lineHints.js` | Pure author line hints (imports only the pure `lockedLines.js` and `taskStages.js`) (`#> …` / `<!--> … -->` marker lines; a module opts in with `capabilities.lineHints`): `parseLineHints(code, syntax)` → `{ code, hints, trailingMarker }`, `stripLineHints`, `anchorLineHints` / `chooseLineHints` (re-anchor hints onto saved code by trimmed line text), `stripTaskLineHints` / `stripLessonLineHints` (strip a task/lesson, recording runtime-only `task.lineHintSets`), `getTaskLineHintSets` / `getStageLineHints` (what editors and stage references show), `findTrailingLineHintMarkers` (validator warning); also the `#@peek` marker (`isPeekMarkerLine`, `parseLineHints` → `peek`, runtime-only `task.peekSets`, `getTaskPeekLine(task, code)`) for the name-tag panel; the `#@count` marker (`isCountMarkerLine`, `parseLineHints` → `counts` / `countMissed`, runtime-only `task.countSets`; see `runCounts.js`); and the `#@lock` marker (`parseLineHints` → `locks`, runtime-only `task.lockSets`, plus `puzzle.onlyEdit` locks on the starter set; see `lockedLines.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `firebase.js` | Firebase app init from Vite env vars; exports `db` (Realtime Database), `auth`, `firestore`, `functions`, `storage` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `onValueWhenSignedIn.js` | `onValueWhenSignedIn(ref, cb)`: attaches a Realtime Database listener only once a Firebase user exists, because session reads need a sign-in (#288) and a listener refused before sign-in is cancelled for good. Used by `useSession` for the session, liveInk and joining-marker listeners; unit tests get a signed-in stand-in from `src/test/setup.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `markdown.jsx` | Markdown renderer: tables, callouts, fenced code blocks, Scratch block pills, topic links, `InlineMarkdown`; opt-in `animateLists` slides list items in one after another (explainer and information task bodies, first view only) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `MarkdownFieldEditor.jsx` | Markdown editor with Edit/Preview tabs, formatting toolbar, topic-library link picker, Scratch block insertion, and asset image picker; exports `MarkdownFieldEditor` and `getInlineCodeOptions` (the toolbar is internal) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scratchBlockCatalog.js` | Shared Scratch block metadata for markdown rendering, markdown toolbar insertion, and the Scratch toolbox picker |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonBlocksCodec.js` | Encodes/decodes Firestore-incompatible lesson fields as JSON strings: Scratch block trees (incl. `prebuiltStacks[].stack`) for nested depth and Arcade Kit designs for nested sprite-frame arrays. `encodeLessonForFirestore` / `decodeLessonFromFirestore` are the full `lessons` collection boundary (blocks + answer sealing) used by every lesson read and write, web and CLI |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `firestoreDepth.js` | Pure Firestore nesting-depth measure: `measureFirestoreDepth(doc)` (deepest map/array path, counted in field-path segments, limit `FIRESTORE_MAX_DEPTH` = 20) and `formatFirestorePath`; used by `lessonValidation.js` on the lesson as stored |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonSeal.js` | Answer obfuscation (not security) for the public lesson document: `sealLesson`/`unsealLesson` (and `sealTask`/`sealTasks`/`unsealTasks`) move each task's answer fields (`TASK_SEALED_FIELDS` plus the activity's `sealedFields`) into `task._sealed = 'v1:<base64>'` (UTF-8 JSON XOR a fixed key); `lessonNeedsSealing` spots lessons stored before sealing. Also seals `lessonOverrideTasks` (useSession `pushLessonOverride`, unsealed in `applyLessonOverride`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, task summary; quiz and activity type fields, submissions and summaries come from each activity definition, plus `itemProgress` / `avgItemProgress` for activities); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `autoCheck.js` | Auto-check-on-leave attemptLog records (`auto: 'leave'`, `autoResult`): `isAutoAttempt()`, `realAttemptEntries()`, `latestLeaveAttempt()`, `leaveAttemptResult()` — every attemptLog reader that counts attempts skips these (report, badge timeline, override/reveal records) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonReport.js` | `buildSessionReport()` — builds a session report from an in-memory session + lesson (roster, per-task attempt history, overrides, carry fallbacks, support reveals, live per-task teacher ratings, live class polls (`polls`, via `classPolls.js`), shown short answers (task summary `shownResponses`, via `shownResponses.js`), the class's current-task timeline (`taskTimeline`, `buildTaskTimeline`), per-student `typing` (via `typingStats.js`), task summary (incl. `typingSummary`, `timeOnTaskSpread`); quiz and activity type fields, submissions and summaries come from each activity definition, plus `itemProgress` / `avgItemProgress` for activities); `attachTeacherFeedback()` merges the teacher's optional end-of-session star rating and notes onto a built report; `reportToYamlText()` for YAML export |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `tutorTileHighlights.js` | Tutor tile highlights (pure): `supportsTileHighlights` (asks the activity's `tileHighlights`), `listTileHighlights`, `isTileHighlightCurrent`, `activeTileHighlights`, `staleTileHighlightIds` (the student's move that clears one), `tileHighlightIdsForTarget`, `countActiveTileHighlights` (StudentCard), `normalizeTileHighlightLog` (the report's `tutorTileHighlights`); RTDB shape in `docs/agents/runtime-model.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `mustSee.js` | `findSkippedMustSeeTask` (pure): the first `mustSee` task the class would skip by moving from one task to another without having been on it (`session.taskStartTimes`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `showIt.js` | Show it (pure): `SHOW_IT_MAX` (3), `normalizeShowItIds`, `getShowIt`, `getShowItBuilds` ("Build n" labels, no names), `showItDisabledReason`, `defaultShowItView(task)` (activity definition `showIt: 'side'|'single'`), `clampShowItIndex`; RTDB `sessions/{lessonId}/showIt` shape in `docs/agents/runtime-model.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `shownResponses.js` | Shown short answers (pure): `canShowResponses` (asks the activity's `showsResponses`), `defaultShowName`, `normalizeShownText`, `findShownResponse`, `getShownResponses` (on screen for a task) and `buildShownResponsesByTask` (the report's per-task `shownResponses`); RTDB shape in `docs/agents/runtime-model.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classPolls.js` | Live class polls (pure): `normalizePollDraft`, `getActivePoll`, `getStudentPollChoice`, `tallyPoll`, `tallyPollTask` (a poll task's class split from `attemptLog`), `pollPercent`, and `buildPollsReport` (the session report's top-level `polls`); RTDB shape in `docs/agents/runtime-model.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codeSubmission.js` | `normalizeCodeSubmission()`: parses a JSON code submission from the attempt log back to its object shape (HTML file map, Scratch state), leaving plain code strings; shared by the session report and the code_arrange activity's report |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonLinks.js` | `getLessonLinks(lessonId)` — shared lesson URL builder, returns `{ join, solo, teacher, preview }` (bare smart-join URL, plus `?solo=true`, `?teacher=true` and `?preview=true` links); used by TeacherView, LessonPanel and SessionsPanel |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonLevels.js` | Reusable level reference helpers: level Firestore collection name, scope derivation, legacy migration, display title resolution, and sorting |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonOrder.js` | Pure shared lesson ordering for every lesson list (Admin, Builder picker, CLI `lessons list`): `sortLessons()` (level, then `lessonNumber`, unnumbered by title, Solo Challenges right after their parent), `compareLessonsInLevel()`, `formatLessonLabel()` ("9 · Title"), `getLessonNumber()` / `isValidLessonNumber()` (also used by validation and the TopBar) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonForks.js` | Deterministic class-fork helpers: class record normalization, fork ID/title creation, stock lesson copy, and task lineage construction |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/rosterModel.js` | Pure class-roster helpers: `normaliseRosterName` (1-30 chars), `resolveSessionClass(lesson, session)` (fork's `classId`, else the tutor's pick; `source` fork/session/none/unset), `resolveSourceIds` (fork → stock lesson and `taskLinks[].sourceTaskId`), `makeRosterWorkId` (`{sourceLessonId}__{sourceTaskId}`), `activeRosterMatches` / `summariseRosterStatus` (grid names and unmatched ids), `extractRosterWork` (by the module's `capabilities.rosterWork`), `hashRosterWork`, `splitIntoChunks` / `buildRosterWorkDoc` / `readRosterWorkDoc` (inline or chunked work documents) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/rosterWorkChanges.js` | Pure: `collectRosterWorkCandidates` (per matched student and task, the newer of the last Run on the current task and the latest attempt; lazy `extract`), `changedRosterWorkCandidates` / `markRosterWorkSeen` (new trigger and not older than what was queued) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/rosterService.js` | Firebase for the roster (tutor/admin only): `listRoster`, `subscribeRoster`, `addRosterEntry`, `renameRosterEntry`, `deleteRosterEntry` (wipes work, chunks and typing), `saveRosterWork`, `getSavedWork`, `appendTyping`, `saveTyping` (fixed dedupe id), `listTyping`; RTDB `matchStudent`, `unmatchStudent`, `setSessionClass`, `setTypingHistoryNodes` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `typingHistory.js` | Pure typing history across lessons, through an activity's `history` hooks: `collectTypingEntries` (matched students' finished results from `currentAnswer` and `attemptLog`, shown answers and tutor edits skipped), `makeTypingEntryId` / `typingAttemptHash` (dedupe key), `buildTypingEntry`, `summariseTypingHistory` (last / best / first per mode, excluding the session in progress), `sameTypingSummary`, the student and tutor wording (`formatTypingHistoryLine`, `formatTypingTrend`, `formatTypingHistoryChip`) and the report's `typingHistoryReportFields` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/crossLessonCarry.js` | Pure cross-lesson carry (W3-a): `crossLessonCarryField` (module's `carryThroughField` + `Lesson`, on modules with `capabilities.rosterWork`), `CROSS_LESSON_CARRY_FIELDS`, `getCrossLessonCarry` / `listCrossLessonCarryTasks`, inbox entries (`buildCarryInboxEntry` / `readCarryInboxEntry`, one JSON `payload`, 1,000,000-char cap), `makeCarryStatus`, the student's hold logic `resolveCrossLessonCarry` (off/own/solo/no_class/hold/found/none/starter), `crossLessonFallbackRecord`, tutor helpers `collectCarryInboxRequests` / `carryWaitingStudentIds` / `carryStarterUpdates`, report `crossLessonCarryReportFields` / `summarizeCrossLessonCarry`, and the CLI's soft `crossLessonCarrySourceWarnings` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `roster/crossLessonCarryService.js` | Firebase for cross-lesson carry: `fillCarryInbox` (tutor: `getSavedWork` → `carryInbox/{lessonId}/{anon}/{taskId}` then `sessions/…/carryStatus`), `applyCarryStarter`, `clearCarryInbox`, `readCarryInbox` (student: own entry only) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `youtube.js` | Pure YouTube URL parsing for the `recordingUrl` lesson field: `extractYouTubeId()`, `isValidRecordingUrl()`, `buildYouTubeEmbedSrc()`. Dependency-free (only the built-in `URL`) so it's shared between the browser widget/Builder field and the Node CLI validator |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `pasteDetection.js` | Large-paste thresholds (40 chars / 3 lines) and helpers used by `handleEditorPaste` to flag pastes to the teacher |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `confidenceScale.js` | The confidence check's 1–10 scale (pure): `CONFIDENCE_SCALE`, `LEGACY_CONFIDENCE_SCALE` (5, reports without `ratingScale`), `CONFIDENCE_COLOURS`, `confidenceColour` / `confidenceTextColour`, `parseConfidenceRating`, `formatConfidence` ("7/10"), `reportConfidenceScale`, `emptyConfidenceDistribution`, `tallyConfidenceSpread` (the tutor's class spread), `confidenceGroup` / `confidenceSpreadEntries` (grid highlight) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `answerDrafts.js` | Live answer drafts (pure): `ANSWER_DRAFT_IDLE_MS`, `normalizeDraftText`, `buildDraftRecord` (`students/{id}/currentDraft`), `readAnswerDraft` (card and modal), `fillBlankDraftText`, `draftLogUpdates` (setTaskId keeps unsubmitted drafts in `draftLog`) and `lastDraftFor` (the report's `lastDraft`); write cadence in `useActivityState` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `typingStats.js` | Pure session report typing measures: the per-task tracker (`createTypingState`, `applyTypingEvent` with 5 s typing bursts, `applyTypingRun`, `typingRecordOf`), copy accuracy (`editDistance`, `normalizeForCopyComparison`, `copyDistanceFor`), `charsPerMinOf` and `typingReportFields` (the report's per-student `typing` block). Which modules record typing is the `typingStats` module capability (python, turtle, html) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `inspectorUse.js` | Pure: the HTML Inspector in the session report — `inspectorReportFields` (per-student `inspector: { used, opens, selects }` from `inspectorLog`) and `summarizeInspectorUse` (task summary `inspectorUsedCount`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lockedLines.js` | Pure locked lines (`#@lock` marker lines, `puzzle.onlyEdit`): `isLockMarkerLine`, `isLockSyntax`, `anchorLockedLines` / `chooseLockedLines` (re-anchor locks on any code by line text, in order), `onlyEditLocks`, `mergeLocks`, `getTaskLockSets` / `getTaskLockedLines` (the runtime-only `task.lockSets` that `stripTaskLineHints` records), `taskHasLocks` / `taskHasValueLocks`; edit zones (P6-30): `lockFenceOfMarkerLine` (`#@lock-first` / `#@lock-last`, a lock's `fence`), `slotMarkerSize` (`#@slot [n]`), `anchorSlots` (slots anchored by the lines either side), `chooseZones` (`{ locks, slots, noNewLines }` for the editor) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runCounts.js` | Pure run counts (task `runCounts: predict \| show`, the `#@count` marker, p6-26): `RUN_COUNTS_TASK_FIELD`, `getTaskCountMarks` (from the stripped task's runtime-only `countSets`, else the authored starter; keys `L<starter line>`, at most 3), `getCheckCountLines` / `taskCountsRuns` (a `line_run_count` check's line counts too), `anchorCountMarks` (re-anchored by line text), `runCaptureOptions(task, code, { lineOffset })` (the name-tag panel's capture plus `countLines`, used by the python / turtle runtimes), `buildRunCounts` (the worker's `lineCounts` by key), `evaluateCountPredictions`, `getRunCountLock` / `combineRunLocks` (predict mode's shared Run lock), `getRunCountWidgets` (what the editor shows, own or synced), the `runs_predicted` / `line_run_count` evaluators, `describeRunCount` / `ranTimesText`, tutor-chip items and the report fields (`runCountReportFields`, `summarizeRunCountPredictions`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runCountsValidation.js` | `validateRunCounts` (python / turtle `validateTask`: the mode, over 3 marks, a mark with no line, `runs_predicted` lines, `line_run_count` lines) and the two checks' registry `validate` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runCountsEditor.js` | The CodeMirror run-count widgets (CodeEditor's `runCounts` prop): `runCountsExtension({ handlersRef })` driven by `setRunCountWidgets`; at the end of each `#@count` line a number box ("How many times will this run?", shared rules from `variablesPanel/answerFields.js`), then "ran 3 times ✓" / "ran 1 time ✗ · you said 3" with a screen-reader sentence; `runCountsField` maps them through edits; `getRunCountsState`, `runCountWidgetKind`, `runCountResultText` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `peekBandEditor.js` | The CodeMirror `#@peek` "stopped here" band (CodeEditor's `peekBand` prop, `{ line, missed }` from `getPeekBand`): `peekBandExtension()` driven by `setPeekBand`; `peekBandField` maps the band through edits (gone when its line is deleted); a dashed ⏸ block widget above the line ("The tags show the values here" / "The program never reached this line", `role=note`, `peekBandLabel` for screen readers); `getPeekBandState` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `variableLinksEditor.js` | Linked name tags in CodeMirror (CodeEditor's `variableLinks` prop, `showVariables.link`): `variableLinksExtension({ onActiveRef })` driven by `setVariableLinks.of({ links, active })`; marks every real use (syntax-tree `VariableName`, not keyword names) with its tag's colour and number (CSS, no layout shift), the active one more strongly; reports the variable hovered or under the cursor; `findVariableOccurrences` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `editableValueStyle.js` | The one shared "you can change this" look (dashed box): `EDITABLE_VALUE_CLASS`, `editableValueTheme`; used by `#@lock-values` values (`lockedLinesEditor.js`) and the always-visible marker on scrubbable numbers (`scrub/scrubExtension.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lockedLinesEditor.js` | The CodeMirror locked-lines extension: `lockedLinesExtension()` driven by `setLockedLineSets` (CodeEditor's `lockedLines` prop); `lockedLinesField` maps locks through the student's edits and re-anchors after outside changes; transaction filters guard the student's edits (`filterLockedChange`, `changeBreaksLock`: a deletion is cut around locked lines) and skip locked lines with the arrow keys; Enter on a locked line adds a line above/below; 🔒 Locked tag, "This line is locked" note + live region, `inputmode=none` inside a locked line; `isLockedPos`; values locks (`#@lock-values`): edits only inside the values (`valuesChangeAllowed`, by value skeleton), the caret snaps into a value, dashed value boxes, `lockedValueSpansAt`, `isFullyLockedPos` (scrubbing is off only on fully locked lines); edit zones (P6-30): `zoneEditFilter` / `zoneViolation` (fenced sides, slot sizes, `puzzle.noNewLines`), an edit on a fenced side moved to the open side, Enter on a fenced line adds on its open side, slot outline + "Write one line here" tag, fenced "nothing below / above" tags, the notes' words (`FENCE_LAST_NOTE`, `slotNote`, `NO_NEW_LINES_NOTE`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `popoverPosition.js` | Pure `rightAlignedPopoverShift({ anchorRight, width, viewportWidth })`: how far to move a right-aligned popover so it stays on screen (the tutor's Poll set-up, `TeacherPollControl.jsx`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `courseUse.js` | Pure: Turtle course mode in the session report — `courseLogEntry` (one run's goal / crashes / pickups), `courseReportFields` (per-student `course: { runs, goalReached, goalRuns, crashes, pickups, lastGoalReached }` from `courseLog`) and `summarizeCourseUse` (`courseGoalReachedCount`, `courseCrashedCount`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `slowMoUse.js` | Pure: Scratch slow-mo in the session report — `slowMoReportFields` (per-student `slowMoUsed`, `slowMoRuns`, `slowMoSteps` from `slowMoLog`) and `summarizeSlowMoUse` (task summary `slowMoUsedCount`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskStages.js` | Pure code-stage role helpers (`STAGE_ROLES`, `getStageRole`, `getStarterStage`, `getCompleteStage`, revealable stages, `SUPPORT_REVEAL_SOURCES`, `AUTO_REVEAL_MODES`) with no imports, so module definitions can use them; re-exported by `taskUtils.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codeLanguages.js` | `CODE_LANGUAGE_LABELS` / `getCodeLanguageLabel` for code-fence languages (CopyCodePanel, explainer code-block menu) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `taskUtils.js` | Task flattening/group helpers plus estimated-duration and priority totals/formatting; `filterTasksByMode` uses `getEffectiveTaskMode` (a Badge Summary task, `isBadgeSummaryTask` / `BADGE_SUMMARY_INFORMATION_TYPE`, is always live-only); `deriveTaskContext` (incl. `moduleType`) and `buildStageOptions` read module definitions. `flattenTaskTree()` expands groups as authored; `flattenTasks()` is that with legacy draft tasks filtered out |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `pythonErrors.js` | Python errors in plain words for children (Hub #225): `findPythonError` (the last `Line N: Type: message` in output), `explainPythonError` (title and four rungs: nudge, concept, example with comments, fix; range without brackets, missing colon, brackets, quotes, indentation, NameError, common TypeErrors, int(), divide by zero, IndexError, KeyError, AttributeError, missing module, recursion; null when unknown), `ERROR_RUNG_LABELS`. Node-safe |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `copyCodeOverrides.js` | A tutor's own Copy code ("Type this out") text: `effectiveCopyCode(task, classOverrides, studentOverrides)` (student, then class, then the lesson's) and `applyCopyCodeOverrides(lesson, …)`; paths `copyCodeOverrides/{taskId}` and `students/{id}/copyCodeOverrides/{taskId}` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `presenter.js` | `TEACHER_PRESENTER_ID` (the presentation window's pseudo-student id) and `withoutPresenter(session)`, which `useSession` applies to every snapshot except the presentation window's own, so it never shows in the tutor's student list or session reports |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `staleSessions.js` | `isStaleSession(session, now, { byAge })`: a waiting/active session with no tutor tab (`teacherPresence`) for 2 hours (`teacherLeftAt`), or, by age, open over 12 hours without those fields. StudentView ignores stale sessions (stamp only); the Admin Open Sessions panel deletes them |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `textUtils.js` | Small string helpers shared across modules: `escapeRegExp()`, `stableHash()` (deterministic 32-bit hash for stable ids and shuffle seeds), `isPlainObject()`, `fileExtension()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `quizAnswers.js` | Reading a stored quiz answer: `parseQuizAnswerState()` (object, or the JSON string it was persisted as) and `answerTextMatches()` (case- and whitespace-insensitive compare) — shared by the quiz components, submission building and lesson reports |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `spriteVisuals.js` | `spriteVisualMode(sprite)` — whether a Scratch sprite is drawn from a costume image, an emoji, or a preset; used by the admin shared-asset panel and the Builder sprite editor |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `composedLesson.js` | Pure composed-lesson module resolution, structural validation, sandbox adaptation, and scoped carry-source helpers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codeArrange.js` | Pure helpers for the `code_arrange` task type: the one shared task-level tile pool, slot-completeness, assembling the final runnable code string from tile placements (`assembleCodeArrangement`), and its inverse (`deriveSlotStateFromCode`, backtracking over the shared pool using each line's fixed text as anchors) — the run pipeline and check evaluator only ever see the final assembled string. The state helpers (prune, complete, assemble, solution, derive) hand an indent-mode task to `codeArrangeIndent.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `codeArrangeIndent.js` | Pure code_arrange indent mode (`arrangeMode: indent`): `{ lineId: depth }` state for movable lines (missing = `start`, default 0; locked lines fixed at `depth`), `assembleIndentArrangement` (4 spaces per step), `buildIndentSolutionState`, `pruneIndentState`, `deriveIndentStateFromCode`, `countMovedLines` (card progress), `isIndentArrangementCorrect`; `MAX_INDENT_DEPTH` 4 |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `draftLesson.js` | Shared structural validation for incomplete lesson-level draft tasks. |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonAudit.js` | Current-state lesson/task version and change-timestamp helper with no-op detection; carries a stored `lessonNumber` forward when a save omits it. |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `lessonService.js` | Shared lesson loading and publishing helpers: `fetchLessonById()`, `fetchLessonList()` (sorted with `lessonOrder.js` using the `lessonLevels` order), `publishLesson()`, `publishLessonTasks()`, `deletePublishedLesson()`, `publishLessonFork()`, `applyLessonOverride()`; class helpers; publishing migrates legacy scalar levels; session report helpers: `saveSessionReport()`, `fetchSessionReports()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `appVersion.js` | Reads the `__APP_BUILD_INFO__` build constant injected by `vite.config.js` (null under Vitest) and formats the version label (`formatAppVersion`, `formatVersionNumber`, `formatBuildDate`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `motion.js` | Shared motion helpers (docs/architecture/motion-system.md): `MOTION_MS` (mirrors the `--motion-*` CSS tokens), `prefersReducedMotion()`, `staggerStyle(i)`, `firstViewKey(...)` / `useFirstView(key)` (entrance plays on a task's first view only, in-memory per window) / `resetFirstViews()`, `usePassMoment(passed, taskKey)` (counts watched false→true passes, for spins and the success chime) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `preloadImages.js` | Background image preloading for task navigation: `markdownImageUrls(text)`, `collectTaskImageUrls(task, lesson)` (explainer / `leftContent` / `description` Markdown images as authored, Scratch costumes and backdrops and Real or AI picture pairs via `resolveAssetFileUrl`, so the real load hits the cache), `preloadImages(urls)` (low-priority `new Image()`, once per page load), `usePreloadNeighbourImages(lesson, flatTasks, index)` (the tasks either side, once idle; used by `StudentView` and `TeacherView`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `timeAgo.js` | Pure short relative-time label (`formatTimeAgo`) shared by the student grid and the shared-work gallery, and `formatClock(seconds)` ("2:05", "1:02:05") for the teacher timers, class countdown and Admin sessions list |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `classCountdown.js` | Pure helpers for the teacher's class countdown (`session.classCountdown`, server-time ms): `buildClassCountdown`, `extendClassCountdown` (restarts from now after zero), `getClassCountdownRemainingMs`, `isClassCountdown`, `parseCountdownMinutes`, presets and min/max minutes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `workspaceData.js` | Pure scratch state clone/parse and decoded session file-list helpers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useIsMobile.js` | `useIsMobile(breakpoint=640) → boolean` — media query hook for responsive layout |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useRemoteRunTrigger.js` | `useRemoteRunTrigger(token, run, { enabled, onHandled })` — each module workspace runs its own Run action once per pending teacher remote-Run token (`cs.remoteRunToken`), then acknowledges it so a remount never replays it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useIsTouchDevice.js` | `useIsTouchDevice() → boolean` — touch-capability hook (`ontouchstart`/`maxTouchPoints`), not a viewport-width check like `useIsMobile` — catches touch devices with a wide viewport (iPad Pro landscape); drives `PythonEditor.jsx`'s on-screen punctuation symbol row (the emoji button is shown regardless of this hook) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useElementSize.js` | `useElementSize() → [ref, {width, height}]` — `ResizeObserver`-based container-size hook (vs. `useIsMobile`'s viewport-only breakpoint); drives `LessonTaskContent.jsx`'s Scratch compact/tab layout (`ScratchWorkspace.jsx` measures its own container directly, not via this hook). Returns a callback ref, not a plain `useRef` — needed because `TaskSlideTransition.jsx` swaps in a fresh DOM node per task without the owning component remounting; a mount-only effect would silently keep observing the detached old node |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `Banner.jsx` | Tinted notification banner: `accent` hex colour drives rgba background/border; accepts `color`, `style`, `children` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `launchpadCodeFile.js` | Versioned `.launchpad` Python code-file creation, validation, parsing, naming, and browser download helpers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Markdown Helpers (`src/shared/markdown/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `exampleFence.js` | Pure parser for "See example" fences (` ```example python label="…" `, intro before `---`, then code): `splitExampleFences`, `parseMarkdownBlocks` (example fences + tables, MarkdownRenderer's block list), `findExampleFenceProblems` (lesson validation warnings) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ExampleFenceButton.jsx` | The "See example" button and its wide, portalled, focus-trapped dialog (a bottom sheet on narrow screens); MarkdownRenderer supplies the highlighted code and intro |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `anchors.js` | Stable `data-md-anchor` content anchors (`b{n}`, `b{n}.p{k}`, `.h{k}`, `.li{k}`, `.img{k}`, `.q{k}`, `.pre{k}`, `.th`/`.tr{k}`): `rehypeMarkdownAnchors` plugin plus the block/table-row helpers MarkdownRenderer uses; Presentation annotations position marks against them |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Input Recorder (`src/shared/input/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Pure, Node-safe input library for the Keyboard and Mouse activities and the Desktop's `input_*` checks (plan: `docs/architecture/modular-activities-plan.md`, Phases 3 and 5). Raw events stay on the device; only summaries are checked or synced.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `platform.js` | `detectPlatform` (Mac / Chromebook / Windows / other from the user agent; iPad = other), `keyName` (a taught key as labelled on that keyboard: Mac delete, fn + delete, Chromebook Alt + Backspace, Alt + Search…), `modKeyName` (Cmd on a Mac), `PLATFORM_LABELS`; part of `detectInputCapabilities` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `index.js` | Re-exports the whole library |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag (pointer or HTML5 drag-and-drop, with source/drop target kinds), scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `targetSummary.js` | `summarizeTargetedInput` / `createInputTally`: capped, serialisable per-surface summary for `input_*` checks — gestures per target kind (`file`/`folder`/`window`/`icon`), drags by source>drop kind, shortcuts by keyboard vs menu, Shift/Caps Lock capitals; the tally folds finished segments into running totals so the ring buffer never loses gestures |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checks.js` | Owner-`input` check types `input_gesture`, `input_shortcut`, `input_modifier` (registered in `src/modules/checks.js`): evaluate against `ctx.input`; `validate()` rejects modules without them in `inheritsCheckTypes`, browser-reserved combos, unknown gestures/kinds; `inputChecksOf` / `inputSummaryCapFor` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useSurfaceInputRecorder.js` | React hook: capture-phase key/pointer/drag listeners on a surface element feeding a tally; calls `onSummary` only when the capped summary changes; returns `recordCommand(combo, via)` for menu equivalents (used by Desktop `StudentWorkspace`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useInputCapabilities.js` | React hook over `detectInputCapabilities`, upgraded when a hardware keydown proves a physical keyboard (kept out of `index.js` so the library stays Node-safe) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `capabilities.js` | `detectInputCapabilities` (fine pointer, hover, touch), `withKeyEvidence` (physical keyboard learned from a hardware keydown), `unmetRequirements` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Name-Tag Panel (`src/shared/variablesPanel/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 A Python / Turtle task's `showVariables` (docs/authoring/python.md "Name-Tag Panel"). The worker side is `src/modules/python/variableCapture.py.js`; the student state is `useVariablesPanel`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `variablesPanel.js` | Pure: `getShowVariables(task)` (normalised field; `predict` names plus `answers` (`{ name: { answer, choices } }`, p6-27), `predictType` + `typeChoices`), `PREDICT_ANSWER_KINDS` / `PREDICT_TYPE_LABELS`, `predictEntryName`, `predictChoiceText` (a choice as the panel writes values), `getPredictRunLock` (also waits for type picks), `SHOW_VARIABLES_TASK_FIELD`, `variableCaptureOptions(task, code, { lineOffset })` (what the worker captures, with the re-anchored `#@peek` line), value-node helpers (`typeLabel`, `formatValue`, `describeVariable`, `nodeItems`, …), `changedNames`, `buildVariablesRun` (a run state holding a SEQUENCE of snapshots + `index`), `compactVariablesForSync` / `readSyncedVariables` (the `currentVariables` / `teacherLive.variablesPanel` shape), `panelRunForTask` (the run a task's panel shows: own or synced), `getPanelPeekLine` / `getPeekBand(task, code, run)` (the `#@peek` line as the student sees it, and the editor's stopped-here band `{ line, missed }`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `predictions.js` | Pure: `parsePythonLiteral`, the forgiving `predictionMatches(text, node)`, `targetMatches`, `evaluatePredictions`, the `variables_predicted` evaluator, type predictions (`typePredictionMatches`, `evaluateTypePredictions`, the `types_predicted` evaluator, p6-27), `variablesCardSummary` (tutor card chip, via `predictionItems` / `predictionChipSummary`, which run counts reuse), prediction-log entries (`types` for type picks) and the report fields (`variablePredictionReportFields`, `summarizeVariablePredictions`; type entries `kind: 'type'`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `answerFields.js` | Pure: a number answer box's rules, shared by the panel's number field and the code editor's run-count box (`runCountsEditor.js`): `sanitizeNumberText(text, { whole })`, `numberInputAttributes` / `numberInputProps` (numeric keypad on touch) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PredictAnswerField.jsx` | A predict tag's control by its `answers` spec (p6-27): True / False or choice buttons (`ChoiceButtons`, ≥ 44 px, words), a number field (`NumberAnswerField`), a quoted text box, or today's free box for a plain name |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `predictionReport.js` | `taskPredictionFields` / `summarizeVariablePredictions` and the run counts' `taskRunCountFields` / `summarizeRunCountPredictions`: the session-report hook-up spread into `lessonReport.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `validation.js` | `validateShowVariables` (python / turtle `validateTask`; predict entry shapes and `predictType`) and the `variables_predicted` / `types_predicted` checks' registry `validate` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NameTagPanel.jsx` (+ `.css`) | Presentational panel: a tag per variable (name, type label, value; list tiles with indexes, dict rows, Show all), predict inputs (`PredictAnswerField`) and predictType tags (type-label buttons) with ✓ / ✗, target tags, "changed" marks, screen-reader text, the `at: marker` header ("Values just before line N", `peekLine` prop); takes `run.snapshots` + `run.index` so a step player can drive it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PredictRunLockNote.jsx` | The words beside a Run button that predict mode's lock disabled ("Fill in your predictions first"; `getPredictRunLock` in `variablesPanel.js`, `cs.predictRunLock` from `useStudentCodeState`); the Run button's `aria-describedby` points at it |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `TaskVariablesPanel.jsx` | The panel for a task: from `cs.variablesPanel` (the student) or a synced copy (StudentModal, Go Live), read-only; `code` gives the `#@peek` header its line |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `links.js` | Pure: linked tags (`showVariables.link`): `getVariableLinks(config, run)` → `[{ name, number, colour }]` (featured names first, at most six), `VARIABLE_LINK_COLOURS`, `linkFor`, `variableLinksKey` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useVariableLinks.js` | `useVariableLinks(task, run, { enabled })`: the links plus which one is active (tag hover/focus/tap wins over the code), as `panel` props for `TaskVariablesPanel` and an `editor` value for `CodeEditor`'s `variableLinks` (Python / Turtle workspaces, StudentModal) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `visuals.js` | Pure: `chooseVisual(node, { visuals, stageLists })` picks a list / dict visual (swatches, bars, picture, table, rows, wrapped (a flat list `grid(…, width=…)` drew), cards, dictBars, size, or tiles / plain), `pictureOf`, `wrappedOf`, `describePicture` / `describeItem` / `describeTable` / `describeWrapped` (screen-reader words), item keys for change marks, `targetToNode` (target values as nodes), `cardVisuals` (tutor card). `changedItemKeys` / `changedItemsMap` (per-item marks in the run state's `changedItems`) live in `variablesPanel.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ValueVisual.jsx` | Draws one visual with index numbers, per-item change marks and a Show value toggle for the exact Python text |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `NameTagCardStrip.jsx` | The student card's thumbnails (up to two swatch / picture / bar variables) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Python slow-mo (`src/modules/python/slowMo/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 A Python / Turtle task's `slowMo` (docs/authoring/python.md "Slow-mo"): record the run in the worker (`record`), then play it back line by line. The recorded run is the run (checks, attempt, save as for Run). Turtle imports it from here.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `config.js` | Pure: `PYTHON_SLOW_MO_TASK_FIELD`, `declaresPythonSlowMo(definition)` (TaskEditor), `getPythonSlowMo(task)` (`{ speed, showVariables, question, separateButton }` or null), `slowMoThroughRun(config)` (Run plays in slow-mo unless `separateButton`), `PYTHON_SLOW_MO_RUN_TITLE`, `slowMoRecordOptions(task, { lineOffset })`, `validatePythonSlowMo`, the 2,000-step cap and its message |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `recording.js` | Pure: the recording/step shape, `readRecording`, `computeLoopPasses` / `passLabel` (the loop pass counter), `buildSlowMoModel` and the per-position readers (`variablesAt` with struck-through history, `outputAt`, `lineAt`, `passesAt`, `turtleAt`, `stageAt`, `describePosition`), `playbackReducer` (incl. `finish`: straight to the end), `compactRecording` (the Go Live size budget, 300 KB) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `live.js` | Pure: `teacherLive.pythonSlowMo` (`{ taskId, id, json, position, mode, speed }`): `buildLiveSlowMoPayload` (once per recording), `buildLiveSlowMoStep` (multi-path step updates), `readLiveSlowMo`, `parseLiveRecording` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `usePythonSlowMo.js` | The workspace hook: records through `cs.handleRun({ slowMo: true, onResult })` (`run`: the workspace's Run when `throughRun`, the default; `slowMo` / `step` with `separateButton`), plays back (timer, Pause/Play/Step/Step back/Restart/Finish/speed), ends on an edit, a normal Run or another task, reports use (`cs.recordSlowMoUse`), publishes to Go Live, or follows the presenter as a viewer (`displayPythonSlowMo`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `editorMarker.js` | CodeMirror add-on: the current-line band (▶, still) and loop pass pills; `applySlowMoMarker(view, marker)` installs it through `CodeEditor`'s `getView()` handle (PythonEditor's `slowMoMarker` prop) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SlowMoBar.jsx` (+ `slowMo.css`) | The controls (Pause/Play, Step, Step back, Restart, Finish once a run plays when Run plays slow-mo; plus 🐢 Slow-mo, all from the start, with `separateButton`; ≥44 px, icon + word), `SlowMoRunLabel` (the workspaces' "▶ Run (slow-mo)" words), speed slider, status, cap note, the task's question while paused, and a live region reading each step; status only for a Go Live viewer |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SlowMoNameTags.jsx` | The name-tag panel during playback (`NameTagPanel` with `history`, `status`, `pulseKey`, `pulse`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `SlowMoField.jsx` | Builder control for `slowMo` (on/off, starting speed, name tags, question, separate Slow-mo button), in TaskEditor |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Python Stage (`src/shared/stage/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 The drawing pane of a Python task (docs/authoring/python.md "Stage"). The engine lives here so the Stage can later be its own workspace or part of Turtle; `src/modules/python/` only wires it (worker bridge, `stageTarget.js`, the workspace pane, the stage checks in `python/checks.js`).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `colours.js` | Pure: `parseColour` (CSS names, PICO-8 names from Arcade's palette, `#rgb` / `#rrggbb`), `PICO8_PALETTE`, `coloursMatch` (per-channel tolerance), `describeHex` / `colourInWords` (colours in words), `hueColour` (the stage `hue()`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `commands.js` | Pure: the command model (`background`, `rect`, `square`, `circle`, `polygon`, `line`, `text`, `stamp`, `grid`, `clear`; size-first, centre-anchored, with `angle` / `opacity` / `outline` / `width`), `validateStageCall(name, args, kwargs)` (binds Python args + kwargs; friendly TypeError / ValueError messages naming the argument, incl. the old position-first order), `stageHue` (`hue()`), `readStageCallPayload`, `createStageRecorder` (caps: 20,000 commands, 200,000 grid cells), `visibleCommands`, `STAGE_SIZE`, default colours |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `geometry.js` | Pure: filled-shape geometry shared by canvas, SVG and raster: `shapeCorners` (rect / square / polygon, corner up), `shapeHitTest` (fill + outline band, turned), `angleOf` / `opacityOf` / `fillOf` / `outlineOf` / `outlineWidthOf` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `stagePy.js` | Python source of the `stage` module (`STAGE_MODULE_PY`) and its one-time `sys.modules` install (`STAGE_INSTALL_PY`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `raster.js` | Pure-JS rasteriser (no canvas), as drawn (turned, polygons, outlines, opacity blended): `rasteriseStage` (100 × 100 by default), `stageColourAt`, `compareStages` (differing cells + text / emoji compared by command), `comparisonMatches` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `describe.js` | `describeStage` (screen-reader text: shapes, text, grid size, colours in words), `describeComparison` (the Differences summary) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `checks.js` | The five `stage_*` checks: `evaluateStageCheck`, `validateStageCheck`, `describeStageCheck` (registered by `python/checks.js`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `validation.js` | `STAGE_TARGET_TASK_FIELD`, `validateStageTarget` (python `validateTask`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `sync.js` | `compactStageForSync` (the `currentStageResult` / `teacherLive.stage` shape) and `readStageResult` (back from Firebase) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `canvas.js` | `drawStage(ctx, commands, { ghost, diff })`, `sizeStageCanvas` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `svg.js` | `stageToSvg(commands)`: a standalone picture for export or a gallery |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `StagePane.jsx` | The pane: square canvas that scales to fit, Target (ghost) and Differences toggles (44 px), comparison summary, `compact` mode for the tutor card and StudentModal, and the student's **Save my picture** button (`saveTitle`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `stagePicturesPy.js` | Image Lab's Python source (`STAGE_PICTURES_PY`), appended to `STAGE_MODULE_PY`: `rgb`, `red` / `green` / `blue`, `load_image`, `snapshot`, and a `_draw` wrapper that turns `(r, g, b)` tuples into colours |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `imageLibrary.js` | Pure: Image Lab's picture library (`IMAGE_LIBRARY`: names, words, `crisp`), `readImageRequest` (`load_image()` values and messages, "did you mean"), `imageNamesInCode` (names to fetch before a run), `imageUrl`, `resizeImageBytes` (64 → 8/16/32: averaged, or one pixel a block for `crisp`), `rgbBytesToHex`. The pictures are `public/image-lab/<name>.rgb` (64 × 64 raw RGB) with `manifest.json` (sources and licences) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `pictures.js` | Pure: `stageColourValue` (colour names for `red()` / `green()` / `blue()`), `readSnapshotRequest`, `snapshotHex` / `snapshotColours` (`snapshot()` via `rasteriseStage`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `savePicture.js` | Browser: `stagePngBytes` (the drawing as a PNG, shared with Python's Export work), `stagePictureFileName`, `saveStagePicture` (download) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Beat Maker (`src/shared/beats/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 The `beats` Python module (docs/authoring/beats.md): drum patterns as strings, played and shown as a step grid on the Stage. `play()` / `stop()` record `beat` / `beat_stop` commands in the run's Stage command list (the worker's `__hsBeatsCall`), so the beat travels wherever the Stage drawing goes (tutor card, StudentModal, Go Live, Show it, share links, Export work).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `patterns.js` | Pure: `validateBeatCall` (play/stop args → command or plain-words TypeError / ValueError), `readPattern`, `readTempo`, `recordBeatCall` (appends to a Stage recorder; caps), `readBeatSong` (commands → `{ parts, autoPlay }`, reads Firebase-shaped rows), `stepHit`, `describeBeatSong`, `isBeatCommand`, limits (`BEAT_INSTRUMENTS`, tempo 40-240, 64 steps, 32 parts) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `timing.js` | Pure: `stepSeconds`, `buildTimeline` (one event per step with its hits), `loopCountFor` (4 times, at least 8 s, at most 60 s), `eventAt`, `positionAt`, `songSeconds` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `drums.js` | Web Audio drum kit made in code (kick, snare, closed hat, clap) on a live or offline context: `scheduleDrum`, `createDrumOutput` (volume gain + limiter) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `player.js` | The live player: one beat at a time, `playBeat` / `stopBeat` / `setBeatGain`, `createBeatScheduler` (lookahead scheduling on the AudioContext clock; silent page-clock fallback), `installBeatAudioUnlock` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `render.js` | `renderBeatWav` (OfflineAudioContext + Scratch export's `encodeWav`), `downloadWav` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `beatSoundSettings.js` | Mute and volume per device (`headstart_beats_muted`, `headstart_beats_volume`), `useBeatSound`, `beatGain` (the volume cap) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `beatsPy.js` | Python source of the `beats` module (`BEATS_MODULE_PY`, exports play and stop only) and its one-time `sys.modules` install (`BEATS_INSTALL_PY`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `BeatSequencer.jsx` | The grid: a row per drum, lit hits, faded repeats, step numbers from 0, playhead; controls `full` (Play/Stop, Sound, Volume, Save my beat), `play` (tutor modal, Show it) or `none` (tutor card) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `charts.js` | Pure: real charts (matplotlib): `codeImportsMatplotlib`, the `image` command (`chartImageCommand`, `recordChartImage`: 400,000-character PNG and 20-chart caps), `chartImageRect` (fitted, centred), `chartImageSrc`, `CHART_PACKAGES`, the loading / offline messages |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `chartsPy.js` | Python glue the worker runs once after `loadPackage('matplotlib')` (`CHARTS_INSTALL_PY`: Agg backend, `plt.show()` → PNG → `__hsStageChart`), plus the per-run `CHARTS_RESET_PY` / `CHARTS_FLUSH_PY` (shows an unshown figure at the end) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `chartsStatus.js` | The page's "matplotlib is loading" flag (`setChartsLoading`, `useChartsLoading`), set from the worker's `charts_loading` message; the output panel shows "Loading charts… (first time only)" |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `stageImages.js` | Decoded chart pictures for the canvas: `loadStageImages` (StagePane and Export work draw again once decoded), `stageImageFor`, `drawStageImage` (white, then the picture fitted) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Editor scrubbing (`src/shared/scrub/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Live number and colour scrubbing in the shared code editor, for a task's `scrub` field (docs/authoring/python.md "Live scrubbing"). The editor half is a CodeMirror extension in its own compartment; the classroom half (preview runs, report count) is `useScrubPreview` / `useScrubLog`. Modules opt in with `capabilities.scrub` (python, turtle, html).
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `literals.js` | Pure: `findScrubLiterals(line, syntax, { inStyle })` (python numbers / colour strings; CSS values; HTML style blocks, `style=""` and whole-value attributes), `numberStep`, `formatScrubNumber`, `defaultScrubRange` / `scrubRangeFor` / `clampScrubValue` / `valueForDrag`, the picker palettes (`SCRUB_SAFE_COLOURS`, `SCRUB_COMMON_COLOURS`), `formatScrubColour` (name stays name, hex stays hex) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scrubConfig.js` | Pure: `SCRUB_TASK_FIELD`, `getTaskScrub`, `validateScrub` (module `validateTask`), the `capabilities.scrub` reader / validator, `scrubPreviewMode` ('preview', 'press-run' (needed import) or 'press-run-answers' (`input()` without a last Run's answers)), `scrubCodeAsksForInput` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `replay.js` | Pure: `scrubReplayNoteText(answers)` ("Using your last answers: …") and `scrubNoticeText(status)` (the scrub notice's words) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScrubReplayNote.jsx` | The "Using your last answers" line near the result while a preview replays an `input()` program's last answers (`cs.scrubReplayAnswers`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScrubOpenedCue.jsx` | The "✨ Now make it yours" line above the editor when a `scrub.afterPass` task has just opened its values (`cs.scrubJustOpened`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `runOnOpen.js` | Pure: the `runOnOpen` task field (`RUN_ON_OPEN_TASK_FIELD`, `getTaskRunOnOpen`: default on with scrub), `codeCallsInput`, `validateRunOnOpen` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `previewScheduler.js` | Pure: `createPreviewScheduler` — debounced (200 ms) preview runs, skipping while one runs (the latest waits), `settle()` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scrubExtension.js` | The CodeMirror extension: hover underline, colour swatches, mouse drag, tap / Alt-Enter popovers, `scrubPreviewAnnotation` previews (no history, skipped by `CodeEditor`'s change handling) and the one-edit commit (`input.scrub`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ScrubPopover.jsx` | The slider popover (− / + / Done, 44 px, keyboard) and the colour picker (labelled swatches, hex box) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useEditorScrub.jsx` | `CodeEditor`'s hook-up: the compartment, handlers, popover and "Press Run to see it" notice |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scrubUse.js` | Pure: `scrubReportFields` (`scrubs`, `scrubNumbers`, `scrubColours`, `scrubBooleans` from `scrubLog`) and `summarizeScrubUse` (`scrubUsedCount`) for `lessonReport.js` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Hidden setup and puzzle rules (`src/shared/puzzle/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 A Python or Turtle task's `setupCode` / `setupNote` and `puzzle` (`onlyEdit`, `maxLines`, `par`) with the `max_lines` check (docs/authoring/python.md "Locked lines, hidden setup and puzzles"). Locked lines themselves live in `src/shared/lockedLines.js` and `lockedLinesEditor.js`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `setupCode.js` | Pure: `SETUP_CODE_TASK_FIELD`, `SETUP_NOTE_TASK_FIELD`, `getTaskSetupCode` / `getTaskSetupNote`, `setupRunOptions(task, { afterLine })` (the worker's `setup`; the worker joins it to the top of the program numbered after the student's lines), `SETUP_ERROR_TEXT`, `findSetupSyntaxProblem` (no-Python bracket/quote/indent check), `validateSetupCode` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `puzzle.js` | Pure: `PUZZLE_TASK_FIELD` (incl. `noNewLines`), `getTaskPuzzle`, `countCodeLines`, `countChangesFromStarter` (LCS of lines of code), `lineCounter`, `parResult`, the `max_lines` check (`evaluateMaxLinesCheck`, `resolvePuzzleChecks` / `resolveLessonPuzzleChecks` fill its limit and hint from `puzzle.maxLines`), `validatePuzzle`, `validateLockedLines`, `puzzleReportFields` (`linesUsed`, `changesFromStarter` from the passing attempt), `puzzleCardNote` ("Solved at par" / "Over line limit") |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `PuzzleBar.jsx` | The line above the Python / Turtle editor: the setupNote, the live "3 / 4 lines" counter (a live region) and, after a pass, the par note |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ### Result pane: Python / Turtle screen layout (`src/shared/resultPane/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 On tablets and small screens a Python or Turtle task shows the editor plus ONE result pane with tabs Picture · Tags · Console (beside the editor, or below it on portrait screens and phones); wide desktops keep the old side-by-side markup (docs/authoring/python.md "Screen layout"). Used by `src/modules/python/StudentWorkspace.jsx` and `src/modules/turtle/StudentWorkspace.jsx`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `resultPane.js` | Pure: `chooseWorkspaceLayout` ('side' / 'tabs' / 'below' from the workspace's measured size, the editor's split and the pane count; two or fewer panes never tab in landscape), `initialResultPane` (task `layout.firstPane`, predict/target → Tags, picture goal → Picture), `paneAfterRun` (drew → Picture, predict/target → Tags, else Console; an error before drawing → Console; slow-mo → Picture), `stacksPictureAndTags`, `countOutputLines`, `consoleBadge`, `runAnnouncement`, `LAYOUT_TASK_FIELD`, `getTaskLayout`, `validateTaskLayout` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useResultPane.js` | `useResultPane` (the selected tab per task, auto-switch after each Run and when slow-mo starts, the Console's unread-lines / error badge, the polite announcement) and `useRunFinishedToken` (counts finished runs: `running` falling, or a Go Live viewer's new result key) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `ResultPane.jsx` | The tab strip (`PanelTabs` with `idPrefix`, badges, arrow keys) and the panes, all kept mounted in place and hidden when inactive; Picture + Tags stacked under one tab; a plain labelled region when there is one pane; a polite live region |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useWorkspaceLayout.js` | Measures the workspace (`useElementSize`) and picks the layout; adds the keyboard inset in the compact layouts |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `useKeyboardInset.js` | How much of an element the on-screen keyboard covers (`window.visualViewport`), so the workspace pads its bottom and the editor and tags stay visible on a tablet |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Cloud Functions (`functions/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount`, `updateAccountPassword`; scheduled `retentionSweep` (daily 03:00, #303) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `functions/retention.js` | Data retention limits and the sweep (`DELETE = false`: counts only, written to `retentionLog/{date}`); see `docs/architecture/data-retention-plan.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `functions/package.json` | Cloud Functions Node.js package (firebase-admin, firebase-functions) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Scripts (`scripts/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/download-scratch-sprites.mjs` | One-off tool: downloads Scratch's official sprite/costume assets from the Scratch CDN into `public/scratch-assets/sprites/` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/check-docs.mjs` | Dependency-free documentation hygiene check: validates local Markdown links, `docs/README.md` inventory, and source-file coverage in this map |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/new-activity.mjs` | `npm run new:activity -- <id> "<Label>" [--category …] [--dry-run]`: scaffolds an activity from `src/activities/_template/`, registers it in `registry.pure.js` / `registry.js`, writes `docs/authoring/activities/<id>.md` and indexes it in `docs/README.md`, this map and `validation-errors.md`; validates the id, refuses to overwrite, prettier-formats generated code (tested by `scripts/__tests__/newActivity.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/new-badge.mjs` | `npm run new:badge -- <id> --emoji <e> [--title …] [--blurb …] [--tutor-only] [--dry-run]`: scaffolds `src/badges/definitions/<id>.js` (a never-firing stub rule with two examples, or a tutor-only badge), registers it in `src/badges/registry.pure.js` (rule-backed after the last rule-backed badge, tutor-only at the end) and adds rows to `docs/authoring/badges.md` and this map's definitions row; refuses taken ids and emoji (tested by `scripts/__tests__/newBadge.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/new-module.mjs` | `npm run new:module -- <type> "<Label>" [--dry-run]`: scaffolds a workspace module from `src/modules/_template/` (registry order after the last module), registers it in `definitions.js`, `registry.js` and `checks.js`, adds the type to the type-branch ratchet and the ESLint rule, records the scaffold's deliberate parity gaps in `moduleTypeParity`'s `KNOWN_GAPS`, adds its `StudentViewModules` click-through, writes `docs/authoring/<type>.md` and indexes it in `docs/README.md`, this map, `validation-errors.md`, `AGENTS.md`, `lesson-schema.md`, `task-types.md` and `MODULE_FEATURE_MATRIX.md`; validates the type (reserved words, activities, names core code already compares against), refuses to overwrite (tested by `scripts/__tests__/newModule.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/audit-task-activity.mjs` | `node scripts/audit-task-activity.mjs <file-or-folder>... [--json]`: read-only coverage audit of lesson YAML / JSON — tasks per `taskActivity` pattern, how many have a `check`, unrecognised values, quiz groups big enough for Quiz Master (tested by `scripts/__tests__/auditTaskActivity.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/scaffold-utils.mjs` | Shared plan/apply plumbing for both kits: template listing, prettier formatting, anchored inserts, line-ending preservation, `applyPlan` (refuses to overwrite or apply a stale plan) and `describePlan` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/board-feed.mjs` | `npm run board:feed` — writes LaunchPad Dev's HSC Board feed (`../../HSC Hub/Feeds/LaunchPad Dev.json`, format in the Hub's `Plans/Tracker Feed Format.md`) atomically: authoring requests by status, unmerged `feature/`/`fix/`/`refactor/`/`test/` branches (in progress ≤7 days, paused ≤30, landed or stale ones skipped), and main's merges from the last 14 days grouped into per-day releases with the app build number; `--dry-run` prints, `--out` overrides (tested by `scripts/__tests__/boardFeed.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/hsc-audit/build-lesson.mjs` | Termly HSC Audit (`scripts/hsc-audit/README.md`): builds the draft test lesson `hsc-audit-visual-review` from one published example of each task kind plus hand-written Turtle/HTML/Filesystem/Desktop tasks; `--upsert` validates and publishes it. Its gitignored output is `scripts/hsc-audit/.out/hsc-audit-visual-review.json` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/hsc-audit/run-visual-review.mjs` | HSC Audit: Playwright run on the live site as the test tutor (`AUDIT_TUTOR_*` in `.env`) with two made-up students; screenshots every feature group in student and tutor views at desktop and tablet widths and writes `manifest.json` (shots plus steps it couldn't do) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/hsc-audit/cleanup.mjs` | HSC Audit: removes the test lesson's RTDB nodes (signed in as the test tutor) and its Firestore document with subcollections; dry run unless `--apply` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/hsc-audit/usage-counts.mjs` | HSC Audit: read-only aggregate counts from session reports and other collections for the in-scope courses (counts only; `COURSE_BY_LEVEL` lists the courses) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/firestore-copy.mjs` | Hub P24 move to London (`docs/architecture/firestore-europe-plan.md` Runbook): copies every Firestore document, subcollections included (also those under deleted parents), from `--from` (default `(default)`) to `--to` with the same ids and Timestamps, then prints a count and checksum per collection for both sides; read-only unless `--apply`, `--since` copies only documents changed after a time (rollback), never deletes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `scripts/build-info.mjs` | `getBuildInfo({ packageVersion })`: build metadata for the app version label — MAJOR.MINOR from `package.json`, build number = `git rev-list --count HEAD` (null in a shallow clone), short commit and build time; used by `vite.config.js` (tested by `scripts/__tests__/buildInfo.test.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Firebase Config
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `firebase.json` | Firebase project config: Firestore rules, Storage rules, and Cloud Functions source |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `.firebaserc` | Firebase project alias (`headstartcoding-repl`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `firestore.closed.rules` | Hub P24: rules for the old `(default)` database once the app moves to `eu` (no app reads or writes; the service account still reads it for rollback). Not deployed until the Runbook in `docs/architecture/firestore-europe-plan.md` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `firestore.rules` | Firestore security rules: lessons public read; users admin/self read; all writes via Cloud Functions; `sharedWork` share links public-get only while live (not revoked, before `expiresAt`), teacher/admin create and revoke, admin list |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `storage.rules` | Firebase Storage security rules: lesson assets public read; admin write only |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `storage.cors.json` | Storage bucket CORS rules (GET/HEAD from the Pages origin and local Vite ports) so the app can `fetch` assets such as Scratch audio; not deployed by `firebase deploy` — apply with `gcloud storage buckets update gs://headstartcoding-repl.firebasestorage.app --cors-file=storage.cors.json` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## CLI Tool (`cli/`)
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 Node.js CLI for lesson and topic library management against Firestore and Firebase Storage. Isolated sub-package — run `cd cli && npm install` separately. Entry point: `node cli/cli.mjs`.
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/package.json` | Sub-package manifest (`type: module`); deps: `firebase-admin`, `js-yaml`, `yargs` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/cli.mjs` | Entry point: yargs CLI with lesson topic audit/preflight/check-case testing plus `lessons`, `tasks`, `topics`, `feedback`, `assets`, `scratch`, `levels` and `classes` subcommand groups |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/firebase.mjs` | Firebase Admin SDK init via `GOOGLE_APPLICATION_CREDENTIALS`; exports `db` (Firestore) and `storage`; exits on missing credentials |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/validate.mjs` | `validateLessonForMcp(lesson)` — standalone lesson validation (no Firebase dependency): the shared core (`src/shared/lessonValidation.js`) plus the CLI-only `description is required` rule |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/capabilities.mjs` | `buildCapabilities()` — JSON catalogue printed by `lessons capabilities` for lesson agents (no Firebase): modules (with their `taskFields`), activities (modes, `fields`, `fieldsByMode`, `authoredFields` from each definition's `fields`), the common / information / group task fields (`src/shared/taskFields.js`), check types, the `taskActivity` vocabulary (`src/shared/taskActivity.js`), the built-in badges with `badgeOptions`, and `requests` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/authoring-requests.mjs` | `readAuthoringRequests()` / `parseAuthoringRequest()` — reads `docs/authoring/authoring-requests/*.md` headers into `{ file, title, kind, status, requestedBy, lessonsBlocked }` for `lessons capabilities` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/check-tests.mjs` | `testLessonChecks(lesson, casesFile)` — source-code case harness using the shared runtime check evaluator, including feedback-match reporting; checks that need a run (`checkNeedsRunResult` / `canEvaluateCheckWithoutRun` in `src/modules/checks.js`) or Python `tests` are reported as `skipped` and left out of completion (`combineCompletion`); `testStageChecks(lesson, { taskId })` / `getStageVerifiableTasks` — the no-cases mode for tasks whose module declares `verifyTaskChecks` (Scratch: per-check, per-stage verification, Support stages included); a case for a task whose module declares `testCheckCase` (Scratch) is judged by that hook; cases come as `tasks: [{ id, cases }]` and/or a flat `cases: [{ task, … }]` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/scratch-render-input.mjs` | Pure input side of `scratch render`: picks the task (`findLessonTask`), field (`pickTaskBlocks`: complete / starter / `stage:<n>` / `stack:<id>`, reading code-stage roles) and sprite (`splitSpriteStates`, `chooseSprite`), assigns path-based stable block ids (`assignStableIds`) and collects dropdown values the task doesn't list (`collectContextValues`); `buildRenderJob` returns the job the page draws |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/scratch-render.mjs` | `renderScratchSvg(job)` — serves `cli/scratch-render/` through Vite (own `cacheDir`) and draws it in headless Chromium via `@playwright/test`; both are root dev dependencies |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/scratch-render/` (`index.html`, `cli/scratch-render/page.js`) | Browser page for `scratch render`: loads `scratch.js` block definitions, injects a read-only zelos workspace with the classroom's dropdown context, and exports the block canvas as a standalone SVG (inlined computed styles, embedded Quicksand, `data-id` / `data-opcode` per block) plus per-block boxes |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/lesson-screenshot-input.mjs` | Pure input side of `lessons screenshot`: `normaliseShot` / `normaliseShots` (views, crops, devices, made-up `Test …` students), `CROP_TEST_IDS` (the `data-testid` hooks each crop looks for), `prepareShotLesson` (puts `--code` / `--code-stage` in as the shown task's starter on a copy), `shotFileName`, `readSpecCode` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/lesson-screenshot.mjs` | `captureLessonShots` — student views: hands the lesson to the app's `#/shot` page (`ShotView`) via Playwright `addInitScript`, waits for Python, clicks, runs (answering `input()`, waiting out Turtle playback) and screenshots the page or a crop; a missing panel fails the shot with no file. Session views go to `lesson-screenshot-session.mjs` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/lesson-screenshot-session.mjs` | `captureSessionShots` — tutor / grid / modal / Shared work / live student views on a throwaway `shot-…` Draft copy (sharing turned on where a shot shares), run by the test tutor (`AUDIT_TUTOR_*`) with made-up students; removes the copy, its subcollections and its lesson-keyed RTDB nodes (tutor token) afterwards |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/topic-utils.mjs` | Standalone topic-library normalization and validation helpers used by CLI conversion/publish commands |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/yaml-converter.mjs` | YAML conversion helpers for lessons and topic libraries, including lesson/topic JSON-to-YAML serialization and the `type: <activity>` shorthand (both directions, via the activity registry) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/structured-input.mjs` | JSON/YAML input detection for CLI files and stdin; lesson YAML is passed through the lesson shorthand converter |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/lessons.mjs` | Exports `buildLessonListRows` (list rows in the shared `lessonOrder.js` order, with `lessonNumber`, `soloOnly`, `companionOf`) and async functions: `listLessons`, `getLesson`, `getLessonSkeleton`, `getTask`, `upsertTask`, `appendTask`, `upsertLesson`, `deleteLesson`, `yamlToLesson`, `publishYamlLesson` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/topics.mjs` | Exports topic Firestore functions plus bulk topic-library YAML/JSON publish helpers |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/feedback.mjs` | Exports Firestore feedback helpers: list (platform/lesson/all), add (lesson/platform), archive by ID (soft-delete via `archived: true`), and bulk-clear (archive) with optional filters |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/assets.mjs` | Exports async functions: `listLessonAssets`, `uploadLessonAsset`, `deleteLessonAsset` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/type-assets.mjs` | Exports async functions for lesson-type-wide shared assets (`lessonTypeAssets/{type}`, storage at `shared/{type}/assets/`): `listTypeAssets`, `uploadTypeAsset`, `setDefaultSprites`, `uploadDefaultBackdrop` (scratch-only defaults) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/storage-utils.mjs` | Firebase Storage helpers shared by `assets.mjs` and `type-assets.mjs`: download-URL building, filename/slug validation, bucket file listing |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/levels.mjs` | Exports Firestore reusable-level helpers: `listLevels`, `upsertLevel`, `deleteLevel` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `cli/classes.mjs` | Exports Firestore class helpers for lesson forks: `listClasses`, `getClass`, `upsertClass`, `archiveClass` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Config & Build
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `vite.config.js` | Vite build config for both classroom and builder apps; injects `__APP_BUILD_INFO__` (see `scripts/build-info.mjs`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/setup.js` | Vitest/jsdom shared test setup: jest-dom matchers and browser API mocks used across component and hook tests |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/studentCodeStateHarness.js` | Test harness for `useStudentCodeState`: renders the hook with `vi.fn` session writers, storage-key helpers, and runtime fakes (see `docs/TESTING.md`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/studentCodeStateMocks.js` | Dependency-free `vi.mock` factories (Pyodide, type/lesson storage assets) used by the `useStudentCodeState` characterization tests |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/fixtures/studentCodeStateLessons.js` | Per-module-type (and composed) lesson fixtures for the `useStudentCodeState` characterization tests |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/activityBuilderHarness.jsx` | Test harness rendering an activity `BuilderEditor` with the task held in state (`renderBuilderEditor`), so tests edit through the UI and read the resulting task |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/activityUiHarness.jsx` | Test harness rendering an activity StudentView with a real state store (`renderActivityUi`), so UI tests exercise updater-style `onChange` like `useActivityState` |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `src/test/fixtures/legacyActivityTasks.js` | Test-only fixtures: one valid task per quiz sub-type, Python/HTML `code_arrange` tasks, and invalid variants, shared by the Phase 0 characterisation tests that pin quiz/code_arrange behaviour before the Activity migration (`docs/architecture/modular-activities-plan.md`) |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `package.json` | Dependencies and scripts |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `index.html` | Classroom app HTML shell |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `builder/index.html` | Lesson builder HTML shell |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ---
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 ## Agent Reference Docs
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | File | Role |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 |---|---|
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `AGENTS.md` | Short, agent-neutral session entrypoint and routing index |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `docs/agents/project-rules.md` | Agent reference for platform rules, stack, shared modules, admin, and CLI |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `docs/agents/runtime-model.md` | Agent reference for Firebase, localStorage, URLs, session states, and identity |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `docs/agents/classroom-behaviours.md` | Agent reference for live view, teacher broadcast, sandbox, carry-through, Pyodide, and file-key behaviour |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
 | `docs/agents/workflows.md` | Agent reference for git, PRs, reviews, testing, worktrees, and doc hygiene |
+- `src/shared/attemptOrder.js` — compareAttemptEntries: attempt-log order by loggedAt then attemptNumber, shared by the report and the badge timeline (#242)
