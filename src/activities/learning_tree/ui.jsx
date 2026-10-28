@@ -46,13 +46,13 @@ function Tree({ node, features, labels, on }) {
         {featureQuestion(features[node.feature])}
       </div>
       <div className="act-lt-kids">
-        <div className="act-lt-kid">
+        <div className={`act-lt-kid${on.has(node) && on.has(node.yes) ? ' act-lt-on' : ''}`}>
           <span className={`act-lt-branch${on.has(node) && on.has(node.yes) ? ' act-lt-on' : ''}`}>
             yes
           </span>
           <Tree node={node.yes} features={features} labels={labels} on={on} />
         </div>
-        <div className="act-lt-kid">
+        <div className={`act-lt-kid${on.has(node) && on.has(node.no) ? ' act-lt-on' : ''}`}>
           <span className={`act-lt-branch${on.has(node) && on.has(node.no) ? ' act-lt-on' : ''}`}>
             no
           </span>

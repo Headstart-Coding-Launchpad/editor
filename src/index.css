@@ -7957,17 +7957,61 @@ label.te-backdrop-tag,
 }
 
 .act-lt-kids {
+  position: relative;
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  padding-top: 6px;
+  padding-top: 10px;
+}
+
+/* Connector lines: down from the question, across to both answers, down to each. */
+.act-lt-kids::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 10px;
+  border-left: 2px solid var(--ui-border);
 }
 
 .act-lt-kid {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  padding-top: 8px;
+}
+
+.act-lt-kid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 8px;
+  border-left: 2px solid var(--ui-border);
+}
+
+.act-lt-kid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  border-top: 2px solid var(--ui-border);
+}
+
+.act-lt-kid:first-child::after {
+  left: 50%;
+  right: -6px;
+}
+
+.act-lt-kid:last-child::after {
+  left: -6px;
+  right: 50%;
+}
+
+.act-lt-kid.act-lt-on::before,
+.act-lt-kid.act-lt-on::after {
+  border-color: var(--colour-primary);
 }
 
 .act-lt-branch {
