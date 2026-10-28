@@ -86,8 +86,9 @@ tasks:
 ## Devices
 
 Ordinary Chromebooks and laptops with a mouse or trackpad; works by touch too (buttons only). No
-camera or microphone. The work per frame is capped (one pass over 160 dots, well under a
-millisecond; the heatmap is 30 by 30 cells and is redrawn every 4th frame).
+camera or microphone. The work is capped: one pass over the 160 dots (well under a millisecond)
+every 6th frame, about 10 passes a second, so children can watch it learn (two blobs takes a few
+seconds, the spiral with two layers 5-10 seconds). The 30 by 30 heatmap redraws every 2nd pass.
 
 ## Validation
 

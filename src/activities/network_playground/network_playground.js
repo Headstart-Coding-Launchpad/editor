@@ -4,6 +4,9 @@
 import { DATASETS, flattenNet, netFromFlat, weightCount } from './network.js'
 
 export const DEFAULT_TARGET = 0.9
+// Animation frames between training passes (about 10 passes a second), so children can watch it
+// learn instead of it finishing in a blink.
+export const TRAIN_EVERY = 6
 export const DEFAULT_MAX_NEURONS = 6
 export const MAX_NEURONS_LIMIT = 8
 export const MAX_HIDDEN_LAYERS = 2

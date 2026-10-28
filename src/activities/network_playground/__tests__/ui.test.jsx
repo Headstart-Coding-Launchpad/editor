@@ -2,6 +2,7 @@ import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NetworkPlaygroundStudentView } from '../ui.jsx'
 import definition from '../definition.js'
+import { TRAIN_EVERY } from '../network_playground.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
 
 // UI tests for the Network Playground StudentView with local state. requestAnimationFrame is
@@ -39,8 +40,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+// One "frame" here is one training pass: TRAIN_EVERY animation frames.
 function runFrames(count) {
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < count * TRAIN_EVERY; i += 1) {
     const next = frames.shift()
     if (!next) return
     act(() => next(performance.now()))

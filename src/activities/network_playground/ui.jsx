@@ -3,6 +3,7 @@ import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import NetworkPlaygroundBuilderEditor from './NetworkPlaygroundBuilderEditor.jsx'
 import { accuracy, initNet, makeDataset, makeRng, predict, trainEpoch } from './network.js'
 import {
+  TRAIN_EVERY,
   MAX_HIDDEN_LAYERS,
   allowAddLayerOf,
   datasetOf,
@@ -18,15 +19,16 @@ import {
 // `readOnly` (the tutor's card, modal and review) and `device`. Never writes to Firebase or
 // storage: useActivityState owns persistence and live sync.
 //
-// The network lives in a ref and trains in requestAnimationFrame: one pass over the ~160 dots a
-// frame (well under a millisecond), the canvas and diagram redrawn every few frames. The state is
+// The network lives in a ref and trains in requestAnimationFrame: one pass over the ~160 dots
+// every TRAIN_EVERY frames (well under a millisecond each), slow enough that children can watch it
+// learn (two blobs takes a few seconds, not a blink); the canvas and diagram redraw every few passes. The state is
 // handed to `onChange` when training starts or stops, when the layers change, and at most every 2
 // seconds while it trains (those are 'continuous' in definition.classifyChange). The tutor's
 // read-only view rebuilds the same network from the state's numbers.
 
 const SIZE = 300 // canvas pixels (CSS scales it)
 const CELLS = 30 // heatmap cells per side
-const REDRAW_EVERY = 4 // frames between redraws
+const REDRAW_EVERY = 2 // passes between redraws
 const SYNC_EVERY_MS = 2000
 const HOLD_FRAMES = 15 // frames at or above the target before it stops itself
 const MAX_EPOCHS = 2000 // step cap
@@ -221,6 +223,11 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     rafRef.current = null
     if (!runningRef.current) return
     const s = statsRef.current
+    s.tick = (s.tick ?? 0) + 1
+    if (s.tick % TRAIN_EVERY !== 0) {
+      rafRef.current = requestAnimationFrame(frame)
+      return
+    }
     trainEpoch(netRef.current, dots, rngRef.current)
     s.epochs += 1
     s.acc = accuracy(netRef.current, dots)
