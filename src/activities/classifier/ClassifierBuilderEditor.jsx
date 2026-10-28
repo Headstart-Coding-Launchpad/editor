@@ -46,6 +46,13 @@ const PANEL_OPTIONS = {
   grid: ['What it sees', 'The drawing as the small grid the model looks at'],
   sure: ['How sure is it?', 'A meter for its top guess'],
   fool: ['Fool it and fix it', 'A Teach it this one button and the mix-up pictures'],
+  gridsize: [
+    'Pick the grid size',
+    'Buttons for a 4, 8 or 16 grid; the model re-reads their drawings',
+  ],
+  close: ['How close is it?', 'A meter against the automatic cut-off for close enough'],
+  unsure: ['Allow not sure', 'The model can answer not sure when nothing taught is close'],
+  selftest: ['Test on what it learned', 'A button that scores every training drawing'],
 }
 
 function Toggle({ checked, onChange, children, hint }) {
@@ -187,6 +194,23 @@ export default function ClassifierBuilderEditor({ task, onUpdate }) {
             aria-label="Drawings needed per thing"
             onChange={(event) => set({ minExamplesPerClass: readNumber(event.target.value) })}
           />
+        </InlineField>
+        <InlineField label="Grid size it looks at">
+          <select
+            className="te-input te-act-narrow"
+            value={task.gridSize ?? 16}
+            aria-label="Grid size it looks at"
+            onChange={(event) =>
+              set({
+                gridSize:
+                  Number(event.target.value) === 16 ? undefined : Number(event.target.value),
+              })
+            }
+          >
+            <option value={4}>4 x 4</option>
+            <option value={8}>8 x 8</option>
+            <option value={16}>16 x 16</option>
+          </select>
         </InlineField>
         {testSet !== 'live' && (
           <InlineField label="Target accuracy (%)">

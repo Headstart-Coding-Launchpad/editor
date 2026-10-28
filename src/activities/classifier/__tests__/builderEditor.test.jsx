@@ -65,6 +65,17 @@ describe('Classifier BuilderEditor', () => {
     expect(errorsOf(task())).toEqual([])
   })
 
+  it('switches on the AI Level 1 panels and picks a starting grid size', async () => {
+    const user = userEvent.setup()
+    const { task } = renderBuilderEditor(ui.BuilderEditor, start())
+    await user.click(screen.getByRole('checkbox', { name: 'Test on what it learned' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Allow not sure' }))
+    expect(task().panels).toEqual(['fool', 'unsure', 'selftest'])
+    fireEvent.change(screen.getByLabelText('Grid size it looks at'), { target: { value: '8' } })
+    expect(task().gridSize).toBe(8)
+    expect(errorsOf(task())).toEqual([])
+  })
+
   it('sets the numbers for the round', () => {
     const { task } = renderBuilderEditor(ui.BuilderEditor, start())
     fireEvent.change(screen.getByLabelText('Drawings needed per thing'), {

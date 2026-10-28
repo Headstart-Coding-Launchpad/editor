@@ -62,11 +62,12 @@ tasks:
 |---|:---:|---|
 | `type` | Yes | `classifier` in YAML (JSON: `taskType: activity` + `activityType: classifier`) |
 | `mode` | Yes | `drawing`. (`sound` is not built yet and fails validation; webcam is not planned.) |
-| `classes` | No | The things to teach: 2 to 6 different names, each 1 to 16 characters; **3 is a good number**. A name may start with an emoji (`"🐱 cat"`), which is then shown big. Leave it out (or `[]`) and the student names **2 to 4** of their own. |
+| `classes` | No | The things to teach: 2 to 6 different names, each 1 to 16 characters; **3 is a good number**. **One name is allowed in the live round** (see [Only one thing](#only-one-thing-and-not-sure)). A name may start with an emoji (`"🐱 cat"`), which is then shown big. Leave it out (or `[]`) and the student names **2 to 4** of their own. |
 | `minExamplesPerClass` | No | Drawings every thing needs before the pad is ready: a whole number from 2 to 40. Default `3`. With `testSet: held_out` it must be at least `4`. |
 | `testSet` | No | How it is tested. Default `live` (the round). Or `held_out` / `teacher`, the older Test button versions (see [Testing](#testing)). |
 | `liveTestSize` | No | The round's goal: how many **tries** make the round and pass the task, 3 to 20. Default `5`. A try is a drawing the student finished and named, counted whether the pad got it right or wrong (the student's job is to test it, not to make it win). The name is kept from the older version. |
-| `panels` | No | Extra parts to show: any of `grid`, `sure`, `fool` (see [Panels](#panels-what-each-lesson-switches-on)). Default `[fool]`. `[]` shows none. Anything else is an error. |
+| `gridSize` | No | The grid the model looks at: `4`, `8` or `16` (default `16`). With the `gridsize` panel it is the **starting** size and the student can pick 4, 8 or 16. |
+| `panels` | No | Extra parts to show: any of `grid`, `sure`, `fool`, `gridsize`, `close`, `unsure`, `selftest` (see [Panels](#panels-what-each-lesson-switches-on)). Default `[fool]`. `[]` shows none. Anything else is an error. |
 | `targetAccuracy` | No | `held_out` / `teacher` only: the share of the test it must get right, above 0 and up to 1 (`0.8` is 80%). Default `0.8`. Ignored by the round. |
 | `examples` | No | Pre-loaded drawings the pad has already learned (see [Pre-loaded examples](#pre-loaded-examples)). Needs `classes`. Up to 40 in total. |
 | `testItems` | `teacher` | `testSet: teacher` only: 2 to 24 test drawings (see below). |
@@ -124,8 +125,56 @@ adds one new thing and the screen stays simple:
 | `grid` | **What it sees**: the current drawing as the small grid the model looks at. |
 | `sure` | **How sure is it?**: a meter for its top guess. |
 | `fool` | **Fool it and fix it**: the **Teach it this one** button after a miss and the mix-up thumbnails ("It thought your 🐱 was a 🐟"). Without it a miss just clears itself after a moment. |
+| `gridsize` | **Pick the grid size**: three buttons, 4 x 4, 8 x 8 and 16 x 16. The model re-reads the student's own drawings at the new size at once (no redrawing) and guesses with it. See [Grid size](#grid-size). |
+| `close` | **How close is it?**: a meter for how near the drawing is to what was taught, against the automatic cut-off ("close enough" / "too far"). See [Only one thing](#only-one-thing-and-not-sure). |
+| `unsure` | **Not sure**: the model can answer "not sure" when nothing taught is close enough. Off by default. |
+| `selftest` | **Test on what it learned**: a button that scores every training drawing, shown beside the round's real score. See [Test on what it learned](#test-on-what-it-learned). |
 
 A bias view (teach one kind only, then test the others) is not built.
+
+## Grid size
+
+Drawings are kept as 16 x 16 grids. The model can look at them **blurrier**: at 8 x 8 and 4 x 4
+each block of cells is averaged (16 -> 8 -> 4), so the student's own drawings are re-read at the
+new size with no redrawing, and the next guess uses it at once. Distances keep the same scale at
+every size, so the bars and the cut-off still make sense. `gridSize` sets the starting size
+(default 16); with the `gridsize` panel the student can pick 4, 8 or 16 (buttons, 44 px). The
+`grid` panel ("What it sees") shows the drawing at the chosen size. Changing the size clears an
+earlier self-test (it no longer matches). The tutor sees "Grid size it looks at: 8 x 8", the card
+adds `grid 8`, and the session report counts the sizes students finished on
+(`classifierResults.gridSizes`); each student's own size is in their submission (`gridSize`).
+
+## Test on what it learned
+
+With the `selftest` panel, a **Test on what it learned** button makes the model answer every drawing it was
+taught (the given ones and the student's own) and shows **"Tested on its own drawings: 24 of 24
+right"** beside the round's real score ("It got 3 of 5 right"). This is marking its own homework:
+it is nearly always full marks, which is the point. It **does not count towards passing** or the
+round score, and it is cleared when a drawing is added or removed or the grid size changes. The tutor
+sees both scores (modal line, card `own test 24/24`); each student's submission carries
+`selftest: { right, total }` and the report counts them (`classifierResults.selfTestedCount`).
+
+## Only one thing and not sure
+
+**One thing.** Give `classes` a single name in the live round (for example `["⬜ square"]`) and the
+model learns only that thing. It answers **"<thing>"** or **"not a <thing>"**, and "What did you
+draw?" has two buttons (the thing, and "not a <thing>"). No bars are shown (one thing is always
+100%); the answer is written out. Held-out and teacher tests still need 2 to 6 things. "Teach it
+this one" is only for a miss where they drew the thing.
+
+**Not sure.** With the `unsure` panel (off by default, so a lesson that wants "it always picks
+one of the things it knows" keeps that), the model answers **"not sure"** when a drawing is
+farther from every thing than that thing's cut-off. A "not sure" or "not a <thing>" try counts as
+a try in the round (right or wrong both count): "not sure" is always a miss, "not a <thing>" is
+right when they said it was not the thing.
+
+**The cut-off** is automatic and has no slider: for each thing it is **1.5 x the median
+nearest-neighbour distance among that thing's own drawings** (each drawing's distance to its closest
+neighbour of the same thing), never below a floor of 4 (so one or two drawings still work). It is recomputed
+every time a drawing is added or removed, so more varied drawings widen what counts. The `close`
+panel shows the closest distance against it. The session report counts the tries that came back
+"not sure" or "not a <thing>" (`classifierResults.unsureTries`, `notThingTries`), the tutor modal
+shows both per student, and the card adds `2 not sure` / `1 not a ⬜ square`.
 
 ## Pre-loaded examples
 
