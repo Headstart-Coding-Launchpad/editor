@@ -15,6 +15,7 @@ import CommonHintsStrip from './CommonHintsStrip'
 import NeedsYouStrip from './NeedsYouStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
+import { deriveStudentCheckStatus } from './studentCheckStatus'
 import { confidenceSpreadEntries, tallyConfidenceSpread } from '../../shared/confidenceScale'
 import {
   SHOW_IT_MAX,
@@ -244,20 +245,30 @@ export default function StudentGrid({
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
-  const hasCheck = currentTask?.check != null && session?.state !== 'sandbox'
-  const passedCount = hasCheck ? students.filter((student) => student.checkPassed).length : 0
-  // A crashed run counts as "errored", not "failed" (matching the cards' Error chip).
-  const errorCount =
-    session?.state !== 'sandbox'
-      ? students.filter((student) => student.lastRunStatus === 'error' && !student.checkPassed)
-          .length
-      : 0
-  const failedCount = hasCheck
-    ? students.filter(
-        (student) =>
-          student.lastRunStatus != null && student.lastRunStatus !== 'error' && !student.checkPassed
-      ).length
-    : 0
+  const isSessionSandbox = session?.state === 'sandbox'
+  const currentActivity = getTaskActivity(currentTask)
+  const isNeverMarked = currentActivity?.completion === 'none'
+  // The same rules as each card's chips (studentCheckStatus.js): a tutor override outranks
+  // the run, a crash is "errored" not "failed", and an activity with its own marking counts
+  // once submitted. The header used to count raw checkPassed only, so it disagreed with the
+  // cards whenever a tutor had overridden a result (#242).
+  const checkStatuses = students.map((student) =>
+    deriveStudentCheckStatus({
+      student,
+      currentTask,
+      isNeverMarked,
+      isSessionSandbox,
+      activitySubmitted:
+        !!currentActivity && !isSessionSandbox && student.lastRunStatus === 'submitted',
+    })
+  )
+  const hasCheck =
+    !isNeverMarked &&
+    !isSessionSandbox &&
+    (currentTask?.check != null || checkStatuses.some((status) => status.hasCheck))
+  const passedCount = checkStatuses.filter((status) => status.passed).length
+  const errorCount = checkStatuses.filter((status) => status.errored).length
+  const failedCount = checkStatuses.filter((status) => status.failed).length
 
   if (collapsed) {
     const runCount = students.filter((s) => s.lastRunStatus != null).length

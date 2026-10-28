@@ -178,8 +178,10 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   // ─── Teacher helpers ──────────────────────────────────────────────────────
 
-  async function createSession() {
-    await set(ref(db, `sessions/${lessonId}`), {
+  // The fields of a fresh session. createSession (Restart) writes them unconditionally;
+  // createSessionIfAbsent only when nothing is there.
+  function initialSessionData() {
+    return {
       lessonId,
       state: 'waiting',
       currentTaskId: 1,
@@ -241,7 +243,11 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // Cross-lesson carry statuses (src/shared/roster/crossLessonCarry.js) belong to this
       // session's anonymous students.
       carryStatus: null,
-    })
+    }
+  }
+
+  async function createSession() {
+    await set(ref(db, `sessions/${lessonId}`), initialSessionData())
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
@@ -254,6 +260,17 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     // Nor peer help (src/shared/peerHelp.js), which keeps students' work and identities
     // outside the session on purpose.
     await clearPeerHelpData(lessonId)
+  }
+
+  // The dashboard's "no session yet" path (TeacherView). A transaction creates the node
+  // only when it is absent, so two tutor tabs opening together, or one transient null
+  // snapshot, can't overwrite a class that has already joined (#242). Resolves to whether
+  // this call created it.
+  async function createSessionIfAbsent() {
+    const result = await runTransaction(ref(db, `sessions/${lessonId}`), (current) =>
+      current ? undefined : initialSessionData()
+    )
+    return result.committed
   }
 
   async function restartSession() {
@@ -2412,6 +2429,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     serverTimeOffset,
     // teacher
     createSession,
+    createSessionIfAbsent,
     restartSession,
     startSession,
     endSession,

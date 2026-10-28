@@ -19,6 +19,7 @@ const firebaseMocks = vi.hoisted(() => ({
     remove: vi.fn(() => Promise.resolve()),
   })),
   get: vi.fn(() => Promise.resolve({ val: () => null })),
+  runTransaction: vi.fn(() => Promise.resolve({ committed: true })),
 }))
 
 vi.mock('firebase/database', () => ({
@@ -31,6 +32,7 @@ vi.mock('firebase/database', () => ({
   serverTimestamp: vi.fn(() => ({ '.sv': 'timestamp' })),
   onDisconnect: (...args) => firebaseMocks.onDisconnect(...args),
   get: (...args) => firebaseMocks.get(...args),
+  runTransaction: (...args) => firebaseMocks.runTransaction(...args),
 }))
 
 vi.mock('../../../shared/firebase', () => ({
@@ -366,6 +368,31 @@ describe('useSession', () => {
         await result.current.answerPoll('student-abc', 'p2', 5)
       })
       expect(firebaseMocks.set).not.toHaveBeenCalled()
+    })
+
+    // #242: the dashboard creates a session only when none exists, inside a transaction, so
+    // two tutor tabs opening together can't wipe a class that has already joined.
+    it('createSessionIfAbsent writes a fresh session only when the node is empty', async () => {
+      const { result } = renderHook(() => useSession('lesson-1', { enabled: true }))
+      firebaseMocks.runTransaction.mockImplementation(async (refObj, updater) => {
+        expect(refObj.path).toBe('sessions/lesson-1')
+        return { committed: updater(null) !== undefined }
+      })
+      await act(async () => {
+        await expect(result.current.createSessionIfAbsent()).resolves.toBe(true)
+      })
+      const updater = firebaseMocks.runTransaction.mock.calls[0][1]
+      expect(updater(null)).toMatchObject({
+        lessonId: 'lesson-1',
+        state: 'waiting',
+        currentTaskId: 1,
+        students: {},
+      })
+      expect(updater({ state: 'active', students: { s1: { displayName: 'Ada' } } })).toBeUndefined()
+      expect(firebaseMocks.set).not.toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'sessions/lesson-1' }),
+        expect.anything()
+      )
     })
 
     it('createSession and endSession reset the polls', async () => {
