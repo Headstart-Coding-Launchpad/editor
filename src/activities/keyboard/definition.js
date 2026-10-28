@@ -341,13 +341,20 @@ export default defineActivity({
   },
 
   // Keystrokes are continuous (synced only while the teacher watches); finishing an item is a
-  // discrete change every teacher card should see.
+  // discrete change every teacher card should see, and so is each cleared or missed falling
+  // word: the card's "falling: playing · 3 cleared" line has to move while the game runs, not
+  // only when it ends (#242).
   classifyChange: (prev, next) => {
-    const done = (state) =>
-      Object.values(state?.items ?? {}).filter(
-        (r) => r.pressed || r.performed || r.typedChar || r.done
-      ).length
-    return done(prev) === done(next) ? 'continuous' : 'discrete'
+    const progress = (state) =>
+      Object.values(state?.items ?? {}).reduce(
+        (sum, r) =>
+          sum +
+          (r.pressed || r.performed || r.typedChar || r.done ? 1 : 0) +
+          (Number(r.cleared) || 0) +
+          (Number(r.missed) || 0),
+        0
+      )
+    return progress(prev) === progress(next) ? 'continuous' : 'discrete'
   },
 
   // Live badges: Keyboard Ace reads the accuracy of the typing modes.

@@ -10,6 +10,7 @@
 //   "Apply for this session") in its live form (`liveBadgeLesson`). Task events on a task that
 //   has gone are dropped; sandbox events keep no task.
 import { isAutoAttempt, isFailedScrubAttempt } from '../shared/autoCheck.js'
+import { compareAttemptEntries } from '../shared/attemptOrder.js'
 import { decodeFileKey } from '../shared/fileKeys.js'
 import { filterTasksByMode, flattenTasks } from '../shared/taskUtils.js'
 import { getStageRole } from '../shared/taskStages.js'
@@ -108,10 +109,7 @@ function badgeResultFor(task, entry) {
 function attemptEventsFor(task, logEntries) {
   const ordered = entries(logEntries)
     .filter(([, entry]) => !isAutoAttempt(entry) && !isFailedScrubAttempt(entry))
-    .sort(
-      ([keyA, a], [keyB, b]) =>
-        timeOrInfinity(a.loggedAt) - timeOrInfinity(b.loggedAt) || (keyA < keyB ? -1 : 1)
-    )
+    .sort(([keyA, a], [keyB, b]) => compareAttemptEntries(a, b) || (keyA < keyB ? -1 : 1))
   return ordered.map(([, entry], i) =>
     attemptEvent({
       taskId: task.id,
@@ -163,7 +161,17 @@ export function buildStudentTimeline({ session, studentId, tasks, topicTitles = 
 
   for (const [taskKey, override] of entries(session?.overrideLog?.[studentId])) {
     const task = taskFor(taskKey)
-    if (task) events.push(overrideEvent({ taskId: task.id, at: override.overriddenAt }))
+    // `source` tells a tutor's hand override ('teacher', the default for records written
+    // before it existed) from the record made when the class moved on ('class_advance').
+    if (task) {
+      events.push(
+        overrideEvent({
+          taskId: task.id,
+          at: override.overriddenAt,
+          source: override.source ?? 'teacher',
+        })
+      )
+    }
   }
 
   for (const [taskKey, paste] of entries(session?.students?.[studentId]?.pasteLog)) {

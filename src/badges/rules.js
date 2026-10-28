@@ -65,7 +65,12 @@ export function getPassGuard(attempt, timeline) {
   if (!attempt?.passed) return 'not_passed'
   if (attempt.assisted) return 'assisted'
   const { taskId, at } = attempt
-  if (eventsOf(timeline, 'override', taskId).length > 0) return 'override'
+  // A tutor's hand override voids the pass. The record written when the class moves on
+  // (source 'class_advance') is not a hand pass: a student who catches up and passes for real
+  // has earned it, as the session report already treats it (#242).
+  if (eventsOf(timeline, 'override', taskId).some((event) => event.source !== 'class_advance')) {
+    return 'override'
+  }
   if (eventsOf(timeline, 'complete_shown', taskId).some((event) => atOrBefore(event.at, at))) {
     return 'complete_shown'
   }

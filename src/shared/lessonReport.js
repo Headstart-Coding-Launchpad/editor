@@ -6,6 +6,7 @@ import { typingHistoryReportFields } from './typingHistory.js'
 import { getTaskActivity } from '../activities/registry.pure.js'
 import { SUPPORT_REVEAL_SOURCES } from './taskStages.js'
 import { normalizeCodeSubmission } from './codeSubmission.js'
+import { compareAttemptEntries } from './attemptOrder.js'
 import {
   isAutoAttempt,
   isFailedScrubAttempt,
@@ -798,9 +799,11 @@ export function buildSessionReport({
       // Failed live-scrub releases (source 'scrub') are not attempts either: `entries` leaves them
       // out of every count and outcome, `scrubEntries` keeps them for scrubChecks and
       // distinctAttempts (marked source: 'scrub').
+      // Time order, not attemptNumber order: the number restarts after a reload
+      // (src/shared/attemptOrder.js, shared with the badge timeline).
       const realEntries = allEntries
         .filter((entry) => !isAutoAttempt(entry))
-        .sort((a, b) => (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0))
+        .sort(compareAttemptEntries)
       const entries = realEntries.filter((entry) => !isFailedScrubAttempt(entry))
       const scrubEntries = realEntries.filter(isFailedScrubAttempt)
       const autoCheck = isGradedTask(task) ? getAutoCheck(task, allEntries) : null
