@@ -1,6 +1,7 @@
 # Neural network playground activity (AI Level 1)
 
-- **Status:** built on branch feature/network-playground (not merged)
+- **Status:** planned
+- **Branch:** feature/network-playground (built, not merged)
 - **Kind:** activity
 - **Requested by:** Ryan (approved by Ryan), 2026-10-23
 - **Lessons blocked:** none yet
