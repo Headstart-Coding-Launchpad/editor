@@ -62,7 +62,7 @@ describe('Network Playground StudentView', () => {
     renderView()
     expect(screen.getByTestId('network-field')).toBeInTheDocument()
     expect(screen.getByTestId('network-diagram')).toBeInTheDocument()
-    expect(screen.getByTestId('network-stats')).toHaveTextContent('0% right')
+    expect(screen.getByTestId('network-stats')).toHaveTextContent('Not trained yet')
     expect(screen.getByTestId('network-stats')).toHaveTextContent('1 hidden layer')
     expect(screen.getByRole('button', { name: /Train/ })).toBeInTheDocument()
     expect(fills).toBeGreaterThan(0)

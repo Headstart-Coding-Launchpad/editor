@@ -234,7 +234,8 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
     s.best = Math.max(s.best, s.acc)
     s.hold = s.acc >= target ? s.hold + 1 : 0
     s.frames += 1
-    if (s.hold >= HOLD_FRAMES) return stop('It learned it!')
+    // No note: the pass line below already says it reached the target.
+    if (s.hold >= HOLD_FRAMES) return stop()
     if (s.epochs >= MAX_EPOCHS) {
       return stop('It got stuck. Try more neurons or another layer, then press Start again.')
     }
@@ -324,7 +325,7 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
           width={SIZE}
           height={SIZE}
           role="img"
-          aria-label={`Orange and blue dots with the network's guess behind them. ${percent(acc)} percent right.`}
+          aria-label={`Orange and blue dots with the network's guess behind them. ${epochs > 0 ? `${percent(acc)} percent right.` : 'Not trained yet.'}`}
           data-testid="network-field"
         />
         <p className="act-net__legend">
@@ -335,8 +336,8 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
 
       <div className="act-net__side">
         <p className="act-net__stats" data-testid="network-stats">
-          <strong>{percent(acc)}% right</strong> (aim for {percent(target)}%) · {viewLayers.length}{' '}
-          hidden layer{viewLayers.length === 1 ? '' : 's'}
+          <strong>{epochs > 0 ? `${percent(acc)}% right` : 'Not trained yet'}</strong> (aim for{' '}
+          {percent(target)}%) · {viewLayers.length} hidden layer{viewLayers.length === 1 ? '' : 's'}
           {epochs > 0 && ` · ${epochs} rounds`}
           {readOnly && state?.training && ' · training now'}
         </p>
