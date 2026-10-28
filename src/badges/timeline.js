@@ -109,11 +109,14 @@ export const TIMELINE_EVENT_TYPES = Object.freeze([
 
 /**
  * The teacher passed the student or moved the class on without a pass (`overrideLog`).
- * An override voids every pass on that task, whenever it happened.
+ * A tutor's hand override ('teacher') voids every pass on that task, whenever it happened.
+ * The record written when the class moves on ('class_advance', useSession.js) is not a hand
+ * pass and guards nothing: a student who catches up and passes for real has earned it.
  * @typedef {object} OverrideEvent
  * @property {'override'} type
  * @property {'task'} context
  * @property {string|number} taskId
+ * @property {'teacher'|'class_advance'} source
  * @property {number|null} [at]
  */
 
@@ -254,8 +257,8 @@ export function pasteEvent({ taskId, firstAt = null }) {
 }
 
 /** @returns {OverrideEvent} */
-export function overrideEvent({ taskId, at = null }) {
-  return { type: 'override', context: 'task', taskId, at: time(at) }
+export function overrideEvent({ taskId, at = null, source = 'teacher' }) {
+  return { type: 'override', context: 'task', taskId, source, at: time(at) }
 }
 
 /** @returns {ShortcutEvent} */

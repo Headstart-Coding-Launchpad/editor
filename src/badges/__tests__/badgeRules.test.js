@@ -55,6 +55,20 @@ describe('real pass guards', () => {
     expect(getPassGuard(passing, timeline)).toBe(guard)
   })
 
+  it('lets a real pass through after the class moved on, but not after a hand override (#242)', () => {
+    const classAdvance = [
+      overrideEvent({ taskId: 't4', at: 50, source: 'class_advance' }),
+      pass('t4', 100),
+    ]
+    const handOverride = [
+      overrideEvent({ taskId: 't4', at: 50, source: 'teacher' }),
+      pass('t4', 100),
+    ]
+    const passing = (timeline) => timeline.find((event) => event.type === 'attempt')
+    expect(getPassGuard(passing(classAdvance), classAdvance)).toBeNull()
+    expect(getPassGuard(passing(handOverride), handOverride)).toBe('override')
+  })
+
   it('ignores guards after the pass, or on another task', () => {
     const timeline = [
       pass('t4', 100),

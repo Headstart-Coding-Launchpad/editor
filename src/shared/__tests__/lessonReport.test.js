@@ -410,6 +410,28 @@ describe('buildSessionReport', () => {
     expect(summary.avgTimeOnTaskMs).toBe(250)
   })
 
+  it('takes the latest attempt by time, not by attemptNumber, after a student reload (#242)', () => {
+    // After a reload the tab's de-dupe cache is empty, so attemptNumber restarts at 1: the
+    // third try is numbered 1 but logged last. The badge timeline already ordered by time.
+    const reloaded = {
+      ...session,
+      taskStartTimes: { 1: 1000 },
+      attemptLog: {
+        alice: {
+          1: {
+            k1: { submission: 'a', passed: false, attemptNumber: 1, retries: 0, loggedAt: 1100 },
+            k2: { submission: 'b', passed: false, attemptNumber: 2, retries: 0, loggedAt: 1200 },
+            k3: { submission: 'c', passed: false, attemptNumber: 1, retries: 0, loggedAt: 1300 },
+          },
+        },
+      },
+    }
+    const report = buildSessionReport({ session: reloaded, lesson })
+    const alice = studentByLabel(report, 'Student 1')
+    expect(taskById(alice.tasks, 1).attempts).toBe(3)
+    expect(taskById(alice.tasks, 1).timeOnTaskMs).toBe(300)
+  })
+
   it('computes time on task from taskStartTimes to pass or latest attempt', () => {
     const report = buildSessionReport({ session, lesson })
     const alice = studentByLabel(report, 'Student 1')

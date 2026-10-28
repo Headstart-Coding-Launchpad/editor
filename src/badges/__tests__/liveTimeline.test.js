@@ -172,7 +172,9 @@ describe('buildLiveTimelines', () => {
     expect(byType('reveal')).toEqual([
       expect.objectContaining({ taskId: 3, stage: 2, complete: true, at: 50 }),
     ])
-    expect(byType('override')).toEqual([expect.objectContaining({ taskId: 2, at: 60 })])
+    expect(byType('override')).toEqual([
+      expect.objectContaining({ taskId: 2, at: 60, source: 'teacher' }),
+    ])
     expect(byType('paste')).toEqual([expect.objectContaining({ taskId: 4, firstAt: 98 })])
     expect(byType('topic_open')).toEqual([
       expect.objectContaining({
@@ -368,6 +370,14 @@ describe('anti-gaming guards', () => {
       ['alex', 2],
       ['sam', 2],
     ])
+  })
+
+  it('does not skip a real pass on a task the class merely moved on from (#242)', () => {
+    const movedOn = twoPasses()
+    movedOn.overrideLog = {
+      alex: { 2: { taskId: 2, overriddenAt: 300, source: 'class_advance' } },
+    }
+    expect(codeBuilder(movedOn)).toEqual(codeBuilder(twoPasses()))
   })
 
   it('skips an overridden task and a teacher-assisted pass', () => {
