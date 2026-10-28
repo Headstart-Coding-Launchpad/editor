@@ -2,7 +2,8 @@
 // grow, the test and grading. Node-safe (no React, JSX or DOM) so the CLI, the Builder and print
 // share it. The ID3 maths is in ./tree.js.
 //
-// State (JSON, small): { v: 1, examples: [{ n: 'cat', f: '101', l: 0 }], tried: false }
+// State (JSON, small): { v: 1, examples: [{ n: 'cat', f: '101', l: 0 }], tried: false, d: 2 }
+//   d = the depth the student chose with the dial (only there once they changed it; see depthOf),
 //   n = the item's name (up to 16 chars), f = one 0/1 per feature (a string), l = label index,
 //   tried = the student pressed "Try it" on the current tree (adding or removing an example
 //   clears it, because the tree changed). The tree and the score are never stored: they are
@@ -41,6 +42,24 @@ export function maxExamplesOf(task) {
 export function maxDepthOf(task) {
   const n = task?.maxDepth
   return Number.isInteger(n) && n >= 1 && n <= MAX_DEPTH_LIMIT ? n : DEFAULT_MAX_DEPTH
+}
+
+// Whether the student gets the depth dial (the author can hide it with studentDepth: false).
+export function studentDepthOn(task) {
+  return task?.studentDepth !== false
+}
+
+// Keeps a chosen depth in 1..the author's maxDepth.
+export function clampDepth(task, d) {
+  const n = Math.round(Number(d))
+  if (!Number.isFinite(n)) return maxDepthOf(task)
+  return Math.max(1, Math.min(maxDepthOf(task), n))
+}
+
+// The depth the tree is grown to: the student's choice (when the dial is on), else maxDepth.
+export function depthOf(task, state) {
+  if (!studentDepthOn(task) || !Number.isInteger(state?.d)) return maxDepthOf(task)
+  return clampDepth(task, state.d)
 }
 
 // "has_fur" is shown as the question "has fur?".
@@ -104,7 +123,9 @@ export function normalizeState(task, raw) {
     )
     .slice(0, cap)
     .map((ex) => ({ n: String(ex.n ?? '').slice(0, MAX_NAME), f: ex.f, l: ex.l }))
-  return { v: 1, examples, tried: raw.tried === true && examples.length > 0 }
+  const out = { v: 1, examples, tried: raw.tried === true && examples.length > 0 }
+  if (studentDepthOn(task) && Number.isInteger(raw.d)) out.d = clampDepth(task, raw.d)
+  return out
 }
 
 // The examples as tree rows.
@@ -117,7 +138,12 @@ export function rowsOf(state) {
 }
 
 export function treeOf(task, state) {
-  return buildTree(rowsOf(state), featuresOf(task).length, labelsOf(task).length, maxDepthOf(task))
+  return buildTree(
+    rowsOf(state),
+    featuresOf(task).length,
+    labelsOf(task).length,
+    depthOf(task, state)
+  )
 }
 
 // Whole-task result: the tree, its depth, the score on the test items, and whether it passes.
@@ -165,6 +191,7 @@ export function sharedState(task, state) {
     ...clean,
     count: g.count,
     depth: g.depth,
+    chosenDepth: depthOf(task, clean),
     score: g.tried ? { correct: g.correct, total: g.total } : null,
   }
 }
@@ -228,6 +255,10 @@ export function validateLearningTreeTask(task, n) {
     !(Number.isInteger(task.maxDepth) && task.maxDepth >= 1 && task.maxDepth <= MAX_DEPTH_LIMIT)
   ) {
     errors.push(`${where}: maxDepth must be a whole number from 1 to ${MAX_DEPTH_LIMIT}.`)
+  }
+
+  if (task?.studentDepth != null && typeof task.studentDepth !== 'boolean') {
+    errors.push(`${where}: studentDepth must be true or false.`)
   }
 
   const items = task?.testItems

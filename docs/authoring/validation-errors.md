@@ -421,6 +421,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: labels must be 2 to … different names, each 1 to … characters.` | `labels` is missing, has fewer than 2, a repeat or a name that is empty or too long. | List 2 to 6 different labels. |
 | `Task …: maxExamples must be a whole number from … to ….` | `maxExamples` is there but is not a whole number in range. | Fix it, or leave it out (default 20). |
 | `Task …: maxDepth must be a whole number from 1 to ….` | `maxDepth` is there but is not a whole number in range. | Fix it, or leave it out (default 3). |
+| `Task …: studentDepth must be true or false.` | `studentDepth` is there but is not `true` or `false`. | Use `true` or `false`, or leave it out (default `true`). |
 | `Task …: testItems needs … to … items.` | `testItems` is missing or has too few or too many items. | Give 2 to 12 test items. |
 | `Task … item …: name is required (1 to … characters).` | A test item has no name, or a name that is too long. | Give it a short name. |
 | `Task … item …: label must be one of the task's labels.` | A test item's `label` is not in `labels`. | Use one of the `labels`. |

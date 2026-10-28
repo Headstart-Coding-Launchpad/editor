@@ -7995,6 +7995,25 @@ label.te-backdrop-tag,
   flex-direction: column;
 }
 
+.act-lt-box.act-lt-on {
+  border-color: var(--colour-primary);
+  box-shadow: 0 0 0 3px var(--colour-primary);
+}
+
+.act-lt-branch.act-lt-on {
+  color: var(--colour-primary);
+  text-decoration: underline;
+}
+
+.act-lt-result[aria-pressed='true'] {
+  border-color: var(--colour-primary);
+  box-shadow: 0 0 0 2px var(--colour-primary);
+}
+
+.act-lt-route {
+  font-weight: 600;
+}
+
 .act-lt-count {
   font-size: 0.8rem;
   color: var(--colour-text-muted, #64748b);

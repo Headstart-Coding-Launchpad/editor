@@ -105,4 +105,29 @@ describe('Learning Tree UI', () => {
     expect(screen.queryByRole('button', { name: 'Add example' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument()
   })
+
+  it('shows the path a test item took after Try it', () => {
+    renderView()
+    addExample('cat', ['has fur?'], 'pet')
+    addExample('owl', ['can fly?'], 'wild')
+    expect(screen.queryByTestId('lt-route')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try it on new things' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hamster: tree says/ }))
+    expect(screen.getByTestId('lt-route').textContent).toMatch(/^Hamster: .*yes → pet$/)
+    expect(document.querySelectorAll('.act-lt-box.act-lt-on').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('lets the student change the depth, and hides the dial when the author says so', () => {
+    const { state } = renderView()
+    expect(screen.getByTestId('lt-depth')).toHaveTextContent(String(TASK.maxDepth))
+    expect(screen.getByRole('button', { name: 'More questions' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer questions' }))
+    expect(screen.getByTestId('lt-depth')).toHaveTextContent(String(TASK.maxDepth - 1))
+    expect(state().d).toBe(TASK.maxDepth - 1)
+  })
+
+  it('has no dial when studentDepth is false', () => {
+    renderView({ task: { ...TASK, studentDepth: false } })
+    expect(screen.queryByRole('button', { name: 'Fewer questions' })).not.toBeInTheDocument()
+  })
 })

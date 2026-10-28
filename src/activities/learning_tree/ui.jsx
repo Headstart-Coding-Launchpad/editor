@@ -2,6 +2,10 @@ import { useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
 import {
   MAX_NAME,
+  clampDepth,
+  depthOf,
+  maxDepthOf,
+  studentDepthOn,
   featureQuestion,
   featuresOf,
   gradeTask,
@@ -10,6 +14,7 @@ import {
   maxExamplesOf,
   normalizeState,
 } from './learning_tree.js'
+import { pathOf } from './tree.js'
 import LearningTreeBuilderEditor from './LearningTreeBuilderEditor.jsx'
 
 // Learning Tree UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
@@ -21,10 +26,15 @@ import LearningTreeBuilderEditor from './LearningTreeBuilderEditor.jsx'
 // a removal or Try it reaches the state. The tutor's read-only view shows the same examples,
 // tree and test results.
 
-function Tree({ node, features, labels }) {
+// `on` is the set of boxes on the route a test item took (empty when none is picked).
+function Tree({ node, features, labels, on }) {
+  const lit = on.has(node) ? ' act-lt-on' : ''
   if (node.leaf) {
     return (
-      <div className={`act-lt-box act-lt-leaf act-lt-tone-${node.label % 6}`} data-testid="lt-leaf">
+      <div
+        className={`act-lt-box act-lt-leaf act-lt-tone-${node.label % 6}${lit}`}
+        data-testid="lt-leaf"
+      >
         <strong>{labels[node.label]}</strong>
         <span className="act-lt-count">{node.n}</span>
       </div>
@@ -32,17 +42,21 @@ function Tree({ node, features, labels }) {
   }
   return (
     <div className="act-lt-node">
-      <div className="act-lt-box act-lt-question" data-testid="lt-question">
+      <div className={`act-lt-box act-lt-question${lit}`} data-testid="lt-question">
         {featureQuestion(features[node.feature])}
       </div>
       <div className="act-lt-kids">
         <div className="act-lt-kid">
-          <span className="act-lt-branch">yes</span>
-          <Tree node={node.yes} features={features} labels={labels} />
+          <span className={`act-lt-branch${on.has(node) && on.has(node.yes) ? ' act-lt-on' : ''}`}>
+            yes
+          </span>
+          <Tree node={node.yes} features={features} labels={labels} on={on} />
         </div>
         <div className="act-lt-kid">
-          <span className="act-lt-branch">no</span>
-          <Tree node={node.no} features={features} labels={labels} />
+          <span className={`act-lt-branch${on.has(node) && on.has(node.no) ? ' act-lt-on' : ''}`}>
+            no
+          </span>
+          <Tree node={node.no} features={features} labels={labels} on={on} />
         </div>
       </div>
     </div>
@@ -58,6 +72,9 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
   const [name, setName] = useState('')
   const [ticks, setTicks] = useState(() => features.map(() => false))
   const [label, setLabel] = useState(null)
+  const [picked, setPicked] = useState(null)
+  const maxDepth = maxDepthOf(task)
+  const depth = depthOf(task, clean)
   const full = clean.examples.length >= cap
   const canAdd = !readOnly && !full && label !== null
 
@@ -90,6 +107,13 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
     }))
   }
 
+  function setDepth(next) {
+    const d = clampDepth(task, next)
+    if (d === depth) return
+    change((prev) => ({ ...prev, d, tried: false }))
+    setPicked(null)
+  }
+
   function tryIt() {
     change((prev) => ({ ...prev, tried: prev.examples.length > 0 }))
   }
@@ -99,6 +123,19 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
     return yes.length ? yes.join(', ') : 'none of the features'
   }
   const hint = hintFor(task, clean)
+  // The route the picked test item took through the tree (only once tried).
+  const route =
+    g.tried && picked !== null && g.rows[picked] ? pathOf(g.tree, g.rows[picked].f) : null
+  const on = new Set(route ? route.nodes : [])
+  const routeText = route
+    ? `${g.rows[picked].name}: ${
+        route.steps.length
+          ? route.steps
+              .map((s) => `${featureQuestion(features[s.feature])} ${s.yes ? 'yes' : 'no'}`)
+              .join(', ')
+          : 'no questions asked'
+      } → ${labels[g.results[picked].predicted]}`
+    : null
 
   return (
     <div className="act-panel act-lt" data-testid="learning_tree-activity">
@@ -188,6 +225,32 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
         )}
       </section>
 
+      {studentDepthOn(task) && (
+        <div className="act-row act-lt-dial" role="group" aria-label="How many questions deep">
+          <span style={{ fontWeight: 600 }}>
+            How many questions deep: <span data-testid="lt-depth">{depth}</span>
+          </span>
+          <button
+            type="button"
+            className="act-btn"
+            aria-label="Fewer questions"
+            disabled={readOnly || depth <= 1}
+            onClick={() => setDepth(depth - 1)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="act-btn"
+            aria-label="More questions"
+            disabled={readOnly || depth >= maxDepth}
+            onClick={() => setDepth(depth + 1)}
+          >
+            +
+          </button>
+        </div>
+      )}
+
       <section aria-label="Your tree">
         <h3 className="act-lt-heading">
           Your tree {g.count > 0 && <span className="act-lt-count-text">(depth {g.depth})</span>}
@@ -196,7 +259,7 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
           <p className="act-lt-empty">Add examples and the tree grows by itself.</p>
         ) : (
           <div className="act-lt-scroll" data-testid="lt-tree">
-            <Tree node={g.tree} features={features} labels={labels} />
+            <Tree node={g.tree} features={features} labels={labels} on={on} />
           </div>
         )}
       </section>
@@ -215,11 +278,25 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
             <ul className="act-lt-list">
               {g.rows.map((row, i) => (
                 <li key={row.id}>
-                  {g.results[i].right ? '✓' : '✗'} {row.name}: tree says{' '}
-                  {labels[g.results[i].predicted]}
+                  <button
+                    type="button"
+                    className="act-btn act-lt-result"
+                    aria-pressed={picked === i}
+                    onClick={() => setPicked(picked === i ? null : i)}
+                  >
+                    {g.results[i].right ? '✓' : '✗'} {row.name}: tree says{' '}
+                    {labels[g.results[i].predicted]}
+                  </button>
                 </li>
               ))}
             </ul>
+            {routeText ? (
+              <p className="act-lt-route" role="status" data-testid="lt-route">
+                {routeText}
+              </p>
+            ) : (
+              <p className="act-lt-empty">Pick a result to see the path it took in the tree.</p>
+            )}
           </div>
         )}
         {g.passed && <ActivityCorrect>Your tree works!</ActivityCorrect>}

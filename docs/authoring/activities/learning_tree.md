@@ -57,6 +57,7 @@ tasks:
 | `testItems` | Yes | 2 to 12 unseen items the tree is tested on (see below). |
 | `maxExamples` | No | The most examples a student can add: a whole number from 4 to 40. Default `20`. |
 | `maxDepth` | No | The most questions in a row the tree may ask: a whole number from 1 to 5. Default `3`. |
+| `studentDepth` | No | `true` (default) shows a small − / + dial, "How many questions deep", so the student can grow a shallower tree (1 up to `maxDepth`, which is also where it starts). `false` hides the dial. Must be true or false. |
 | `passAt` | No | How many test items the tree must sort right: a share above 0 and below 1 (`0.8`) or a whole number of items (`4`). Default `0.8`, rounded up (4 of 5). |
 
 ## Test item fields
@@ -98,6 +99,8 @@ flies"), so some data gives a short tree. That is part of what the activity teac
 
 - Marked as you go: the task passes when the student has pressed **Try it** on the current tree
   and it sorts at least `passAt` test items right (default 4 of 5). There is no Check button.
+- After **Try it**, each test result is a button. Pressing it lights the boxes and branches that item
+  took in the tree and shows a line such as "Hamster: has fur? yes → pet".
 - Hints never give the answer: "Add some examples first", "Press Try it", then "Your tree got 3 of
   5. It got "Goldfish" wrong. Add an example like it." (naming the first item it got wrong).
 - Validation warns when the first label is the right answer for enough test items that an
@@ -105,7 +108,8 @@ flies"), so some data gives a short tree. That is part of what the activity teac
 
 ## Teacher tools
 
-- The student card shows `6 examples · depth 2 · test 4/5`. The student modal shows the
+- The student card shows `6 examples · depth 2 · test 4/5` (with `(set to N)` after the depth when the student turned the dial below
+  `maxDepth`; the shared state carries `chosenDepth`). The student modal shows the
   student's examples, their tree and the test results, read-only, live (every example is a
   discrete change, so it syncs as soon as it is added). `itemProgress` marks each test item
   right or wrong after Try it.

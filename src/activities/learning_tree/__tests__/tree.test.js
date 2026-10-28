@@ -8,6 +8,7 @@ import {
   informationGain,
   majorityLabel,
   nodeCount,
+  pathOf,
   scoreTree,
   treeDepth,
 } from '../tree.js'
@@ -146,5 +147,27 @@ describe('scoreTree', () => {
   })
   it('scores an empty list as 0 of 0', () => {
     expect(scoreTree(buildTree([], 1, 2, 3), [])).toEqual({ correct: 0, total: 0, results: [] })
+  })
+})
+
+describe('pathOf', () => {
+  it('lists the boxes and the answers on the way to an answer', () => {
+    const tree = buildTree([...PETS, ...WILD], 3, 2, 3)
+    const path = pathOf(tree, [1, 0, 0])
+    expect(path.nodes[0]).toBe(tree)
+    expect(path.nodes[path.nodes.length - 1].leaf).toBe(true)
+    expect(path.nodes[path.nodes.length - 1].label).toBe(classify(tree, [1, 0, 0]))
+    expect(path.steps).toHaveLength(path.nodes.length - 1)
+    expect(path.steps[0]).toEqual({ feature: tree.feature, yes: true })
+  })
+  it('follows the no branch', () => {
+    const tree = buildTree([...PETS, ...WILD], 3, 2, 3)
+    const path = pathOf(tree, [0, 1, 0])
+    expect(path.steps[0].yes).toBe(false)
+    expect(path.nodes[1]).toBe(tree.no)
+  })
+  it('is just the answer for a lone leaf', () => {
+    const tree = buildTree([], 1, 2, 3)
+    expect(pathOf(tree, [1])).toEqual({ nodes: [tree], steps: [] })
   })
 })

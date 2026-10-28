@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   gradeTask,
+  clampDepth,
+  depthOf,
   hintFor,
   itemResultsOf,
   normalizeState,
@@ -54,6 +56,12 @@ describe('validateLearningTreeTask', () => {
     expect(validateLearningTreeTask({ ...TASK, passAt: 6 }, 1)[0]).toMatch(/passAt/)
     expect(validateLearningTreeTask({ ...TASK, passAt: 3 }, 1)).toEqual([])
     expect(validateLearningTreeTask({ ...TASK, passAt: 0.6 }, 1)).toEqual([])
+  })
+  it('checks studentDepth is a boolean', () => {
+    expect(validateLearningTreeTask({ ...TASK, studentDepth: false }, 1)).toEqual([])
+    expect(validateLearningTreeTask({ ...TASK, studentDepth: 'no' }, 3)).toEqual([
+      'Task 3: studentDepth must be true or false.',
+    ])
   })
   it('checks test items', () => {
     expect(validateLearningTreeTask({ ...TASK, testItems: [] }, 1)[0]).toBe(
@@ -203,5 +211,37 @@ describe('solutionFor', () => {
     expect(solution.tried).toBe(true)
     expect(definition.grade(TASK, solution).passed).toBe(true)
     expect(definition.grade(TASK, definition.initialState(TASK)).passed).toBe(false)
+  })
+})
+
+describe('student depth', () => {
+  it('clamps to 1..maxDepth', () => {
+    expect(clampDepth(TASK, 0)).toBe(1)
+    expect(clampDepth(TASK, 9)).toBe(TASK.maxDepth)
+    expect(clampDepth({ ...TASK, maxDepth: 2 }, 2.4)).toBe(2)
+    expect(clampDepth(TASK, 'x')).toBe(TASK.maxDepth)
+  })
+  it('defaults to the author maxDepth and honours a chosen d', () => {
+    expect(depthOf(TASK, GOOD)).toBe(TASK.maxDepth)
+    expect(depthOf(TASK, { ...GOOD, d: 1 })).toBe(1)
+    expect(depthOf(TASK, { ...GOOD, d: 99 })).toBe(TASK.maxDepth)
+  })
+  it('ignores d when the dial is hidden', () => {
+    const off = { ...TASK, studentDepth: false }
+    expect(depthOf(off, { ...GOOD, d: 1 })).toBe(TASK.maxDepth)
+    expect(normalizeState(off, { ...GOOD, d: 1 }).d).toBeUndefined()
+  })
+  it('keeps a valid d in the state and clamps a bad one', () => {
+    expect(normalizeState(TASK, { ...GOOD, d: 2 }).d).toBe(2)
+    expect(normalizeState(TASK, { ...GOOD, d: 50 }).d).toBe(TASK.maxDepth)
+    expect(normalizeState(TASK, { ...GOOD, d: 'x' }).d).toBeUndefined()
+  })
+  it('regrows the tree at the chosen depth and reports it to the tutor', () => {
+    const deep = gradeTask(TASK, normalizeState(TASK, GOOD))
+    const flat = gradeTask(TASK, normalizeState(TASK, { ...GOOD, d: 1 }))
+    expect(flat.depth).toBeLessThanOrEqual(1)
+    expect(flat.depth).toBeLessThanOrEqual(deep.depth)
+    expect(sharedState(TASK, { ...GOOD, d: 1 }).chosenDepth).toBe(1)
+    expect(sharedState(TASK, GOOD).chosenDepth).toBe(TASK.maxDepth)
   })
 })

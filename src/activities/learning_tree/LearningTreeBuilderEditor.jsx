@@ -86,6 +86,17 @@ export default function LearningTreeBuilderEditor({ task, onUpdate }) {
         min="1"
         max="5"
       />
+      <label className="te-check-toggle">
+        <input
+          type="checkbox"
+          checked={task.studentDepth !== false}
+          onChange={(e) => {
+            const { studentDepth: _drop, ...rest } = task
+            onUpdate(e.target.checked ? rest : { ...rest, studentDepth: false })
+          }}
+        />
+        Student can change the depth
+      </label>
       <NumberField
         task={task}
         onUpdate={onUpdate}

@@ -16,6 +16,8 @@ import {
   itemResultsOf,
   labelsOf,
   normalizeState,
+  depthOf,
+  maxDepthOf,
   sharedState,
   solutionFor,
   validateLearningTreeTask,
@@ -89,6 +91,12 @@ export default defineActivity({
         description: `The most questions in a row the tree may ask (1 to 5). Default ${DEFAULT_MAX_DEPTH}.`,
       },
       {
+        name: 'studentDepth',
+        type: 'boolean',
+        description:
+          'Let the student set how many questions deep the tree goes, up to maxDepth. Default true; false hides the dial.',
+      },
+      {
         name: 'passAt',
         type: 'number',
         description:
@@ -156,7 +164,9 @@ export default defineActivity({
   summarize: (task, state) => {
     const g = gradeTask(task, normalizeState(task, state))
     if (g.count === 0) return { text: 'No examples yet', tone: 'neutral' }
-    const base = `${g.count} example${g.count === 1 ? '' : 's'} · depth ${g.depth}`
+    const chosen = depthOf(task, normalizeState(task, state))
+    const cap = chosen < maxDepthOf(task) ? ` (set to ${chosen})` : ''
+    const base = `${g.count} example${g.count === 1 ? '' : 's'} · depth ${g.depth}${cap}`
     if (!g.tried) return { text: `${base} · not tried yet`, tone: 'neutral' }
     return {
       text: `${base} · test ${g.correct}/${g.total}`,

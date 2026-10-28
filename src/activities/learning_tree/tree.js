@@ -103,6 +103,22 @@ export function classify(node, f) {
   return at ? at.label : 0
 }
 
+// The route one feature list takes through the tree: every box visited (`nodes`, root first, the
+// answer box last) and the questions answered on the way (`steps`: { feature, yes }).
+export function pathOf(node, f) {
+  const nodes = []
+  const steps = []
+  let at = node
+  while (at) {
+    nodes.push(at)
+    if (at.leaf) break
+    const yes = f[at.feature] === 1
+    steps.push({ feature: at.feature, yes })
+    at = yes ? at.yes : at.no
+  }
+  return { nodes, steps }
+}
+
 // Runs the tree on test rows ({ f, l }). Returns { correct, total, results: [{ predicted, right }] }.
 export function scoreTree(node, rows) {
   const results = rows.map((row) => {
