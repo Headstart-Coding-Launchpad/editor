@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { RecommenderStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
+import { countControls } from '../../../test/countControls.js'
 
 // UI tests for the Recommender StudentView with local state (src/test/activityUiHarness.jsx).
 // jsdom can't prove touch behaviour: check that in a real browser too.
@@ -95,5 +96,20 @@ describe('Recommender UI', () => {
     expect(screen.getByTestId('recommender-feed').children.length).toBeGreaterThan(0)
     expect(screen.getByTestId('recommender-bubble')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check my work' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the default screen to 5 controls or fewer (the rating grid and Why? count as one each)', () => {
+    const { container } = renderView()
+    expect(countControls(container)).toBeLessThanOrEqual(5)
+  })
+
+  it('with goals, shows a goal switch as radios and stays within 5 controls', () => {
+    const task = { ...TASK, goals: ['like', 'watching', 'new'] }
+    const { container } = renderView({
+      task,
+      initialState: { v: 1, ratings: { football: 1 }, why: false },
+    })
+    expect(screen.getAllByRole('radio').length).toBe(3)
+    expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 })

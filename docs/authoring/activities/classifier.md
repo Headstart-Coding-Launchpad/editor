@@ -98,9 +98,14 @@ tasks:
 5. **Results in pictures.** "It got 4 of 5 right" as a meter, and (with `fool`) the misses as
    thumbnails: "It thought your 🐱 was a 🐟". There is no confusion table in words.
 
-On a screen 800 px wide or more the pad (up to about 460 px) is on the left with the prompt, the
-buttons and the answer under it, and the guess bars, how-sure and what-it-sees panels sit on the
-right. Narrower screens stack them, pad first.
+The screen uses `ActivityLayout` (`ui/ActivityLayout.jsx`). When the panel is 900 px wide or more the
+pad (about 370 px) is on the left with Undo and Clear beside it, the prompt and round dots above it
+and the one main button (Add this drawing, Done, Test it; or "What did you draw?" and the
+Teach it this one / Try another buttons) under it. On the right (440 px) is the "It says" verdict card
+(the answer, or one bar per thing), then any lesson panels (closeness, grid size as a 4 / 8 / 16
+switch, how sure, what it sees, Test on what it learned) and the results. Narrower panels stack:
+pad, button, verdict, panels. The default round screen has 4 controls (pad, Undo, Clear, Done); the
+teach screen has 5 (pad, Undo, Clear, Add this drawing, the drawings strip).
 
 ### How the model works
 

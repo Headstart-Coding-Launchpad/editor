@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { SpinTick } from '../ui/ActivityCorrect.jsx'
+import ActivityLayout, { ActSegmented } from '../ui/ActivityLayout.jsx'
 import RecommenderBuilderEditor from './RecommenderBuilderEditor.jsx'
 import {
   BUBBLE_NUDGE,
@@ -76,21 +77,96 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
   const open = feed.find((entry) => entry.item.id === openId)
   const tutorLine = readOnly && rated === 0 ? 'The student has not rated anything yet.' : null
 
-  return (
-    <div className="act-panel act-rec" data-testid="recommender-activity">
-      <p className="act-rec__count" role="status" aria-live="polite">
-        {rated >= need ? <SpinTick /> : '👍'} Rated {Math.min(rated, need)} of {need}
-        {showWhy && rated >= need && !why ? ' · now tap Why? on your feed' : ''}
-        {passed ? ' · done!' : ''}
-      </p>
-      {tutorLine && <p className="act-hint">{tutorLine}</p>}
+  const emptySlots = Math.max(0, FEED_SIZE - feed.length)
+  const tip = rated === 0 ? 'Nothing rated yet, so this is what the class likes most.' : tutorLine
 
-      <p className="act-prompt">Do you like these? Tap 👍 or 👎.</p>
-      <ul className="act-rec__grid">
+  const stage = (
+    <div className="act-rec__stage">
+      <h3 className="act-rec__heading">Your feed</h3>
+      <ul className="act-rec__feed" data-testid="recommender-feed" data-act-control="group">
+        {feed.map((entry) => (
+          <li key={entry.item.id} className="act-rec__feed-item">
+            <span className="act-rec__emoji" aria-hidden="true">
+              {entry.item.emoji}
+            </span>
+            <span className="act-rec__label">{entry.item.label}</span>
+            {showWhy && (
+              <button
+                type="button"
+                className="act-btn--secondary act-rec__why"
+                aria-expanded={openId === entry.item.id}
+                aria-label={`Why ${entry.item.label}?`}
+                onClick={() => openWhy(entry.item.id)}
+              >
+                Why?
+              </button>
+            )}
+          </li>
+        ))}
+        {Array.from({ length: emptySlots }, (_, i) => (
+          <li key={`empty-${i}`} className="act-rec__feed-empty" aria-hidden="true">
+            (empty)
+          </li>
+        ))}
+      </ul>
+      {feed.length === 0 && <p className="act-hint">You rated everything. The feed is empty!</p>}
+      {open && (
+        <p className="act-rec__because" role="status" data-testid="recommender-because">
+          💡 {whyText(open)}
+        </p>
+      )}
+      {task?.bubble === true && rated > 0 && (
+        <div className="act-rec__bubble" data-level={bubble.level} data-testid="recommender-bubble">
+          <span className="act-rec__bubble-bar" aria-hidden="true">
+            {Array.from({ length: bubble.total }, (_, i) => (
+              <span
+                key={i}
+                className={`act-rec__bubble-dot${i < bubble.kinds ? ' act-rec__bubble-dot--on' : ''}`}
+              />
+            ))}
+          </span>
+          <span>{bubble.text}</span>
+          {bubble.level !== 'open' && !readOnly && (
+            <span className="act-hint"> {BUBBLE_NUDGE}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  const stageTop =
+    goals.length > 1 ? (
+      <>
+        <span className="act-rec__aims">Feed aims for</span>
+        <ActSegmented
+          label="What should your feed aim for?"
+          value={goal}
+          disabled={readOnly}
+          onChange={pickGoal}
+          options={goals.map((g) => ({ value: g, label: GOAL_LABELS[g] }))}
+        />
+      </>
+    ) : null
+
+  const controls = (
+    <section className="act-rec__rate-card">
+      <div className="act-rec__rate-head">
+        <p className="act-prompt">Do you like these? Tap 👍 or 👎.</p>
+        <p className="act-rec__count" role="status" aria-live="polite">
+          {rated >= need ? <SpinTick /> : '👍'} Rated {Math.min(rated, need)} of {need}
+          {showWhy && rated >= need && !why ? ' · now tap Why? on your feed' : ''}
+          {passed ? ' · done!' : ''}
+        </p>
+      </div>
+      <ul className="act-rec__grid" data-act-control="group">
         {items.map((item) => {
           const value = ratings[item.id]
           return (
-            <li key={item.id} className="act-rec__item" data-testid={`recommender-item-${item.id}`}>
+            <li
+              key={item.id}
+              className={`act-rec__item${value === 1 ? ' act-rec__item--liked' : ''}${value === -1 ? ' act-rec__item--disliked' : ''}`}
+              data-testid={`recommender-item-${item.id}`}
+            >
               <span className="act-rec__emoji" aria-hidden="true">
                 {item.emoji}
               </span>
@@ -121,70 +197,12 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
           )
         })}
       </ul>
+    </section>
+  )
 
-      <h3 className="act-rec__heading">Your feed</h3>
-      {goals.length > 1 && (
-        <div className="act-row" role="group" aria-label="What should your feed aim for?">
-          {goals.map((g) => (
-            <button
-              key={g}
-              type="button"
-              className="btn-secondary act-btn"
-              aria-pressed={goal === g}
-              disabled={readOnly}
-              onClick={() => pickGoal(g)}
-            >
-              {goal === g ? '✓ ' : ''}
-              {GOAL_LABELS[g]}
-            </button>
-          ))}
-        </div>
-      )}
-      {rated === 0 && (
-        <p className="act-hint">Nothing rated yet, so this is what the class likes most.</p>
-      )}
-      <ul className="act-rec__feed" data-testid="recommender-feed">
-        {feed.map((entry) => (
-          <li key={entry.item.id} className="act-rec__feed-item">
-            <span aria-hidden="true">{entry.item.emoji}</span>
-            <span className="act-rec__label">{entry.item.label}</span>
-            {showWhy && (
-              <button
-                type="button"
-                className="btn-ghost-outline act-rec__why"
-                aria-expanded={openId === entry.item.id}
-                aria-label={`Why ${entry.item.label}?`}
-                onClick={() => openWhy(entry.item.id)}
-              >
-                Why?
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-      {feed.length === 0 && <p className="act-hint">You rated everything. The feed is empty!</p>}
-      {open && (
-        <p className="act-rec__because" role="status" data-testid="recommender-because">
-          💡 {whyText(open)}
-        </p>
-      )}
-
-      {task?.bubble === true && rated > 0 && (
-        <div className="act-rec__bubble" data-level={bubble.level} data-testid="recommender-bubble">
-          <span className="act-rec__bubble-bar" aria-hidden="true">
-            {Array.from({ length: bubble.total }, (_, i) => (
-              <span
-                key={i}
-                className={`act-rec__bubble-dot${i < bubble.kinds ? ' act-rec__bubble-dot--on' : ''}`}
-              />
-            ))}
-          </span>
-          <span>{bubble.text}</span>
-          {bubble.level !== 'open' && !readOnly && (
-            <span className="act-hint"> {BUBBLE_NUDGE}</span>
-          )}
-        </div>
-      )}
+  return (
+    <div className="act-panel act-rec" data-testid="recommender-activity">
+      <ActivityLayout stageTop={stageTop} stage={stage} tip={tip} controls={controls} />
     </div>
   )
 }

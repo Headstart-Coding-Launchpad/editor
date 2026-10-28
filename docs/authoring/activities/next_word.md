@@ -160,6 +160,16 @@ learning from the student's own writing (at least two words of it; words made fr
 texts do not count). It carries on across Start again and voice switches, and is sent with the
 rest of the shared state. Old saves read as 0.
 
+## The screen
+
+Built on `ActivityLayout`. The sentence (large) and the word chips are on the left, with the one
+filled button under them (Start a sentence, Next word, New sentence), the result line beside it and
+Start again as a link. On the right (only what the lesson turns on): "My writing" folds to one line
+("✎ My writing · 42 words") after the first guess, the voice chips (`voices`), the look-back switch
+(`lookback`, one segmented 1 / 2 / 3 words control with no − and + around it), the Sensible / Silly slider
+(`silly`) and "What it learned" (`stats`, display only). The default screen has about 5 controls (My
+writing, chips, Next word, Start again, plus its fold header), at most 5 with look-back.
+
 ## Accessibility and devices
 
 Text only; works on any device with or without a physical keyboard (touch uses the device's own

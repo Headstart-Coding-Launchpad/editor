@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextWordStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
+import { countControls } from '../../../test/countControls.js'
 
 // UI tests for the Next Word StudentView with local state (src/test/activityUiHarness.jsx).
 // Math.random is pinned to 0, so the sampled word is always the most likely one and the first
@@ -281,35 +282,36 @@ describe('look-back panel', () => {
     ...patch,
   })
 
-  it('shows 1, 2 and 3 buttons, at least 44px, and starts on the task value', () => {
+  it('shows a 1 / 2 / 3 switch, and starts on the task value', () => {
     const task = { ...LOOK_TASK, lookBack: 2 }
     renderView({ task, initialState: withState(task) })
-    expect(screen.getByRole('button', { name: 'Look back 2 words' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'Look back 2 words' })).toHaveAttribute(
+      'aria-checked',
       'true'
     )
-    expect(screen.getByRole('button', { name: 'Look back 1 word' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('radio', { name: 'Look back 1 word' })).toHaveAttribute(
+      'aria-checked',
       'false'
     )
-    expect(screen.getByRole('button', { name: 'Look back 3 words' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('radio', { name: 'Look back 3 words' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Look back one word more' })
+    ).not.toBeInTheDocument()
     expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('2 words')
   })
 
-  it('the - and + buttons change it and stop at the ends', () => {
+  it('picking an option changes it', () => {
     renderView({ task: LOOK_TASK, initialState: withState(LOOK_TASK) })
-    expect(screen.getByRole('button', { name: 'Look back one word less' })).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'Look back one word more' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Look back 2 words' }))
     expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('2 words')
-    fireEvent.click(screen.getByRole('button', { name: 'Look back one word more' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Look back 3 words' }))
     expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('3 words')
-    expect(screen.getByRole('button', { name: 'Look back one word more' })).toBeDisabled()
   })
 
-  it('maxLookBack limits the buttons', () => {
+  it('maxLookBack limits the options', () => {
     const task = { ...LOOK_TASK, maxLookBack: 2 }
     renderView({ task, initialState: withState(task) })
-    expect(screen.queryByRole('button', { name: 'Look back 3 words' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Look back 3 words' })).not.toBeInTheDocument()
   })
 
   it('has no look-back controls without the panel', () => {
@@ -324,7 +326,7 @@ describe('look-back panel', () => {
       initialState: withState(LOOK_TASK, { lookBack: 3 }),
     })
     expect(screen.getByTestId('next_word-lookback-label')).toHaveTextContent('3 words')
-    expect(screen.getByRole('button', { name: 'Look back 1 word' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'Look back 1 word' })).toBeDisabled()
   })
 
   it('says in words when it falls back to fewer words', () => {
@@ -347,5 +349,18 @@ describe('look-back panel', () => {
     expect(screen.getByTestId('next_word-stats')).toHaveTextContent('After \u201cthe big\u201d')
     expect(screen.getByText(/dog: 2 of 3 times/)).toBeInTheDocument()
     expect(screen.queryByTestId('next_word-fallback')).not.toBeInTheDocument()
+  })
+})
+
+describe('control budget', () => {
+  it('the default screen has at most 5 controls', () => {
+    const { container } = renderView({ initialState: ready('the') })
+    expect(countControls(container)).toBeLessThanOrEqual(5)
+  })
+
+  it('the look-back lesson stays within 5 controls too', () => {
+    const task = { ...TASK, panels: ['stats', 'lookback'] }
+    const { container } = renderView({ task, initialState: { ...ready('the'), guesses: 1 } })
+    expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 })

@@ -41,21 +41,36 @@ export function UnavailableActivityNotice() {
 // task explainer does; without it (Builder preview, StudentModal) there is no chip.
 function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const text = task?.explainer ?? task?.description ?? ''
+  const [open, setOpen] = useState(false)
   if (!task?.title && !text) return null
+  // Long instructions are clamped to one line (Layout briefs, owner decision 7); "more" opens them.
+  const long = text.length > 90 || /\n/.test(text)
   return (
-    <section className="act-header">
+    <section className={`act-header act-header--clamp${open ? ' act-header--open' : ''}`}>
       {task?.title && <h2 className="act-title">{task.title}</h2>}
       {text && (
         <div className="act-header__body">
-          <MarkdownRenderer
-            content={text}
-            topicType={lessonType ?? null}
-            disableCopy
-            showLibrary={!!topicLibrary}
-            onTopicOpen={topicLibrary?.onTopicOpen}
-            onTopicClose={topicLibrary?.onTopicClose}
-            openTopicId={topicLibrary?.openTopicId}
-          />
+          <div className="act-header__text">
+            <MarkdownRenderer
+              content={text}
+              topicType={lessonType ?? null}
+              disableCopy
+              showLibrary={!!topicLibrary}
+              onTopicOpen={topicLibrary?.onTopicOpen}
+              onTopicClose={topicLibrary?.onTopicClose}
+              openTopicId={topicLibrary?.openTopicId}
+            />
+          </div>
+          {long && (
+            <button
+              type="button"
+              className="act-header__more"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? 'less' : 'more'}
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -299,7 +314,7 @@ export default function ActivityHost({
   // Quizzes have no device requirements and lay themselves out (see ActivityView).
   if (ui?.ownsLayout) return view
   return (
-    <div className="act-host" data-testid="activity-host">
+    <div className="act-host act-host--task" data-testid="activity-host">
       {!readOnly && ui && ui.id !== UNKNOWN_ACTIVITY_ID && (
         <RequirementNotice
           unmet={unmet}

@@ -4,6 +4,7 @@ import { NetworkPlaygroundStudentView } from '../ui.jsx'
 import definition from '../definition.js'
 import { TRAIN_EVERY } from '../network_playground.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
+import { countControls } from '../../../test/countControls.js'
 
 // UI tests for the Network Playground StudentView with local state. requestAnimationFrame is
 // driven by hand (one call = one frame) and the canvas is a stub. Smoothness on a real
@@ -63,7 +64,7 @@ describe('Network Playground StudentView', () => {
     expect(screen.getByTestId('network-field')).toBeInTheDocument()
     expect(screen.getByTestId('network-diagram')).toBeInTheDocument()
     expect(screen.getByTestId('network-stats')).toHaveTextContent('Not trained yet')
-    expect(screen.getByTestId('network-stats')).toHaveTextContent('1 hidden layer')
+    expect(screen.getByRole('group', { name: 'Layers' })).toHaveTextContent('1')
     expect(screen.getByRole('button', { name: /Train/ })).toBeInTheDocument()
     expect(fills).toBeGreaterThan(0)
   })
@@ -78,7 +79,7 @@ describe('Network Playground StudentView', () => {
     expect(state().w).toHaveLength(13)
     expect(definition.grade(TASK, state()).passed).toBe(true)
     expect(frames).toHaveLength(0)
-    expect(screen.getByText('Your network reached 90%')).toBeInTheDocument()
+    expect(screen.getByTestId('network-stats')).toHaveTextContent(/\d+% right ✓/)
   })
 
   it('does only one pass over the dots a frame', () => {
@@ -148,25 +149,53 @@ describe('Network Playground StudentView', () => {
     expect(state().best).toBeGreaterThanOrEqual(0)
   })
 
-  it('Add a layer goes to 2 layers and no further; Remove a layer comes back', () => {
+  it('the Layers stepper goes to 2 layers and no further; Fewer layers comes back', () => {
     const { state } = renderView()
-    fireEvent.click(screen.getByRole('button', { name: /Add a layer/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'More layers' }))
     expect(state().layers).toEqual([3, 3])
     expect(state().maxLayers).toBe(2)
-    expect(screen.queryByRole('button', { name: /Add a layer/ })).not.toBeInTheDocument()
-    expect(screen.getByTestId('network-stats')).toHaveTextContent('2 hidden layers')
-    fireEvent.click(screen.getByRole('button', { name: /Remove a layer/ }))
+    expect(screen.getByRole('button', { name: 'More layers' })).toBeDisabled()
+    expect(screen.getByRole('group', { name: 'Layers' })).toHaveTextContent('2')
+    expect(screen.getByRole('button', { name: 'More neurons in layer 2' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer layers' }))
     expect(state().layers).toEqual([3])
     expect(state().maxLayers).toBe(2)
   })
 
-  it('allowAddLayer false hides the layer buttons but keeps the neurons', () => {
+  it('allowAddLayer false hides the Layers stepper but keeps the neurons', () => {
     renderActivityUi(NetworkPlaygroundStudentView, {
       task: { ...TASK, allowAddLayer: false },
       initialState: definition.initialState(TASK),
     })
-    expect(screen.queryByRole('button', { name: /Add a layer/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Layers' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'More neurons in layer 1' })).toBeInTheDocument()
+  })
+
+  it('allowInputs shows the other inputs as dashed switches on the diagram', () => {
+    const task = { ...TASK, allowInputs: ['x', 'y', 'x2', 'y2'] }
+    const { state } = renderActivityUi(NetworkPlaygroundStudentView, {
+      task,
+      initialState: definition.initialState(task),
+    })
+    const switches = screen.getAllByRole('switch')
+    expect(switches).toHaveLength(4)
+    expect(screen.getByRole('switch', { name: 'Input x' })).toHaveAttribute('aria-checked', 'true')
+    const off = switches.find((el) => el.getAttribute('aria-checked') === 'false')
+    fireEvent.click(off)
+    expect(state().inputs.length).toBe(3)
+  })
+
+  it('keeps the default screen to 5 controls or fewer', () => {
+    const { container } = renderView()
+    // Train, Start again, Layers stepper, Neurons stepper
+    expect(countControls(container)).toBeLessThanOrEqual(5)
+    const withInputs = { ...TASK, allowInputs: ['x', 'y', 'x2', 'y2'], testDots: true }
+    document.body.innerHTML = ''
+    const second = renderActivityUi(NetworkPlaygroundStudentView, {
+      task: withInputs,
+      initialState: definition.initialState(withInputs),
+    })
+    expect(countControls(second.container)).toBeLessThanOrEqual(5)
   })
 
   it('readOnly (the tutor) sees the student network and accuracy with no controls', () => {

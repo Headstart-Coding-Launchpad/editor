@@ -3948,6 +3948,385 @@ label.te-backdrop-tag,
   font-size: 1rem;
 }
 
+/* ─── ActivityLayout (ui/ActivityLayout.jsx) ───────────────────────────────────
+   One screen layout for activities: the picture left, the controls right, at least 900px of
+   panel width (a container query on the panel, so it also holds in the tutor modal and in
+   presentation mode); stacked below that: progress, stage, action, tip, controls, folds.
+   A toggle never uses a solid accent fill: a filled accent box always means "press me". */
+.act-layout {
+  container-type: inline-size;
+  container-name: act-layout;
+  width: 100%;
+}
+
+.act-layout__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.act-layout__main,
+.act-layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.act-layout__stagebox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.act-layout__stagetop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.act-layout__stage {
+  position: relative;
+  min-width: 0;
+}
+
+.act-layout__result {
+  min-width: 0;
+}
+
+.act-layout__result--overlay {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+}
+
+.act-layout__action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.act-layout__action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+@container act-layout (min-width: 900px) {
+  .act-layout__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--act-layout-side, 400px);
+    align-items: start;
+    gap: 18px;
+  }
+  .act-layout--classifier {
+    --act-layout-side: 440px;
+  }
+}
+
+.act-btn--main {
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 18px;
+  border: 2px solid var(--colour-primary);
+  border-radius: var(--ui-radius);
+  background: var(--colour-primary);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--colour-primary-dark);
+}
+
+.act-btn--main:hover:not(:disabled) {
+  background: var(--colour-primary-dark);
+}
+
+.act-btn--main:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.act-btn--secondary {
+  border: 2px solid var(--colour-primary);
+  border-radius: var(--ui-radius);
+  background: #fff;
+  color: var(--colour-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.act-btn--secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.act-btn__icon {
+  margin-right: 6px;
+}
+
+.act-link {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--colour-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.act-btn--main:focus-visible,
+.act-btn--secondary:focus-visible,
+.act-link:focus-visible,
+.act-chip:focus-visible,
+.act-seg__opt:focus-visible,
+.act-stepper button:focus-visible,
+.act-fold__head:focus-visible {
+  outline: 3px solid var(--colour-primary);
+  outline-offset: 2px;
+}
+
+/* A multi-pick toggle. Off: faded and dashed, still tappable. On: solid outline, lilac, a ✓. */
+.act-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--colour-ink-strong);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.act-chip[aria-pressed='true'] {
+  border: 2px solid var(--colour-primary);
+  background: var(--ui-surface-tint);
+  color: var(--colour-primary-dark);
+}
+
+.act-chip:disabled {
+  cursor: default;
+}
+
+.act-chip__tick {
+  font-weight: 800;
+}
+
+/* A pick-one switch: grey track, the chosen option a raised white pill. */
+.act-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.act-seg__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--colour-ink-strong);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.act-seg__opt--on {
+  background: #fff;
+  color: var(--colour-primary-dark);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+
+.act-seg__opt:disabled {
+  cursor: default;
+}
+
+/* A number: − value + in one outlined box. */
+.act-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: #fff;
+  overflow: hidden;
+}
+
+.act-stepper button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: #f3f4f6;
+  color: var(--colour-ink-strong);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.act-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.act-stepper__value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 0 8px;
+  font-weight: 700;
+}
+
+.act-fold {
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: #fafafa;
+}
+
+.act-fold__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: var(--colour-ink-strong);
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.act-fold__title {
+  font-weight: 700;
+}
+
+.act-fold__summary {
+  margin-left: auto;
+  color: var(--colour-ink-muted, #475569);
+  font-size: 0.9rem;
+}
+
+.act-fold__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 12px 12px;
+}
+
+.act-result--good,
+.act-result--bad,
+.act-result--neutral {
+  padding: 8px 12px;
+  border: 2px solid;
+  border-radius: var(--ui-radius);
+  font-weight: 700;
+}
+
+.act-result--good {
+  border-color: var(--colour-success-edge);
+  background: var(--colour-success-bg);
+  color: var(--colour-success-text);
+}
+
+.act-result--bad {
+  border-color: var(--colour-error-edge);
+  background: var(--colour-error-bg);
+  color: var(--colour-error-text);
+}
+
+.act-result--neutral {
+  border-color: var(--ui-border-strong);
+  background: #f3f4f6;
+  color: var(--colour-ink-strong);
+}
+
+.act-tip {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.95rem;
+}
+
+/* Activity tasks get a wider column and a one-line task description ("more" opens the rest);
+   other task types are unchanged. */
+.act-host--task,
+.act-host[data-activity] {
+  max-width: 1180px;
+}
+
+.act-header--clamp {
+  display: flex;
+  align-items: stretch;
+}
+
+.act-header--clamp .act-title {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-width: 40%;
+}
+
+.act-header--clamp .act-header__body {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.act-header--clamp:not(.act-header--open) .act-header__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 1.5em;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.act-header--clamp:not(.act-header--open) .act-header__text > * {
+  display: inline;
+  margin: 0;
+}
+
+.act-header--open {
+  flex-wrap: wrap;
+}
+
+.act-header--open .act-header__body {
+  flex: 1 1 60%;
+}
+
+.act-header__more {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--colour-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .act-row {
   display: flex;
   flex-wrap: wrap;
@@ -4145,48 +4524,52 @@ label.te-backdrop-tag,
   user-select: none;
 }
 
-/* The round's screen: the pad and what to do with it on the left, the guess panels on the right.
-   Narrow screens stack them (the pad first). */
-.act-cls-play {
+/* The pad with Undo and Clear beside it (ActivityLayout stage); the verdict card is the top of
+   the right column. */
+.act-cls-padrow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 12px;
 }
 
-.act-cls-play__main,
-.act-cls-play__side {
+.act-cls-padrow .act-cls-pad {
+  flex: 0 1 auto;
+  width: min(100%, 370px, 52vh);
+  min-width: 220px;
+}
+
+.act-cls-padrow__tools {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0;
 }
 
-@media (min-width: 800px) {
-  .act-cls-play--ready {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 20px;
-  }
+.act-layout__stagetop > .act-cls-section {
+  flex: 1 1 100%;
+}
 
-  .act-cls-play--ready .act-cls-play__main {
-    flex: 0 1 460px;
-  }
+.act-cls-verdict {
+  padding: 10px 14px;
+  border: 2px solid var(--colour-ink-strong);
+  border-radius: var(--ui-radius);
+  background: #fff;
+}
 
-  .act-cls-play--ready .act-cls-play__side {
-    flex: 1 1 240px;
-    max-width: 380px;
-  }
+.act-cls-verdict__title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
 
-  .act-cls-play .act-cls-pad {
-    width: min(100%, 460px, 52vh);
-    min-width: 260px;
-  }
+.act-cls-gridsize {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 
-  .act-cls-play .act-cls-bars,
-  .act-cls-play .act-cls-sure,
-  .act-cls-play .act-cls-grid {
-    width: 100%;
-  }
+.act-cls-choice {
+  min-height: 72px;
 }
 
 /* What did you draw? One big tap per thing; the suggested one is picked out. */
@@ -6516,6 +6899,42 @@ label.te-backdrop-tag,
 }
 
 /* Next Word activity */
+.act-nw-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+.act-nw-stage {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.act-nw-stage .act-nw-sentence {
+  min-height: 5em;
+  font-size: 1.8rem;
+}
+
+.act-nw-actionrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.act-nw-actionrow .act-btn--main {
+  width: auto;
+  flex: 0 0 220px;
+}
+
+.act-nw-actionrow .act-result {
+  flex: 1 1 200px;
+  margin: 0;
+}
+
 .act-nw-section {
   display: flex;
   flex-direction: column;
@@ -8238,7 +8657,83 @@ label.te-backdrop-tag,
 }
 
 .act-rec__grid {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 6px;
+}
+
+.act-rec__grid .act-rec__item {
+  gap: 2px;
+  padding: 4px;
+  border-width: 2px;
+  font-size: 0.8rem;
+}
+
+.act-rec__grid .act-rec__emoji {
+  font-size: 1.4rem;
+}
+
+.act-rec__item--liked {
+  border-color: var(--colour-success-edge);
+  background: var(--colour-success-bg);
+}
+
+.act-rec__item--disliked {
+  border-color: var(--colour-error-edge);
+  background: var(--colour-error-bg);
+}
+
+.act-rec__rate-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.act-rec__rate-head .act-prompt {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.act-rec__rate-head .act-rec__count {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.act-rec__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.act-rec__aims {
+  color: var(--colour-ink-muted, #475569);
+}
+
+.act-rec__feed {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.act-rec__feed-item {
+  min-height: 96px;
+  border-left-width: 6px;
+  border-left-color: var(--colour-success-edge);
+}
+
+.act-rec__feed-item .act-rec__emoji {
+  font-size: 2.6rem;
+}
+
+.act-rec__feed-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  border: 2px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  color: var(--colour-ink-muted, #475569);
 }
 
 .act-rec__item,
@@ -8335,8 +8830,8 @@ label.te-backdrop-tag,
 }
 
 .act-rec__bubble-dot {
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 2px solid var(--ui-border-strong);
 }
@@ -8346,26 +8841,98 @@ label.te-backdrop-tag,
   border-color: var(--colour-primary);
 }
 
-/* Network Playground activity: the dots on a canvas, the network drawn beside it. */
-.act-net {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 16px 24px;
+/* Network Playground activity: the dots (with the score above) left, the network diagram and its
+   steppers right (ActivityLayout). */
+.act-net__field {
+  max-width: 400px;
+  margin: 0 auto;
 }
 
-.act-net__main {
-  flex: 1 1 260px;
-  max-width: 340px;
-  min-width: 0;
-}
-
-.act-net__side {
+.act-net__score {
   display: flex;
-  flex: 1 1 260px;
   flex-direction: column;
-  gap: 10px;
-  min-width: 0;
+  gap: 6px;
+}
+
+.act-net__score-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.act-net__big {
+  padding: 4px 12px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  font-size: 1.6rem;
+}
+
+.act-net__big--pass {
+  border-color: var(--colour-success-edge);
+  background: var(--colour-success-bg);
+  color: var(--colour-success-text);
+}
+
+.act-net__new {
+  color: var(--colour-ink-muted, #475569);
+  font-size: 0.95rem;
+}
+
+.act-net__goalbar {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.act-net__goalbar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--colour-success-edge);
+}
+
+.act-net__goalbar-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: var(--colour-ink-strong);
+}
+
+.act-net__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+}
+
+.act-net__heading {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.act-net__steppers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.act-net__stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-net-diagram__input {
+  cursor: pointer;
+}
+
+.act-net-diagram__input:focus-visible {
+  outline: 3px solid var(--colour-primary);
 }
 
 .act-net__field {

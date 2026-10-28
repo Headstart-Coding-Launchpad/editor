@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import ActivityLayout, { ActSegmented } from '../ui/ActivityLayout.jsx'
 import RoundProgress from '../ui/RoundProgress.jsx'
 import { DONE_MOMENT_MS } from '../ui/useRoundFlow.js'
 import { roundSummaryText } from '../round.js'
@@ -418,314 +419,299 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
   const padOff = ready ? live && (!!feedback || !!pending) : !canDraw
   const finished = ready && live && tries >= core
 
-  return (
-    <div className="act-panel" data-testid="classifier-activity">
-      {/* The things being taught: big emoji, how many drawings each has. */}
-      <section className="act-cls-section" aria-label="Things to teach">
-        {!namesFixed && !ready && (
-          <p>
-            Pick {MIN_CLASSES} to {MAX_STUDENT_CLASSES} things for the pad to tell apart and name
-            them. Start a name with an emoji if you like, like 🐱 cat.
-          </p>
-        )}
-        <div className="act-cls-things">
-          {rows.map((name, i) => {
-            const n = counts[name] ?? 0
-            const nameClean = cleanLabel(name)
-            const locked = n > 0
-            const complete = !!nameClean && n >= min
+  // Things to teach: big emoji, how many drawings each has (the top of the stage).
+  const thingsSection = (
+    <section className="act-cls-section" aria-label="Things to teach">
+      {!namesFixed && !ready && (
+        <p>
+          Pick {MIN_CLASSES} to {MAX_STUDENT_CLASSES} things for the pad to tell apart and name
+          them. Start a name with an emoji if you like, like 🐱 cat.
+        </p>
+      )}
+      <div className="act-cls-things">
+        {rows.map((name, i) => {
+          const n = counts[name] ?? 0
+          const nameClean = cleanLabel(name)
+          const locked = n > 0
+          const complete = !!nameClean && n >= min
+          return (
+            <div
+              className={`act-cls-thing${i === currentIndex && !ready ? ' is-current' : ''}`}
+              key={i}
+              data-testid="classifier-thing"
+            >
+              {nameClean ? <Big label={name} /> : <span className="act-cls-big">?</span>}
+              {nameClean && <span className="act-cls-thing__name">{splitLabel(name).name}</span>}
+              <span className="act-cls-thing__count">
+                {nameClean ? `${Math.min(n, min)} of ${min}${complete ? ' ✓' : ''}` : ''}
+              </span>
+              {!namesFixed && (
+                <>
+                  <input
+                    className="act-cls-name"
+                    type="text"
+                    value={name}
+                    maxLength={MAX_LABEL_LENGTH}
+                    disabled={locked}
+                    aria-label={`Name of thing ${i + 1}`}
+                    onChange={(event) =>
+                      update((prev) => setClassName(prev, i, event.target.value))
+                    }
+                  />
+                  {!locked && rows.length > MIN_CLASSES && (
+                    <button
+                      type="button"
+                      className="btn-ghost-outline act-btn"
+                      aria-label={`Remove thing ${i + 1}`}
+                      onClick={() => update((prev) => removeClass(prev, i))}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {!namesFixed && !ready && rows.length < MAX_STUDENT_CLASSES && (
+        <div>
+          <button
+            type="button"
+            className="btn-ghost-outline act-btn"
+            onClick={() => update((prev) => addClass(prev, MAX_STUDENT_CLASSES))}
+          >
+            Add another thing
+          </button>
+        </div>
+      )}
+      {duplicate && <p className="act-hint">Give each thing a different name.</p>}
+    </section>
+  )
+
+  // Above the stage: the prompt (what to draw), then the round's dots.
+  const progress = (
+    <>
+      {!ready && (
+        <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+          {canDraw
+            ? `Draw ${min - have} ${shortLabel(currentLabel)}`
+            : duplicate
+              ? 'Give each thing a different name'
+              : `Name ${MIN_CLASSES} things to start`}
+        </p>
+      )}
+      {ready && live && !feedback && !pending && target && (
+        <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+          Draw a {shortLabel(target)} — will it get it?
+        </p>
+      )}
+      {ready && live && pending && (
+        <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
+          What did you draw?
+        </p>
+      )}
+      {ready && !live && (
+        <p className="act-cls-prompt" data-testid="classifier-prompt">
+          It is ready. Draw anything and watch it guess.
+        </p>
+      )}
+      {ready && live && <RoundProgress done={tries} total={Math.max(core, tries)} core={core} />}
+      {finished && (
+        <p className="act-result act-result--pass" role="status" data-testid="round-bonus">
+          Round done! It got {rights} of {tries} right. Keep going for bonus tries.
+        </p>
+      )}
+    </>
+  )
+
+  // The pad with Undo and Clear beside it.
+  const stage = (
+    <div className="act-cls-padrow">
+      <DrawPad strokes={strokes} onStrokes={setStrokes} disabled={padOff} label={padLabel} />
+      {!feedback && !pending && (
+        <div className="act-cls-padrow__tools">
+          <button
+            type="button"
+            className="act-btn act-btn--secondary"
+            disabled={strokes.length === 0}
+            onClick={() => setStrokes(strokes.slice(0, -1))}
+          >
+            Undo last line
+          </button>
+          <button
+            type="button"
+            className="act-btn act-btn--secondary"
+            disabled={strokes.length === 0}
+            onClick={() => setStrokes([])}
+          >
+            Clear the pad
+          </button>
+        </div>
+      )}
+    </div>
+  )
+
+  // Under the pad: the one main button, or (after Done) what did you draw, or (after naming it)
+  // the tick or the miss with its buttons.
+  let action = null
+  if (pending) {
+    action = (
+      <div
+        className="act-cls-ask"
+        data-testid="classifier-ask"
+        role="group"
+        aria-label="What did you draw?"
+      >
+        <div className="act-cls-ask__choices">
+          {(single ? [...labels, NOT_THING] : labels).map((label) => {
+            const name = label === NOT_THING ? sayOf(label, state) : splitLabel(label).name || label
+            const suggested = label === pending.suggested
             return (
-              <div
-                className={`act-cls-thing${i === currentIndex && !ready ? ' is-current' : ''}`}
-                key={i}
-                data-testid="classifier-thing"
+              <button
+                type="button"
+                key={label}
+                className={`act-cls-choice${suggested ? ' is-suggested' : ''}`}
+                aria-label={`I drew ${name}`}
+                data-suggested={suggested ? 'true' : undefined}
+                autoFocus={suggested}
+                onClick={() => handleChoose(label)}
               >
-                {nameClean ? <Big label={name} /> : <span className="act-cls-big">?</span>}
-                {nameClean && <span className="act-cls-thing__name">{splitLabel(name).name}</span>}
-                <span className="act-cls-thing__count">
-                  {nameClean ? `${Math.min(n, min)} of ${min}${complete ? ' ✓' : ''}` : ''}
-                </span>
-                {!namesFixed && (
-                  <>
-                    <input
-                      className="act-cls-name"
-                      type="text"
-                      value={name}
-                      maxLength={MAX_LABEL_LENGTH}
-                      disabled={locked}
-                      aria-label={`Name of thing ${i + 1}`}
-                      onChange={(event) =>
-                        update((prev) => setClassName(prev, i, event.target.value))
-                      }
-                    />
-                    {!locked && rows.length > MIN_CLASSES && (
-                      <button
-                        type="button"
-                        className="btn-ghost-outline act-btn"
-                        aria-label={`Remove thing ${i + 1}`}
-                        onClick={() => update((prev) => removeClass(prev, i))}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+                <Big label={label} />
+                <span>{name}</span>
+              </button>
             )
           })}
         </div>
-        {!namesFixed && !ready && rows.length < MAX_STUDENT_CLASSES && (
-          <div>
-            <button
-              type="button"
-              className="btn-ghost-outline act-btn"
-              onClick={() => update((prev) => addClass(prev, MAX_STUDENT_CLASSES))}
-            >
-              Add another thing
-            </button>
-          </div>
+        <button type="button" className="act-link" onClick={() => setPending(null)}>
+          Back to the pad
+        </button>
+      </div>
+    )
+  } else if (feedback) {
+    action = (
+      <div
+        className={`act-cls-feedback act-cls-feedback--${feedback.right ? 'right' : 'miss'}`}
+        role="status"
+        data-testid="classifier-feedback"
+      >
+        {feedback.right ? (
+          <p className="act-prompt">✓ It got it! It said {sayOf(feedback.predicted, state)}</p>
+        ) : (
+          <p className="act-prompt">
+            ✗ It got that one wrong. It said {sayOf(feedback.predicted, state)}, you drew{' '}
+            {sayOf(feedback.drawn, state)}
+          </p>
         )}
-        {duplicate && <p className="act-hint">Give each thing a different name.</p>}
-      </section>
-
-      <div className={`act-cls-play${ready ? ' act-cls-play--ready' : ''}`}>
-        <div className="act-cls-play__main">
-          {/* The prompt: what to draw. */}
-          {!ready && (
-            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
-              {canDraw
-                ? `Draw ${min - have} ${shortLabel(currentLabel)}`
-                : duplicate
-                  ? 'Give each thing a different name'
-                  : `Name ${MIN_CLASSES} things to start`}
-            </p>
-          )}
-          {ready && live && !feedback && !pending && target && (
-            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
-              Draw a {shortLabel(target)} — will it get it?
-            </p>
-          )}
-          {ready && live && pending && (
-            <p className="act-cls-prompt" data-testid="classifier-prompt" aria-live="polite">
-              What did you draw?
-            </p>
-          )}
-          {ready && !live && (
-            <p className="act-cls-prompt" data-testid="classifier-prompt">
-              It is ready. Draw anything and watch it guess.
-            </p>
-          )}
-
-          {ready && live && (
-            <RoundProgress done={tries} total={Math.max(core, tries)} core={core} />
-          )}
-          {finished && (
-            <p className="act-result act-result--pass" role="status" data-testid="round-bonus">
-              Round done! It got {rights} of {tries} right. Keep going for bonus tries.
-            </p>
-          )}
-
-          <DrawPad strokes={strokes} onStrokes={setStrokes} disabled={padOff} label={padLabel} />
-
-          {/* After Done: say what you drew (the suggested thing is picked out). */}
-          {pending && (
-            <div
-              className="act-cls-ask"
-              data-testid="classifier-ask"
-              role="group"
-              aria-label="What did you draw?"
-            >
-              <div className="act-cls-ask__choices">
-                {(single ? [...labels, NOT_THING] : labels).map((label) => {
-                  const name =
-                    label === NOT_THING ? sayOf(label, state) : splitLabel(label).name || label
-                  const suggested = label === pending.suggested
-                  return (
-                    <button
-                      type="button"
-                      key={label}
-                      className={`act-cls-choice${suggested ? ' is-suggested' : ''}`}
-                      aria-label={`I drew ${name}`}
-                      data-suggested={suggested ? 'true' : undefined}
-                      autoFocus={suggested}
-                      onClick={() => handleChoose(label)}
-                    >
-                      <Big label={label} />
-                      <span>{name}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <button
-                type="button"
-                className="btn-ghost-outline act-btn"
-                onClick={() => setPending(null)}
-              >
-                Back to the pad
-              </button>
-            </div>
-          )}
-
-          {/* Buttons. */}
-          {!feedback && !pending && (
-            <div className="act-row">
-              {!ready && (
-                <button
-                  type="button"
-                  className="btn-primary act-btn"
-                  disabled={!canDraw || strokes.length === 0}
-                  onClick={handleAdd}
-                >
-                  {canDraw ? `Add this drawing to ${shortLabel(currentLabel)}` : 'Add this drawing'}
-                </button>
-              )}
-              {ready && live && (
-                <button
-                  type="button"
-                  className="btn-primary act-btn"
-                  disabled={strokes.length === 0}
-                  onClick={handleDone}
-                >
-                  Done
-                </button>
-              )}
-              {ready && !live && (
-                <button
-                  type="button"
-                  className="btn-primary act-btn"
-                  disabled={!canTest(task, state)}
-                  onClick={() => update((prev) => runTest(task, prev))}
-                >
-                  Test it
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn-ghost-outline act-btn"
-                disabled={strokes.length === 0}
-                onClick={() => setStrokes(strokes.slice(0, -1))}
-              >
-                Undo last line
-              </button>
-              <button
-                type="button"
-                className="btn-ghost-outline act-btn"
-                disabled={strokes.length === 0}
-                onClick={() => setStrokes([])}
-              >
-                Clear the pad
-              </button>
-            </div>
-          )}
-
-          {/* After naming it: a tick, or the pad got it wrong. */}
-          {feedback && (
-            <div
-              className={`act-cls-feedback act-cls-feedback--${feedback.right ? 'right' : 'miss'}`}
-              role="status"
-              data-testid="classifier-feedback"
-            >
-              {feedback.right ? (
-                <p className="act-prompt">
-                  ✓ It got it! It said {sayOf(feedback.predicted, state)}
-                </p>
-              ) : (
-                <p className="act-prompt">
-                  ✗ It got that one wrong. It said {sayOf(feedback.predicted, state)}, you drew{' '}
-                  {sayOf(feedback.drawn, state)}
-                </p>
-              )}
-              {!feedback.right && panels.includes('fool') && (
-                <div className="act-row">
-                  {feedback.drawn === NOT_THING ? null : feedback.taught ? (
-                    <span>✓ Taught! It will remember this one.</span>
-                  ) : (
-                    <button type="button" className="btn-primary act-btn" onClick={handleTeach}>
-                      Teach it this one
-                    </button>
-                  )}
-                  <button type="button" className="btn-ghost-outline act-btn" onClick={handleNext}>
-                    Try another
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* The guess, live: one bar per thing, and the optional parts. */}
-        {ready && (
-          <div className="act-cls-play__side">
-            {single || guess?.label === UNSURE ? (
-              <p className="act-cls-answer" data-testid="classifier-answer" role="status">
-                {guess?.label ? (
-                  <>
-                    <Big label={guess.label} /> It says: {sayOf(guess.label, state)}
-                  </>
-                ) : (
-                  'Draw something to see its answer.'
-                )}
-              </p>
+        {!feedback.right && panels.includes('fool') && (
+          <div className="act-layout__action">
+            {feedback.drawn === NOT_THING ? null : feedback.taught ? (
+              <span>✓ Taught! It will remember this one.</span>
             ) : (
-              <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />
+              <button type="button" className="act-btn act-btn--main" onClick={handleTeach}>
+                Teach it this one
+              </button>
             )}
-            {panels.includes('close') && (
-              <div className="act-cls-close" data-testid="classifier-close">
-                <span>How close is it?</span>
-                <Bar
-                  value={guess?.ratio == null ? 0 : Math.max(0, 1 - guess.ratio / 2)}
-                  label="How close is it to what you taught"
-                />
-                <span className="act-cls-bars__pct">
-                  {guess?.ratio == null ? '' : guess.ratio <= 1 ? 'close enough' : 'too far'}
-                </span>
-              </div>
-            )}
-            {panels.includes('gridsize') && (
-              <div
-                className="act-row"
-                role="group"
-                aria-label="Grid size it looks at"
-                data-testid="classifier-gridsize"
-              >
-                <span>Grid size</span>
-                {GRID_SIZES.map((size) => (
-                  <button
-                    type="button"
-                    key={size}
-                    className={`${size === gridSize ? 'btn-primary' : 'btn-ghost-outline'} act-btn`}
-                    aria-pressed={size === gridSize}
-                    aria-label={`${size} by ${size}`}
-                    onClick={() => update((prev) => setGridSize(prev, size))}
-                  >
-                    {size} x {size}
-                  </button>
-                ))}
-              </div>
-            )}
-            {panels.includes('sure') && !single && (
-              <div className="act-cls-sure" data-testid="classifier-sure">
-                <span>How sure is it?</span>
-                <Bar value={topScore} label="How sure is it" />
-                <span className="act-cls-bars__pct">
-                  {guess?.label ? Math.round(topScore * 100) : 0}%
-                </span>
-              </div>
-            )}
-            {panels.includes('grid') && grid && (
-              <div className="act-cls-grid" data-testid="classifier-grid">
-                <span>What it sees</span>
-                <div className="act-cls-grid__pic">
-                  <GridThumb
-                    grid={blockGrid(grid, gridSize)}
-                    title="What the model sees: your drawing as a small grid"
-                  />
-                </div>
-              </div>
-            )}
+            <div className="act-layout__action-row">
+              <button type="button" className="act-btn act-btn--secondary" onClick={handleNext}>
+                Try another
+              </button>
+            </div>
           </div>
         )}
       </div>
+    )
+  } else if (!ready) {
+    action = {
+      main: {
+        label: canDraw ? `Add this drawing to ${shortLabel(currentLabel)}` : 'Add this drawing',
+        disabled: !canDraw || strokes.length === 0,
+        onClick: handleAdd,
+      },
+    }
+  } else if (live) {
+    action = { main: { label: 'Done', disabled: strokes.length === 0, onClick: handleDone } }
+  } else {
+    action = {
+      main: {
+        label: 'Test it',
+        disabled: !canTest(task, state),
+        onClick: () => update((prev) => runTest(task, prev)),
+      },
+    }
+  }
+
+  // The verdict: ONE card at the top of the right column. Not for the teach phase (no pad yet).
+  const verdict = ready ? (
+    <div className="act-cls-verdict">
+      <h3 className="act-cls-verdict__title">It says</h3>
+      {single || guess?.label === UNSURE ? (
+        <p className="act-cls-answer" data-testid="classifier-answer">
+          {guess?.label ? (
+            <>
+              <Big label={guess.label} /> It says: {sayOf(guess.label, state)}
+            </>
+          ) : (
+            'Draw something to see its answer.'
+          )}
+        </p>
+      ) : (
+        <GuessBars labels={labels} scores={guess?.scores} top={guess?.label} />
+      )}
+    </div>
+  ) : null
+
+  // Lesson panels (only when the lesson turns them on) and the results.
+  const controls = (
+    <>
+      {ready && panels.includes('close') && (
+        <div className="act-cls-close" data-testid="classifier-close">
+          <span>How close is it?</span>
+          <Bar
+            value={guess?.ratio == null ? 0 : Math.max(0, 1 - guess.ratio / 2)}
+            label="How close is it to what you taught"
+          />
+          <span className="act-cls-bars__pct">
+            {guess?.ratio == null ? '' : guess.ratio <= 1 ? 'close enough' : 'too far'}
+          </span>
+        </div>
+      )}
+      {ready && panels.includes('gridsize') && (
+        <div className="act-cls-gridsize">
+          <span>Grid it looks at</span>
+          <ActSegmented
+            label="Grid size it looks at"
+            testId="classifier-gridsize"
+            value={gridSize}
+            onChange={(size) => update((prev) => setGridSize(prev, size))}
+            options={GRID_SIZES.map((size) => ({
+              value: size,
+              label: `${size}×${size}`,
+              ariaLabel: `${size} by ${size}`,
+            }))}
+          />
+        </div>
+      )}
+      {ready && panels.includes('sure') && !single && (
+        <div className="act-cls-sure" data-testid="classifier-sure">
+          <span>How sure is it?</span>
+          <Bar value={topScore} label="How sure is it" />
+          <span className="act-cls-bars__pct">
+            {guess?.label ? Math.round(topScore * 100) : 0}%
+          </span>
+        </div>
+      )}
+      {ready && panels.includes('grid') && grid && (
+        <div className="act-cls-grid" data-testid="classifier-grid">
+          <span>What it sees</span>
+          <div className="act-cls-grid__pic">
+            <GridThumb
+              grid={blockGrid(grid, gridSize)}
+              title="What the model sees: your drawing as a small grid"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Teaching: this thing's drawings, tap one to remove it. */}
       {!ready && canDraw && (list.length > 0 || givenList.length > 0) && (
@@ -765,7 +751,7 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
         <div className="act-cls-section" data-testid="classifier-selftest-box">
           <button
             type="button"
-            className="btn-ghost-outline act-btn"
+            className="act-btn act-btn--secondary"
             onClick={() => update((prev) => runSelfTest(task, prev))}
           >
             Test on what it learned
@@ -802,6 +788,22 @@ export function ClassifierStudentView({ task, state: stateProp, onChange, readOn
       )}
 
       {graded.passed && !live && <ActivityCorrect>Your model reached the target</ActivityCorrect>}
+    </>
+  )
+
+  return (
+    <div className="act-panel" data-testid="classifier-activity">
+      <ActivityLayout
+        className="act-layout--classifier"
+        progress={progress}
+        stageTop={thingsSection}
+        stage={stage}
+        action={action}
+        actionUnderStage
+        result={verdict}
+        resultPlacement="side"
+        controls={controls}
+      />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import ActivityCorrect from '../ui/ActivityCorrect.jsx'
+import { SpinTick } from '../ui/ActivityCorrect.jsx'
+import ActivityLayout, { ActStepper } from '../ui/ActivityLayout.jsx'
 import NetworkPlaygroundBuilderEditor from './NetworkPlaygroundBuilderEditor.jsx'
 import {
   accuracy,
@@ -83,23 +84,28 @@ function drawField(canvas, net, dots) {
 }
 
 // Neurons as circles, weights as lines: orange for a positive weight, blue for a negative one,
-// thicker for a bigger one.
-function NetworkDiagram({ net, sizes, inputs }) {
+// thicker for a bigger one. With `slots` (the lesson's allowed inputs) the input column also
+// shows the switched-off inputs as dashed, faded circles; `onToggle` makes every input circle a
+// tap target (a switch), so the diagram is also the control surface for the inputs.
+function NetworkDiagram({ net, sizes, inputs, slots = [], onToggle = null }) {
   const width = 300
-  const height = 170
+  const slotIds = slots.length ? slots : inputs
+  const height = slotIds.length > 3 ? 210 : 170
   const cols = sizes.length
-  const pos = sizes.map((count, c) =>
-    Array.from({ length: count }, (_, i) => ({
+  const pos = sizes.map((count, c) => {
+    const n = c === 0 ? slotIds.length : count
+    return Array.from({ length: n }, (_, i) => ({
       x: 28 + (c * (width - 56)) / (cols - 1),
-      y: ((i + 1) * height) / (count + 1),
+      y: ((i + 1) * height) / (n + 1),
     }))
-  )
+  })
+  const inputPos = (i) => pos[0][Math.max(0, slotIds.indexOf(inputs[i]))]
   const lines = []
   if (net) {
     net.W.forEach((layer, l) =>
       layer.forEach((row, j) =>
         row.forEach((w, i) => {
-          const from = pos[l][i]
+          const from = l === 0 ? inputPos(i) : pos[l][i]
           const to = pos[l + 1][j]
           lines.push(
             <line
@@ -117,6 +123,7 @@ function NetworkDiagram({ net, sizes, inputs }) {
       )
     )
   }
+  const toggleable = !!onToggle && slots.length > 0
   return (
     <svg
       className="act-net-diagram"
@@ -130,24 +137,71 @@ function NetworkDiagram({ net, sizes, inputs }) {
       data-testid="network-diagram"
     >
       {lines}
-      {pos.map((col, c) =>
-        col.map((p, i) => (
-          <circle
-            key={`${c}-${i}`}
-            cx={p.x}
-            cy={p.y}
-            r={9}
-            fill={c === 0 ? '#e2e8f0' : c === cols - 1 ? '#fde68a' : '#fff'}
-            stroke="#475569"
-            strokeWidth={1.5}
-          />
-        ))
-      )}
-      {pos[0].map((p, i) => (
-        <text key={inputs[i]} x={p.x - 4} y={p.y + 4} fontSize="9" fill="#334155">
-          {inputLabel(inputs[i])}
-        </text>
-      ))}
+      {pos
+        .slice(1)
+        .map((col, c) =>
+          col.map((p, i) => (
+            <circle
+              key={`${c + 1}-${i}`}
+              cx={p.x}
+              cy={p.y}
+              r={9}
+              fill={c + 1 === cols - 1 ? '#fde68a' : '#fff'}
+              stroke="#475569"
+              strokeWidth={1.5}
+            />
+          ))
+        )}
+      <g data-act-control={toggleable ? 'group' : undefined}>
+        {pos[0].map((p, k) => {
+          const id = slotIds[k]
+          const active = inputs.includes(id)
+          const circle = (
+            <>
+              {toggleable && <circle cx={p.x} cy={p.y} r={22} fill="transparent" />}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={toggleable ? 13 : 9}
+                fill={active ? '#e2e8f0' : '#fff'}
+                stroke={active ? '#6222cc' : '#94a3b8'}
+                strokeWidth={active ? 2.5 : 1.5}
+                strokeDasharray={active ? undefined : '3 3'}
+                opacity={active ? 1 : 0.7}
+              />
+              <text
+                x={p.x}
+                y={p.y + 4}
+                fontSize={toggleable ? '11' : '9'}
+                textAnchor="middle"
+                fill="#334155"
+              >
+                {inputLabel(id)}
+              </text>
+            </>
+          )
+          if (!toggleable) return <g key={id}>{circle}</g>
+          return (
+            <g
+              key={id}
+              role="switch"
+              aria-checked={active}
+              aria-label={`Input ${inputLabel(id)}`}
+              tabIndex={0}
+              className="act-net-diagram__input"
+              onClick={() => onToggle(id)}
+              onKeyDown={(event) => {
+                if (event.key === ' ' || event.key === 'Enter') {
+                  event.preventDefault()
+                  onToggle(id)
+                }
+              }}
+            >
+              {circle}
+            </g>
+          )
+        })}
+      </g>
     </svg>
   )
 }
@@ -380,149 +434,152 @@ export function NetworkPlaygroundStudentView({ task, state, onChange, readOnly =
   const fresh = readOnly ? shown.test : live.test
   const passed = acc >= target
   const sizes = [viewInputs.length, ...viewLayers, 1]
-  const canAdd = allowAddLayerOf(task) && viewLayers.length < MAX_HIDDEN_LAYERS
+
+  const startingLayers = Array.isArray(task?.layers) ? task.layers.length : 1
+  const layerMin = zeroOk ? 0 : 1
+  const layerMax = allowAddLayerOf(task)
+    ? MAX_HIDDEN_LAYERS
+    : Math.max(viewLayers.length, startingLayers)
+  const showLayers = allowAddLayerOf(task) || zeroOk
+  const hasTest = testDotsOf(task)
+  const offerNewDots = hasTest && passed && !running
+  const freshScored = fresh != null
+
+  let action = null
+  if (!readOnly) {
+    const trainButton = {
+      label: running ? 'Pause' : epochs > 0 ? 'Train more' : 'Train',
+      icon: running ? '⏸' : '▶',
+      onClick: () => (running ? stop('Paused.') : train()),
+    }
+    const newDots = { label: 'Try new dots', icon: '🎯', onClick: tryNewDots }
+    action = {
+      main: offerNewDots && !freshScored ? newDots : trainButton,
+      secondary: offerNewDots ? (freshScored ? newDots : trainButton) : undefined,
+      link: { label: 'Start again', icon: '↺', onClick: () => rebuild(layers) },
+    }
+  }
+
+  const goalPct = Math.round(target * 100)
+  const shownPct = epochs > 0 ? percent(acc) : 0
+  const result = (
+    <div className="act-net__score" data-testid="network-stats">
+      <div className="act-net__score-main">
+        <strong className={`act-net__big${passed && epochs > 0 ? ' act-net__big--pass' : ''}`}>
+          {epochs > 0 ? `${shownPct}% right` : 'Not trained yet'}
+          {passed && epochs > 0 ? (
+            <>
+              {' '}
+              <SpinTick />
+            </>
+          ) : null}
+        </strong>
+        {hasTest && fresh != null && (
+          <span className="act-net__new" data-testid="network-new-dots">
+            On new dots: <strong>{percent(fresh)}%</strong>
+          </span>
+        )}
+        {readOnly && state?.training && <span className="act-net__new">training now</span>}
+      </div>
+      <div
+        className="act-net__goalbar"
+        role="meter"
+        aria-label="Score"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={shownPct}
+        aria-valuetext={`${shownPct}% right, goal ${goalPct}%`}
+      >
+        <span className="act-net__goalbar-fill" style={{ width: `${shownPct}%` }} />
+        <span className="act-net__goalbar-mark" style={{ left: `${goalPct}%` }} />
+      </div>
+    </div>
+  )
+
+  const tip = readOnly
+    ? null
+    : note || (epochs === 0 ? 'Press Train and watch the colours change.' : null)
+
+  const controls = (
+    <section className="act-net__card">
+      <h3 className="act-net__heading">Your network</h3>
+      <NetworkDiagram
+        net={viewNet}
+        sizes={sizes}
+        inputs={viewInputs}
+        slots={allowedInputs}
+        onToggle={readOnly || running ? null : toggleInput}
+      />
+      {allowedInputs.length > 0 && !readOnly && (
+        <p className="act-net__legend">Dashed circles are inputs it could use. Tap to switch on.</p>
+      )}
+      {!readOnly && (
+        <div className="act-net__steppers">
+          {showLayers && (
+            <div className="act-net__stepper">
+              <span>Layers</span>
+              <ActStepper
+                name="Layers"
+                value={layers.length}
+                min={layerMin}
+                max={layerMax}
+                disabled={running}
+                lessLabel="Fewer layers"
+                moreLabel="More layers"
+                onChange={(next) =>
+                  next > layers.length
+                    ? rebuild([...layers, Math.min(3, maxNeurons)])
+                    : rebuild(layers.slice(0, next))
+                }
+              />
+            </div>
+          )}
+          {layers.map((count, index) => (
+            <div className="act-net__stepper" key={index}>
+              <span>{layers.length > 1 ? `Neurons (layer ${index + 1})` : 'Neurons'}</span>
+              <ActStepper
+                name={`Neurons in layer ${index + 1}`}
+                value={count}
+                min={1}
+                max={maxNeurons}
+                disabled={running}
+                lessLabel={`Fewer neurons in layer ${index + 1}`}
+                moreLabel={`More neurons in layer ${index + 1}`}
+                onChange={(next) => changeNeurons(index, next - count)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 
   return (
     <div className="act-panel act-net" data-testid="network_playground-activity">
-      <div className="act-net__main">
-        <canvas
-          ref={canvasRef}
-          className="act-net__field"
-          width={SIZE}
-          height={SIZE}
-          role="img"
-          aria-label={`Orange and blue dots with the network's guess behind them. ${epochs > 0 ? `${percent(acc)} percent right.` : 'Not trained yet.'}`}
-          data-testid="network-field"
-        />
-        <p className="act-net__legend">
-          <span style={{ color: ORANGE }}>●</span> orange <span style={{ color: BLUE }}>●</span>{' '}
-          blue: the colour behind each dot is the network&apos;s guess
-        </p>
-      </div>
-
-      <div className="act-net__side">
-        <p className="act-net__stats" data-testid="network-stats">
-          <strong>{epochs > 0 ? `${percent(acc)}% right` : 'Not trained yet'}</strong> (aim for{' '}
-          {percent(target)}%) · {viewLayers.length} hidden layer{viewLayers.length === 1 ? '' : 's'}
-          {epochs > 0 && ` · ${epochs} rounds`}
-          {testDotsOf(task) && fresh != null && (
-            <>
-              {' '}
-              · <span data-testid="network-new-dots">New dots: {percent(fresh)}% right</span>
-            </>
-          )}
-          {readOnly && state?.training && ' · training now'}
-        </p>
-
-        <NetworkDiagram net={viewNet} sizes={sizes} inputs={viewInputs} />
-
-        {!readOnly && (
+      <ActivityLayout
+        result={result}
+        resultPlacement="top"
+        stage={
           <>
-            <div className="act-row">
-              <button
-                type="button"
-                className="btn-primary act-btn"
-                onClick={() => (running ? stop('Paused.') : train())}
-              >
-                {running ? '⏸ Pause' : epochs > 0 ? '▶ Train more' : '▶ Train'}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary act-btn"
-                onClick={() => rebuild(layers)}
-              >
-                🔄 Start again
-              </button>
-            </div>
-
-            {allowedInputs.length > 0 && (
-              <div className="act-row" role="group" aria-label="Inputs">
-                <span className="act-net__layer-name">Inputs</span>
-                {allowedInputs.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className="btn-secondary act-btn"
-                    aria-pressed={inputs.includes(id)}
-                    aria-label={`Input ${inputLabel(id)}`}
-                    onClick={() => toggleInput(id)}
-                  >
-                    {inputs.includes(id) ? '✓ ' : ''}
-                    {inputLabel(id)}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {testDotsOf(task) && (
-              <div className="act-row">
-                <button
-                  type="button"
-                  className="btn-secondary act-btn"
-                  disabled={running || epochs === 0}
-                  onClick={tryNewDots}
-                >
-                  🎯 Try new dots
-                </button>
-              </div>
-            )}
-
-            <div className="act-net__layers" role="group" aria-label="Layers">
-              {layers.map((count, index) => (
-                <div className="act-row" key={index}>
-                  <span className="act-net__layer-name">Layer {index + 1}</span>
-                  <button
-                    type="button"
-                    className="btn-secondary act-btn"
-                    aria-label={`Fewer neurons in layer ${index + 1}`}
-                    disabled={count <= 1}
-                    onClick={() => changeNeurons(index, -1)}
-                  >
-                    −
-                  </button>
-                  <span className="act-net__count" aria-live="polite">
-                    {count} neuron{count === 1 ? '' : 's'}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn-secondary act-btn"
-                    aria-label={`More neurons in layer ${index + 1}`}
-                    disabled={count >= maxNeurons}
-                    onClick={() => changeNeurons(index, 1)}
-                  >
-                    +
-                  </button>
-                </div>
-              ))}
-              <div className="act-row">
-                {canAdd && (
-                  <button
-                    type="button"
-                    className="btn-secondary act-btn"
-                    onClick={() => rebuild([...layers, Math.min(3, maxNeurons)])}
-                  >
-                    ➕ Add a layer
-                  </button>
-                )}
-                {(allowAddLayerOf(task) || zeroOk) && layers.length > (zeroOk ? 0 : 1) && (
-                  <button
-                    type="button"
-                    className="btn-secondary act-btn"
-                    onClick={() => rebuild(layers.slice(0, -1))}
-                  >
-                    ➖ Remove a layer
-                  </button>
-                )}
-              </div>
-            </div>
-            <p className="act-hint" role="status" hidden={!note}>
-              {note}
+            <canvas
+              ref={canvasRef}
+              className="act-net__field"
+              width={SIZE}
+              height={SIZE}
+              role="img"
+              aria-label={`Orange and blue dots with the network's guess behind them. ${epochs > 0 ? `${percent(acc)} percent right.` : 'Not trained yet.'}`}
+              data-testid="network-field"
+            />
+            <p className="act-net__legend">
+              <span style={{ color: ORANGE }}>●</span> orange <span style={{ color: BLUE }}>●</span>{' '}
+              blue: the colour behind each dot is the network&apos;s guess
             </p>
           </>
-        )}
-
-        {passed && <ActivityCorrect>Your network reached {percent(target)}%</ActivityCorrect>}
-      </div>
+        }
+        action={action}
+        tip={tip}
+        controls={controls}
+      />
     </div>
   )
 }

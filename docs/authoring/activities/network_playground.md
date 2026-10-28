@@ -101,6 +101,18 @@ passes. A good setup for the lesson is `dataset: circle`, `layers: [1]`,
   class summary adds how many reached the target and the average layers used.
 - Go Live on an activity task is teacher-only: a student's network is never broadcast.
 
+## The screen
+
+Built on `ActivityLayout`. The dots are on the left with the score above them: a big "92% right ✓" with
+a goal mark on a bar, and (with `testDots`, after Try new dots) "On new dots: 88%" beside it. On the
+right, "Your network" is the diagram: with `allowInputs` the other inputs (x², y²...) are dashed,
+faded circles on the diagram that you tap to switch on (they replace the old input buttons). Under it
+are a Layers stepper (hidden with `allowAddLayer: false` unless `allowZeroLayers`) and a Neurons
+stepper per layer. Train (Pause, Train more) is the one filled button, Start again is a link, and
+Try new dots becomes the main button once it passes (`testDots`). The tip line says what to do
+("Press Train and watch the colours change", "It got stuck..."). Default screen: Train, Start again,
+Layers, Neurons (4 controls); 5 with `allowInputs`.
+
 ## Devices
 
 Ordinary Chromebooks and laptops with a mouse or trackpad; works by touch too (buttons only). No

@@ -63,6 +63,16 @@ tasks:
 | `label` | Yes | The name shown under it. |
 | `group` | Yes | The kind of thing it is (`sport`, `animals`, `music`). The bubble meter counts these. |
 
+## The screen
+
+Built on `ActivityLayout`. The picture is on the left: "Your feed" as a 2 by 2 grid (slots with
+nothing left stay drawn as dashed "(empty)" boxes, so a shrinking feed is visible), then the kinds
+meter (`bubble`) and the Why? line. With `goals`, a "Feed aims for" switch (one segmented control, not
+three buttons) sits above the feed. On the right is the "Do you like these?" rating grid with the
+"Rated 4 of 6" count in its header, and one tip line when nothing is rated yet. The default screen has
+2 controls (the rating grid and Why? on the feed cards), 3 with goals. Narrow panels show the feed
+first, then the grid.
+
 ## How it works
 
 - **The made-up class.** About 8 silly-named raters (Robo Rita, Sporty Sam, ...) are generated from

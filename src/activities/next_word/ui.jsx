@@ -2,6 +2,7 @@
 import NextWordBuilderEditor from './NextWordBuilderEditor.jsx'
 import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import { BonusBanner } from '../ui/RoundProgress.jsx'
+import ActivityLayout, { ActButton, ActChip, ActFold, ActSegmented } from '../ui/ActivityLayout.jsx'
 import { roundText } from '../round.js'
 import { prefersReducedMotion } from '../../shared/motion.js'
 import {
@@ -54,7 +55,6 @@ const MAX_BARS = 8
 const SPIN_STEP_MS = 110
 const HOLD_MS = 600
 const PLAIN_SIZE = '1.3rem'
-const LOOK_BACK_BUTTON = { minWidth: 44, minHeight: 44 }
 
 const chipText = (word) => (isEndMark(word) ? `${word} (the end)` : word)
 
@@ -123,50 +123,24 @@ function StatsPanel({ model, sentence, lookBack = 1, previous = false }) {
   )
 }
 
-// The look-back control: − and + buttons and one button per choice (1 to maxLookBack), all at
-// least 44px. `value` is the number of words the model looks back.
+// The look-back control: one segmented switch, 1 / 2 / 3 words. `value` is the number of words
+// the model looks back.
 function LookBackPanel({ value, max, disabled, onPick }) {
-  const choices = Array.from({ length: max }, (_, i) => i + 1)
   const label = value === 1 ? '1 word' : `${value} words`
   return (
-    <section className="act-nw-section" aria-label="Look back" data-testid="next_word-lookback">
+    <section className="act-nw-card" aria-label="Look back" data-testid="next_word-lookback">
       <h3 className="act-nw-heading">How many words back should it look?</h3>
-      <div className="act-nw-lookback" role="group" aria-label="Words to look back">
-        <button
-          type="button"
-          className="btn-ghost-outline act-btn act-nw-lookback__step"
-          style={LOOK_BACK_BUTTON}
-          disabled={disabled || value <= 1}
-          aria-label="Look back one word less"
-          onClick={() => onPick(value - 1)}
-        >
-          −
-        </button>
-        {choices.map((n) => (
-          <button
-            key={n}
-            type="button"
-            className="btn-ghost-outline act-btn act-nw-lookback__choice"
-            style={LOOK_BACK_BUTTON}
-            aria-pressed={n === value}
-            disabled={disabled}
-            aria-label={n === 1 ? 'Look back 1 word' : `Look back ${n} words`}
-            onClick={() => onPick(n)}
-          >
-            {n}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="btn-ghost-outline act-btn act-nw-lookback__step"
-          style={LOOK_BACK_BUTTON}
-          disabled={disabled || value >= max}
-          aria-label="Look back one word more"
-          onClick={() => onPick(value + 1)}
-        >
-          +
-        </button>
-      </div>
+      <ActSegmented
+        label="Words to look back"
+        value={value}
+        disabled={disabled}
+        onChange={onPick}
+        options={Array.from({ length: max }, (_, i) => i + 1).map((n) => ({
+          value: n,
+          label: n === 1 ? '1 word' : `${n} words`,
+          ariaLabel: n === 1 ? 'Look back 1 word' : `Look back ${n} words`,
+        }))}
+      />
       <p data-testid="next_word-lookback-label">It looks back {label}.</p>
     </section>
   )
@@ -245,6 +219,8 @@ export function NextWordStudentView({
   // step's chips (with the odds, the landed chip highlighted) on screen for HOLD_MS.
   const [spinIndex, setSpinIndex] = useState(null)
   const [hold, setHold] = useState(null)
+  // The student's own open/closed choice for the My writing fold (null: it follows the default).
+  const [ownPref, setOwnPref] = useState(null)
   const timersRef = useRef([])
   const spinning = spinIndex != null
   useEffect(
@@ -351,24 +327,219 @@ export function NextWordStudentView({
       : ''
     : state.sentence
 
-  return (
-    <div className="act-panel act-nw" data-testid="next_word-activity">
-      <div className="act-nw-top">
-        <GuessDots
-          task={task}
-          state={state}
-          goal={goal}
-          core={progress.core}
-          right={progress.right}
-        />
-        {progress.done && <BonusBanner />}
-        {progress.bonus > 0 && (
-          <p className="act-nw-bonus" data-testid="next_word-bonus">
-            +{progress.bonus} bonus {progress.bonus === 1 ? 'guess' : 'guesses'}
+  // "My writing" folds to one line once the first guess is made (a student can open it again).
+  const ownOpen = ownPref ?? (!model || state.guesses === 0)
+  const ownBox = (
+    <>
+      <label htmlFor={`${groupId}-own`} className="act-nw-heading">
+        Write some sentences for it to learn from
+      </label>
+      <textarea
+        id={`${groupId}-own`}
+        className="act-nw-textarea"
+        value={state.own}
+        maxLength={MAX_PASTE_CHARS}
+        placeholder="The cat sat on the mat. The cat saw the dog. The dog sat on the mat."
+        onChange={(event) => update({ own: event.target.value })}
+      />
+      <p className="act-nw-count">
+        {ownWords} {ownWords === 1 ? 'word' : 'words'} learned
+        {!model ? ' · write at least two words to start' : ''}
+      </p>
+    </>
+  )
+
+  const progressNode = (
+    <>
+      <GuessDots
+        task={task}
+        state={state}
+        goal={goal}
+        core={progress.core}
+        right={progress.right}
+      />
+      {progress.done && <BonusBanner />}
+      {progress.bonus > 0 && (
+        <p className="act-nw-bonus" data-testid="next_word-bonus">
+          +{progress.bonus} bonus {progress.bonus === 1 ? 'guess' : 'guesses'}
+        </p>
+      )}
+      {goal < 2 && !progress.done && <p>1 guess to do</p>}
+    </>
+  )
+
+  // The picture: the sentence growing one word at a time, and the chips to guess from.
+  const stage = (
+    <section className="act-nw-section act-nw-stage" aria-label="The sentence">
+      <p className="act-nw-sentence" aria-live="polite" data-testid="next_word-sentence">
+        {words.length === 0 ? (
+          <span className="act-nw-placeholder">Your sentence will grow here.</span>
+        ) : (
+          words.map((word, i) => (
+            <span
+              key={i}
+              className={i === words.length - 1 ? 'act-nw-word act-nw-word--new' : 'act-nw-word'}
+            >
+              {word}{' '}
+            </span>
+          ))
+        )}
+      </p>
+
+      {shown.length > 0 && (
+        <>
+          <p className="act-nw-ask">
+            {inCore
+              ? 'Which word is most likely to come next? Tap it, then press the button.'
+              : 'Bonus: tap a guess if you like, then press the button.'}
+          </p>
+          <div
+            className="act-nw-chips"
+            role="group"
+            data-act-control="group"
+            aria-label={
+              hideOdds
+                ? 'Words that might come next'
+                : 'Words that might come next, biggest is most likely'
+            }
+          >
+            {chips.map((option, i) => (
+              <button
+                key={option.word}
+                type="button"
+                className={[
+                  'act-nw-chip',
+                  'act-nw-chip--big',
+                  spinIndex === i ? 'act-nw-chip--spin' : '',
+                  hold?.picked === option.word ? 'act-nw-chip--landed' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={{
+                  fontSize: hideOdds ? PLAIN_SIZE : `${(1 + option.share * 0.9).toFixed(2)}rem`,
+                }}
+                aria-pressed={marked === option.word}
+                aria-label={
+                  hideOdds
+                    ? spoken(option.word)
+                    : describeCount(spoken(option.word), option.count, shownTotal)
+                }
+                disabled={watching || spinning || Boolean(hold)}
+                onClick={() => update({ pending: pending === option.word ? '' : option.word })}
+              >
+                {marked === option.word ? <span aria-hidden="true">✓ </span> : null}
+                {chipText(option.word)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {watching && pending && !last && (
+        <p data-testid="next_word-pending">Guessing: “{pending}” (not pressed yet)</p>
+      )}
+    </section>
+  )
+
+  // Under the sentence: the one main button with the result line beside it, and Start again.
+  const action = watching ? null : (
+    <>
+      <div className="act-nw-actionrow">
+        <ActButton main={{ label: spinning ? '…' : buttonLabel, disabled, onClick: press }} />
+        {last && !spinning && (
+          <p
+            key={`${state.guesses}-${last.picked}`}
+            className={last.ok ? 'act-result act-result--good' : 'act-result act-result--neutral'}
+            role="status"
+            data-testid="next_word-moment"
+          >
+            {last.ok ? <SpinTick /> : <span aria-hidden="true">✗</span>} {momentText(last)}
           </p>
         )}
-        {goal < 2 && !progress.done && <p>1 guess to do</p>}
       </div>
+      {ended && words.length > 0 && !spinning && !hold && (
+        <p className="act-result act-result--good" role="status" data-testid="next_word-end">
+          The end! 🎉
+        </p>
+      )}
+      {words.length > 0 && (
+        <div className="act-layout__action-row">
+          <button type="button" className="act-link" disabled={spinning} onClick={startAgain}>
+            Start again
+          </button>
+        </div>
+      )}
+    </>
+  )
+
+  // What the tutor sees of the moment and the end when watching (no buttons).
+  const watchingResult = watching ? (
+    <>
+      {last && !spinning && (
+        <p
+          key={`${state.guesses}-${last.picked}`}
+          className={last.ok ? 'act-result act-result--good' : 'act-result act-result--neutral'}
+          data-testid="next_word-moment"
+        >
+          {last.ok ? <SpinTick /> : <span aria-hidden="true">✗</span>} {momentText(last)}
+        </p>
+      )}
+      {ended && words.length > 0 && !spinning && !hold && (
+        <p className="act-result act-result--good" data-testid="next_word-end">
+          The end! 🎉
+        </p>
+      )}
+    </>
+  ) : null
+
+  const showOwnFold = !watching && voice.id === OWN_VOICE
+
+  const controls = (
+    <>
+      {showOwnFold && (
+        <ActFold
+          fold={{
+            id: 'own',
+            title: '✎ My writing',
+            summary: `${ownWords} ${ownWords === 1 ? 'word' : 'words'}`,
+            children: ownBox,
+          }}
+          open={ownOpen}
+          onToggle={setOwnPref}
+        />
+      )}
+      {watching && voice.id === OWN_VOICE && (
+        <section className="act-nw-card">
+          <p data-testid="next_word-own-count">
+            {ownWords === 0
+              ? 'No sentences written yet.'
+              : `Wrote ${ownWords} ${ownWords === 1 ? 'word' : 'words'} of their own:`}
+          </p>
+          {state?.own ? (
+            <p className="act-nw-own-readonly" data-testid="next_word-own-text">
+              {state.own}
+            </p>
+          ) : null}
+        </section>
+      )}
+
+      {panels.includes('voices') && (
+        <section className="act-nw-card" aria-label="Voices">
+          <h3 className="act-nw-heading">Whose words should it learn?</h3>
+          <div className="act-nw-voices" role="group" aria-label="Voices" data-act-control="group">
+            {voices.map((entry) => (
+              <ActChip
+                key={entry.id}
+                pressed={entry.id === voice.id}
+                disabled={watching}
+                onClick={() => chooseVoice(entry.id)}
+              >
+                <span aria-hidden="true">{entry.emoji}</span> {entry.label}
+              </ActChip>
+            ))}
+          </div>
+        </section>
+      )}
 
       {panels.includes('lookback') && (
         <LookBackPanel
@@ -379,176 +550,8 @@ export function NextWordStudentView({
         />
       )}
 
-      {panels.includes('voices') && (
-        <section className="act-nw-section" aria-label="Voices">
-          <h3 className="act-nw-heading">Whose words should it learn?</h3>
-          <div className="act-nw-voices" role="group" aria-label="Voices">
-            {voices.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className="act-nw-voice"
-                aria-pressed={entry.id === voice.id}
-                disabled={watching}
-                onClick={() => chooseVoice(entry.id)}
-              >
-                <span className="act-nw-voice__emoji" aria-hidden="true">
-                  {entry.emoji}
-                </span>
-                {entry.label}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {voice.id === OWN_VOICE && (
-        <section className="act-nw-section">
-          {watching ? (
-            <>
-              <p data-testid="next_word-own-count">
-                {ownWords === 0
-                  ? 'No sentences written yet.'
-                  : `Wrote ${ownWords} ${ownWords === 1 ? 'word' : 'words'} of their own:`}
-              </p>
-              {state?.own ? (
-                <p className="act-nw-own-readonly" data-testid="next_word-own-text">
-                  {state.own}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <label htmlFor={`${groupId}-own`} className="act-nw-heading">
-                Write some sentences for it to learn from
-              </label>
-              <textarea
-                id={`${groupId}-own`}
-                className="act-nw-textarea"
-                value={state.own}
-                maxLength={MAX_PASTE_CHARS}
-                placeholder="The cat sat on the mat. The cat saw the dog. The dog sat on the mat."
-                onChange={(event) => update({ own: event.target.value })}
-              />
-              <p className="act-nw-count">
-                {ownWords} {ownWords === 1 ? 'word' : 'words'} learned
-                {!model ? ' · write at least two words to start' : ''}
-              </p>
-            </>
-          )}
-        </section>
-      )}
-
-      <section className="act-nw-section" aria-label="The sentence">
-        <p className="act-nw-sentence" aria-live="polite" data-testid="next_word-sentence">
-          {words.length === 0 ? (
-            <span className="act-nw-placeholder">Your sentence will grow here.</span>
-          ) : (
-            words.map((word, i) => (
-              <span
-                key={i}
-                className={i === words.length - 1 ? 'act-nw-word act-nw-word--new' : 'act-nw-word'}
-              >
-                {word}{' '}
-              </span>
-            ))
-          )}
-        </p>
-
-        {shown.length > 0 && (
-          <>
-            <p className="act-nw-ask">
-              {inCore
-                ? 'Which word is most likely to come next? Tap it, then press the button.'
-                : 'Bonus: tap a guess if you like, then press the button.'}
-            </p>
-            <div
-              className="act-nw-chips"
-              role="group"
-              aria-label={
-                hideOdds
-                  ? 'Words that might come next'
-                  : 'Words that might come next, biggest is most likely'
-              }
-            >
-              {chips.map((option, i) => (
-                <button
-                  key={option.word}
-                  type="button"
-                  className={[
-                    'act-nw-chip',
-                    'act-nw-chip--big',
-                    spinIndex === i ? 'act-nw-chip--spin' : '',
-                    hold?.picked === option.word ? 'act-nw-chip--landed' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  style={{
-                    fontSize: hideOdds ? PLAIN_SIZE : `${(1 + option.share * 0.9).toFixed(2)}rem`,
-                  }}
-                  aria-pressed={marked === option.word}
-                  aria-label={
-                    hideOdds
-                      ? spoken(option.word)
-                      : describeCount(spoken(option.word), option.count, shownTotal)
-                  }
-                  disabled={watching || spinning || Boolean(hold)}
-                  onClick={() => update({ pending: pending === option.word ? '' : option.word })}
-                >
-                  {chipText(option.word)}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {watching && pending && !last && (
-          <p data-testid="next_word-pending">Guessing: “{pending}” (not pressed yet)</p>
-        )}
-
-        {!watching && (
-          <div className="act-row">
-            <button
-              type="button"
-              className="btn-primary act-btn act-nw-big"
-              disabled={disabled}
-              onClick={press}
-            >
-              {spinning ? '…' : buttonLabel}
-            </button>
-            {words.length > 0 && (
-              <button
-                type="button"
-                className="btn-ghost-outline act-btn"
-                disabled={spinning}
-                onClick={startAgain}
-              >
-                Start again
-              </button>
-            )}
-          </div>
-        )}
-
-        {last && !spinning && (
-          <p
-            key={`${state.guesses}-${last.picked}`}
-            className={last.ok ? 'act-result act-result--pass' : 'act-hint'}
-            role="status"
-            data-testid="next_word-moment"
-          >
-            {last.ok ? <SpinTick /> : <span aria-hidden="true">✗</span>} {momentText(last)}
-          </p>
-        )}
-
-        {ended && words.length > 0 && !spinning && !hold && (
-          <p className="act-result act-result--pass" role="status" data-testid="next_word-end">
-            The end! 🎉
-          </p>
-        )}
-      </section>
-
       {panels.includes('silly') && (
-        <section className="act-nw-section">
+        <section className="act-nw-card">
           <label htmlFor={`${groupId}-silly`} className="act-nw-heading">
             How silly should it be?
           </label>
@@ -573,7 +576,7 @@ export function NextWordStudentView({
       )}
 
       {panels.includes('stats') && (
-        <section className="act-nw-section">
+        <section className="act-nw-card">
           <h3 className="act-nw-heading">What it learned</h3>
           <StatsPanel
             model={model}
@@ -583,6 +586,23 @@ export function NextWordStudentView({
           />
         </section>
       )}
+    </>
+  )
+
+  return (
+    <div className="act-panel act-nw" data-testid="next_word-activity">
+      <ActivityLayout
+        progress={progressNode}
+        stage={
+          <>
+            {stage}
+            {watchingResult}
+          </>
+        }
+        action={action}
+        actionUnderStage
+        controls={controls}
+      />
     </div>
   )
 }

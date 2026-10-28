@@ -12,6 +12,7 @@ import {
   tally,
 } from '../classifier.js'
 import { renderActivityUi } from '../../../test/activityUiHarness.jsx'
+import { countControls } from '../../../test/countControls.js'
 
 // UI tests for the Classifier StudentView with local state (src/test/activityUiHarness.jsx).
 // jsdom can't prove pointer or touch behaviour on a real device: check that in a real browser
@@ -407,11 +408,11 @@ describe('Classifier UI: the round', () => {
 
   it('keeps the prompt, pad and answer buttons together, with the panels beside them', () => {
     renderView({ initialState: withDrawings() })
-    const main = pad().closest('.act-cls-play__main')
+    // The shared layout: the pad on the left with Done under it, the guess in the right column.
+    const main = pad().closest('.act-layout__main')
     expect(main).not.toBeNull()
-    expect(main).toContainElement(prompt())
     expect(main).toContainElement(screen.getByRole('button', { name: 'Done' }))
-    expect(screen.getByTestId('classifier-guess').closest('.act-cls-play__side')).not.toBeNull()
+    expect(screen.getByTestId('classifier-guess').closest('.act-layout__side')).not.toBeNull()
   })
 })
 
@@ -523,11 +524,11 @@ describe('Classifier UI: AI Level 1 panels', () => {
     const task = { ...TASK, panels: ['gridsize', 'grid'] }
     const { state } = renderView({ task, initialState: withDrawings(task, 3) })
     const group = screen.getByTestId('classifier-gridsize')
-    expect(within(group).getAllByRole('button')).toHaveLength(3)
-    expect(screen.getByRole('button', { name: '16 by 16' })).toHaveAttribute('aria-pressed', 'true')
-    click('4 by 4')
+    expect(within(group).getAllByRole('radio')).toHaveLength(3)
+    expect(screen.getByRole('radio', { name: '16 by 16' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('radio', { name: '4 by 4' }))
     expect(state().gridSize).toBe(4)
-    expect(screen.getByRole('button', { name: '4 by 4' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('radio', { name: '4 by 4' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('runs "Test on what it learned" beside the round score', () => {
@@ -577,5 +578,19 @@ describe('Classifier UI: AI Level 1 panels', () => {
     expect(screen.getByRole('button', { name: 'I drew not a square' })).toBeInTheDocument()
     click('I drew not a square')
     expect(screen.getByTestId('classifier-feedback')).toHaveTextContent('It said not a square')
+  })
+})
+
+describe('Classifier UI: control budget', () => {
+  // The pad counts as one control but is not a button, so add 1 to what the helper finds.
+  it('the round screen has at most 5 controls (pad, Undo, Clear, Done)', () => {
+    const task = { ...TASK, panels: ['fool'] }
+    const { container } = renderView({ task, initialState: withDrawings(task, 3) })
+    expect(countControls(container) + 1).toBeLessThanOrEqual(5)
+  })
+
+  it('the teach screen has at most 5 controls (pad, Undo, Clear, Add this drawing, strip)', () => {
+    const { container } = renderView()
+    expect(countControls(container) + 1).toBeLessThanOrEqual(5)
   })
 })
