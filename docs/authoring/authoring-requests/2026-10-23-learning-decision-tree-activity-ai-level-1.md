@@ -1,6 +1,7 @@
 # Learning decision tree activity (AI Level 1)
 
-- **Status:** built on branch feature/learning-tree (not merged)
+- **Status:** planned
+- **Branch:** feature/learning-tree (built, not merged)
 - **Kind:** activity
 - **Requested by:** Ryan (approved by Ryan), 2026-10-23
 - **Lessons blocked:** none yet
