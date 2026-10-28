@@ -10,6 +10,7 @@ import {
   DEFAULT_REWARDS,
   episodesOf,
   gradeTask,
+  hasCourses,
   initialGameAgentState,
   normalizeGameAgentState,
   sharedState,
@@ -18,6 +19,7 @@ import {
   validateGameAgentTask,
   validateGameAgentWarnings,
 } from './game_agent.js'
+import { validateRandomCourses } from './courses.js'
 
 function parse(raw) {
   if (raw == null || raw === '') return null
@@ -75,6 +77,12 @@ export default defineActivity({
           'Sealed list of up to 5 maps (same characters as map) nobody trains on. "Go on a new map" runs the trained robot once on one of them, with no training; the task then passes when it reaches the treasure there.',
       },
       {
+        name: 'randomCourses',
+        type: 'object',
+        description:
+          'Random solvable courses: { size (5 to 9, default 7), walls (0 to 0.4, default 0.25), pits (0 to 3, default 1), coins (0 to 3, default 0), seed (class or a whole number, default class) }. "Try a new course" runs the trained robot once, with no training, on the next course; the task passes when it reaches the treasure. With seed class every student in the lesson gets the same courses in the same order. Courses are always solvable and have no dead-end trap on the way to the treasure. Replaces testMaps.',
+      },
+      {
         name: 'episodes',
         type: 'number',
         description: `How many practice tries one press of Train runs (1 to 500). Default ${DEFAULT_EPISODES}.`,
@@ -105,10 +113,13 @@ export default defineActivity({
     showLearning: true,
   }),
 
-  validateTask: (task, { n } = {}) => ({
-    errors: validateGameAgentTask(task, n),
-    warnings: validateGameAgentWarnings(task, n),
-  }),
+  validateTask: (task, { n } = {}) => {
+    const courses = validateRandomCourses(task, n)
+    return {
+      errors: [...validateGameAgentTask(task, n), ...courses.errors],
+      warnings: [...validateGameAgentWarnings(task, n), ...courses.warnings],
+    }
+  },
 
   initialState: (task) => initialGameAgentState(task),
   solutionState: (task) => solutionFor(task),
@@ -166,6 +177,9 @@ export default defineActivity({
       let testedCount = 0
       let testReachedCount = 0
       let bestTest = null
+      let courseTried = 0
+      let courseCleared = 0
+      let courseStudents = 0
       for (const t of perStudent ?? []) {
         const latest = t.distinctAttempts?.[t.distinctAttempts.length - 1]?.submission
         const raw = latest && typeof latest === 'object' ? latest : parse(latest)
@@ -176,6 +190,11 @@ export default defineActivity({
         episodes += s.trained
         if (s.reached) reachedCount += 1
         if (s.bestScore != null && (best == null || s.bestScore > best)) best = s.bestScore
+        if (s.courses.length > 0) {
+          courseStudents += 1
+          courseTried += s.courses.length
+          courseCleared += s.courses.filter((c) => c.reached).length
+        }
         if (s.tests > 0) testedCount += 1
         if (s.testBest != null) {
           testReachedCount += 1
@@ -191,6 +210,17 @@ export default defineActivity({
           testedCount,
           testReachedCount,
           bestTestScore: bestTest,
+          ...(hasCourses(task)
+            ? {
+                courseStudents,
+                avgCoursesTried: courseStudents
+                  ? Number((courseTried / courseStudents).toFixed(1))
+                  : null,
+                avgCoursesCleared: courseStudents
+                  ? Number((courseCleared / courseStudents).toFixed(1))
+                  : null,
+              }
+            : {}),
         },
       }
     },

@@ -51,6 +51,7 @@ tasks:
 | `testMaps` | No | A sealed list (at most 5) of maps, same characters as `map`, that nobody trains on. See "The mystery map". |
 | `episodes` | No | How many practice tries one press of **Train** runs (1 to 500). Default 50. The student can press Train again to practise more. |
 | `showLearning` | No | Show the learning curve (one small bar per try, the last 40). Default true. |
+| `randomCourses` | No | Random solvable courses for **Try a new course**: `{ size, walls, pits, coins, seed }`, every part optional. `size` 5 to 9 (default 7), `walls` 0 to 0.4 (the share of squares that are walls, default 0.25), `pits` 0 to 3 (default 1), `coins` 0 to 3 (default 0), `seed` `class` (default) or a whole number. Replaces `testMaps` (setting both warns). See "Random courses". |
 | `race` | No | Race v1: the tutor card shows each student's best mystery-map score (`mystery map: 8 pts`) so the tutor can rank the class. Needs `testMaps` (a warning if missing). There is no class ranking screen yet; see "Teacher tools". |
 
 ## How the robot learns
@@ -131,6 +132,38 @@ stops after 120 moves. The task passes (no Check button) when
 that run reaches the treasure; **Watch it try** on the training map no longer decides the pass. Without
 `testMaps` the old rule applies (a Watch it try reaches the treasure).
 
+## Random courses
+
+`randomCourses: { size: 7, walls: 0.25, pits: 1, seed: class }` makes **Try a new course** (the same
+place in the main-button chain, the same rule as `testMaps`): it runs the trained robot once on the
+next generated course, with no exploring and no training, and the task passes when that run reaches
+the treasure. The map stays on screen with a "Mystery map" ribbon and a **Back to my map** link, and
+the result line says which course it was ("Found it on the new course (course 3) ...").
+
+- **A generated course** is a `size` x `size` square with `R` and `T` placed far apart, then walls (each
+  square with chance `walls`), `pits` pits and `coins` coins on open squares. Coins pay the task's
+  `rewards.coin` (3 when the task sets it or its map has a `C`; otherwise they pay nothing).
+- **Always solvable.** Each course is checked with a breadth-first search from `R` to `T`, with pits
+  counted as blocked. If it fails, it is thrown away and another is drawn.
+- **No dead-end trap.** A trap is a pocket at least 2 deep: an open square with walls (or the edge)
+  on 3 sides whose one way out is itself between walls. A robot that senses walls and the treasure
+  compass steers toward the treasure, walks in, turns back and is pulled in again. A course is thrown
+  away when the far end of such a pocket is within 3 squares (king moves) of the straight line from
+  `R` to `T`. Single notches (the exit opens onto open ground) and pockets further away are allowed.
+  After 200 failed draws the course falls back to an open board, so a very crowded setting never
+  fails; in practice this is rare.
+- **The same for the class.** The courses come from a seeded generator (mulberry32): the same seed
+  always gives the same course 1, 2, 3 ... With `seed: class` the seed is made from the lesson id
+  (a live session runs on the lesson id, so every student in it gets identical courses) and the task
+  id (two course tasks in one lesson differ). A number seed gives the same courses in every lesson
+  that uses it. In the Builder preview there is no lesson id, so the courses come from the task id.
+  Each student walks through the sequence in order, one course per press. New rewards or senses make
+  the robot forget everything and the sequence starts again at course 1.
+- **How well the robot does.** The robot only knows the situations it met while training on the
+  task's `map`, so a robot can get lost on a fair course. Expect `treasure_direction` alone to do
+  best, `walls` plus `treasure_direction` less well, and `position` to get lost on almost every
+  course. A map where the treasure can be reached from several directions trains it better.
+
 ## Marking and hints
 
 - The task passes (no Check button) when a Watch it try (Go! in the saved data) reaches the treasure within the step limit.
@@ -142,6 +175,9 @@ that run reaches the treasure; **Watch it try** on the training map no longer de
 - The student card shows the tries and the best score, e.g. `50 episodes · best 8 (3 steps)`, or
   `training` while a Train is running. With `race: true` and a mystery-map run it reads
   `mystery map: 8 pts · 50 tries` (or `lost`), so cards can be compared for a race.
+- With `randomCourses` the card lists the last four courses by number, e.g.
+  `course 1: 8 pts · course 2: lost · course 3: 5 pts · 50 tries`, so the tutor can compare students
+  on the same course. There is no ranking screen.
 - Shared state (tutor visibility): the senses, rewards, tries, the last test-map result (reached,
   score, steps), the best test-map score and the number of test-map runs.
 - No class ranking screen exists. Activities have no class-wide tutor view hook, only per-student
@@ -155,7 +191,8 @@ that run reaches the treasure; **Watch it try** on the training map no longer de
 - Reports show `itemProgress` (trained, then found the treasure), the tries trained, the best score
   and whether the last Go! reached the treasure; the class summary adds how many trained, how many
   reached the treasure, the average tries and the best score, plus how many ran a test map, how many
-  reached the treasure on one and the best test-map score.
+  reached the treasure on one and the best test-map score. With `randomCourses` it also has
+  `courseStudents` (students who tried a course), `avgCoursesTried` and `avgCoursesCleared`.
 
 ## Devices
 

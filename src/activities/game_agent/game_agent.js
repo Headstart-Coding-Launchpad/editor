@@ -571,6 +571,12 @@ export function testMapsOf(task) {
     : []
 }
 
+// Does the task run the trained robot on random courses? (The settings are checked in courses.js.)
+export const hasCourses = (task) =>
+  !!task?.randomCourses &&
+  typeof task.randomCourses === 'object' &&
+  !Array.isArray(task.randomCourses)
+
 export const showLearningOf = (task) => task?.showLearning !== false
 export const hasPit = (env) => !!env && env.cells.includes('pit')
 
@@ -639,7 +645,7 @@ export function validateGameAgentTask(task, n) {
 
 export function validateGameAgentWarnings(task, n) {
   const warnings = []
-  if (task?.race && testMapsOf(task).length === 0) {
+  if (task?.race && testMapsOf(task).length === 0 && !hasCourses(task)) {
     warnings.push(
       `Task ${n}: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.`
     )
@@ -670,10 +676,21 @@ export function initialGameAgentState(task) {
     testScore: null,
     testSteps: null,
     testBest: null,
+    courses: [],
   }
 }
 
 const numOrNull = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null)
+
+// The score on each random course tried: [{ n, score, reached }], the last MAX_COURSE_LOG.
+export const MAX_COURSE_LOG = 20
+function normalizeCourses(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((c) => c && isWhole(c.n) && c.n > 0 && Number.isFinite(c.score))
+    .map((c) => ({ n: c.n, score: c.score, reached: c.reached === true }))
+    .slice(-MAX_COURSE_LOG)
+}
 
 export function normalizeGameAgentState(task, raw) {
   const base = initialGameAgentState(task)
@@ -707,6 +724,7 @@ export function normalizeGameAgentState(task, raw) {
     testScore: numOrNull(raw.testScore),
     testSteps: numOrNull(raw.testSteps),
     testBest: numOrNull(raw.testBest),
+    courses: normalizeCourses(raw.courses),
   }
 }
 
@@ -756,6 +774,13 @@ export function withTestResult(state, run) {
   }
 }
 
+// The state after "Try a new course": the same as a test map, plus the score for that course number.
+export function withCourseResult(state, run) {
+  const next = withTestResult(state, run)
+  const entry = { n: (state.tests ?? 0) + 1, score: run.score, reached: run.reached }
+  return { ...next, courses: [...(state.courses ?? []), entry].slice(-MAX_COURSE_LOG) }
+}
+
 // A finished state for "Complete (show answers)": trains with the task's rewards until the
 // robot's Go! finds the treasure.
 export function solutionFor(task) {
@@ -797,7 +822,7 @@ export function hintFor(state) {
 
 export function gradeTask(task, state) {
   const s = normalizeGameAgentState(task, state)
-  const hasTests = testMapsOf(task).length > 0
+  const hasTests = testMapsOf(task).length > 0 || hasCourses(task)
   const passed = s.trained > 0 && (hasTests ? s.testReached : s.reached)
   return {
     passed,
@@ -816,6 +841,16 @@ export function summaryOf(task, state) {
   const s = normalizeGameAgentState(task, state)
   const g = gradeTask(task, s)
   if (s.trained === 0) return { text: 'Not trained yet', tone: 'neutral' }
+  if (hasCourses(task) && s.courses.length > 0) {
+    // Each shared course by number, so the tutor can compare students on the same course.
+    const shown = s.courses
+      .slice(-4)
+      .map((c) => `course ${c.n}: ${c.reached ? `${c.score} pts` : 'lost'}`)
+    return {
+      text: `${shown.join(' · ')} · ${s.trained} tries`,
+      tone: g.passed ? 'success' : 'neutral',
+    }
+  }
   if (task?.race && s.tests > 0) {
     const got = s.testBest == null ? 'lost' : `${s.testBest} pts`
     return {

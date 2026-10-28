@@ -29,8 +29,11 @@ import {
   withGoResult,
   withRewards,
   withSenses,
+  withCourseResult,
   withTestResult,
+  hasCourses,
 } from './game_agent.js'
+import { courseFor } from './courses.js'
 
 // Game agent UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev => next)`,
 // `readOnly` (teacher views and review). Never write to Firebase or storage here.
@@ -151,8 +154,16 @@ function Curve({ scores }) {
   )
 }
 
-export function GameAgentStudentView({ task, state: stateProp, onChange, readOnly = false }) {
+export function GameAgentStudentView({
+  task,
+  state: stateProp,
+  onChange,
+  readOnly = false,
+  lessonId = null,
+}) {
   const env = useMemo(() => envOf(task), [task])
+  const courseMode = hasCourses(task)
+  const newThing = courseMode ? 'course' : 'map'
   const state = normalizeGameAgentState(task, stateProp)
   // What is on the screen right now: { kind: 'train', trained, scores, pos } or
   // { kind: 'go', cells, upTo } or null.
@@ -317,10 +328,16 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
 
   // "Go on a new map": the trained robot, no training, on a sealed map it has never seen.
   function goNew() {
-    const testEnv = testMapFor(task, state.tests)
+    // Random courses (same for the whole class with seed: class) or the sealed test maps.
+    const testEnv = courseMode
+      ? courseFor(task, lessonId, state.tests)?.env
+      : testMapFor(task, state.tests)
     if (readOnly || running || !onChange || state.trained === 0 || !testEnv) return
     const result = greedyRun(testEnv, state.rewards, getAgent(), { unseen: true })
-    onChange((prev) => withTestResult(normalizeGameAgentState(task, prev), result))
+    onChange((prev) => {
+      const p = normalizeGameAgentState(task, prev)
+      return courseMode ? withCourseResult(p, result) : withTestResult(p, result)
+    })
     setMystery({ env: testEnv, cells: result.cells })
     setLastLocal({ kind: 'test', reached: result.reached })
     setView('map')
@@ -357,7 +374,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
     ...(hasPit(env) ? ['pit'] : []),
     ...(hasCoin(env) ? ['coin'] : []),
   ]
-  const hasTests = !!testMapFor(task, 0)
+  const hasTests = courseMode || !!testMapFor(task, 0)
   const choosable = sensesChoosable(task)
   const maxSenses = maxSensesOf(task)
   const activeView = trained && !showMystery && (view !== 'senses' || choosable) ? view : 'map'
@@ -399,13 +416,15 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
   } else if (last?.kind === 'test') {
     result = last.reached ? (
       <div className="act-result--good" data-testid="ga-test-result">
-        <span aria-hidden="true">💎</span> Found it on the new map in {state.testSteps} steps! Score{' '}
+        <span aria-hidden="true">💎</span> Found it on the new {newThing}
+        {courseMode ? ` (course ${state.tests})` : ''} in {state.testSteps} steps! Score{' '}
         {state.testScore}
       </div>
     ) : (
       <div className="act-result--bad" data-testid="ga-test-result">
-        <span aria-hidden="true">😵</span> Lost on the new map!
-        {choosable ? ' Try giving it senses.' : ''} Score {state.testScore}
+        <span aria-hidden="true">😵</span> Lost on the new {newThing}
+        {courseMode ? ` (course ${state.tests})` : ''}!{choosable ? ' Try giving it senses.' : ''}{' '}
+        Score {state.testScore}
       </div>
     )
   }
@@ -447,7 +466,7 @@ export function GameAgentStudentView({ task, state: stateProp, onChange, readOnl
       testId: 'ga-watch',
     }
     const newMapBtn = {
-      label: 'Try a new map',
+      label: courseMode ? 'Try a new course' : 'Try a new map',
       icon: '🗺️',
       onClick: goNew,
       disabled: busy || !trained,

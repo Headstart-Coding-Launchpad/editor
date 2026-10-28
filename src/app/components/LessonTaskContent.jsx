@@ -686,6 +686,7 @@ export default function LessonTaskContent({
             reviewing={isViewingPrev}
             lessonType={lesson.type}
             assetsPath={resolveAssetsPath(lesson.assetsPath)}
+            lessonId={lessonId}
             entranceKey={taskEntranceKey}
             tileHighlights={cs.tileHighlights}
             onDismissTileHighlights={cs.dismissTileHighlights}

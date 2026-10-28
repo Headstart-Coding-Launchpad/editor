@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-10-28
 
+- **Game agent: `randomCourses`, random solvable courses with a class seed.** New optional object on
+  a `game_agent` task: `{ size (5 to 9), walls (0 to 0.4), pits (0 to 3), coins (0 to 3), seed (class
+  or a whole number) }`, all optional. **Try a new course** runs the trained robot once, with no
+  training, on the next generated course; the task passes when it reaches the treasure (the same
+  rule as `testMaps`, which it replaces). Courses are always solvable (pits count as blocked) and have
+  no dead-end pocket near the way from `R` to `T`. With `seed: class` every student in the lesson
+  gets the same courses in the same order. The tutor card lists the last courses by number and
+  score (`course 1: 8 pts · course 2: lost`); the shared state carries `courses`; the report adds
+  `courseStudents`, `avgCoursesTried` and `avgCoursesCleared`. See
+  [activities/game_agent.md](activities/game_agent.md).
+  - Affects: game_agent · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-game-agent-random-solvable-courses-with-a-class-seed-no-dead.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every

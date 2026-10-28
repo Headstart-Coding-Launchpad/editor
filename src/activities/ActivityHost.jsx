@@ -117,6 +117,9 @@ export function ActivityView({
   assetsPath = '',
   // Display mode (Show it): nothing marks the build. See ui/presentation.js.
   presentation = false,
+  // The lesson id (also the live session id), for activities whose content is the same for a whole
+  // class: Game agent random courses with seed: class.
+  lessonId = null,
 }) {
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
@@ -148,6 +151,7 @@ export function ActivityView({
       onTargetTap={onTargetTap}
       history={history}
       assetsPath={assetsPath}
+      lessonId={lessonId}
     />
   )
   const body = (
@@ -242,6 +246,8 @@ export default function ActivityHost({
   topicLibrary = null,
   // The lesson's resolved assets base URL, passed to ActivityView.
   assetsPath = '',
+  // The lesson id, passed to ActivityView (see there).
+  lessonId = null,
 }) {
   const capabilities = useInputCapabilities()
   const [keyboardOverride, setKeyboardOverride] = useState(false)
@@ -309,6 +315,7 @@ export default function ActivityHost({
       history={history}
       topicLibrary={topicLibrary}
       assetsPath={assetsPath}
+      lessonId={lessonId}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).

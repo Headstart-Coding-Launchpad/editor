@@ -490,6 +490,11 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: testMaps can have at most … maps.` | More than 5 test maps. | Keep 5 or fewer. |
 | `Task …: testMaps map …: …` | A test map breaks a map rule (same messages as `map`, without "Task …:"). | Fix that map. |
 | `Task …: race needs testMaps; without them the tutor's card ranks the Go! score instead of a mystery-map score.` | `race: true` with no `testMaps` (warning). | Add `testMaps`, or remove `race`. |
+| `Task …: randomCourses must be an object like { size: 7, walls: 0.25, pits: 1, seed: class }.` | `randomCourses` is a list, a string or a number. | Write `randomCourses:` with `size`, `walls`, `pits`, `coins`, `seed`; all are optional. |
+| `Task …: randomCourses.… must be a whole number from … to ….` | `size` (5 to 9), `pits` (0 to 3) or `coins` (0 to 3) is not a whole number in range. | Use a whole number in that range. |
+| `Task …: randomCourses.walls must be a number from 0 to ….` | `walls` is not a number from 0 to 0.4. | Use e.g. `0.25`. |
+| `Task …: randomCourses.seed must be class or a whole number from 0 up.` | `seed` is something other than `class` or a whole number. | Write `seed: class` (the same courses for everyone in the lesson) or a number. |
+| `Task …: testMaps are not used when randomCourses is set.` (warning) | The task has both `randomCourses` and `testMaps`; the courses win. | Remove `testMaps`, or remove `randomCourses`. |
 
 ## Code-arrange tasks
 
