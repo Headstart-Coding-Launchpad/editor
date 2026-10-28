@@ -120,14 +120,15 @@ Important shared files include `iframe.js`, `CodeEditor.jsx`, `markdown.jsx`, `f
 
 The `/admin` route is available only to users with the admin Firebase role.
 
-10 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
+11 tabs, defined in `src/admin/AdminPortal.jsx`'s `TABS` array:
 
-- Lessons: browse all published Firestore lessons in one library (the older type-grouped/filtered view is hardcoded off — `LessonPanel.jsx`'s type-tab UI is dead code behind `{false && ...}`); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
+- Lessons: browse all published Firestore lessons in one library (not grouped by type); expand lessons to view session reports and lesson/task feedback with counts and resolve actions; launch as teacher, preview as a student (`?preview=true` — ephemeral, nothing persists), or copy student links; fork a lesson to a class.
 - Levels: manage reusable levels (`LessonPanel.jsx` rendered with `view="levels"`, via `LevelManager`).
 - Classes: manage class records used for lesson forks (`LessonPanel.jsx` rendered with `view="classes"`, via `ClassManager`), and each class's roster of students (first name and initial) under **Students** (`ClassRosterEditor.jsx`: add, rename, delete; deleting an entry also deletes its saved work and typing scores). Tutors match joined students to the roster in a session; see "Class roster" in `docs/agents/runtime-model.md`.
 - Sessions: Realtime Database `sessions` list filtered to non-`ended` states — lesson, state, paused flag, student/online counts, open duration; "Close Session" removes an abandoned session node.
+- Solo & side-quests (`SoloPanel.jsx`): who did the Solo Challenges and who worked on side-quests in live sessions, per lesson and class (anonymised download).
 - Topic Library: create, edit, and delete topics with Markdown description and syntax fields.
-- Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
+- Shared Assets: manage lesson-type-wide Firebase Storage files and Scratch default sprites, backdrops and sounds in `lessonTypeAssets/{type}` with storage at `shared/{type}/assets/`.
 - Badges: the live badges. Built-in registry badges read-only (emoji, title, blurb, exact rule, rule-backed or tutor-only, auto-awardable); add, edit, archive and restore manual-only catalogue badges in Firestore `badgeCatalogue` (`BadgesPanel.jsx`). Ids can't collide with the registry and emoji must be unique across every badge; archived badges leave the tutor's picker but still render. New built-in badges come from `npm run new:badge` (the `new-badge` skill).
 - Shared Work: every name-hidden share link tutors made with StudentModal's "Export work" (Firestore `sharedWork`, newest first; live links by default, "Show expired and revoked links too" for the rest), with the link, module, date, days left and **Revoke** (`SharedWorkPanel.jsx`). Only admins can list links (firestore.rules); a teacher revokes their own from the export dialog.
 - Accounts: create teacher/admin accounts, set roles, change other users' passwords, disable/enable, delete via Cloud Functions. Signed-in users change their own password through `/account`.

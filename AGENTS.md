@@ -37,7 +37,7 @@ No backend server exists or should be added. Firebase provides auth, Firestore, 
 - Teachers and admins use Firebase Auth email/password; students remain login-less.
 - Do not require Firebase Auth for student operations.
 - Do not use `sessionStorage` for the anonymous ID; use `localStorage`.
-- Do not write student code to Firebase per keystroke unless `activeStudentView` matches.
+- Do not write student code to Firebase per keystroke unless `activeStudentView` matches, except the debounced drafts documented in docs/agents/runtime-model.md.
 - Do not re-render the iframe per keystroke during live view; render only on Run.
 - Do not hardcode student limits.
 - Do not add pip install support or file I/O support.
