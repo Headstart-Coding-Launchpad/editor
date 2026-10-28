@@ -244,8 +244,9 @@ describe('feed goals', () => {
     const watching = feedFor('watching')
     expect(watching[0].item.group).toBe('sport')
     expect(groupsInFeed(watching).size).toBeLessThanOrEqual(groupsInFeed(feedFor('like')).size)
-    // The one unrated sport item is in; the rest of the feed is other kinds.
+    // Only their most-liked kind: a shorter feed of one kind rather than padding with others.
     expect(watching.filter((e) => e.item.group === 'sport')).toHaveLength(1)
+    expect(groupsInFeed(watching).size).toBe(1)
     const info = bubbleInfo(watching, items)
     expect(info.kinds).toBeLessThanOrEqual(bubbleInfo(feedFor('new'), items).kinds)
   })

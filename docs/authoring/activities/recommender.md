@@ -76,8 +76,9 @@ tasks:
   rater is behind a pick it says "People like you liked this" or "You liked other sport things".
 - **Feed goals** (`goals: [like, watching, new]`). The student switches what the feed aims for and
   the feed and the bubble meter recompute at once (only on a tap, no timers). `like` is the usual
-  feed. `watching` ("Keep me watching") leans hard on the kind they liked most, so the feed narrows
-  towards one kind. `new` ("Something new") puts kinds they have not rated yet first, so it opens
+  feed. `watching` ("Keep me watching") shows only the kind they liked most, so the feed narrows
+  to one kind (it gets shorter rather than mixing in other kinds once that kind runs out; use 4 or
+  more items per kind so it still fills). `new` ("Something new") puts kinds they have not rated yet first, so it opens
   up. The feed starts on `like` (or the first goal listed if `like` is not there). **Why?** names
   the goal: "Because you liked lots of sport, and this feed wants you to keep watching." With no
   ratings yet every goal shows the same starting feed.

@@ -205,9 +205,11 @@ export function recommend(items, raters, ratings = {}, size = FEED_SIZE, goal = 
   })
   scored.sort((a, b) => b.score - a.score || list.indexOf(a.item) - list.indexOf(b.item))
 
-  const good = scored.filter((s) => s.score > 0).slice(0, size)
+  // "Keep me watching" never pads the feed with other kinds: a shorter feed of one kind is the bubble.
+  const keep = (s) => goal !== 'watching' || !topKind || s.item.group === topKind
+  const good = scored.filter((s) => s.score > 0 && keep(s)).slice(0, size)
   const rest = scored
-    .filter((s) => !good.includes(s))
+    .filter((s) => !good.includes(s) && keep(s))
     .sort((a, b) => byPopularity(a.item, b.item))
     .slice(0, Math.max(0, size - good.length))
   return [...good, ...rest].map((s) => ({
