@@ -39,10 +39,9 @@ const OWNED_NODES = (key) => [
   [`sessions/${key}/currentTaskId`, 2],
   [`liveInk/${key}/pointer`, { surface: 'info:1', anchor: 'b0', rx: 0.5, ry: 0.5, t: 1 }],
   [`liveInk/${key}/tutorPointer`, { pane: 'page', rx: 0.5, ry: 0.5, t: 1 }],
-  [`carryInbox/${key}/student-1`, { kind: 'code', payload: 'x = 1' }],
+  [`carryInbox/${key}/student-1/task-1`, { kind: 'code', payload: 'x = 1' }],
   [`sessionArchive/${key}/visits`, true],
   [`sharedWorkspacePayloads/${key}/approved`, true],
-  [`peerHelp/${key}/anything`, true],
 ]
 
 describe('a tutor with a handle owns only their own session key', () => {

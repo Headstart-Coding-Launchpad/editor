@@ -610,6 +610,8 @@ export default function LessonPanel({ view = 'lessons' }) {
 }
 
 function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
+  // The tutor's handle: their join link carries it so students land in their own live class.
+  const tutorHandle = useAuth()?.handle ?? ''
   const buttonRef = useRef(null)
   const panelRef = useRef(null)
   const [panelPosition, setPanelPosition] = useState(null)
