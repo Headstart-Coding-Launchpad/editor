@@ -118,10 +118,13 @@ describe('config', () => {
 
 describe('tutor-only reads follow the same ownership', () => {
   it('lets only the owner (or an admin) read peer help and the archive for a tutor key', async () => {
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await ref(ctx, `peerHelp/${KEY_SAM}/x`).set(true)
-      await ref(ctx, `sessionArchive/${KEY_SAM}/visits`).set(true)
-    })
+    // One context's database() can only be created once, so seed both nodes with one write.
+    await testEnv.withSecurityRulesDisabled((ctx) =>
+      ref(ctx, '/').update({
+        [`peerHelp/${KEY_SAM}/x`]: true,
+        [`sessionArchive/${KEY_SAM}/visits`]: true,
+      })
+    )
     await assertSucceeds(ref(tutor('sam'), `peerHelp/${KEY_SAM}`).get())
     await assertSucceeds(ref(tutor('sam'), `sessionArchive/${KEY_SAM}`).get())
     await assertFails(ref(tutor('ryan'), `peerHelp/${KEY_SAM}`).get())
