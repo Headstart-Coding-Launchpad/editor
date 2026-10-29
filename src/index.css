@@ -8929,6 +8929,20 @@ label.te-backdrop-tag,
   overflow-wrap: anywhere;
 }
 
+.act-rec__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A small tag on a card whose rating the task set; it goes when the student changes it. */
+.act-rec__given {
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.1;
+  opacity: 0.75;
+}
+
 .act-rec__grid .act-rec__emoji {
   font-size: 1.3rem;
   flex: 0 0 auto;

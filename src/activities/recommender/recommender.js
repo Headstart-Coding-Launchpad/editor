@@ -100,6 +100,39 @@ export function generateRaters(items) {
   })
 }
 
+// ---- Ratings set for the student (task field `startRatings`) ----
+
+// The ratings handed to the student: { [itemId]: 1 | -1 } for the items that exist; {} when the
+// task has none. The task writes them as up / down.
+export function startRatingsOf(task) {
+  const given = task?.startRatings
+  if (!given || typeof given !== 'object' || Array.isArray(given)) return {}
+  const ids = new Set((task?.items ?? []).map((item) => String(item?.id)))
+  const out = {}
+  for (const id of Object.keys(given)) {
+    if (!ids.has(id)) continue
+    if (given[id] === 'up') out[id] = 1
+    else if (given[id] === 'down') out[id] = -1
+  }
+  return out
+}
+
+// What the feed sees: the given ratings, with the student's own on top. state.ratings holds ONLY
+// the student's own taps; a 0 there means they took a given rating back.
+export function effectiveRatings(task, state) {
+  const out = { ...startRatingsOf(task) }
+  for (const [id, value] of Object.entries(state?.ratings ?? {})) {
+    if (value === 1 || value === -1) out[id] = value
+    else if (value === 0) delete out[id]
+  }
+  return out
+}
+
+// Is this item's rating still the one the task set (not yet touched by the student)?
+export function isGivenRating(task, state, itemId) {
+  return startRatingsOf(task)[itemId] != null && state?.ratings?.[itemId] == null
+}
+
 export function ratedCount(state) {
   return Object.values(state?.ratings ?? {}).filter((v) => v === 1 || v === -1).length
 }
@@ -263,6 +296,8 @@ export function goalOf(task, state) {
   const goals = goalsOf(task)
   if (goals.length === 0) return undefined
   if (goals.includes(state?.goal)) return state.goal
+  // `startGoal` opens the task on that goal (e.g. stuck in a "keep me watching" bubble).
+  if (goals.includes(task?.startGoal)) return task.startGoal
   return goals.includes('like') ? 'like' : goals[0]
 }
 
@@ -359,6 +394,24 @@ export function validateRecommender(task, n) {
   ) {
     errors.push(`${where}: minRated must be a whole number from 1 to the number of items.`)
   }
+  if (task?.startGoal != null && !goalsOf(task).includes(task.startGoal)) {
+    errors.push(`${where}: startGoal must be one of the task's goals.`)
+  }
+  if (task?.startRatings != null) {
+    const given = task.startRatings
+    if (typeof given !== 'object' || Array.isArray(given)) {
+      errors.push(`${where}: startRatings must be a list of item id: up or down.`)
+    } else {
+      const ids = new Set(items.map((item) => String(item?.id)))
+      for (const [id, value] of Object.entries(given)) {
+        if (!ids.has(id)) {
+          errors.push(`${where}: startRatings has "${id}", which is not an item id.`)
+        } else if (value !== 'up' && value !== 'down') {
+          errors.push(`${where}: startRatings "${id}" must be up or down.`)
+        }
+      }
+    }
+  }
   if (items.length > 0 && items.length < RECOMMENDED_MIN_ITEMS) {
     warnings.push(
       `${where}: recommender works best with ${RECOMMENDED_MIN_ITEMS} to ${MAX_ITEMS} items.`
@@ -370,6 +423,14 @@ export function validateRecommender(task, n) {
     )
   }
   return { errors, warnings }
+}
+
+// Kinds in the feed before the student rated anything (the task's given ratings only, on the
+// task's first goal as the student sees it when it opens).
+export function startFeedKinds(task, state) {
+  const stored = state?.startKinds
+  if (Number.isInteger(stored) && stored >= 0) return stored
+  return feedKinds(task, { ratings: {} }).kinds
 }
 
 export function summaryText(task, state) {
@@ -385,7 +446,7 @@ export function feedKinds(task, state) {
   const feed = recommend(
     items,
     generateRaters(items),
-    state?.ratings ?? {},
+    effectiveRatings(task, state),
     FEED_SIZE,
     goalOf(task, state)
   )

@@ -7,13 +7,16 @@ import {
   FEED_SIZE,
   GOAL_LABELS,
   bubbleInfo,
+  effectiveRatings,
   generateRaters,
   goalOf,
   goalsOf,
   gradeTask,
+  isGivenRating,
   needsWhy,
   ratedCount,
   recommend,
+  startRatingsOf,
   triedGoalsOf,
   whyText,
 } from './recommender.js'
@@ -30,7 +33,9 @@ import {
 
 export function RecommenderStudentView({ task, state, onChange, readOnly = false }) {
   const items = useMemo(() => task?.items ?? [], [task?.items])
-  const ratings = useMemo(() => state?.ratings ?? {}, [state?.ratings])
+  // Given ratings (task.startRatings) under the student's own; state.ratings is only their taps.
+  const ratings = useMemo(() => effectiveRatings(task, state), [task, state])
+  const hasGiven = Object.keys(startRatingsOf(task)).length > 0
   const [openId, setOpenId] = useState(null)
 
   // Same lesson, same made-up class: built once per item list.
@@ -51,8 +56,12 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
     if (readOnly) return
     onChange?.((prev) => {
       const current = { ...(prev?.ratings ?? {}) }
-      if (current[item.id] === value) delete current[item.id]
-      else current[item.id] = value
+      const now = effectiveRatings(task, prev)[item.id]
+      // A second tap takes it back; for a rating the task gave, 0 records "taken back".
+      if (now === value) {
+        if (startRatingsOf(task)[item.id] != null) current[item.id] = 0
+        else delete current[item.id]
+      } else current[item.id] = value
       return { ...(prev ?? { v: 1 }), v: 1, ratings: current }
     })
   }
@@ -78,7 +87,10 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
   const tutorLine = readOnly && rated === 0 ? 'The student has not rated anything yet.' : null
 
   const emptySlots = Math.max(0, FEED_SIZE - feed.length)
-  const tip = rated === 0 ? 'Nothing rated yet, so this is what the class likes most.' : tutorLine
+  const tip =
+    rated === 0 && !hasGiven
+      ? 'Nothing rated yet, so this is what the class likes most.'
+      : tutorLine
 
   const stage = (
     <div className="act-rec__stage">
@@ -115,7 +127,7 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
           💡 {whyText(open)}
         </p>
       )}
-      {task?.bubble === true && rated > 0 && (
+      {task?.bubble === true && (rated > 0 || hasGiven) && (
         <div className="act-rec__bubble" data-level={bubble.level} data-testid="recommender-bubble">
           <span className="act-rec__bubble-bar" aria-hidden="true">
             {Array.from({ length: bubble.total }, (_, i) => (
@@ -161,6 +173,7 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
       <ul className="act-rec__grid" data-act-control="group">
         {items.map((item) => {
           const value = ratings[item.id]
+          const given = isGivenRating(task, state, item.id)
           return (
             <li
               key={item.id}
@@ -171,7 +184,14 @@ export function RecommenderStudentView({ task, state, onChange, readOnly = false
                 <span className="act-rec__emoji" aria-hidden="true">
                   {item.emoji}
                 </span>
-                <span className="act-rec__label">{item.label}</span>
+                <span className="act-rec__name">
+                  <span className="act-rec__label">{item.label}</span>
+                  {given && (
+                    <span className="act-rec__given" data-testid={`recommender-given-${item.id}`}>
+                      set for you
+                    </span>
+                  )}
+                </span>
               </span>
               <span className="act-rec__buttons">
                 <button

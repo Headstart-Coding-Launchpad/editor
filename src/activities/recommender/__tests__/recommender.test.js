@@ -3,6 +3,10 @@ import definition from '../definition.js'
 import {
   GOAL_LABELS,
   bubbleInfo,
+  effectiveRatings,
+  feedKinds,
+  isGivenRating,
+  startFeedKinds,
   generateRaters,
   goalOf,
   goalsOf,
@@ -293,5 +297,87 @@ describe('feed goals', () => {
     ])
     expect(out.recommenderResults.goalCounts).toEqual({ like: 1, watching: 1, new: 0 })
     expect(gradeTask(GOALS_TASK, state).passed).toBe(gradeTask(task(), state).passed)
+  })
+})
+
+describe('startRatings', () => {
+  const sportUp = { football: 'up', swimming: 'up', tennis: 'up' }
+  const withStart = (extra = {}) => ({ ...task(), startRatings: sportUp, ...extra })
+  const kindsOf = (t, state) => feedKinds(t, state).kinds
+
+  it('Fun moment: sport up opens the watching feed at 1 kind, and liking other kinds opens it up', () => {
+    // football + swimming up, tennis still to rate: watching can only show sport.
+    const t = withStart({
+      startRatings: { football: 'up', swimming: 'up' },
+      goals: ['like', 'watching', 'new'],
+      bubble: true,
+    })
+    const watching = { v: 1, ratings: {}, why: false, goal: 'watching' }
+    expect(kindsOf(t, watching)).toBe(1)
+    expect(
+      bubbleInfo(recommend(t.items, raters, effectiveRatings(t, watching), 4, 'watching'), t.items)
+        .level
+    ).toBe('bubble')
+    // The child likes two other kinds: the feed now shows more kinds.
+    const liked = { ...watching, goal: 'like', ratings: { guitar: 1, pizza: 1 } }
+    expect(kindsOf(t, liked)).toBeGreaterThan(1)
+    // initialState keeps the kinds the feed started with (shared state)
+    expect(definition.initialState(t).startKinds).toBe(startFeedKinds(t, null))
+  })
+
+  it('merges given ratings under the students own; 0 takes a given one back', () => {
+    const t = withStart()
+    expect(effectiveRatings(t, { ratings: {} })).toEqual({ football: 1, swimming: 1, tennis: 1 })
+    expect(effectiveRatings(t, { ratings: { football: -1, swimming: 0, cat: 1 } })).toEqual({
+      football: -1,
+      tennis: 1,
+      cat: 1,
+    })
+    expect(isGivenRating(t, { ratings: {} }, 'football')).toBe(true)
+    expect(isGivenRating(t, { ratings: { football: -1 } }, 'football')).toBe(false)
+  })
+
+  it('minRated counts only the students own ratings', () => {
+    const t = withStart({ minRated: 2, showWhy: false })
+    expect(gradeTask(t, { ratings: {} }).passed).toBe(false)
+    expect(gradeTask(t, { ratings: { cat: 1 } }).passed).toBe(false)
+    expect(gradeTask(t, { ratings: { cat: 1, football: -1 } }).passed).toBe(true)
+    // Taking a given rating back is not a rating of their own.
+    expect(gradeTask(t, { ratings: { cat: 1, football: 0 } }).passed).toBe(false)
+  })
+
+  it('validates the map', () => {
+    expect(errorsOf(withStart())).toEqual([])
+    expect(errorsOf(withStart({ startRatings: ['football'] }))).toHaveLength(1)
+    expect(errorsOf(withStart({ startRatings: { nope: 'up' } }))[0]).toMatch(/not an item id/)
+    expect(errorsOf(withStart({ startRatings: { football: 'maybe' } }))[0]).toMatch(
+      /must be up or down/
+    )
+  })
+
+  it('reports start and end kinds', () => {
+    const t = withStart()
+    const sub = JSON.stringify({ v: 1, ratings: { guitar: 1, pizza: 1 }, why: true })
+    const out = definition.report.summaryFields(t, [{ distinctAttempts: [{ submission: sub }] }])
+    const start = startFeedKinds(t, null)
+    expect(out.recommenderResults.avgStartFeedKinds).toBe(start)
+    expect(out.recommenderResults.avgFeedKinds).toBe(kindsOf(t, JSON.parse(sub)))
+    expect(out.recommenderResults.openedUpCount).toBe(kindsOf(t, JSON.parse(sub)) > start ? 1 : 0)
+    expect(definition.summarize(t, { ratings: {} }).text).toContain(`started at ${start}`)
+    expect(
+      definition.report.summaryFields(task(), [{ distinctAttempts: [{ submission: sub }] }])
+        .recommenderResults.avgStartFeedKinds
+    ).toBeUndefined()
+  })
+})
+
+describe('startGoal', () => {
+  it('opens on the given goal, and is checked against goals', () => {
+    const t = { ...task(), goals: ['like', 'watching', 'new'], startGoal: 'watching' }
+    expect(goalOf(t, {})).toBe('watching')
+    expect(goalOf(t, { goal: 'new' })).toBe('new')
+    expect(validateRecommender({ ...t, startGoal: 'nope' }, 1).errors).toContain(
+      "Task 1: startGoal must be one of the task's goals."
+    )
   })
 })

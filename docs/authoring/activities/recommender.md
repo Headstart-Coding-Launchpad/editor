@@ -27,6 +27,7 @@ tasks:
     showWhy: true
     bubble: true
     minRated: 6
+    # startRatings: { football: up, swimming: up, tennis: up, pizza: down }   # optional: open in a bubble
     items:
       - { id: football, emoji: "\u26bd", label: Football, group: sport }
       - { id: swimming, emoji: "\U0001F3CA", label: Swimming, group: sport }
@@ -52,6 +53,8 @@ tasks:
 | `showWhy` | No | Default `true`. Each recommendation gets a **Why?** button, and opening one is part of passing. `false` hides the buttons and drops that part of the goal. |
 | `bubble` | No | Default `false`. Shows the bubble meter under the feed. |
 | `goals` | No | A switch for what the feed aims for: 1 to 3 different goals from `like`, `watching` and `new`. With two or more the student gets buttons (at least 44px) above the feed: **What I'll like**, **Keep me watching**, **Something new**. Leave it out and the feed is the usual one, exactly as before. |
+| `startRatings` | No | Ratings already set when the task opens: `{ itemId: up or down }` (keys are item `id`s). Each shows a small **set for you** tag; the student can change one or tap it again to take it back, and the tag goes. `minRated` counts only the student's own ratings (changed or new), never the given ones. The feed and the bubble meter use the given ratings from the first screen, so `{ football: up, swimming: up, tennis: up }` opens a feed of one kind. With `goals` including `watching`, leave at least one item of the liked kind unrated, or that feed is empty. Add `startGoal: watching` to open the task already stuck in a bubble. Leave it out and every task starts with no ratings. |
+| `startGoal` | No | With `goals`: the goal the feed starts on, one of the task's `goals` (default `like`, or the first goal). `startGoal: watching` with `startRatings` opens the task already in a bubble for a 'get out' mission; the student switches goal or rates to escape. |
 | `minRated` | No | How many items the student must rate. Default 6; 1 to the number of items. |
 
 ## Item fields
@@ -107,7 +110,9 @@ first, then the grid.
 
 - **Live.** Every tap is mirrored at once. The student card shows e.g. `4/6 rated · feed 2 of 4
   kinds`, and `· opened Why?` once they have; with a goal switch it adds `· aim: Keep me watching`
-  (the goal the feed is on; the shared state carries `goal` and `tried`). The student modal shows the student's ratings, their
+  (the goal the feed is on; the shared state carries `goal` and `tried`). With `startRatings` it
+  adds `(started at 1)`, the kinds the feed showed before the student rated (the shared state
+  carries `startKinds`). The student modal shows the student's ratings, their
   feed and the bubble meter, read-only.
 - **Edit answers** lets the teacher change the student's ratings (marked teacher assisted); the
   feed follows.
@@ -123,6 +128,9 @@ first, then the grid.
 says how many students had the feed on each goal at some point (`{ like, watching, new }`), and
 `avgFeedKinds` is measured on the goal each student left it on. See
 [session-reports.md](../session-reports.md#activity-summary-fields).
+
+With `startRatings` the summary also has `avgStartFeedKinds` (kinds in the feed when the task
+opened) and `openedUpCount` (students whose feed ended with more kinds than it started with).
 
 ## Devices and accessibility
 
