@@ -1077,7 +1077,8 @@ On tablets and small screens a Python or Turtle task shows the editor plus ONE r
 
 | File | Role |
 |---|---|
-| `functions/index.js` | HTTPS callable functions: `createAccount`, `setUserRole`, `disableAccount`, `enableAccount`, `deleteAccount`, `updateAccountPassword`; scheduled `retentionSweep` (daily 03:00, #303) |
+| `functions/handles.js` | Tutor handle rule (2-20 lower-case letters or digits), the same as `src/shared/sessionKey.js` (#337); used by `createAccount` and `setUserHandle` |
+| `functions/index.js` | HTTPS callable functions: `createAccount` (optional `handle`), `setUserRole` (keeps the handle claim), `setUserHandle` (admin sets or clears a tutor's handle; unique), `disableAccount`, `enableAccount`, `deleteAccount`, `updateAccountPassword`; scheduled `retentionSweep` (daily 03:00, #303) |
 | `functions/retention.js` | Data retention limits and the sweep (`DELETE = false`: counts only, written to `retentionLog/{date}`); see `docs/architecture/data-retention-plan.md` |
 | `functions/package.json` | Cloud Functions Node.js package (firebase-admin, firebase-functions) |
 

@@ -2,11 +2,33 @@ const { initializeApp } = require('firebase-admin/app')
 const { getAuth } = require('firebase-admin/auth')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { normaliseHandle } = require('./handles')
 
 initializeApp()
 
 // Same database id as the app (VITE_FIRESTORE_DATABASE_ID); see docs/architecture/firestore-europe-plan.md.
 const db = () => getFirestore(process.env.FIRESTORE_DATABASE_ID || 'london')
+
+// A tutor handle is unique across accounts (their links and room are theirs alone).
+async function assertHandleFree(handle, exceptUid) {
+  const taken = await db().collection('users').where('handle', '==', handle).get()
+  if (taken.docs.some((doc) => doc.id !== exceptUid)) {
+    throw new HttpsError('already-exists', `The handle "${handle}" is already used.`)
+  }
+}
+
+// What `handle` means for the request: '' = none given, a handle, or an invalid-argument error.
+function handleOf(data) {
+  if (data.handle == null || String(data.handle).trim() === '') return ''
+  const handle = normaliseHandle(data.handle)
+  if (!handle) {
+    throw new HttpsError(
+      'invalid-argument',
+      'A handle is 2 to 20 lower-case letters or numbers, no spaces.'
+    )
+  }
+  return handle
+}
 
 function requireAdmin(auth) {
   if (!auth || auth.token.role !== 'admin') {
@@ -22,14 +44,16 @@ exports.createAccount = onCall(
   async ({ data, auth }) => {
     requireAdmin(auth)
     const { email, password, role, displayName } = data
+    const handle = handleOf(data)
     if (!email || !password || password.length < 8 || !['teacher', 'admin'].includes(role)) {
       throw new HttpsError(
         'invalid-argument',
         'email, password (min 8 chars), and a valid role are required.'
       )
     }
+    if (handle) await assertHandleFree(handle, null)
     const user = await getAuth().createUser({ email, password, displayName: displayName ?? '' })
-    await getAuth().setCustomUserClaims(user.uid, { role })
+    await getAuth().setCustomUserClaims(user.uid, { role, ...(handle ? { handle } : {}) })
     try {
       await db()
         .collection('users')
@@ -38,6 +62,7 @@ exports.createAccount = onCall(
           email,
           displayName: displayName ?? '',
           role,
+          ...(handle ? { handle } : {}),
           disabled: false,
           createdAt: FieldValue.serverTimestamp(),
         })
@@ -64,10 +89,37 @@ exports.setUserRole = onCall(
     if (!uid || !['teacher', 'admin'].includes(role)) {
       throw new HttpsError('invalid-argument', 'uid and a valid role are required.')
     }
-    await getAuth().setCustomUserClaims(uid, { role })
+    // Keep the tutor's handle: setCustomUserClaims replaces every claim.
+    const existing = (await getAuth().getUser(uid)).customClaims ?? {}
+    await getAuth().setCustomUserClaims(uid, {
+      role,
+      ...(existing.handle ? { handle: existing.handle } : {}),
+    })
     // Stop the old claim: sessions made with it can't refresh past their current token.
     await getAuth().revokeRefreshTokens(uid)
     await db().collection('users').doc(uid).update({ role })
+  }
+)
+
+// Sets (or clears, with an empty handle) a tutor's handle claim and mirrors it to Firestore.
+// The tutor's next sign-in (or token refresh) picks it up, so their tokens are revoked.
+exports.setUserHandle = onCall(
+  { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
+  async ({ data, auth }) => {
+    requireAdmin(auth)
+    const { uid } = data
+    if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
+    const handle = handleOf(data)
+    if (handle) await assertHandleFree(handle, uid)
+    const existing = (await getAuth().getUser(uid)).customClaims ?? {}
+    const { handle: _old, ...rest } = existing
+    await getAuth().setCustomUserClaims(uid, { ...rest, ...(handle ? { handle } : {}) })
+    await getAuth().revokeRefreshTokens(uid)
+    await db()
+      .collection('users')
+      .doc(uid)
+      .update({ handle: handle || FieldValue.delete() })
+    return { handle }
   }
 )
 

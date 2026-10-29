@@ -7,6 +7,7 @@ import { AdminBadge, AdminCell, AdminTable } from './AdminUi'
 
 const createAccount = httpsCallable(functions, 'createAccount')
 const setUserRole = httpsCallable(functions, 'setUserRole')
+const setUserHandle = httpsCallable(functions, 'setUserHandle')
 const disableAccount = httpsCallable(functions, 'disableAccount')
 const enableAccount = httpsCallable(functions, 'enableAccount')
 const deleteAccount = httpsCallable(functions, 'deleteAccount')
@@ -20,6 +21,9 @@ export default function AccountManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [newDisplayName, setNewDisplayName] = useState('')
   const [newRole, setNewRole] = useState('teacher')
+  const [newHandle, setNewHandle] = useState('')
+  // Handle being edited per account id (a tutor's short word for their own live class and links).
+  const [handleDrafts, setHandleDrafts] = useState({})
   const [formError, setFormError] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
   const [actionError, setActionError] = useState(null)
@@ -48,11 +52,13 @@ export default function AccountManagement() {
         password: newPassword,
         role: newRole,
         displayName: newDisplayName.trim(),
+        handle: newHandle.trim(),
       })
       setNewEmail('')
       setNewPassword('')
       setNewDisplayName('')
       setNewRole('teacher')
+      setNewHandle('')
       setShowForm(false)
     } catch (err) {
       setFormError(err.message)
@@ -146,6 +152,22 @@ export default function AccountManagement() {
               </select>
             </div>
           </div>
+          <div style={s.formRow}>
+            <div style={s.field}>
+              <label style={s.label}>Handle (optional)</label>
+              <input
+                style={s.input}
+                value={newHandle}
+                maxLength={20}
+                onChange={(e) => setNewHandle(e.target.value)}
+                placeholder="sam"
+              />
+              <small>
+                A short word for this tutor&apos;s own class links (2-20 lower-case letters or
+                numbers). It can&apos;t change once links are posted.
+              </small>
+            </div>
+          </div>
           {formError && <p style={s.error}>{formError}</p>}
           <button
             className="btn-secondary"
@@ -161,10 +183,10 @@ export default function AccountManagement() {
       {snapshotError && <p style={s.error}>Could not load accounts: {snapshotError}</p>}
       {actionError && <p style={s.error}>{actionError}</p>}
 
-      <AdminTable headers={['Name', 'Email', 'Role', 'Status', 'Actions']}>
+      <AdminTable headers={['Name', 'Email', 'Role', 'Handle', 'Status', 'Actions']}>
         {accounts.length === 0 && (
           <tr>
-            <AdminCell colSpan={5} style={{ color: '#888', textAlign: 'center' }}>
+            <AdminCell colSpan={6} style={{ color: '#888', textAlign: 'center' }}>
               No accounts yet.
             </AdminCell>
           </tr>
@@ -185,6 +207,39 @@ export default function AccountManagement() {
                 <option value="teacher">Teacher</option>
                 <option value="admin">Admin</option>
               </select>
+            </AdminCell>
+            <AdminCell>
+              <div style={s.actionsCell}>
+                <input
+                  style={{ ...s.input, width: 110 }}
+                  aria-label={`Handle for ${account.displayName || account.email}`}
+                  maxLength={20}
+                  value={handleDrafts[account.id] ?? account.handle ?? ''}
+                  onChange={(e) =>
+                    setHandleDrafts((drafts) => ({ ...drafts, [account.id]: e.target.value }))
+                  }
+                />
+                {(handleDrafts[account.id] ?? account.handle ?? '') !== (account.handle ?? '') && (
+                  <button
+                    className="btn-ghost-outline"
+                    style={s.actionBtn}
+                    onClick={() =>
+                      handleAction(
+                        setUserHandle,
+                        { uid: account.id, handle: handleDrafts[account.id] },
+                        'Set handle'
+                      ).then(() =>
+                        setHandleDrafts((drafts) => {
+                          const { [account.id]: _done, ...rest } = drafts
+                          return rest
+                        })
+                      )
+                    }
+                  >
+                    Save
+                  </button>
+                )}
+              </div>
             </AdminCell>
             <AdminCell>
               <AdminBadge
