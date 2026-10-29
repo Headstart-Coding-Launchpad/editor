@@ -108,6 +108,9 @@ The lesson turns parts on so each screen stays simple.
 - **Start with** is a box the student can type any word into (the pack's usual sentence starters
   are offered as suggestions; blank means any word). If the bot has never read the word, or nothing
   follows it, it says so under the card and writes nothing.
+- **Tap a written word** to see the choices the bot had there: up to 5 words with "3 of 5 times"
+  and a bar each, the one it took ticked (✔), and "and N more". Tap it again to close. The open
+  word is saved in the state (`treeIndex`), so the tutor sees the same tree. It adds no control.
 - With the `voices` panel the pack chips in the fold are on/off switches: the student can mix up to
   `maxPacks` packs, and the bot learns from all of them (plus **My writing**). The tutor's card
   summary says what is mixed and the start word.

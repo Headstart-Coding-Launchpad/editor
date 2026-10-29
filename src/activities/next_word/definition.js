@@ -196,6 +196,7 @@ export default defineActivity({
       'right',
       'lookBack',
       'startWord',
+      'treeIndex',
       'finished',
       'kept',
       'copied',

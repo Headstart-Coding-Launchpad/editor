@@ -344,6 +344,32 @@ export function whyWord(model, text, index, lookBack = WRITE_LOOK_BACK) {
   }
 }
 
+// The choices the bot had at the word at `index` of a written text, for the word-tree: the words
+// it could have picked (most likely first, at most `limit`, the rest counted in `more`), with
+// counts and shares, and which one it took. null for the first word or an index out of range.
+export const TREE_ROWS = 5
+export function choicesFor(model, text, index, lookBack = WRITE_LOOK_BACK, limit = TREE_ROWS) {
+  const words = String(text ?? '')
+    .split(' ')
+    .filter(Boolean)
+  if (index <= 0 || index >= words.length) return null
+  const info = nextOptionsLookBack(model, words.slice(0, index).join(' '), lookBack)
+  const took = normaliseWord(words[index])
+  const rows = info.options.slice(0, limit)
+  // The word it took is always on show, even when it was a long shot.
+  const takenRow = info.options.find((option) => option.word === took)
+  const shown =
+    takenRow && !rows.includes(takenRow) ? [...rows.slice(0, limit - 1), takenRow] : rows
+  return {
+    context: info.word,
+    total: info.total,
+    fellBack: info.fellBack,
+    options: shown.map((option) => ({ ...option, taken: option.word === took })),
+    more: Math.max(0, info.options.length - shown.length),
+    took,
+  }
+}
+
 // Kept cards: { text, copied, lookBack }, tolerant of anything.
 function cleanCards(raw) {
   if (!Array.isArray(raw)) return []
@@ -397,6 +423,7 @@ export function initialNextWordState(task) {
     temperature: DEFAULT_TEMPERATURE,
     lookBack: startLookBackOf(task),
     startWord: '',
+    treeIndex: -1,
     cards: [],
     runs: 0,
     copies: 0,
@@ -467,6 +494,7 @@ export function normalizeNextWordState(task, raw) {
         ? Math.min(raw.lookBack, maxLookBackOf(task))
         : base.lookBack,
     startWord: typeof raw.startWord === 'string' ? raw.startWord.slice(0, 40) : '',
+    treeIndex: Number.isInteger(raw.treeIndex) && raw.treeIndex >= 0 ? raw.treeIndex : -1,
     cards: cleanCards(raw.cards),
     runs: count(raw.runs),
     copies: count(raw.copies),

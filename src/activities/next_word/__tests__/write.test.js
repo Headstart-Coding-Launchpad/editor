@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { modelFor, seededRandom, tokenise } from '../ngram.js'
 import {
   activeModel,
+  choicesFor,
   initialNextWordState,
   isCopiedSentence,
   modelBodyOf,
@@ -196,5 +197,30 @@ describe('a pack of about 1,000 sentences (#342)', () => {
     const { text } = writeText(model, { lookBack: 2, maxWords: 12, random: seededRandom(3) })
     expect(text.length).toBeGreaterThan(0)
     expect(performance.now() - started).toBeLessThan(1000)
+  })
+})
+
+describe('choicesFor: the word-tree rows (#342)', () => {
+  const TEXT =
+    'The cat sat. The cat ran. The cat sat. The cat jumped. The cat hid. The cat slept. The cat ate.'
+  const model = modelFor(TEXT)
+
+  it('lists what could follow with counts, marks the taken word, and counts the rest', () => {
+    const tree = choicesFor(model, 'the cat sat', 2, 1)
+    expect(tree.total).toBe(7)
+    expect(tree.options).toHaveLength(5)
+    expect(tree.options[0]).toMatchObject({ word: 'sat', count: 2, taken: true })
+    expect(tree.more).toBe(1)
+  })
+
+  it('keeps a long shot on show when it was the word taken', () => {
+    const tree = choicesFor(model, 'the cat ate', 2, 1)
+    expect(tree.options.some((option) => option.taken && option.word === 'ate')).toBe(true)
+    expect(tree.options).toHaveLength(5)
+  })
+
+  it('has no tree for the first word or a bad index', () => {
+    expect(choicesFor(model, 'the cat sat', 0, 1)).toBeNull()
+    expect(choicesFor(model, 'the cat sat', 9, 1)).toBeNull()
   })
 })

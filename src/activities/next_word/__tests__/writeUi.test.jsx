@@ -234,3 +234,32 @@ describe('Next Word write mode: mixing packs (#342)', () => {
     expect(state().packs).toEqual(['text:1'])
   })
 })
+
+describe('Next Word write mode: the word-tree (#342)', () => {
+  it('shows the choices at a tapped word, with the taken one ticked, and no extra control', () => {
+    const { state, container } = renderView()
+    go()
+    const before = countControls(container)
+    const words = screen.getAllByRole('button', { name: /^(the|cat|sat|on|mat\.?)$/i })
+    fireEvent.click(words[1])
+    expect(state().treeIndex).toBe(1)
+    expect(screen.getByTestId('next_word-tree')).toHaveTextContent('it could pick')
+    expect(screen.getByTestId('next_word-tree-taken')).toHaveTextContent('✔')
+    expect(screen.getByTestId('next_word-tree-taken')).toHaveTextContent(/of \d+ times?/)
+    // Tapping a word is the existing control; the tree adds none of its own.
+    expect(countControls(container)).toBe(before)
+    fireEvent.click(screen.getAllByRole('button', { name: /^(the|cat|sat|on|mat\.?)$/i })[1])
+    expect(screen.queryByTestId('next_word-tree')).toBeNull()
+  })
+
+  it('shows the tutor the same tree the student opened', () => {
+    const { state } = renderView()
+    go()
+    fireEvent.click(screen.getAllByRole('button', { name: /^(the|cat|sat|on|mat\.?)$/i })[1])
+    const student = state()
+    expect(student.treeIndex).toBe(1)
+    document.body.innerHTML = ''
+    renderView({ initialState: student, teacher: true, readOnly: true })
+    expect(screen.getByTestId('next_word-tree')).toBeInTheDocument()
+  })
+})

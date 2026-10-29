@@ -8,6 +8,7 @@ import {
   OWN_VOICE,
   activeModel,
   cardOf,
+  choicesFor,
   gradeTask,
   initialNextWordState,
   isCopiedSentence,
@@ -77,7 +78,22 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   const cardStyle = cardOf(task)
 
   const [writing, setWriting] = useState(false)
-  const [whyIndex, setWhyIndex] = useState(null)
+  // The word whose choices are open. The student's tap is saved in the state (treeIndex) so the
+  // tutor sees the same tree; a tutor watching can also tap on their own without changing it.
+  const [watchIndex, setWatchIndex] = useState(undefined)
+  const whyIndex = watching
+    ? watchIndex !== undefined
+      ? watchIndex
+      : state.treeIndex >= 0
+        ? state.treeIndex
+        : null
+    : state.treeIndex >= 0
+      ? state.treeIndex
+      : null
+  function setWhyIndex(index) {
+    if (watching) setWatchIndex(index)
+    else update({ treeIndex: index == null ? -1 : index })
+  }
   const [foldPref, setFoldPref] = useState(null)
   const [startNote, setStartNote] = useState('')
   const timersRef = useRef([])
@@ -151,7 +167,6 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
       maxWords: maxWordsOf(task),
     })
     if (tokens.length === 0) return
-    setWhyIndex(null)
     const show = (k) =>
       onChange?.((prev) => ({
         ...normalizeNextWordState(task, prev),
@@ -160,6 +175,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
         copied: false,
         kept: false,
         usedLookBack: lookBack,
+        treeIndex: -1,
       }))
     if (prefersReducedMotion() || tokens.length < 2) {
       show(tokens.length)
@@ -184,7 +200,6 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
     setWriting(false)
-    setWhyIndex(null)
     const on = packVoices.map((entry) => entry.id)
     const next = on.includes(voiceId)
       ? on.filter((id) => id !== voiceId)
@@ -193,6 +208,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
     update({
       packs: next,
       voice: next[0],
+      treeIndex: -1,
       sentence: '',
       finished: false,
       copied: false,
@@ -206,6 +222,11 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   const why =
     model && whyIndex != null
       ? whyWord(model, state.sentence, whyIndex, state.usedLookBack || lookBack)
+      : null
+
+  const tree =
+    model && whyIndex != null
+      ? choicesFor(model, state.sentence, whyIndex, state.usedLookBack || lookBack)
       : null
 
   const showFold = panels.includes('silly') || panels.includes('voices')
@@ -400,6 +421,34 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
         <p className="act-nw-why" role="status" data-testid="next_word-why">
           {whyText(why)}
         </p>
+      )}
+      {tree && tree.options.length > 0 && (
+        <div className="act-nw-tree" data-testid="next_word-tree">
+          <p className="act-nw-tree__root">after {quote(tree.context)}, it could pick:</p>
+          <ul className="act-nw-tree__rows">
+            {tree.options.map((option) => (
+              <li
+                key={option.word}
+                className={`act-nw-tree__row${option.taken ? ' act-nw-tree__row--taken' : ''}`}
+                data-testid={option.taken ? 'next_word-tree-taken' : 'next_word-tree-row'}
+              >
+                <span className="act-nw-tree__word">
+                  {option.word === '.' || option.word === '!' || option.word === '?'
+                    ? '(the end)'
+                    : option.word}
+                  {option.taken ? ' ✔' : ''}
+                </span>
+                <span className="act-nw-tree__bar" aria-hidden="true">
+                  <span style={{ width: `${Math.max(4, Math.round(option.share * 100))}%` }} />
+                </span>
+                <span className="act-nw-tree__count">
+                  {option.count} of {tree.total} {tree.total === 1 ? 'time' : 'times'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {tree.more > 0 && <p className="act-nw-tree__more">and {tree.more} more</p>}
+        </div>
       )}
       <div className="act-nw-cards" data-testid="next_word-cards">
         <h3 className="act-nw-heading">

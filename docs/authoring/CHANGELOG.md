@@ -46,6 +46,7 @@ Entries written before 2026-09-29 are not tagged.
   write-mode `texts` body may now be up to 80000 characters (was 6000), enough for about 1,000
   sentences. Each sentence the student types in My writing also counts as 5 copies, so a few lines
   show up against a big pack ("Copied word for word!" still checks the real sentences only).
+  Tapping a written word now also shows a small word-tree of the choices the bot had there.
   - Affects: next_word (write mode) · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-10-29-next-word-write-mode-any-start-word-mix-packs-bigger-packs.md
 

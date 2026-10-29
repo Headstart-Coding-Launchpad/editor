@@ -7405,6 +7405,56 @@ label.te-backdrop-tag,
   font-weight: 600;
 }
 
+.act-nw-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--ui-border);
+}
+
+.act-nw-tree__root,
+.act-nw-tree__more {
+  margin: 0;
+  font-weight: 600;
+}
+
+.act-nw-tree__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.act-nw-tree__row {
+  display: grid;
+  grid-template-columns: 8em 1fr 8em;
+  align-items: center;
+  gap: 8px;
+}
+
+.act-nw-tree__row--taken {
+  font-weight: 700;
+  background: var(--ui-surface-tint);
+  border-radius: var(--ui-radius-sm);
+}
+
+.act-nw-tree__bar {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--ui-border);
+}
+
+.act-nw-tree__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--ui-accent, #6d28d9);
+}
+
 .act-nw-cards {
   display: flex;
   flex-direction: column;
