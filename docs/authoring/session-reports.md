@@ -73,9 +73,11 @@ each student's `tasks[]`, even when nobody attempted it.
 
 ## Students
 
-`students[]`, one per student. A student is anyone who appears anywhere in the session data:
-the live roster, the attempt, override, carry-fallback or support-reveal logs, badges, badge
-signals, or a teacher-sandbox snapshot.
+`students[]`, one per student. A student is anyone who joined (the live roster or a teacher-sandbox
+snapshot) or did work (the attempt, override, carry-fallback, support-reveal, side-quest, example-open
+or draft logs). An id that appears only in badges, badge signals or peer-help records, with no join
+and no work, is left out: it is a removed student or a tutor / Presentation device and would pull
+every class total down (#231).
 
 | Path | Meaning | Present | Added |
 |---|---|---|---|

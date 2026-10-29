@@ -221,6 +221,23 @@ function taskById(items, taskId) {
 }
 
 describe('buildSessionReport', () => {
+  it('leaves out an id that only has badges or signals and never joined or did any work (#231)', () => {
+    const withDevice = {
+      ...session,
+      badges: { ghost: { awarded: {} } },
+      studentSignals: { ghost: { copies: 1 } },
+    }
+    const report = buildSessionReport({ session: withDevice, lesson })
+    expect(report.students).toHaveLength(Object.keys(session.students).length)
+    expect(report.students.map((student) => student.label)).not.toContain('Former student')
+    // A student who did join still counts, with or without badges.
+    const joined = buildSessionReport({
+      session: { ...withDevice, badges: { alice: { awarded: {} } } },
+      lesson,
+    })
+    expect(joined.students).toHaveLength(Object.keys(session.students).length)
+  })
+
   it('excludes information tasks and includes check-less quiz tasks', () => {
     const report = buildSessionReport({ session, lesson })
     expect(report.taskSummary.map((t) => t.taskId)).toEqual([1, 3, 4, 5, 6, 7])
