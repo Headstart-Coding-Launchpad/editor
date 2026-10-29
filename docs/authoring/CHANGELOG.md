@@ -94,6 +94,41 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: next_word · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-10-28-next-word-bot-that-writes-like-go-auto-write-copied-badge-ou.md
 
+- **Game agent: `brain: copy` (a neural network that learns from the student's driving) and
+  `panels: [network]`; Train now practises on random courses.** `brain` is `reward` (the default,
+  Q-learning from points) or `copy`: the student drives the robot with the arrow keys or on-screen
+  arrows over 2 to 3 practice courses (the screen counts the moves, "You've shown it 34 moves on 2
+  courses"), presses **Train** (a small network, 8 hidden neurons, fitted in animation frames) and
+  **Watch it drive** runs it on the next unseen class course; the task passes when it reaches the
+  treasure. Drive badly and it copies the mistakes. `panels: [network]` draws the inputs (senses),
+  hidden neurons and 4 outputs, lit as it decides. A copy-bot's `senses` default to
+  `[walls, treasure_direction]` (leave `position` out); it uses `randomCourses` (defaults apply when
+  omitted) and ignores `testMaps` and the reward steppers. The tutor card reads `copy-bot · 34 moves ·
+  course 3: 8 pts`; the shared state carries `drives`. For a race, put a copy task and a reward task
+  with `seed: class` in one lesson and compare the cards by course number. Also: with `randomCourses`
+  and the usual brain, each practice try now runs on the next course of a separate training stream
+  (not the courses **Try a new course** uses) and one press of Train runs 5 times `episodes`, so
+  `walls` + `treasure_direction` clears about 70% of new 5 x 5 courses (compass alone about 55%);
+  tasks without `randomCourses` are unchanged. See
+  [game_agent.md](activities/game_agent.md#copy-bot).
+  - Affects: game_agent · Existing lessons: no changes needed (a `randomCourses` task now trains on
+    several courses per Train press, so a robot learns the courses better) ·
+    Resolves: authoring-requests/2026-10-28-game-agent-robot-brain-from-playing-copy-bot-a-neural-networ.md,
+    authoring-requests/2026-10-28-game-agent-random-solvable-courses-with-a-class-seed-no-dead.md
+
+- **Game agent: `randomCourses`, random solvable courses with a class seed.** New optional object on
+  a `game_agent` task: `{ size (5 to 9), walls (0 to 0.4), pits (0 to 3), coins (0 to 3), seed (class
+  or a whole number) }`, all optional. **Try a new course** runs the trained robot once, with no
+  training, on the next generated course; the task passes when it reaches the treasure (the same
+  rule as `testMaps`, which it replaces). Courses are always solvable (pits count as blocked) and have
+  no dead-end pocket near the way from `R` to `T`. With `seed: class` every student in the lesson
+  gets the same courses in the same order. The tutor card lists the last courses by number and
+  score (`course 1: 8 pts · course 2: lost`); the shared state carries `courses`; the report adds
+  `courseStudents`, `avgCoursesTried` and `avgCoursesCleared`. See
+  [activities/game_agent.md](activities/game_agent.md).
+  - Affects: game_agent · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-game-agent-random-solvable-courses-with-a-class-seed-no-dead.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every

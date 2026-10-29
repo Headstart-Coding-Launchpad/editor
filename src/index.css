@@ -4966,6 +4966,55 @@ label.te-backdrop-tag,
   box-shadow: inset 0 0 0 3px var(--colour-ink-strong);
 }
 
+.act-ga-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-areas:
+    '. up .'
+    'left down right';
+  gap: 6px;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.act-ga-pad__btn {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 1.4rem;
+  border: 2px solid var(--colour-ink-strong, #333);
+  border-radius: 10px;
+  background: var(--ui-surface);
+  cursor: pointer;
+}
+
+.act-ga-pad__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.act-ga-pad__btn--up {
+  grid-area: up;
+}
+
+.act-ga-pad__btn--left {
+  grid-area: left;
+}
+
+.act-ga-pad__btn--down {
+  grid-area: down;
+}
+
+.act-ga-pad__btn--right {
+  grid-area: right;
+}
+
+.act-ga-net {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 8px;
+  color: var(--colour-ink-strong, #333);
+}
+
 .act-ga-rewards {
   display: flex;
   flex-direction: column;
