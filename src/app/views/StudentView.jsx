@@ -2285,6 +2285,7 @@ export default function StudentView({
       <LiveInkProvider
         lessonId={lessonId}
         role={liveInkRole}
+        followTutor={isForcedTeacherLive}
         subscribe={subscribeLiveInk}
         createWriter={createLiveInkWriter}
         // Annotating a code task's explainer opens it for students who have it collapsed,

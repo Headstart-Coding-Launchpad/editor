@@ -24,6 +24,9 @@ export function liveInkPath(lessonId, ...parts) {
 /** Pointer writes per second (~12Hz) through createThrottledMirrorWriter. */
 export const POINTER_INTERVAL_MS = 80
 
+/** Tutor scroll writes per pane (~10Hz) through createThrottledMirrorWriter. */
+export const SCROLL_INTERVAL_MS = 100
+
 /** A stroke stays fully drawn for this long after it arrives on a screen… */
 export const STROKE_HOLD_MS = 2500
 /** …then fades out over this long (removed instantly under reduced motion). */
@@ -133,7 +136,18 @@ function normaliseTutorPointer(raw) {
   return Number.isFinite(raw.n) ? { ...base, n: raw.n } : base
 }
 
-/** RTDB snapshot value → `{ pointer, strokes: [], highlights: [], tutorPointer, tutorClick }`, dropping malformed entries. */
+//   liveInk/{lessonId}/tutorScroll/{pane}   { f, t }   f: scroll position 0..1 of what can scroll
+function normaliseTutorScroll(raw) {
+  const out = {}
+  for (const [pane, entry] of Object.entries(raw ?? {})) {
+    if (!isShortString(pane, 80) || !entry) continue
+    if (Number.isFinite(entry.f) && entry.f >= 0 && entry.f <= 1)
+      out[pane] = { f: entry.f, t: entry.t ?? 0 }
+  }
+  return out
+}
+
+/** RTDB snapshot value → `{ pointer, strokes: [], highlights: [], tutorPointer, tutorClick, tutorScroll }`, dropping malformed entries. */
 export function normaliseLiveInk(value) {
   const strokes = Object.entries(value?.strokes ?? {})
     .map(([id, raw]) => normaliseStroke(id, raw))
@@ -149,6 +163,7 @@ export function normaliseLiveInk(value) {
     highlights,
     tutorPointer: normaliseTutorPointer(value?.tutorPointer),
     tutorClick: normaliseTutorPointer(value?.tutorClick),
+    tutorScroll: normaliseTutorScroll(value?.tutorScroll),
   }
 }
 
@@ -156,6 +171,7 @@ export const EMPTY_LIVE_INK = Object.freeze({
   pointer: null,
   tutorPointer: null,
   tutorClick: null,
+  tutorScroll: Object.freeze({}),
   strokes: Object.freeze([]),
   highlights: Object.freeze([]),
 })

@@ -28,6 +28,7 @@ export default function LiveInkProvider({
   subscribe,
   createWriter,
   onExplainerAnnotate,
+  followTutor = false,
   children,
 }) {
   const enabled = !!lessonId && (role === 'teacher' || role === 'student')
@@ -146,7 +147,7 @@ export default function LiveInkProvider({
       <LiveInkDataContext.Provider value={ink}>
         {children}
         {isTeacher && writer && <TutorPointerTracker writer={writer} />}
-        {enabled && !isTeacher && <TutorPointerLayer />}
+        {enabled && !isTeacher && <TutorPointerLayer followTutor={followTutor} />}
         {isTeacher && hasSurface && (
           <PresentationInkToolbar
             tool={tool}

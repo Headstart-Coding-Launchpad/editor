@@ -42,3 +42,35 @@ export function clientPointInPane(el, rx, ry) {
   if (!box.width || !box.height) return null
   return { x: box.left + rx * box.width, y: box.top + ry * box.height }
 }
+
+// ─── Scroll ──────────────────────────────────────────────────────────────────────────────
+
+/** A scroll position as a fraction 0..1 of what can scroll, or null when nothing can. */
+export function scrollFractionOf(scroller) {
+  const room = scroller.scrollHeight - scroller.clientHeight
+  if (!(room > 0)) return null
+  return round3(Math.min(1, Math.max(0, scroller.scrollTop / room)))
+}
+
+function canScroll(el) {
+  return el.scrollHeight - el.clientHeight > 1
+}
+
+/** The element in a pane that scrolls: the pane itself, else its first scrollable descendant. */
+export function scrollerOfPane(paneEl) {
+  if (canScroll(paneEl)) return paneEl
+  for (const el of paneEl.querySelectorAll('*')) {
+    if (canScroll(el) && /auto|scroll/.test(getComputedStyle(el).overflowY)) return el
+  }
+  return null
+}
+
+/** Scrolls a pane to a fraction the tutor sent. Returns true when something moved. */
+export function applyScrollFraction(paneEl, fraction) {
+  const scroller = scrollerOfPane(paneEl)
+  if (!scroller) return false
+  const target = Math.round(fraction * (scroller.scrollHeight - scroller.clientHeight))
+  if (scroller.scrollTop === target) return false
+  scroller.scrollTop = target
+  return true
+}

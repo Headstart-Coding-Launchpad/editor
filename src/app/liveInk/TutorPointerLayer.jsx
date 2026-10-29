@@ -3,9 +3,11 @@ import { useLiveInkData } from './liveInkContext'
 import {
   TUTOR_POINTER_IDLE_MS,
   TUTOR_RIPPLE_MS,
+  applyScrollFraction,
   clientPointInPane,
   findTutorPane,
   fractionsInPane,
+  scrollFractionOf,
   tutorPaneOf,
 } from './tutorPane'
 
@@ -31,10 +33,19 @@ export function TutorPointerTracker({ writer }) {
     function onLeave(event) {
       if (!event.relatedTarget) writer.hideTutorPointer?.()
     }
+    // scroll doesn't bubble, so listen in the capture phase to hear nested scrollers.
+    function onScroll(event) {
+      const scroller = event.target
+      const pane = scroller instanceof Element ? tutorPaneOf(scroller) : null
+      const f = pane && scrollFractionOf(scroller)
+      if (f !== null && f !== undefined) writer.moveTutorScroll?.({ pane: pane.id, f })
+    }
+    document.addEventListener('scroll', onScroll, true)
     document.addEventListener('mousemove', onMove, true)
     document.addEventListener('mousedown', onDown, true)
     document.addEventListener('mouseout', onLeave, true)
     return () => {
+      document.removeEventListener('scroll', onScroll, true)
       document.removeEventListener('mousemove', onMove, true)
       document.removeEventListener('mousedown', onDown, true)
       document.removeEventListener('mouseout', onLeave, true)
@@ -69,8 +80,8 @@ const rippleStyle = {
   animation: `tutor-ripple ${TUTOR_RIPPLE_MS}ms ease-out forwards`,
 }
 
-export default function TutorPointerLayer() {
-  const { tutorPointer, tutorClick } = useLiveInkData()
+export default function TutorPointerLayer({ followTutor = false }) {
+  const { tutorPointer, tutorClick, tutorScroll } = useLiveInkData()
   const [idle, setIdle] = useState(false)
   const [ripple, setRipple] = useState(null)
   const seenClick = useRef(undefined)
@@ -101,6 +112,18 @@ export default function TutorPointerLayer() {
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clickN])
+
+  // A student locked to the tutor's screen scrolls where the tutor scrolls. An unlocked student
+  // is never moved: the view does not auto-scroll under someone who is reading.
+  const appliedScroll = useRef({})
+  useEffect(() => {
+    if (!followTutor) return
+    for (const [pane, entry] of Object.entries(tutorScroll ?? {})) {
+      if (appliedScroll.current[pane] === entry.t) continue
+      const el = findTutorPane(document, pane)
+      if (el && applyScrollFraction(el, entry.f)) appliedScroll.current[pane] = entry.t
+    }
+  }, [followTutor, tutorScroll])
 
   const dot = !idle && tutorPointer ? placeOn(tutorPointer) : null
   const rippleAt = ripple ? placeOn(ripple) : null

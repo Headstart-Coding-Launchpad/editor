@@ -175,6 +175,7 @@ export default function OutputPanel({
   const showCursor = running || (output && displayedOutput !== output)
   return (
     <div
+      data-tp-pane="output"
       style={{
         ...s.panel,
         ...(fill ? s.panelFill : {}),

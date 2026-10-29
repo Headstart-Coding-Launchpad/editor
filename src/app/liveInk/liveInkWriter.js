@@ -4,7 +4,13 @@
 import { onDisconnect, push, ref, remove, set } from 'firebase/database'
 import { db } from '../../shared/firebase'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
-import { INK_COLOUR, POINTER_INTERVAL_MS, STROKE_REMOVE_AFTER_MS, liveInkPath } from './liveInkData'
+import {
+  INK_COLOUR,
+  POINTER_INTERVAL_MS,
+  SCROLL_INTERVAL_MS,
+  STROKE_REMOVE_AFTER_MS,
+  liveInkPath,
+} from './liveInkData'
 
 function quietly(promise, what) {
   return Promise.resolve(promise).catch((err) => {
@@ -37,6 +43,24 @@ export function createLiveInkWriter(
   const tutorPointerRef = ref(db, liveInkPath(lessonId, 'tutorPointer'))
   const tutorClickRef = ref(db, liveInkPath(lessonId, 'tutorClick'))
   let clickCount = 0
+  // One throttled writer per scrolling pane, so two panes scrolling at once don't drop each other.
+  const scrollWriters = new Map()
+  function scrollWriterFor(pane) {
+    if (!scrollWriters.has(pane)) {
+      const scrollRef = ref(db, liveInkPath(lessonId, 'tutorScroll', pane))
+      scrollWriters.set(
+        pane,
+        createThrottledMirrorWriter({
+          write: (value) => quietly(set(scrollRef, value), 'scroll a pane'),
+          intervalMs: SCROLL_INTERVAL_MS,
+          now,
+          setTimer,
+          clearTimer,
+        })
+      )
+    }
+    return scrollWriters.get(pane)
+  }
   const tutorPointerWriter = createThrottledMirrorWriter({
     write: (value) => quietly(set(tutorPointerRef, value), 'move the tutor pointer'),
     intervalMs: POINTER_INTERVAL_MS,
@@ -49,6 +73,11 @@ export function createLiveInkWriter(
     // `pane` is a data-tp-pane id; rx/ry are fractions of that pane's box (tutorPane.js).
     moveTutorPointer({ pane, rx, ry }) {
       tutorPointerWriter.push({ pane, rx, ry, t: now() })
+    },
+
+    // `f` is the pane's scroll position as a fraction 0..1 (tutorPane.js scrollFractionOf).
+    moveTutorScroll({ pane, f }) {
+      scrollWriterFor(pane).push({ f, t: now() })
     },
 
     hideTutorPointer() {
@@ -114,12 +143,15 @@ export function createLiveInkWriter(
     clearAll() {
       pointerWriter.cancel()
       tutorPointerWriter.cancel()
+      for (const writer of scrollWriters.values()) writer.cancel()
       return quietly(remove(rootRef), 'clear the annotations')
     },
 
     dispose() {
       pointerWriter.cancel()
       tutorPointerWriter.cancel()
+      for (const writer of scrollWriters.values()) writer.cancel()
+      scrollWriters.clear()
       for (const timer of strokeTimers) clearTimer(timer)
       strokeTimers.clear()
     },

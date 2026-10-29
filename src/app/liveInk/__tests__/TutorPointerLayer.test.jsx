@@ -29,6 +29,10 @@ function makeChannel() {
           value = { ...value, tutorPointer: { pane, rx, ry, t: Date.now() } }
           emit()
         },
+        moveTutorScroll({ pane, f }) {
+          value = { ...value, tutorScroll: { ...value?.tutorScroll, [pane]: { f, t: Date.now() } } }
+          emit()
+        },
         hideTutorPointer() {
           value = { ...value, tutorPointer: null }
           emit()
@@ -47,13 +51,14 @@ function rectOf(left, top, width, height) {
   return () => ({ left, top, width, height, right: left + width, bottom: top + height })
 }
 
-function Screen({ channel, role, box }) {
+function Screen({ channel, role, box, followTutor = false, scroll }) {
   return (
     <LiveInkProvider
       lessonId="lesson-1"
       role={role}
       subscribe={channel.subscribe}
       createWriter={channel.createWriter}
+      followTutor={followTutor}
     >
       <div
         data-tp-pane="page"
@@ -63,6 +68,21 @@ function Screen({ channel, role, box }) {
         }}
       >
         <span data-testid={`${role}-inner`}>editor</span>
+        {scroll && (
+          <div
+            data-tp-pane="editor"
+            data-testid={`${role}-editor`}
+            ref={(el) => {
+              if (!el) return
+              Object.defineProperty(el, 'scrollHeight', {
+                value: scroll.height,
+                configurable: true,
+              })
+              Object.defineProperty(el, 'clientHeight', { value: scroll.view, configurable: true })
+              el.getBoundingClientRect = rectOf(0, 0, 100, scroll.view)
+            }}
+          />
+        )}
       </div>
     </LiveInkProvider>
   )
@@ -147,5 +167,48 @@ describe('tutor pointer layer', () => {
       channel.createWriter().moveTutorPointer({ pane: 'editor', rx: 0.5, ry: 0.5 })
     })
     expect(screen.queryByTestId('tutor-pointer-dot')).toBeNull()
+  })
+
+  describe('scroll sync', () => {
+    // Tutor editor: 2000 tall, 400 visible. Student editor: 1000 tall, 200 visible.
+    function renderScrollPair(followTutor) {
+      const channel = makeChannel()
+      render(
+        <>
+          <Screen
+            channel={channel}
+            role="student"
+            box={[0, 0, 500, 250]}
+            followTutor={followTutor}
+            scroll={{ height: 1000, view: 200 }}
+          />
+          <Screen
+            channel={channel}
+            role="teacher"
+            box={[0, 0, 1000, 500]}
+            scroll={{ height: 2000, view: 400 }}
+          />
+        </>
+      )
+    }
+    function tutorScrollsTo(top) {
+      const editor = screen.getByTestId('teacher-editor')
+      editor.scrollTop = top
+      act(() => {
+        fireEvent.scroll(editor)
+      })
+    }
+
+    it('scrolls a locked student to the same fraction of their own pane', () => {
+      renderScrollPair(true)
+      tutorScrollsTo(800) // 800 of 1600 scrollable = halfway
+      expect(screen.getByTestId('student-editor').scrollTop).toBe(400) // halfway of 800
+    })
+
+    it('never moves a student who is not locked to the tutor', () => {
+      renderScrollPair(false)
+      tutorScrollsTo(800)
+      expect(screen.getByTestId('student-editor').scrollTop).toBe(0)
+    })
   })
 })

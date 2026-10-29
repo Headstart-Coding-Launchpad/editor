@@ -950,6 +950,16 @@
           "t": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
         },
+        // Scroll position of a pane the tutor is scrolling, as a fraction 0..1. Pane ids are
+        // RTDB-safe words ("editor", "output", "page").
+        "tutorScroll": {
+          "$pane": {
+            ".validate": "newData.hasChildren(['f', 't'])",
+            "f": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
         "tutorClick": {
           ".validate": "newData.hasChildren(['pane', 'rx', 'ry', 'n', 't'])",
           "pane": {
