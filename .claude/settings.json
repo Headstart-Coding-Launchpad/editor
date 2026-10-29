@@ -1,5 +1,7 @@
 {
-  "worktree": { "bgIsolation": "none" },
+  "worktree": {
+    "bgIsolation": "none"
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -8,14 +10,35 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["C:/Users/rflem/Documents/HSC Hub/scripts/session-brief.mjs", "dev"],
+            "args": [
+              "C:/Users/rflem/Documents/HSC Hub/scripts/session-brief.mjs",
+              "dev"
+            ],
             "timeout": 30
           },
           {
             "type": "command",
             "command": "C:/Users/rflem/Documents/Ryan Hub/.venv/Scripts/python.exe",
-            "args": ["C:/Users/rflem/Documents/Ryan Hub/scripts/agent_boot.py", "dev"],
+            "args": [
+              "C:/Users/rflem/Documents/Ryan Hub/scripts/agent_boot.py",
+              "dev"
+            ],
             "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_discord_discord__reply",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/rflem/Documents/Ryan Hub/.venv/Scripts/python.exe",
+            "args": [
+              "C:/Users/rflem/Documents/Ryan Hub/scripts/statusguard.py"
+            ],
+            "timeout": 10
           }
         ]
       }
