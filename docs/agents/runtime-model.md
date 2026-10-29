@@ -441,6 +441,8 @@ Firebase keys cannot contain dots. Store `index.html` as `index__dot__html`. Alw
 
 ## Write Rules
 
+**Per-tutor ownership (#337, slice 2).** A teacher's write grant on the live-class nodes (`sessions/$key`, `liveInk`, `carryInbox`, `peerHelp*`, `sessionArchive`, `sharedWorkspacePayloads`, and the tutor-only reads under them) applies only to their own session key: `lessonId~handle` where `handle` is their `handle` custom claim, or the plain lesson id for a teacher with no handle claim or whose handle equals `config/legacyHandle` (admin-written, Ryan's handle, so his old links keep working). Admins can write any key. Students are unchanged (their own nodes only). Tested in `tests/rules/perTutor.rules.test.js` (CI's `rules` job; needs Java). **Deploying the rules is required** (`firebase deploy --only database`) and must come after Ryan's account has its handle claim and `config/legacyHandle` is set, or his own writes to a plain-lesson-id session are still allowed only while he has no handle claim.
+
 Teacher writes:
 
 - `state`, `currentTaskId`, `startedAt`, `currentTaskStartedAt`, `endedAt`, `isPaused`
