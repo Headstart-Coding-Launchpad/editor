@@ -106,6 +106,7 @@ import { hasExporter, loadExporters } from '../../shared/exportWork/exporters.js
 import { exportableTasks } from '../../shared/exportWork/collect.js'
 import { shareUrl } from '../../shared/exportWork/shareLink.js'
 import { useTeacherPresence } from '../hooks/useTeacherPresence'
+import { useTutorRoom } from '../hooks/useTutorRoom'
 import { createShareLink } from '../../shared/exportWork/shareService.js'
 import {
   SESSION_SHARE_TIMEOUT_MS,
@@ -127,7 +128,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // id when the tutor has no handle. Lesson content, reports and feedback stay on `lessonId`.
   const sessionKey = sessionKeyProp ?? lessonId
   const navigate = useNavigate()
-  const { user, role } = useAuth()
+  const { user, role, handle } = useAuth()
   const {
     session,
     loading,
@@ -223,6 +224,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     connected,
     sessionKey: session?.createdAt ?? null,
   })
+  // The tutor's permanent class link (/room/<handle>) points at this lesson while it is live.
+  useTutorRoom({ handle, lessonId, sessionKey, state: session?.state })
   // Peer help: every request in the lesson, the review queue and the teacher's switches.
   const peerHelp = usePeerHelp({ lessonId: sessionKey, session, role: 'teacher' })
 

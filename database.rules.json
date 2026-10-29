@@ -10,6 +10,22 @@
       ".write": "auth != null && auth.token.role === 'admin'"
     },
 
+    // A tutor's permanent class link (/room/<handle>, src/shared/tutorRoom.js): written by that
+    // tutor's own client while their session is live, read by students to find the lesson.
+    "rooms": {
+      "$handle": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.token.role === 'admin' || (auth.token.role === 'teacher' && auth.token.handle != null && auth.token.handle === $handle))",
+        ".validate": "newData.hasChildren(['lessonId', 'startedAt'])",
+        "lessonId": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "sessionKey": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "startedAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "sessions": {
       // Admins can list every session at once (Admin Portal Sessions panel).
       // Per-lesson reads below need a sign-in (students sign in anonymously; #288).

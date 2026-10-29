@@ -129,3 +129,28 @@ describe('tutor-only reads follow the same ownership', () => {
     await assertSucceeds(ref(as.admin, `peerHelp/${KEY_SAM}`).get())
   })
 })
+
+describe('rooms (permanent class links)', () => {
+  const room = { lessonId: LESSON, sessionKey: KEY_SAM, startedAt: 1000 }
+
+  it('lets a tutor open and close only their own room, and an admin any', async () => {
+    await assertSucceeds(ref(tutor('sam'), 'rooms/sam').set(room))
+    await assertSucceeds(ref(tutor('sam'), 'rooms/sam').remove())
+    await assertFails(ref(tutor('sam'), 'rooms/ryan').set(room))
+    await assertFails(ref(tutor(null), 'rooms/sam').set(room))
+    await assertSucceeds(ref(as.admin, 'rooms/ryan').set(room))
+  })
+
+  it('lets a signed-in student read a room, but not write one', async () => {
+    await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, 'rooms/sam').set(room))
+    await assertSucceeds(ref(as.student, 'rooms/sam').get())
+    await assertFails(ref(as.student, 'rooms/sam').set(room))
+    await assertFails(ref(as.anonymous, 'rooms/sam').get())
+  })
+
+  it('only accepts the room shape', async () => {
+    await assertFails(ref(tutor('sam'), 'rooms/sam').set({ lessonId: LESSON }))
+    await assertFails(ref(tutor('sam'), 'rooms/sam').set({ ...room, extra: 'x' }))
+    await assertFails(ref(tutor('sam'), 'rooms/sam').set({ ...room, lessonId: '' }))
+  })
+})
