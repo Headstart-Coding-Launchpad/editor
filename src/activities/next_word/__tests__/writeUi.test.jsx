@@ -185,7 +185,7 @@ describe('Next Word write mode: any typed start word (#342)', () => {
     type('dragon')
     go()
     type('cat')
-    expect(screen.queryByTestId('next_word-start-note')).toBeNull()
+    expect(screen.getByTestId('next_word-start-note')).toBeEmptyDOMElement()
     expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 })
@@ -261,5 +261,35 @@ describe('Next Word write mode: the word-tree (#342)', () => {
     document.body.innerHTML = ''
     renderView({ initialState: student, teacher: true, readOnly: true })
     expect(screen.getByTestId('next_word-tree')).toBeInTheDocument()
+  })
+})
+
+describe('Next Word write mode: review fixes (#342)', () => {
+  it('says so when the start word is only punctuation, instead of ignoring it', () => {
+    renderView()
+    fireEvent.change(screen.getByLabelText('Start with'), { target: { value: '!!' } })
+    go()
+    expect(screen.getByTestId('next_word-start-note')).toHaveTextContent(
+      'Type a word to start with'
+    )
+  })
+
+  it('treats typing a start word as continuous, like My writing', () => {
+    expect(definition.classifyChange({ startWord: 'a' }, { startWord: 'ab' })).toBe('continuous')
+    expect(definition.classifyChange({ treeIndex: -1 }, { treeIndex: 2 })).toBe('discrete')
+  })
+
+  it('shows a watching tutor the word the student has open', () => {
+    const { state } = renderView()
+    go()
+    const student = state()
+    document.body.innerHTML = ''
+    const tutor = renderView({
+      initialState: { ...student, treeIndex: 1 },
+      teacher: true,
+      readOnly: true,
+    })
+    expect(screen.getByTestId('next_word-tree')).toBeInTheDocument()
+    tutor.unmount?.()
   })
 })

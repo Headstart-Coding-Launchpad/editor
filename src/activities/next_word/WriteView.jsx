@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import ActivityLayout, { ActButton, ActChip, ActFold } from '../ui/ActivityLayout.jsx'
 import RoundProgress, { BonusBanner } from '../ui/RoundProgress.jsx'
 import LookBackPanel from './LookBackPanel.jsx'
@@ -6,7 +6,6 @@ import { prefersReducedMotion } from '../../shared/motion.js'
 import {
   MAX_CARDS,
   OWN_VOICE,
-  activeModel,
   cardOf,
   choicesFor,
   gradeTask,
@@ -18,6 +17,7 @@ import {
   maxWordsOf,
   maxPacksOf,
   modelBodyOf,
+  modelFromBody,
   normalizeNextWordState,
   openingWordsOf,
   packVoicesOf,
@@ -25,6 +25,7 @@ import {
   panelsOf,
   passAtOf,
   sillyLabel,
+  trainingBodyOf,
   voiceOf,
   voicesOf,
   whyWord,
@@ -70,7 +71,10 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   const voices = voicesOf(task)
   const voice = voiceOf(task, state)
   const packVoices = packVoicesOf(task, state)
-  const model = activeModel(task, state)
+  // Rebuilding a 1,000-sentence model on every render would make typing lag: only when the text it
+  // reads changes.
+  const trainingBody = trainingBodyOf(task, state)
+  const model = useMemo(() => modelFromBody(trainingBody), [trainingBody])
   const lookBack = lookBackOf(task, state)
   const temperature = panels.includes('silly') ? state.temperature : DEFAULT_TEMPERATURE
   const goal = passAtOf(task)
@@ -90,6 +94,11 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
     : state.treeIndex >= 0
       ? state.treeIndex
       : null
+  // The tutor's own tap gives way to the student's as soon as their sentence, pack or tap changes.
+  const packsKey = JSON.stringify(state.packs)
+  useEffect(() => {
+    setWatchIndex(undefined)
+  }, [state.treeIndex, state.sentence, packsKey])
   function setWhyIndex(index) {
     if (watching) setWatchIndex(index)
     else update({ treeIndex: index == null ? -1 : index })
@@ -151,6 +160,10 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
       finish()
       return
     }
+    if (typedStart && !startWord) {
+      setStartNote('Type a word to start with, or leave it blank.')
+      return
+    }
     if (startWord && nextOptions(model, startWord).total === 0) {
       setStartNote(
         model.successors.has(startWord)
@@ -200,6 +213,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
     setWriting(false)
+    setStartNote('')
     const on = packVoices.map((entry) => entry.id)
     const next = on.includes(voiceId)
       ? on.filter((id) => id !== voiceId)
@@ -317,6 +331,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
           className="act-nw-select"
           type="text"
           list={`${id}-openers`}
+          aria-describedby={`${id}-start-note`}
           value={state.startWord}
           maxLength={24}
           placeholder="any word"
@@ -409,11 +424,14 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
           ⚠ Copied word for word!
         </p>
       )}
-      {startNote && (
-        <p className="act-nw-hint" role="status" data-testid="next_word-start-note">
-          {startNote}
-        </p>
-      )}
+      <p
+        id={`${id}-start-note`}
+        className="act-nw-hint"
+        role="status"
+        data-testid="next_word-start-note"
+      >
+        {startNote}
+      </p>
       {done && words.length > 1 && !why && (
         <p className="act-nw-hint">Tap a word to see why it picked it.</p>
       )}

@@ -39,6 +39,7 @@ import {
   packVoicesOf,
   DEFAULT_MAX_PACKS,
 } from './next_word.js'
+import { normaliseWord } from './ngram.js'
 
 function parse(raw) {
   if (raw == null || raw === '') return null
@@ -195,7 +196,6 @@ export default defineActivity({
       'guesses',
       'right',
       'lookBack',
-      'startWord',
       'treeIndex',
       'finished',
       'kept',
@@ -206,7 +206,13 @@ export default defineActivity({
       return 'discrete'
     }
     if (JSON.stringify(prev?.last ?? null) !== JSON.stringify(next?.last ?? null)) return 'discrete'
-    if (prev?.own !== next?.own || prev?.temperature !== next?.temperature) return 'continuous'
+    if (
+      prev?.own !== next?.own ||
+      prev?.temperature !== next?.temperature ||
+      prev?.startWord !== next?.startWord
+    ) {
+      return 'continuous'
+    }
     return 'discrete'
   },
 
@@ -241,7 +247,7 @@ export default defineActivity({
               .map((entry) => entry.label)
               .join(' + ')}`
           : null,
-        norm.startWord ? `started “${norm.startWord}”` : null,
+        normaliseWord(norm.startWord) ? `started “${normaliseWord(norm.startWord)}”` : null,
         `looked back ${norm.usedLookBack || lookBackOf(task, state)}`,
         norm.copies > 0 ? `${norm.copies} copied` : null,
         latest ? `latest: “${latest.length > 70 ? `${latest.slice(0, 69)}…` : latest}”` : null,

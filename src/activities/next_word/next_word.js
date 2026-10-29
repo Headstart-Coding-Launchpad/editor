@@ -202,10 +202,14 @@ export function trainingBodyOf(task, state) {
   return `${packBodyOf(task, state)} ${copies}`
 }
 
-// The model, or null when there are fewer than two words (no word pairs yet).
-export function activeModel(task, state) {
-  const body = trainingBodyOf(task, state)
+// The model for a body of text, or null when there are fewer than two words (no word pairs yet).
+export function modelFromBody(body) {
   return tokenise(body).length >= 2 ? modelFor(body) : null
+}
+
+// The model in use right now.
+export function activeModel(task, state) {
+  return modelFromBody(trainingBodyOf(task, state))
 }
 
 // How many words of their own the student has written. The shared form carries only this number.
