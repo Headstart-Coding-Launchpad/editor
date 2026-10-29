@@ -113,7 +113,10 @@ The lesson turns parts on so each screen stays simple.
   punctuation ignored).
 - **Tap a written word** to see why: `after "the big": dog 2 of 3 times` (the context it used and
   the counts, with a note if it had to use fewer words).
-- **My writing** is always on screen. What the student types is added to the chosen pack, so the
+- **My writing** is always on screen. What the student types is added to the chosen pack (each of
+  their sentences counts as 5 copies when the model counts what follows what, so a few lines of their
+  own still show up against a big pack; **Copied word for word!** still checks the real sentences
+  only), so the
   bot learns from both. The pack is the first `texts` entry, or any of them with the `voices`
   panel (My writing is not a separate voice here). A Silly / What it reads fold holds the slider
   and the voices; the `stats` panel is not used.

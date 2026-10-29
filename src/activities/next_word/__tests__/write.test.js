@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { modelFor, seededRandom, tokenise } from '../ngram.js'
-import { isCopiedSentence, trainingSentencesOf, writeText } from '../next_word.js'
+import {
+  activeModel,
+  initialNextWordState,
+  isCopiedSentence,
+  modelBodyOf,
+  trainingBodyOf,
+  trainingSentencesOf,
+  writeText,
+} from '../next_word.js'
 
 // The Fun moment (authoring request 2026-10-28, next-word bot that writes like): with a small
 // headlines pack and look-back 2, Go writes a headline nobody ever wrote, and a word-for-word
@@ -57,5 +65,97 @@ describe('Next Word write mode: the fun moment', () => {
       else fresh += 1
     }
     expect(copies + fresh).toBe(60)
+  })
+})
+
+// #341: in write mode the student's own lines count about 5 times each, so a few typed lines show up
+// against a big pack.
+describe('own sentences against a big pack (#341)', () => {
+  // 40 headlines with 20 different opening words, two each, like a real pack.
+  const OPENERS = [
+    'Local',
+    'Town',
+    'City',
+    'Rival',
+    'Young',
+    'Old',
+    'Famous',
+    'Tiny',
+    'Giant',
+    'Brave',
+    'Quiet',
+    'Loud',
+    'Happy',
+    'Angry',
+    'Clever',
+    'Lucky',
+    'Hungry',
+    'Sleepy',
+    'Proud',
+    'Shy',
+  ]
+  const HEADLINES = Array.from(
+    { length: 40 },
+    (_, i) =>
+      `${OPENERS[i % 20]} ${['team', 'mayor', 'school', 'shop'][i % 4]} ${['wins', 'opens', 'loses', 'closes', 'sells'][i % 5]} ${['big', 'new', 'old', 'small'][i % 4]} ${['match', 'park', 'prize', 'road', 'cafe', 'bridge', 'show', 'fair'][i % 8]}.`
+  )
+  const TASK = {
+    id: 1,
+    taskType: 'activity',
+    activityType: 'next_word',
+    mode: 'write',
+    texts: [{ title: 'News', body: HEADLINES.join(' ') }],
+  }
+  const OWN =
+    'My dog eats pizza. The dragon saves the school. Robots love swimming. Pizza dragons play football.'
+  const OWN_WORDS = new Set([
+    'dog',
+    'pizza',
+    'dragon',
+    'dragons',
+    'robots',
+    'swimming',
+    'football',
+    'eats',
+    'saves',
+    'love',
+    'play',
+  ])
+  const rate = (state, modelOf) => {
+    let seen = 0
+    const trials = 120
+    for (let t = 0; t < trials; t++) {
+      const model = modelOf(state)
+      let any = false
+      for (let press = 0; press < 3; press++) {
+        const text = writeText(model, {
+          lookBack: 1,
+          temperature: 1,
+          maxWords: 12,
+          random: seededRandom(t * 3 + press + 1),
+        }).text
+        if (tokenise(text).some((w) => OWN_WORDS.has(w))) any = true
+      }
+      if (any) seen += 1
+    }
+    return seen / trials
+  }
+
+  it('shows the student their own words in a decent share of 3 Go presses on a 40-headline pack', () => {
+    const state = { ...initialNextWordState(TASK), own: OWN }
+    const weighted = rate(state, (st) => activeModel(TASK, st))
+    // Same lines, counted once: the pack drowns them out.
+    const unweighted = rate(state, (st) => modelFor(modelBodyOf(TASK, st)))
+    expect(weighted).toBeGreaterThan(unweighted)
+    expect(weighted).toBeGreaterThan(0.5)
+  })
+
+  it('still checks Copied word for word against the real sentences only', () => {
+    const state = { ...initialNextWordState(TASK), own: OWN }
+    const real = modelBodyOf(TASK, state)
+    expect(isCopiedSentence(real, 'The dragon saves the school.')).toBe(true)
+    // A sentence stitched across the repeated copies is not a real sentence.
+    expect(isCopiedSentence(real, 'Pizza dragons play football. My dog eats pizza.')).toBe(false)
+    expect(trainingBodyOf(TASK, state).length).toBeGreaterThan(real.length)
   })
 })

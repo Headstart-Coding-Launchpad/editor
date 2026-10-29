@@ -164,9 +164,25 @@ export function modelBodyOf(task, state) {
   return isWriteMode(task) && state?.own ? `${voice.body} ${state.own}` : voice.body
 }
 
+// In write mode each sentence the student types counts as this many copies when the model counts
+// what follows what, so a few lines of their own still show up against a big pack (#341).
+export const OWN_SENTENCE_WEIGHT = 5
+
+// What the model counts: modelBodyOf, with the student's own sentences repeated in write mode. The
+// copy check still reads modelBodyOf (the real sentences only).
+export function trainingBodyOf(task, state) {
+  const voice = voiceOf(task, state)
+  const own = String(state?.own ?? '').trim()
+  if (voice.id === OWN_VOICE || !isWriteMode(task) || !own) return modelBodyOf(task, state)
+  // End the text with a full stop so one copy never runs on into the next.
+  const closed = /[.!?]$/.test(own) ? own : `${own}.`
+  const copies = Array.from({ length: OWN_SENTENCE_WEIGHT }, () => closed).join(' ')
+  return `${voice.body} ${copies}`
+}
+
 // The model, or null when there are fewer than two words (no word pairs yet).
 export function activeModel(task, state) {
-  const body = modelBodyOf(task, state)
+  const body = trainingBodyOf(task, state)
   return tokenise(body).length >= 2 ? modelFor(body) : null
 }
 
