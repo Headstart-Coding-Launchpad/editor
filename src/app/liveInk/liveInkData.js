@@ -122,7 +122,18 @@ function normaliseHighlight(id, raw) {
   }
 }
 
-/** RTDB snapshot value → `{ pointer, strokes: [], highlights: [] }`, dropping malformed entries. */
+// Tutor pointer layer (tutorPane.js): the mouse over any tagged pane, not just annotatable text.
+//   liveInk/{lessonId}/tutorPointer   { pane, rx, ry, t }
+//   liveInk/{lessonId}/tutorClick     { pane, rx, ry, n, t }   (`n` counts up so a repeat click fires)
+function normaliseTutorPointer(raw) {
+  if (!raw || !isShortString(raw.pane, 80)) return null
+  const pair = fractionPairOf({ rx: raw.rx, ry: raw.ry })
+  if (!pair) return null
+  const base = { pane: raw.pane, rx: pair[0], ry: pair[1], t: raw.t ?? 0 }
+  return Number.isFinite(raw.n) ? { ...base, n: raw.n } : base
+}
+
+/** RTDB snapshot value → `{ pointer, strokes: [], highlights: [], tutorPointer, tutorClick }`, dropping malformed entries. */
 export function normaliseLiveInk(value) {
   const strokes = Object.entries(value?.strokes ?? {})
     .map(([id, raw]) => normaliseStroke(id, raw))
@@ -132,11 +143,19 @@ export function normaliseLiveInk(value) {
     .map(([id, raw]) => normaliseHighlight(id, raw))
     .filter(Boolean)
     .sort((a, b) => a.t - b.t)
-  return { pointer: normalisePointer(value?.pointer), strokes, highlights }
+  return {
+    pointer: normalisePointer(value?.pointer),
+    strokes,
+    highlights,
+    tutorPointer: normaliseTutorPointer(value?.tutorPointer),
+    tutorClick: normaliseTutorPointer(value?.tutorClick),
+  }
 }
 
 export const EMPTY_LIVE_INK = Object.freeze({
   pointer: null,
+  tutorPointer: null,
+  tutorClick: null,
   strokes: Object.freeze([]),
   highlights: Object.freeze([]),
 })

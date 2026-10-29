@@ -223,6 +223,8 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `geometry.js` | Pure helpers: point ↔ fractions of an element box, text-anchored points (`{ c, dx, dy }`: character offset + em offset; encode/decode, segment splitting where text reflowed), stroke thinning/mapping, quote re-finding with occurrence, plus small DOM helpers (anchor lookup, caret lookup, character boxes, text-offset ranges, selection description, scroll container) |
 | `liveInkData.js` | Node shape, paths, surface ids, timing constants, snapshot normalisation |
 | `liveInkWriter.js` | The Presentation window's RTDB writes: throttled pointer (`createThrottledMirrorWriter`, ~12Hz), strokes (auto-removed after the fade), highlights, clear, disconnect cleanup |
+| `tutorPane.js` | Tutor pointer layer helpers: `data-tp-pane` lookup and pane fractions ↔ client coordinates, idle/ripple timings |
+| `TutorPointerLayer.jsx` | Tutor pointer layer slice 1: `TutorPointerTracker` (Presentation window writes the mouse pane + fractions and clicks) and `TutorPointerLayer` (a student's screen draws a dot and click ripples on the same pane; no controls) |
 
 ### Quiz Components (`src/app/components/quiz/`)
 

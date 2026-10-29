@@ -109,4 +109,33 @@ describe('createLiveInkWriter', () => {
     writer.clearAll()
     expect(firebaseMocks.remove).toHaveBeenCalledWith({ path: 'liveInk/lesson-1' })
   })
+
+  it('writes the tutor pointer at ~12Hz to its own node and clears it on hide', () => {
+    const writer = createLiveInkWriter('lesson-1')
+    for (let i = 0; i < 30; i += 1) {
+      writer.moveTutorPointer({ pane: 'page', rx: i / 100, ry: 0.5 })
+      vi.advanceTimersByTime(10)
+    }
+    vi.advanceTimersByTime(POINTER_INTERVAL_MS)
+    const writes = firebaseMocks.set.mock.calls.filter(
+      ([target]) => target.path === 'liveInk/lesson-1/tutorPointer'
+    )
+    expect(writes.length).toBeLessThanOrEqual(Math.ceil(300 / POINTER_INTERVAL_MS) + 2)
+    expect(writes.at(-1)[1]).toMatchObject({ pane: 'page', rx: 0.29, ry: 0.5 })
+    writer.hideTutorPointer()
+    expect(firebaseMocks.set).toHaveBeenLastCalledWith(
+      { path: 'liveInk/lesson-1/tutorPointer' },
+      null
+    )
+  })
+
+  it('numbers tutor clicks so a repeat click on the same spot is a new value', () => {
+    const writer = createLiveInkWriter('lesson-1')
+    writer.tutorClick({ pane: 'page', rx: 0.5, ry: 0.5 })
+    writer.tutorClick({ pane: 'page', rx: 0.5, ry: 0.5 })
+    const clicks = firebaseMocks.set.mock.calls
+      .filter(([target]) => target.path === 'liveInk/lesson-1/tutorClick')
+      .map(([, value]) => value.n)
+    expect(clicks).toEqual([1, 2])
+  })
 })

@@ -1756,7 +1756,10 @@ export default function StudentView({
   const transitionOrder = transitionTaskIndex >= 0 ? transitionTaskIndex : null
 
   const page = (
-    <div style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}>
+    <div
+      data-tp-pane="page"
+      style={{ ...s.page, background: isForcedTeacherLive ? '#dde0e5' : '#f5f5f5' }}
+    >
       {isPaused && (
         <div style={s.pauseOverlay}>
           <span style={s.pauseIcon} aria-hidden="true">

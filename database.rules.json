@@ -934,6 +934,38 @@
           "$other": { ".validate": false }
         },
 
+        // Tutor pointer layer: the mouse over any tagged pane, as fractions of that pane's box.
+        // `tutorClick.n` counts up so two clicks on the same spot both ripple.
+        "tutorPointer": {
+          ".validate": "newData.hasChildren(['pane', 'rx', 'ry', 't'])",
+          "pane": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "rx": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "ry": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "t": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+        "tutorClick": {
+          ".validate": "newData.hasChildren(['pane', 'rx', 'ry', 'n', 't'])",
+          "pane": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+          },
+          "rx": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "ry": {
+            ".validate": "newData.isNumber() && newData.val() >= -10 && newData.val() <= 10"
+          },
+          "n": { ".validate": "newData.isNumber()" },
+          "t": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+
         "strokes": {
           "$strokeId": {
             ".validate": "newData.hasChildren(['surface', 'anchor', 'points', 't'])",

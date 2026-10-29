@@ -7,6 +7,7 @@ import {
   normaliseLiveInk,
 } from './liveInkData'
 import PresentationInkToolbar from './PresentationInkToolbar'
+import TutorPointerLayer, { TutorPointerTracker } from './TutorPointerLayer'
 
 // Presentation annotations: the teacher's live pointer, fading ink and text highlights on
 // information tasks and code-task explainers, shown to the whole class.
@@ -144,6 +145,8 @@ export default function LiveInkProvider({
     <LiveInkConfigContext.Provider value={config}>
       <LiveInkDataContext.Provider value={ink}>
         {children}
+        {isTeacher && writer && <TutorPointerTracker writer={writer} />}
+        {enabled && !isTeacher && <TutorPointerLayer />}
         {isTeacher && hasSurface && (
           <PresentationInkToolbar
             tool={tool}

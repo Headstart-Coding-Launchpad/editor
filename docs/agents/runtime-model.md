@@ -628,6 +628,8 @@ peerHelp/{lessonId}/{requestId}/
 
 The teacher's live pointer, fading ink and text highlights from the Presentation window (see `docs/agents/classroom-behaviours.md`, "Presentation Annotations"). A **top-level** node, never under `sessions/{lessonId}`: every client streams the whole session node, and the pointer moves at ~12Hz, so keeping it there would re-render every student's view on every mouse move. Code: `src/app/liveInk/` (`liveInkData.js` is the shape, `liveInkWriter.js` the writes); `useSession.js` exposes `subscribeLiveInk(callback)` and `createLiveInkWriter()` for `LiveInkProvider`.
 
+Tutor pointer layer (slice 1, Ryan 2026-10-29, #337): two more single-value nodes under the same root, `liveInk/{lessonId}/tutorPointer` (`{ pane, rx, ry, t }`, ~12Hz while the tutor's mouse moves over a `data-tp-pane` element, nulled when it leaves) and `liveInk/{lessonId}/tutorClick` (`{ pane, rx, ry, n, t }`, one write per click; `n` counts up so repeat clicks fire). `rx`/`ry` are fractions of that pane's box. Teacher/admin write, validated in `database.rules.json`; removed with the rest of the node on disconnect. **Deploying the rules is required** (`firebase deploy --only database`) or the writes are denied and students simply see no pointer.
+
 ```json
 {
   "liveInk": {

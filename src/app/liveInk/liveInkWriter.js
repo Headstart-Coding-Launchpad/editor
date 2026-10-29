@@ -33,7 +33,35 @@ export function createLiveInkWriter(
     clearTimer,
   })
 
+  // Tutor pointer layer: same cadence as the annotation pointer, its own node.
+  const tutorPointerRef = ref(db, liveInkPath(lessonId, 'tutorPointer'))
+  const tutorClickRef = ref(db, liveInkPath(lessonId, 'tutorClick'))
+  let clickCount = 0
+  const tutorPointerWriter = createThrottledMirrorWriter({
+    write: (value) => quietly(set(tutorPointerRef, value), 'move the tutor pointer'),
+    intervalMs: POINTER_INTERVAL_MS,
+    now,
+    setTimer,
+    clearTimer,
+  })
+
   return {
+    // `pane` is a data-tp-pane id; rx/ry are fractions of that pane's box (tutorPane.js).
+    moveTutorPointer({ pane, rx, ry }) {
+      tutorPointerWriter.push({ pane, rx, ry, t: now() })
+    },
+
+    hideTutorPointer() {
+      tutorPointerWriter.cancel()
+      return quietly(set(tutorPointerRef, null), 'hide the tutor pointer')
+    },
+
+    // One write per click; `n` changes every time so two clicks on the same spot both ripple.
+    tutorClick({ pane, rx, ry }) {
+      clickCount += 1
+      return quietly(set(tutorClickRef, { pane, rx, ry, n: clickCount, t: now() }), 'send a click')
+    },
+
     // Closing the Presentation window (or losing its connection) wipes every annotation, so
     // nothing is left stranded on students' screens with no way to clear it.
     armDisconnectCleanup() {
@@ -85,11 +113,13 @@ export function createLiveInkWriter(
 
     clearAll() {
       pointerWriter.cancel()
+      tutorPointerWriter.cancel()
       return quietly(remove(rootRef), 'clear the annotations')
     },
 
     dispose() {
       pointerWriter.cancel()
+      tutorPointerWriter.cancel()
       for (const timer of strokeTimers) clearTimer(timer)
       strokeTimers.clear()
     },
