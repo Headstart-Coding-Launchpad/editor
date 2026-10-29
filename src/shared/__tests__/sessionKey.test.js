@@ -9,6 +9,12 @@ describe('session keys (per-tutor live sessions)', () => {
     expect(sessionKeyOf('abc123', undefined)).toBe('abc123')
   })
 
+  it('keeps Ryan on the plain lesson key, so his posted links and ?t=ryan open the same class', () => {
+    expect(sessionKeyOf('abc123', 'ryan')).toBe('abc123')
+    expect(sessionKeyOf('abc123', ' Ryan ')).toBe('abc123')
+    expect(sessionKeyOf('abc123', 'ryan2')).toBe('abc123~ryan2')
+  })
+
   it('adds the tutor handle for a tutor session, and splits it back', () => {
     const key = sessionKeyOf('abc123', 'Sam')
     expect(key).toBe('abc123~sam')

@@ -5,12 +5,17 @@
 // key. Lesson content (Firestore lessons/{lessonId}, reports, feedback, URLs, localStorage) stays
 // keyed by the real lesson id.
 //
-//   no tutor handle -> the key is the lesson id (every link posted before this existed)
+//   no tutor handle, or Ryan's -> the key is the lesson id (every link posted before this existed)
 //   a tutor handle  -> `${lessonId}~${handle}`
 //
 // `~` is allowed in Realtime Database keys (not `. $ # [ ] /`) and never appears in a lesson id.
 
 export const SESSION_KEY_SEPARATOR = '~'
+
+// Ryan's handle. His live classes keep the plain lesson-id key, so every link he has already posted
+// (no `?t=`) and his new `?t=ryan` links open the same session, and /room/ryan works too. Every
+// other tutor gets a key of their own. Matches the rules in database.rules.json.
+export const LEGACY_HANDLE = 'ryan'
 
 const HANDLE_PATTERN = /^[a-z0-9]{2,20}$/
 
@@ -25,7 +30,9 @@ export function normaliseHandle(value) {
 /** The Realtime Database key of a live class: the lesson id, plus `~handle` for a tutor's own. */
 export function sessionKeyOf(lessonId, handle) {
   const clean = normaliseHandle(handle)
-  return clean && lessonId ? `${lessonId}${SESSION_KEY_SEPARATOR}${clean}` : lessonId
+  return clean && clean !== LEGACY_HANDLE && lessonId
+    ? `${lessonId}${SESSION_KEY_SEPARATOR}${clean}`
+    : lessonId
 }
 
 /** The real lesson id inside a session key. */

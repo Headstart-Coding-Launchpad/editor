@@ -4,7 +4,7 @@ import { contexts, createTestEnvironment, STUDENT_ID } from './setup.js'
 
 // Per-tutor live sessions (#337): a class's records are keyed by the session key. Links with no
 // tutor use the plain lesson id (tutors without a handle claim, or the handle named in
-// config/legacyHandle); a tutor's own class is `lessonId~handle` and only that tutor (or an
+// Ryan's handle `ryan`); a tutor's own class is `lessonId~handle` and only that tutor (or an
 // admin) can write it.
 const LESSON = 'lesson-1'
 const KEY_SAM = `${LESSON}~sam`
@@ -91,8 +91,7 @@ describe('links with no tutor keep working for a tutor without a handle', () => 
     }
   })
 
-  it('keeps the plain lesson key writable by the legacy handle named in config', async () => {
-    await testEnv.withSecurityRulesDisabled((ctx) => ref(ctx, 'config/legacyHandle').set('ryan'))
+  it('keeps the plain lesson key writable by Ryan (handle ryan), and no other handle', async () => {
     for (const [path, value] of OWNED_NODES(LESSON)) {
       await assertSucceeds(ref(tutor('ryan'), path).set(value))
       await assertFails(ref(tutor('sam'), path).set(value))
@@ -102,17 +101,8 @@ describe('links with no tutor keep working for a tutor without a handle', () => 
     }
   })
 
-  it('shuts a handled tutor out of the plain lesson key when no legacy handle is set', async () => {
+  it('shuts a handled tutor (not ryan) out of the plain lesson key', async () => {
     await assertFails(ref(tutor('sam'), `sessions/${LESSON}/state`).set('active'))
-  })
-})
-
-describe('config', () => {
-  it('only lets an admin read or write config', async () => {
-    await assertSucceeds(ref(as.admin, 'config/legacyHandle').set('ryan'))
-    await assertFails(ref(as.teacher, 'config/legacyHandle').set('sam'))
-    await assertFails(ref(as.student, 'config/legacyHandle').set('sam'))
-    await assertFails(ref(as.teacher, 'config/legacyHandle').get())
   })
 })
 

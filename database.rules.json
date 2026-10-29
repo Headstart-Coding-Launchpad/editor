@@ -1,14 +1,9 @@
 {
   "rules": {
     // Per-tutor live sessions (#337, src/shared/sessionKey.js): a class's records are keyed by the
-    // session key, the lesson id (links with no tutor: tutors without a handle claim, or the
-    // handle named in config/legacyHandle) or `lessonId~handle` (that tutor only). A teacher can
-    // write another tutor's session only if they are an admin.
-    // The Admin sets config/legacyHandle once (Ryan's handle) so his existing links keep working.
-    "config": {
-      ".read": "auth != null && auth.token.role === 'admin'",
-      ".write": "auth != null && auth.token.role === 'admin'"
-    },
+    // session key, the lesson id (links with no tutor: tutors without a handle claim, or Ryan's
+    // handle `ryan`, LEGACY_HANDLE) or `lessonId~handle` (that tutor only). A teacher can write
+    // another tutor's session only if they are an admin.
 
     // A tutor's permanent class link (/room/<handle>, src/shared/tutorRoom.js): written by that
     // tutor's own client while their session is live, read by students to find the lesson.
@@ -36,7 +31,7 @@
 
         // Teachers and admins can write any session-level field
         // (state, currentTaskId, teacherLive, sandboxCode, etc.)
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
 
         // Any authenticated user can register their name-entry presence marker
         // ({ joinedAt, typedName?, admit? }). The tempId is a client-generated UUID so no
@@ -46,7 +41,7 @@
         // input's 30 characters; only teachers/admins can write admit ("Pull in").
         "joiningStudents": {
           "$tempId": {
-            ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin' || !data.exists() || data.child('uid').val() === auth.uid)",
+            ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin' || !data.exists() || data.child('uid').val() === auth.uid)",
             ".validate": "newData.hasChild('joinedAt')",
             "joinedAt": {
               ".validate": "newData.isNumber()"
@@ -82,7 +77,7 @@
         // Teachers and admins retain write access for rename, reset, and check override.
         "students": {
           "$anonymousId": {
-            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
 
             // Size caps on the strings a student writes here (other shapes pass; no $other yet).
             // Names stop at the name input's 30 characters; teachers/admins can rename past it.
@@ -326,7 +321,7 @@
         // is still readable by the teacher at the moment a session ends.
         "attemptLog": {
           "$anonymousId": {
-            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
           }
         },
 
@@ -335,7 +330,7 @@
         "carryFallbackLog": {
           "$anonymousId": {
             "$taskId": {
-              ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+              ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
             }
           }
         },
@@ -346,7 +341,7 @@
           "$anonymousId": {
             "$taskId": {
               "$stageIndex": {
-                ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+                ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
               }
             }
           }
@@ -357,7 +352,7 @@
         "overrideLog": {
           "$anonymousId": {
             "$taskId": {
-              ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+              ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
             }
           }
         },
@@ -636,15 +631,15 @@
     "sharedWorkspacePayloads": {
       "$lessonId": {
         // Teachers/admins manage the whole subtree (approve, remove, clear).
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
 
         // A pending snapshot has not been approved yet. Only its author and
         // the teacher may read it - this is what actually enforces the
         // approval gate, rather than hiding a button on the client.
         "pending": {
           "$anonymousId": {
-            ".read": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+            ".read": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+            ".write": "auth != null && (auth.uid === $anonymousId || (auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
           }
         },
 
@@ -662,8 +657,8 @@
     // and only teachers/admins write. `payload` is the work as one JSON string.
     "carryInbox": {
       "$lessonId": {
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
         "$anonymousId": {
           ".read": "auth != null && auth.uid === $anonymousId",
           "$taskId": {
@@ -702,8 +697,8 @@
     // A stuck student's opt-in ("let a classmate help") and their request id.
     "peerHelpRequests": {
       "$lessonId": {
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
         "$anonymousId": {
           ".read": "auth != null && auth.uid === $anonymousId",
           ".write": "auth != null && auth.uid === $anonymousId",
@@ -727,8 +722,8 @@
     // The request a helper is working on, so their client finds it again after a reload.
     "peerHelpHelping": {
       "$lessonId": {
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
         "$anonymousId": {
           ".read": "auth != null && auth.uid === $anonymousId",
           ".write": "auth != null && auth.uid === $anonymousId",
@@ -740,8 +735,8 @@
     // The helper promise, agreed once per session before a first claim.
     "peerHelpPromises": {
       "$lessonId": {
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
         "$anonymousId": {
           ".read": "auth != null && auth.uid === $anonymousId",
           ".write": "auth != null && auth.uid === $anonymousId",
@@ -752,8 +747,8 @@
 
     "peerHelp": {
       "$lessonId": {
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
         "$requestId": {
           // Written by the stuck student when they ask for help, once.
           "stuckId": {
@@ -918,8 +913,8 @@
     // never write here (their snapshots are copied teacher-side).
     "sessionArchive": {
       "$lessonId": {
-        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')"
+        ".read": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')"
       }
     },
 
@@ -930,7 +925,7 @@
     "liveInk": {
       "$lessonId": {
         ".read": "auth != null",
-        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === root.child('config/legacyHandle').val())))) || auth.token.role === 'admin')",
+        ".write": "auth != null && ((auth.token.role === 'teacher' && (($lessonId.contains('~') && auth.token.handle != null && $lessonId.endsWith('~' + auth.token.handle)) || (!$lessonId.contains('~') && (auth.token.handle == null || auth.token.handle === 'ryan')))) || auth.token.role === 'admin')",
 
         // Either { c, dx, dy } (a character + em offset, over text) or { rx, ry } (box fractions).
         "pointer": {
