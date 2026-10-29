@@ -189,3 +189,48 @@ describe('Next Word write mode: any typed start word (#342)', () => {
     expect(countControls(container)).toBeLessThanOrEqual(5)
   })
 })
+
+describe('Next Word write mode: mixing packs (#342)', () => {
+  const openFold = () => fireEvent.click(screen.getByRole('button', { name: /What it reads/ }))
+
+  it('lets the student switch a second pack on, so the bot can write from both', () => {
+    const { state } = renderView()
+    openFold()
+    const dogs = screen.getByRole('button', { name: /Dogs/ })
+    const cats = screen.getByRole('button', { name: /Cats/ })
+    expect(cats).toHaveAttribute('aria-pressed', 'true')
+    expect(dogs).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(dogs)
+    expect(screen.getByRole('button', { name: /Dogs/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Cats/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(state().packs).toEqual(['text:0', 'text:1'])
+    // A word only the second pack has is now a word the bot has read.
+    fireEvent.change(screen.getByLabelText('Start with'), { target: { value: 'dog' } })
+    go()
+    expect(screen.getByTestId('next_word-sentence').textContent.trim().startsWith('dog')).toBe(true)
+  })
+
+  it('keeps at least one pack on and tells the tutor what is mixed', () => {
+    const { state } = renderView()
+    openFold()
+    fireEvent.click(screen.getByRole('button', { name: /Cats/ }))
+    expect(state().packs).toEqual(['text:0'])
+    fireEvent.click(screen.getByRole('button', { name: /Dogs/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Cats/ }))
+    expect(state().packs).toEqual(['text:1'])
+    fireEvent.click(screen.getByRole('button', { name: /Cats/ }))
+    expect(definition.summarize(TASK, state()).text).toContain('mixing Cats + Dogs')
+  })
+
+  it('stops at maxPacks', () => {
+    const task = {
+      ...TASK,
+      maxPacks: 1,
+      texts: [...TASK.texts, { title: 'Birds', emoji: 'B', body: 'A bird flew away.' }],
+    }
+    const { state } = renderView({ task })
+    openFold()
+    fireEvent.click(screen.getByRole('button', { name: /Dogs/ }))
+    expect(state().packs).toEqual(['text:1'])
+  })
+})

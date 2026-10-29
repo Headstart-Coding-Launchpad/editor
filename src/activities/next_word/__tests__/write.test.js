@@ -5,6 +5,7 @@ import {
   initialNextWordState,
   isCopiedSentence,
   modelBodyOf,
+  sharedState,
   trainingBodyOf,
   trainingSentencesOf,
   writeText,
@@ -157,5 +158,14 @@ describe('own sentences against a big pack (#341)', () => {
     // A sentence stitched across the repeated copies is not a real sentence.
     expect(isCopiedSentence(real, 'Pizza dragons play football. My dog eats pizza.')).toBe(false)
     expect(trainingBodyOf(TASK, state).length).toBeGreaterThan(real.length)
+  })
+})
+
+describe('mixed packs reach the tutor (#342)', () => {
+  it('keeps which packs are on when the state is shared', () => {
+    const shared = JSON.parse(
+      JSON.stringify(sharedState({ packs: ['text:0', 'text:2'], voice: 'text:0' }))
+    )
+    expect(shared.packs).toEqual(['text:0', 'text:2'])
   })
 })

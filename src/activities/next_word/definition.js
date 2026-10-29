@@ -36,6 +36,8 @@ import {
   solutionStateFor,
   validateNextWordTask,
   voiceOf,
+  packVoicesOf,
+  DEFAULT_MAX_PACKS,
 } from './next_word.js'
 
 function parse(raw) {
@@ -106,6 +108,11 @@ export default defineActivity({
         name: 'maxLookBack',
         type: 'number',
         description: `The most words back the student can choose with the lookback panel (1 to ${MAX_LOOK_BACK}, default ${MAX_LOOK_BACK}).`,
+      },
+      {
+        name: 'maxPacks',
+        type: 'number',
+        description: `Write mode with the voices panel: how many packs the student can mix at once (1 up to the number of texts, default ${DEFAULT_MAX_PACKS}).`,
       },
       {
         name: 'texts',
@@ -182,6 +189,7 @@ export default defineActivity({
   classifyChange: (prev, next) => {
     const keys = [
       'voice',
+      'packs',
       'sentence',
       'pending',
       'guesses',
@@ -193,7 +201,9 @@ export default defineActivity({
       'copied',
     ]
     if (prev?.cards?.length !== next?.cards?.length) return 'discrete'
-    if (keys.some((key) => prev?.[key] !== next?.[key])) return 'discrete'
+    if (keys.some((key) => JSON.stringify(prev?.[key]) !== JSON.stringify(next?.[key]))) {
+      return 'discrete'
+    }
     if (JSON.stringify(prev?.last ?? null) !== JSON.stringify(next?.last ?? null)) return 'discrete'
     if (prev?.own !== next?.own || prev?.temperature !== next?.temperature) return 'continuous'
     return 'discrete'
@@ -225,6 +235,12 @@ export default defineActivity({
       const latest = norm.cards[norm.cards.length - 1]?.text
       const parts = [
         `${norm.cards.length} of ${goal} cards kept`,
+        packVoicesOf(task, norm).length > 1
+          ? `mixing ${packVoicesOf(task, norm)
+              .map((entry) => entry.label)
+              .join(' + ')}`
+          : null,
+        norm.startWord ? `started “${norm.startWord}”` : null,
         `looked back ${norm.usedLookBack || lookBackOf(task, state)}`,
         norm.copies > 0 ? `${norm.copies} copied` : null,
         latest ? `latest: “${latest.length > 70 ? `${latest.slice(0, 69)}…` : latest}”` : null,

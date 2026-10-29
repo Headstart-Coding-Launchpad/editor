@@ -62,6 +62,7 @@ tasks:
 | `panels` | No | A list of extra parts to show: `stats`, `silly`, `voices`, `lookback`. Missing means `[stats]`. `[]` shows none. Unknown values are errors. |
 | `lookBack` | No | A whole number from 1 to `maxLookBack` (default 1). How many words back the model looks. With the `lookback` panel it is where the student starts and they can change it; without the panel it is fixed. |
 | `maxLookBack` | No | A whole number from 1 to 3 (default 3). The most words back the student can pick with the `lookback` panel. |
+| `maxPacks` | No | Write mode with the `voices` panel: how many packs the student can switch on at once to mix (1 up to the number of `texts`, default 3). At least one stays on. |
 | `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters; 6000 in write mode) and an optional `emoji` for its card. |
 
 ### Panels
@@ -104,8 +105,12 @@ The lesson turns parts on so each screen stays simple.
 - **Go!** (becomes **Stop** while writing) writes one sentence word by word, about 3 words a
   second (all at once with `prefers-reduced-motion`), using the current look-back and Silly
   setting. It stops at a sentence end, a dead end or `maxWords`.
-- **Start with** picks the first word: `any word` or one of the words that start sentences in the
-  pack.
+- **Start with** is a box the student can type any word into (the pack's usual sentence starters
+  are offered as suggestions; blank means any word). If the bot has never read the word, or nothing
+  follows it, it says so under the card and writes nothing.
+- With the `voices` panel the pack chips in the fold are on/off switches: the student can mix up to
+  `maxPacks` packs, and the bot learns from all of them (plus **My writing**). The tutor's card
+  summary says what is mixed and the start word.
 - The output sits on a **card** styled by `card`. After a run, **Keep this card** saves it (up to
   10 cards, 200 characters each). **My cards: 1 of 3** shows what was kept. The task passes at
   `passAt` kept cards; more are bonus.

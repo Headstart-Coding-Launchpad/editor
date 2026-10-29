@@ -15,9 +15,11 @@ import {
   lookBackOf,
   maxLookBackOf,
   maxWordsOf,
+  maxPacksOf,
   modelBodyOf,
   normalizeNextWordState,
   openingWordsOf,
+  packVoicesOf,
   ownWordsOf,
   panelsOf,
   passAtOf,
@@ -66,6 +68,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   const panels = panelsOf(task)
   const voices = voicesOf(task)
   const voice = voiceOf(task, state)
+  const packVoices = packVoicesOf(task, state)
   const model = activeModel(task, state)
   const lookBack = lookBackOf(task, state)
   const temperature = panels.includes('silly') ? state.temperature : DEFAULT_TEMPERATURE
@@ -176,12 +179,25 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
     onChange?.((prev) => keepCard(task, normalizeNextWordState(task, prev)))
   }
 
-  function chooseVoice(voiceId) {
+  // Packs are switched on and off (at least one stays on, at most maxPacks).
+  function togglePack(voiceId) {
     timersRef.current.forEach(clearTimeout)
     timersRef.current = []
     setWriting(false)
     setWhyIndex(null)
-    update({ voice: voiceId, sentence: '', finished: false, copied: false, kept: false })
+    const on = packVoices.map((entry) => entry.id)
+    const next = on.includes(voiceId)
+      ? on.filter((id) => id !== voiceId)
+      : [...on, voiceId].slice(-maxPacksOf(task))
+    if (next.length === 0) return
+    update({
+      packs: next,
+      voice: next[0],
+      sentence: '',
+      finished: false,
+      copied: false,
+      kept: false,
+    })
   }
 
   const words = state.sentence.split(' ').filter(Boolean)
@@ -233,9 +249,9 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
           {voices.map((entry) => (
             <ActChip
               key={entry.id}
-              pressed={entry.id === voice.id && voice.id !== OWN_VOICE}
+              pressed={packVoices.some((on) => on.id === entry.id) && entry.id !== OWN_VOICE}
               disabled={watching || writing}
-              onClick={() => chooseVoice(entry.id)}
+              onClick={() => togglePack(entry.id)}
             >
               <span aria-hidden="true">{entry.emoji}</span> {entry.label}
             </ActChip>
@@ -317,7 +333,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
               ? sillyLabel(state.temperature)
               : voice.id === OWN_VOICE
                 ? ''
-                : voice.label,
+                : packVoices.map((entry) => entry.label).join(' + '),
             children: foldBody,
           }}
           open={foldOpen}

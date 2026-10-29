@@ -156,12 +156,34 @@ export function voiceOf(task, state) {
   return voices.find((voice) => voice.id === state?.voice) ?? voices[voices.length - 1]
 }
 
+// Write mode: most packs the student can mix at once (the task's `maxPacks`, default 3).
+export const DEFAULT_MAX_PACKS = 3
+export function maxPacksOf(task) {
+  const n = Number.isInteger(task?.maxPacks) ? task.maxPacks : DEFAULT_MAX_PACKS
+  return Math.min(Math.max(1, n), Math.max(1, textsOf(task).length))
+}
+
+// The packs in use: in write mode the ones the student switched on (at least one, at most
+// maxPacks), else just the one voice.
+export function packVoicesOf(task, state) {
+  const voice = voiceOf(task, state)
+  if (!isWriteMode(task) || voice.id === OWN_VOICE) return [voice]
+  const chosen = voicesOf(task).filter((entry) => (state?.packs ?? []).includes(entry.id))
+  return chosen.length > 0 ? chosen.slice(0, maxPacksOf(task)) : [voice]
+}
+
+const packBodyOf = (task, state) =>
+  packVoicesOf(task, state)
+    .map((entry) => entry.body)
+    .join(' ')
+
 // The text the model learns from right now.
 export function modelBodyOf(task, state) {
   const voice = voiceOf(task, state)
   if (voice.id === OWN_VOICE) return String(state?.own ?? '')
-  // Write mode: the student's own sentences are added to the pack.
-  return isWriteMode(task) && state?.own ? `${voice.body} ${state.own}` : voice.body
+  // Write mode: the student's own sentences are added to the pack(s).
+  const body = packBodyOf(task, state)
+  return isWriteMode(task) && state?.own ? `${body} ${state.own}` : body
 }
 
 // In write mode each sentence the student types counts as this many copies when the model counts
@@ -177,7 +199,7 @@ export function trainingBodyOf(task, state) {
   // End the text with a full stop so one copy never runs on into the next.
   const closed = /[.!?]$/.test(own) ? own : `${own}.`
   const copies = Array.from({ length: OWN_SENTENCE_WEIGHT }, () => closed).join(' ')
-  return `${voice.body} ${copies}`
+  return `${packBodyOf(task, state)} ${copies}`
 }
 
 // The model, or null when there are fewer than two words (no word pairs yet).
@@ -362,6 +384,7 @@ export function initialNextWordState(task) {
   return {
     v: 2,
     voice: voices[0].id,
+    packs: [voices[0].id],
     own: '',
     ownWords: 0,
     generated: 0,
@@ -387,6 +410,21 @@ export function initialNextWordState(task) {
 const count = (value, max = 9999) =>
   Number.isInteger(value) && value > 0 ? Math.min(value, max) : 0
 
+// The pack ids switched on: known ids only, no repeats, at most maxPacks; the single voice if none.
+function cleanPacks(task, packs, voice) {
+  // sharedState reads without a task (so without voices): then ids pass through as plain strings.
+  const taskless = textsOf(task).length === 0
+  const known = new Set(voicesOf(task).map((entry) => entry.id))
+  const ids = (Array.isArray(packs) ? packs : []).filter(
+    (id, i, all) =>
+      typeof id === 'string' &&
+      id.length <= 40 &&
+      (taskless || known.has(id)) &&
+      all.indexOf(id) === i
+  )
+  return ids.length > 0 ? ids.slice(0, taskless ? 10 : maxPacksOf(task)) : [voice]
+}
+
 // Tolerant: reads the device's form, the shared form (no own text) and the old v1 form.
 export function normalizeNextWordState(task, raw) {
   const base = initialNextWordState(task)
@@ -408,6 +446,7 @@ export function normalizeNextWordState(task, raw) {
   return {
     v: 2,
     voice: typeof raw.voice === 'string' ? raw.voice : base.voice,
+    packs: cleanPacks(task, raw.packs, typeof raw.voice === 'string' ? raw.voice : base.voice),
     own,
     ownWords: own ? tokenise(own).length : count(raw.ownWords),
     generated: count(raw.generated),
