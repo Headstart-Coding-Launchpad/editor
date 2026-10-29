@@ -294,7 +294,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: texts must be a list.` | `texts` is not a list. | Write `texts` as a list of `{ title, body }` voices, or leave it out. |
 | `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the voice card. |
 | `Task … text …: body is required.` | A text has no `body`. | Add the text the model learns from. |
-| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters. | Shorten it, or split it into two texts. |
+| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters (6000 with `mode: write`). | Shorten it, or split it into two texts. |
 | `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
 | `Task … text …: emoji must be one short emoji.` | `emoji` is empty, not text, or too long. | Use a single emoji, or leave it out. |
 | `Task …: panels must be a list.` | `panels` is not a list. | Write `panels: [stats, silly]`. |
@@ -302,6 +302,11 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: guesses must be a whole number from 1 to ….` | `guesses` is not a whole number in range. | Use a number such as `5`, or leave it out for the default. |
 | `Task …: maxLookBack must be a whole number from 1 to ….` | `maxLookBack` is not a whole number from 1 to 3. | Use 1, 2 or 3, or leave it out for 3. |
 | `Task …: lookBack must be a whole number from 1 to ….` | `lookBack` is not a whole number, or is more than `maxLookBack`. | Use a number from 1 up to `maxLookBack`, or leave it out for 1. |
+| `Task …: mode must be one of ….` | `mode` is not `guess` or `write`. | Use `mode: write`, or leave it out for the guessing round. |
+| `Task …: maxWords must be a whole number from … to ….` | `maxWords` (write mode) is not a whole number from 3 to 40. | Use a number such as `15`, or leave it out. |
+| `Task …: card must be one of ….` | `card` (write mode) is not `headline`, `post` or `commentary`. | Use one of those, or leave it out for `headline`. |
+| `Task …: passAt must be a whole number from 1 to ….` | `passAt` (write mode) is not a whole number from 1 to 10. | Use a number such as `3`, or leave it out. |
+| `Task …: mode write needs at least one text to write like.` | `mode: write` has no `texts`, so the bot has nothing to learn from. | Add a text (about 60 sentences of headlines, posts or commentary). |
 
 ### Classifier ([activities/classifier.md](activities/classifier.md))
 

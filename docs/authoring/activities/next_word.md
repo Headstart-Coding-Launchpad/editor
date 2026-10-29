@@ -54,11 +54,15 @@ tasks:
 | Field | Required | Notes |
 |---|:---:|---|
 | `type` | Yes | `next_word` in YAML (JSON: `taskType: activity` + `activityType: next_word`) |
+| `mode` | No | `guess` (default, the guessing round) or `write` (Go auto-write, see [Write mode](#write-mode)). |
+| `maxWords` | No | Write mode: 3 to 40 (default 15). The most words it writes; it also stops at a sentence end. |
+| `card` | No | Write mode: `headline` (newspaper), `post` (social post bubble) or `commentary` (speech line). Default `headline`. |
+| `passAt` | No | Write mode: 1 to 10 (default 3). Kept cards that pass the task. |
 | `guesses` | No | A whole number from 1 to 20 (default 5). The round: this many "Guess what it says next" guesses make the task pass. Right or wrong both count. |
 | `panels` | No | A list of extra parts to show: `stats`, `silly`, `voices`, `lookback`. Missing means `[stats]`. `[]` shows none. Unknown values are errors. |
 | `lookBack` | No | A whole number from 1 to `maxLookBack` (default 1). How many words back the model looks. With the `lookback` panel it is where the student starts and they can change it; without the panel it is fixed. |
 | `maxLookBack` | No | A whole number from 1 to 3 (default 3). The most words back the student can pick with the `lookback` panel. |
-| `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters) and an optional `emoji` for its card. |
+| `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters; 6000 in write mode) and an optional `emoji` for its card. |
 
 ### Panels
 
@@ -79,6 +83,46 @@ The lesson turns parts on so each screen stays simple.
 - Marking is unchanged: a guess is right when the tapped word is (one of) the likeliest after the context in use, and guesses count right or wrong.
 - Without `lookback` and with no `lookBack`, the task runs exactly as before (look-back 1).
 - Example: `panels: [stats, lookback]`, `lookBack: 1`, `maxLookBack: 3`.
+
+## Write mode
+
+`mode: write` swaps the guessing round for a bot that writes. Example:
+
+```yaml
+- type: next_word
+  title: Headline bot
+  mode: write
+  panels: [silly, voices, lookback]
+  lookBack: 2          # default 2 in write mode
+  maxWords: 15
+  card: headline
+  passAt: 3
+  texts:
+    - { title: Headlines, emoji: "📰", body: "...about 60 sentences..." }
+```
+
+- **Go!** (becomes **Stop** while writing) writes one sentence word by word, about 3 words a
+  second (all at once with `prefers-reduced-motion`), using the current look-back and Silly
+  setting. It stops at a sentence end, a dead end or `maxWords`.
+- **Start with** picks the first word: `any word` or one of the words that start sentences in the
+  pack.
+- The output sits on a **card** styled by `card`. After a run, **Keep this card** saves it (up to
+  10 cards, 200 characters each). **My cards: 1 of 3** shows what was kept. The task passes at
+  `passAt` kept cards; more are bonus.
+- **Copied word for word!** shows when the finished output equals a training sentence (case and
+  punctuation ignored).
+- **Tap a written word** to see why: `after "the big": dog 2 of 3 times` (the context it used and
+  the counts, with a note if it had to use fewer words).
+- **My writing** is always on screen. What the student types is added to the chosen pack, so the
+  bot learns from both. The pack is the first `texts` entry, or any of them with the `voices`
+  panel (My writing is not a separate voice here). A Silly / What it reads fold holds the slider
+  and the voices; the `stats` panel is not used.
+- The default screen has at most 5 controls: Go, Start with, look-back, My writing and the fold.
+- **Tutor:** the card summary reads `2 of 3 cards kept · looked back 2 · 1 copied · latest:
+  "..."`, and the read-only view shows the sentence as it grows, the copied badge and the kept
+  cards (so a class vote can run on them). The session report adds `nextWordWriteResults`
+  (`writtenCount`, `avgCardsKept`, `copiedCount`, `lookBackUsed`).
+- Live badges: Perfect Round does not apply (there are no guesses) and Storyteller does not count.
 
 ## Removed fields
 

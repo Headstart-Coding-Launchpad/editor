@@ -7268,6 +7268,162 @@ label.te-backdrop-tag,
   }
 }
 
+/* Next Word write mode: the output card, the copied badge, kept cards */
+.act-nw-select {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  font-size: 1.05rem;
+}
+
+.act-nw-outcard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 7em;
+  padding: 16px 20px;
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-tint);
+  color: var(--colour-ink-strong);
+  font-size: 1.7rem;
+  line-height: 1.4;
+}
+
+.act-nw-outcard__icon {
+  font-size: 2rem;
+}
+
+.act-nw-outcard__text {
+  margin: 0;
+  flex: 1;
+}
+
+.act-nw-outcard--headline {
+  background: #fff;
+  border: 2px solid var(--colour-ink-strong);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 800;
+}
+
+.act-nw-outcard--post {
+  border-radius: 20px 20px 20px 4px;
+  border: 1px solid var(--ui-border);
+  background: #fff;
+}
+
+.act-nw-outcard--commentary {
+  font-style: italic;
+  border-left: 8px solid var(--colour-primary);
+}
+
+.act-nw-outword {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px dotted transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.act-nw-outword:hover,
+.act-nw-outword--on {
+  border-bottom-color: var(--colour-primary);
+  color: var(--colour-primary);
+}
+
+.act-nw-copied {
+  align-self: flex-start;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #664d03;
+  font-weight: 700;
+}
+
+.act-nw-hint,
+.act-nw-why {
+  margin: 0;
+}
+
+.act-nw-why {
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-tint);
+  font-weight: 600;
+}
+
+.act-nw-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.act-nw-cardlist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15em), 1fr));
+  gap: 10px;
+  max-height: 11.5rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.act-nw-minicard {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+  color: var(--colour-ink-strong);
+  font-size: 1.1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.act-nw-minicard__icon {
+  font-size: 1.3rem;
+}
+
+.act-nw-minicard__text {
+  flex: 1;
+}
+
+.act-nw-minicard__copied {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #664d03;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.act-nw-minicard--headline {
+  border: 2px solid var(--colour-ink-strong);
+  border-radius: 2px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 800;
+  box-shadow: 3px 3px 0 var(--colour-ink-strong);
+}
+
+.act-nw-minicard--post {
+  border-radius: 18px 18px 18px 4px;
+}
+
+.act-nw-minicard--commentary {
+  font-style: italic;
+  border-left: 6px solid var(--colour-primary);
+}
+
 .act-nw-silly {
   display: flex;
   flex-wrap: wrap;

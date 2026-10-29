@@ -76,6 +76,24 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-10-28-learning-tree-card-deck-dragged-into-bins-and-a-20-questions.md
 
+- **Next Word: `mode: write`, the bot that writes like a headline, a post or a commentator.**
+  New optional `mode: write` on a `next_word` task (default stays the guessing round). The student
+  presses **Go!** and the bot writes a sentence word by word (about 3 a second; instantly with
+  reduced motion) on a styled card, from a **Start with** word they pick, using the current
+  look-back (starts at 2) and Silly setting. It stops at a sentence end or `maxWords`. A "Copied
+  word for word!" badge shows when the output is one of the training sentences, **Keep this card**
+  saves it (up to 10 cards), and tapping a written word shows why it was picked (`after "the big":
+  dog 2 of 3 times`). What the student types in My writing is added to the chosen pack. New
+  fields: `mode` (`guess` or `write`), `maxWords` (3-40, default 15), `card` (`headline`, `post` or
+  `commentary`, default `headline`), `passAt` (kept cards to pass, 1-10, default 3). In write mode
+  `texts` bodies may be up to 6000 characters (4000 otherwise), `guesses` and the `stats` panel are
+  not used, and `silly`, `voices` and `lookback` still apply. The tutor card shows `2 of 3 cards
+  kept · looked back 2 · 1 copied · latest: "..."`; the session report adds
+  `nextWordWriteResults` (cards kept, look-back used, copied count). See
+  [activities/next_word.md](activities/next_word.md).
+  - Affects: next_word · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-next-word-bot-that-writes-like-go-auto-write-copied-badge-ou.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every
