@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { onAuthStateChanged, getIdTokenResult } from 'firebase/auth'
 import { auth } from '../shared/firebase'
 
-const AuthContext = createContext({ user: null, role: null, loading: true })
+const AuthContext = createContext({ user: null, role: null, handle: null, loading: true })
 
 // How long to wait for a cross-tab storage-event bounce (#180/#279/#305) to recover
 // before treating a reported sign-out as real.
@@ -11,6 +11,9 @@ const BOUNCE_RECOVERY_GRACE_MS = 1000
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [role, setRole] = useState(null)
+  // The tutor's short handle (a custom claim, src/shared/sessionKey.js): their own live-session
+  // key and student links. null for admins and tutors without one.
+  const [handle, setHandle] = useState(null)
   const [loading, setLoading] = useState(true)
   const initializedRef = useRef(false)
   const wasSignedInRef = useRef(false)
@@ -45,6 +48,7 @@ export function AuthProvider({ children }) {
           wasSignedInRef.current = false
           setUser(null)
           setRole(null)
+          setHandle(null)
           setLoading(false)
           bounceRecoveryTimeout = null
         }, BOUNCE_RECOVERY_GRACE_MS)
@@ -58,9 +62,11 @@ export function AuthProvider({ children }) {
           const tokenResult = await getIdTokenResult(firebaseUser, false)
           setUser(firebaseUser)
           setRole(tokenResult.claims.role ?? null)
+          setHandle(tokenResult.claims.handle ?? null)
         } else {
           setUser(null)
           setRole(null)
+          setHandle(null)
         }
       } catch (err) {
         if (firebaseUser) {
@@ -76,6 +82,7 @@ export function AuthProvider({ children }) {
             const retryResult = await getIdTokenResult(firebaseUser, false)
             setUser(firebaseUser)
             setRole(retryResult.claims.role ?? null)
+            setHandle(retryResult.claims.handle ?? null)
           } catch (retryErr) {
             console.error(
               'Auth: ID token retry also failed — signing out and redirecting to /login:',
@@ -83,10 +90,12 @@ export function AuthProvider({ children }) {
             )
             setUser(null)
             setRole(null)
+            setHandle(null)
           }
         } else {
           setUser(null)
           setRole(null)
+          setHandle(null)
         }
       } finally {
         wasSignedInRef.current = !!firebaseUser
@@ -101,7 +110,9 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  return <AuthContext.Provider value={{ user, role, loading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, role, handle, loading }}>{children}</AuthContext.Provider>
+  )
 }
 
 export default AuthContext

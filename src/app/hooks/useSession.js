@@ -53,6 +53,7 @@ import {
 import { findShownResponse, normalizeShownText } from '../../shared/shownResponses'
 import { AUTO_CHECK_LEAVE, AUTO_CHECK_RESULTS, countedAttemptEntries } from '../../shared/autoCheck'
 import { liveInkPath } from '../liveInk/liveInkData'
+import { lessonIdOfKey } from '../../shared/sessionKey'
 import { normalizePollDraft, pollChoiceIndex } from '../../shared/classPolls.js'
 import { createLiveInkWriter as createLessonLiveInkWriter } from '../liveInk/liveInkWriter'
 import { buildClassCountdown, extendClassCountdown } from '../../shared/classCountdown'
@@ -115,6 +116,9 @@ function countAttemptRuns(entries) {
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
  */
+// `lessonId` is the Realtime Database key of the live class (src/shared/sessionKey.js): the lesson id
+// for a link with no tutor on it, `lessonId~handle` for a tutor's own. Every path below is built
+// from it; the session body keeps the real lesson id.
 export function useSession(lessonId, { enabled = true, keepPresenter = false } = {}) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(enabled)
@@ -182,7 +186,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // createSessionIfAbsent only when nothing is there.
   function initialSessionData() {
     return {
-      lessonId,
+      lessonId: lessonIdOfKey(lessonId),
+      sessionKey: lessonId,
       state: 'waiting',
       currentTaskId: 1,
       createdAt: Date.now(),

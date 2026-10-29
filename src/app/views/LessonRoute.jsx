@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/useAuth'
 import TeacherView from './TeacherView'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
+import { sessionKeyOf } from '../../shared/sessionKey'
 
 export default function LessonRoute() {
   const { lessonId } = useParams()
@@ -21,7 +22,11 @@ export default function LessonRoute() {
   // plumbing (see createStudentPersistence.js), the same mechanism the Builder's own
   // PreviewView already uses. Nothing it does is written to real student progress.
   const isPreview = searchParams.get('preview') === 'true'
-  const { user, role, loading } = useAuth()
+  const { user, role, handle, loading } = useAuth()
+  // A student link names its tutor (`?t=sam`); a tutor's own window uses their account's handle.
+  // Neither: the lesson id, exactly as before (links posted before per-tutor sessions).
+  const studentSessionKey = sessionKeyOf(lessonId, searchParams.get('t'))
+  const tutorSessionKey = sessionKeyOf(lessonId, handle)
 
   if (isTeacher || isPreview) {
     if (loading) return <LoadingScreen message="Checking sign-in…" />
@@ -40,9 +45,25 @@ export default function LessonRoute() {
           allowUnrestrictedTaskNavigation
         />
       )
-    if (isPresent) return <StudentView key={lessonId} lessonId={lessonId} teacherPresentation />
-    return <TeacherView lessonId={lessonId} />
+    if (isPresent) {
+      return (
+        <StudentView
+          key={tutorSessionKey}
+          lessonId={lessonId}
+          sessionKey={tutorSessionKey}
+          teacherPresentation
+        />
+      )
+    }
+    return <TeacherView key={tutorSessionKey} lessonId={lessonId} sessionKey={tutorSessionKey} />
   }
 
-  return <StudentView key={lessonId} lessonId={lessonId} forceSolo={forceSolo} />
+  return (
+    <StudentView
+      key={studentSessionKey}
+      lessonId={lessonId}
+      sessionKey={studentSessionKey}
+      forceSolo={forceSolo}
+    />
+  )
 }

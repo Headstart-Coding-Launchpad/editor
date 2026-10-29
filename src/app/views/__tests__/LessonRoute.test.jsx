@@ -8,7 +8,11 @@ import { useAuth } from '../../../auth/useAuth'
 vi.mock('../../../auth/useAuth', () => ({ useAuth: vi.fn() }))
 
 vi.mock('../TeacherView', () => ({
-  default: ({ lessonId }) => <div>TeacherView {lessonId}</div>,
+  default: ({ lessonId, sessionKey }) => (
+    <div>
+      TeacherView {lessonId} key={sessionKey}
+    </div>
+  ),
 }))
 
 const studentViewMounts = []
@@ -95,7 +99,7 @@ describe('LessonRoute', () => {
   it('renders TeacherView for an authorised teacher', () => {
     useAuth.mockReturnValue({ user: { uid: 't1' }, role: 'teacher', loading: false })
     renderRoute('?teacher=true')
-    expect(screen.getByText('TeacherView scratch-1-1')).toBeInTheDocument()
+    expect(screen.getByText('TeacherView scratch-1-1 key=scratch-1-1')).toBeInTheDocument()
   })
 
   it('renders the presenter StudentView for an authorised teacher with present=true', () => {
@@ -129,5 +133,55 @@ describe('LessonRoute', () => {
     useAuth.mockReturnValue({ user: { uid: 'a1' }, role: 'admin', loading: false })
     renderRoute('?preview=true')
     expect(screen.getByText(/StudentView/)).toHaveTextContent('"previewMode":true')
+  })
+
+  describe('per-tutor live sessions', () => {
+    it('keeps the plain lesson id as the session key for a link with no tutor', () => {
+      useAuth.mockReturnValue({ user: null, role: null, loading: false })
+      renderRoute('')
+      expect(screen.getByText(/StudentView/)).toHaveTextContent('"sessionKey":"scratch-1-1"')
+    })
+
+    it('uses the tutor named in a student link', () => {
+      useAuth.mockReturnValue({ user: null, role: null, loading: false })
+      renderRoute('?t=Sam')
+      const el = screen.getByText(/StudentView/)
+      expect(el).toHaveTextContent('"lessonId":"scratch-1-1"')
+      expect(el).toHaveTextContent('"sessionKey":"scratch-1-1~sam"')
+    })
+
+    it('ignores a tutor name that is not a plain handle', () => {
+      useAuth.mockReturnValue({ user: null, role: null, loading: false })
+      renderRoute('?t=../admin')
+      expect(screen.getByText(/StudentView/)).toHaveTextContent('"sessionKey":"scratch-1-1"')
+    })
+
+    it('opens a signed-in tutor with a handle in their own session, in both windows', () => {
+      useAuth.mockReturnValue({
+        user: { uid: 't1' },
+        role: 'teacher',
+        handle: 'sam',
+        loading: false,
+      })
+      renderRoute('?teacher=true')
+      expect(screen.getByText(/TeacherView/)).toHaveTextContent('key=scratch-1-1~sam')
+    })
+
+    it('puts the same session key on the tutor Presentation window', () => {
+      useAuth.mockReturnValue({
+        user: { uid: 't1' },
+        role: 'teacher',
+        handle: 'sam',
+        loading: false,
+      })
+      renderRoute('?teacher=true&present=true')
+      expect(screen.getByText(/StudentView/)).toHaveTextContent('"sessionKey":"scratch-1-1~sam"')
+    })
+
+    it('leaves a tutor with no handle on the plain lesson key', () => {
+      useAuth.mockReturnValue({ user: { uid: 't1' }, role: 'teacher', loading: false })
+      renderRoute('?teacher=true')
+      expect(screen.getByText(/TeacherView/)).toHaveTextContent('key=scratch-1-1')
+    })
   })
 })

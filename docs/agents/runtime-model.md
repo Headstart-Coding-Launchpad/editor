@@ -1087,6 +1087,7 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/lesson/:lessonId` | Smart join. If a session exists (`waiting` or `active`), the student auto-joins it. If no session exists, the student sees the `choice` phase (`ChoiceScreen.jsx`) to pick Join Live Lesson or Go Solo. |
 | `/lesson/:lessonId?solo=true` | Forces solo mode unconditionally — bypasses any session even if one exists. Replaces the old "bare URL = solo" meaning. |
 | `/lesson/:lessonId?live=true` | Deprecated no-op. Silently ignored by `LessonRoute.jsx` (kept out of `forceSolo`) so previously-shared links with this param don't break. Bare URLs now handle the smart-join behaviour this param used to imply. |
+| `/lesson/:lessonId?t=<handle>` | Smart join into that tutor's own live class (session key `lessonId~handle`). A value that is not a plain handle (2-20 lower-case letters or digits) is ignored. |
 | `/lesson/:lessonId?teacher=true` | Teacher view; redirects unauthenticated users to login |
 | `/lesson/:lessonId?teacher=true&present=true` | Teacher presentation view; auth required |
 | `/lesson/:lessonId?preview=true` | Teacher/admin-only ephemeral preview — auth required (same check as `?teacher=true`). Renders `StudentView` with `forceSolo`, `previewMode` (writes never persist — see `createStudentPersistence.js`), and `allowUnrestrictedTaskNavigation`. Linked from the Admin Portal's lesson list ("Preview"). |
@@ -1095,11 +1096,11 @@ The landing page validates a selected `.launchpad` file and passes it to `/code`
 | `/builder` | Lesson builder |
 | `/share/:id` | Public, read-only page for a tutor's "Export work" share link (`SharedWorkView.jsx`; Firestore `sharedWork/{id}`, see Share Links). No login, no student name, nothing written; the module that made the work renders it (its exporter's `ShareView`). A revoked or expired link shows "This link has ended". Approved URL addition (Ryan, 2026-10-14) |
 
-No room IDs. There is one session per lesson.
+No room IDs. There is one session per lesson **per tutor** (Ryan, 2026-10-29, #337, design in `HSC Hub\Research\Per-tutor sessions design.md`): a student link may carry the tutor, `/lesson/:lessonId?t=<handle>`, and every Realtime Database node for the live class (`sessions`, `liveInk`, `carryInbox`, `peerHelp*`, `sessionArchive`, `sharedWorkspacePayloads`) is keyed by the **session key**: the lesson id for a link with no `t` (every link posted before this, and any tutor without a handle), else `lessonId~handle` (`src/shared/sessionKey.js`). The `handle` is a short custom claim on the tutor's account; their own windows use it automatically (`LessonRoute.jsx`). Lesson content, reports, feedback, localStorage and the URL stay on the real lesson id; the session body keeps `lessonId` (real) and adds `sessionKey`. Slice 1 changes no rules and no behaviour for links without `t`; ownership rules and the `/room/<handle>` link follow in later slices.
 
 A lesson-level `soloOnly: true` flag (on the lesson envelope) overrides all of the above: the lesson is hard-forced to solo mode always, regardless of URL or session state, and the `choice` phase is never shown. See `docs/authoring/lesson-schema.md` for the full field reference.
 
-`getLessonLinks(lessonId)` (`src/shared/lessonLinks.js`) returns `{ join, solo }` — `join` is the bare smart-join URL, `solo` appends `?solo=true`. Used by `TeacherSessionControls.jsx` and Admin Portal's `LessonPanel.jsx` (labelled "Lesson Link (live or solo)" and "Solo-Only Link").
+`getLessonLinks(lessonId, handle)` (`src/shared/lessonLinks.js`) returns `{ join, solo }` — `join` is the smart-join URL (with `?t=<handle>` when the tutor has one), `solo` appends `?solo=true`. Used by `TeacherSessionControls.jsx` and Admin Portal's `LessonPanel.jsx` (labelled "Lesson Link (live or solo)" and "Solo-Only Link").
 
 ## Session States
 

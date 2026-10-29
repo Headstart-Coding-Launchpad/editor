@@ -122,7 +122,10 @@ function canRecordAdvanceOverride(task) {
   return true
 }
 
-export default function TeacherView({ lessonId }) {
+export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
+  // The Realtime Database key of this tutor's live class (src/shared/sessionKey.js); the lesson
+  // id when the tutor has no handle. Lesson content, reports and feedback stay on `lessonId`.
+  const sessionKey = sessionKeyProp ?? lessonId
   const navigate = useNavigate()
   const { user, role } = useAuth()
   const {
@@ -213,15 +216,15 @@ export default function TeacherView({ lessonId }) {
     decideBadge,
     revokeBadge,
     setBadgeSettings,
-  } = useSession(lessonId)
+  } = useSession(sessionKey)
   // This tab is on the open session, so a tab that crashes leaves it marked stale, not open.
-  useTeacherPresence(lessonId, {
+  useTeacherPresence(sessionKey, {
     open: !!session && session.state !== 'ended',
     connected,
     sessionKey: session?.createdAt ?? null,
   })
   // Peer help: every request in the lesson, the review queue and the teacher's switches.
-  const peerHelp = usePeerHelp({ lessonId, session, role: 'teacher' })
+  const peerHelp = usePeerHelp({ lessonId: sessionKey, session, role: 'teacher' })
 
   // While the class is in the teacher sandbox, each student's latest sandbox run is copied into
   // the session archive for the report (the sandbox is no longer thrown away).
@@ -293,6 +296,7 @@ export default function TeacherView({ lessonId }) {
     session,
     lesson,
     lessonId,
+    sessionKey,
     classId: sessionClass.classId,
     matches: rosterMatches,
   })
@@ -301,7 +305,7 @@ export default function TeacherView({ lessonId }) {
   useCarryInboxWriter({
     session,
     lesson,
-    lessonId,
+    lessonId: sessionKey,
     classId: sessionClass.classId,
     matches: rosterMatches,
     by: user?.uid ?? null,
@@ -767,7 +771,7 @@ export default function TeacherView({ lessonId }) {
     const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
     presentationWindowRef.current = window.open(
       `${base}?teacher=true&present=true`,
-      `headstart-present-${lessonId}`,
+      `headstart-present-${sessionKey}`,
       'popup=yes,width=1280,height=800'
     )
   }
@@ -843,7 +847,7 @@ export default function TeacherView({ lessonId }) {
     }),
     onUseCarryStarter: (anonymousIds) =>
       applyCarryStarter(
-        lessonId,
+        sessionKey,
         carryStarterUpdates({ session, lesson, anonymousIds, by: user?.uid ?? null })
       ),
   }
@@ -1298,11 +1302,11 @@ export default function TeacherView({ lessonId }) {
           rosterLoading={rosterLoading}
           students={students}
           matches={rosterMatches}
-          onPickClass={(classId) => setSessionClass(lessonId, classId)}
+          onPickClass={(classId) => setSessionClass(sessionKey, classId)}
           onMatch={(anonymousId, rosterId) =>
-            matchStudent(lessonId, anonymousId, rosterId, user?.uid ?? null)
+            matchStudent(sessionKey, anonymousId, rosterId, user?.uid ?? null)
           }
-          onUnmatch={(anonymousId) => unmatchStudent(lessonId, anonymousId)}
+          onUnmatch={(anonymousId) => unmatchStudent(sessionKey, anonymousId)}
           onAddStudent={(name) => addRosterEntry(sessionClass.classId, name, user?.uid ?? null)}
           carryWaitingIds={rosterStatus.carryWaitingIds}
           onUseCarryStarter={rosterStatus.onUseCarryStarter}

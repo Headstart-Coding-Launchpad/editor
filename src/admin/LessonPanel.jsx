@@ -221,6 +221,8 @@ export const REPORT_LIMIT = 300
 
 export default function LessonPanel({ view = 'lessons' }) {
   const user = useAuth()?.user
+  // The signed-in tutor's handle: their lesson link carries it so students join their own class.
+  const tutorHandle = useAuth()?.handle ?? ''
   const [lessons, setLessons] = useState([])
   const [levels, setLevels] = useState([])
   const [classes, setClasses] = useState([])
@@ -410,7 +412,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   function handleCopyLink(lessonId, type) {
-    const url = getLessonLinks(lessonId)[type]
+    const url = getLessonLinks(lessonId, tutorHandle)[type]
     navigator.clipboard
       .writeText(url)
       .then(() => {
@@ -681,7 +683,9 @@ function ShareMenu({ lessonId, open, copiedLink, onToggle, onClose, onCopy }) {
                   <span className="teacher-share__type">
                     {type === 'join' ? 'Lesson Link (live or solo)' : 'Solo-Only Link'}
                   </span>
-                  <span className="teacher-share__url">{getLessonLinks(lessonId)[type]}</span>
+                  <span className="teacher-share__url">
+                    {getLessonLinks(lessonId, tutorHandle)[type]}
+                  </span>
                 </div>
                 <button
                   className="btn-secondary teacher-share__copy-btn"

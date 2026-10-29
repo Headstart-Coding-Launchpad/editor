@@ -23,7 +23,16 @@ function newestFirst(a, b) {
 //   sessions/{lessonId}/typingHistory/{anonymousId}, and clears the node of anyone unmatched.
 // Unmatched students, or a session with no class, save nothing. Returns { [anonymousId]:
 // entries (newest first) } for the StudentModal's "Typing history" list.
-export function useTypingHistory({ session, lesson, lessonId, classId, matches, onError }) {
+export function useTypingHistory({
+  session,
+  lesson,
+  lessonId,
+  // Realtime Database key of the live class (src/shared/sessionKey.js).
+  sessionKey = lessonId,
+  classId,
+  matches,
+  onError,
+}) {
   const keepsHistory = useMemo(() => lessonKeepsTypingHistory(lesson), [lesson])
   const enabled = !!classId && keepsHistory
   // `${classId}/${rosterId}` → entries (this tab's view of the saved list).
@@ -90,7 +99,7 @@ export function useTypingHistory({ session, lesson, lessonId, classId, matches, 
   const sessionId = typingSessionId(session)
   const pushed = session?.typingHistory
   useEffect(() => {
-    if (!lessonId || !session) return
+    if (!sessionKey || !session) return
     const updates = {}
     const wanted = new Set()
     if (enabled) {
@@ -114,10 +123,10 @@ export function useTypingHistory({ session, lesson, lessonId, classId, matches, 
       if (!wanted.has(anonymousId) && !(anonymousId in updates)) updates[anonymousId] = null
     }
     if (Object.keys(updates).length === 0) return
-    setTypingHistoryNodes(lessonId, updates).catch((err) => onErrorRef.current?.(err))
+    setTypingHistoryNodes(sessionKey, updates).catch((err) => onErrorRef.current?.(err))
     // `session` is read only for its presence; the node and session id are listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, classId, lessonId, matches, entriesByRoster, pushed, sessionId, !!session])
+  }, [enabled, classId, sessionKey, matches, entriesByRoster, pushed, sessionId, !!session])
 
   return useMemo(() => {
     const result = {}

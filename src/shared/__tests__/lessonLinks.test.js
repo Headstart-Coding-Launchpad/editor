@@ -37,4 +37,14 @@ describe('getLessonLinks', () => {
     const links = getLessonLinks('py-intro')
     expect(Object.keys(links).sort()).toEqual(['join', 'preview', 'solo', 'teacher'])
   })
+
+  it('puts the tutor handle on the join link only, so the class opens in their own session', () => {
+    const base = `${window.location.origin}${window.location.pathname}#/lesson/py-intro`
+    const links = getLessonLinks('py-intro', 'Sam')
+    expect(links.join).toBe(`${base}?t=sam`)
+    expect(links.solo).toBe(`${base}?solo=true`)
+    expect(links.teacher).toBe(`${base}?teacher=true`)
+    // Not a handle: the plain link, as before.
+    expect(getLessonLinks('py-intro', 'a b/c').join).toBe(base)
+  })
 })

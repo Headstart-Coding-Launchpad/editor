@@ -110,6 +110,9 @@ import { isShowItOptedOut } from '../../shared/showIt'
 
 export default function StudentView({
   lessonId: lessonIdProp,
+  // The Realtime Database key of the live class (src/shared/sessionKey.js): the lesson id for
+  // links with no tutor on them, `lessonId~handle` for a tutor's own.
+  sessionKey: sessionKeyProp,
   forceSolo = false,
   lesson: lessonProp = null,
   teacherPresentation = false,
@@ -122,6 +125,7 @@ export default function StudentView({
   onTaskChange = null,
 }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
+  const sessionKey = sessionKeyProp ?? lessonId
 
   // ─── Core hooks ───────────────────────────────────────────────────────────
 
@@ -214,7 +218,7 @@ export default function StudentView({
     createLiveInkWriter,
     setShowItView,
     setShowItOptOut,
-  } = useSession(useRealtimeSession ? lessonId : null, {
+  } = useSession(useRealtimeSession ? sessionKey : null, {
     enabled: useRealtimeSession,
     keepPresenter: teacherPresentation,
   })
@@ -318,6 +322,7 @@ export default function StudentView({
 
   const cs = useStudentCodeState({
     lessonId,
+    sessionKey,
     lesson: activeLesson,
     currentTaskId,
     viewingTaskId,
@@ -637,7 +642,7 @@ export default function StudentView({
   // Peer help (src/shared/peerHelp.js): this student's own request, and the request they help
   // with. Live lessons only; never in solo, preview or the Presentation window.
   const peerHelp = usePeerHelp({
-    lessonId,
+    lessonId: sessionKey,
     session,
     identityId: identity?.anonymousId,
     role: !soloMode && !previewMode && !teacherPresentation ? 'student' : null,
@@ -2283,7 +2288,7 @@ export default function StudentView({
   return (
     <BadgeSignalsContext.Provider value={badgeSignalsContextValue}>
       <LiveInkProvider
-        lessonId={lessonId}
+        lessonId={sessionKey}
         role={liveInkRole}
         followTutor={isForcedTeacherLive}
         subscribe={subscribeLiveInk}

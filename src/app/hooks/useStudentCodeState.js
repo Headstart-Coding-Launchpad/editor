@@ -165,6 +165,9 @@ function liveWorkFields(definition, stored) {
  */
 export function useStudentCodeState({
   lessonId,
+  // The Realtime Database key of the live class (src/shared/sessionKey.js); the lesson id for
+  // links with no tutor on them.
+  sessionKey = lessonId,
   lesson,
   currentTaskId,
   viewingTaskId,
@@ -834,7 +837,7 @@ export function useStudentCodeState({
     return persistence.readSavedCode(anonymousId, taskId) != null
   }
   const crossLessonCarry = useCrossLessonCarry({
-    lessonId,
+    lessonId: sessionKey,
     lesson,
     taskId: currentTaskId,
     session,
@@ -922,7 +925,7 @@ export function useStudentCodeState({
     setTeacherLiveReference,
   })
   const htmlInspector = useHtmlInspectorLive({
-    lessonId,
+    lessonId: sessionKey,
     session,
     phase,
     teacherPresentation,
@@ -936,7 +939,7 @@ export function useStudentCodeState({
 
   // Scratch slow-mo use for the session report: recordSlowMoUse (useSlowMoLog).
   const slowMoLog = useSlowMoLog({
-    lessonId,
+    lessonId: sessionKey,
     phase,
     teacherPresentation,
     previewMode,
@@ -947,7 +950,7 @@ export function useStudentCodeState({
 
   // Turtle course runs for the session report: recordCourseRun (useCourseLog), from each Run.
   const courseLog = useCourseLog({
-    lessonId,
+    lessonId: sessionKey,
     phase,
     teacherPresentation,
     previewMode,
@@ -959,7 +962,7 @@ export function useStudentCodeState({
   // Live number / colour scrubbing in the code editor (a task's `scrub`, src/shared/scrub/):
   // preview re-runs while a value moves (useScrubPreview) and the report count (useScrubLog).
   const scrubLog = useScrubLog({
-    lessonId,
+    lessonId: sessionKey,
     phase,
     teacherPresentation,
     previewMode,
