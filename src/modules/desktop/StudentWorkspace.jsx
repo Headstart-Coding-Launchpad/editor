@@ -206,6 +206,7 @@ export default function StudentWorkspace({
       // The lesson work area for Keyboard Wizard; copy, cut and paste done by keyboard here count
       // as a Desktop app shortcut (see useStudentBadgeSignals.workAreaSurfaceOf).
       data-badge-surface="app-shortcuts"
+      data-tp-pane="desktop"
       style={s.desktopStudentWorkspace}
       key={`desktop-${viewingTaskId ?? currentTaskId}`}
     >

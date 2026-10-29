@@ -2,7 +2,7 @@ import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LiveInkProvider from '../LiveInkProvider'
-import { TUTOR_POINTER_IDLE_MS, TUTOR_RIPPLE_MS } from '../tutorPane'
+import { TUTOR_POINTER_IDLE_MS, TUTOR_RIPPLE_MS, tutorPaneOf } from '../tutorPane'
 
 // Behaviour test for the tutor pointer layer: the tutor's mouse in the Presentation window
 // shows up on a student's screen at the same fractional spot of the same pane, even though the
@@ -210,5 +210,16 @@ describe('tutor pointer layer', () => {
       tutorScrollsTo(800)
       expect(screen.getByTestId('student-editor').scrollTop).toBe(0)
     })
+  })
+
+  it('falls back to the outer pane when the inner tagged element has no box', () => {
+    const outer = document.createElement('div')
+    outer.setAttribute('data-tp-pane', 'page')
+    outer.getBoundingClientRect = rectOf(0, 0, 100, 100)
+    const inner = document.createElement('div')
+    inner.setAttribute('data-tp-pane', 'electronics')
+    inner.getBoundingClientRect = rectOf(0, 0, 0, 0)
+    outer.appendChild(inner)
+    expect(tutorPaneOf(inner).id).toBe('page')
   })
 })

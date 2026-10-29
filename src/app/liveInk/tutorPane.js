@@ -12,10 +12,15 @@ export const TUTOR_RIPPLE_MS = 700
 
 const round3 = (value) => Math.round(value * 1000) / 1000
 
-/** The innermost tagged pane around `target`, as `{ el, id }`, or null. */
+/** The innermost tagged pane around `target` that has a box, as `{ el, id }`, or null. */
 export function tutorPaneOf(target) {
-  const el = target?.closest?.(`[${TUTOR_PANE_ATTR}]`)
-  return el ? { el, id: el.getAttribute(TUTOR_PANE_ATTR) } : null
+  let el = target?.closest?.(`[${TUTOR_PANE_ATTR}]`)
+  while (el) {
+    const box = el.getBoundingClientRect()
+    if (box.width && box.height) return { el, id: el.getAttribute(TUTOR_PANE_ATTR) }
+    el = el.parentElement?.closest?.(`[${TUTOR_PANE_ATTR}]`)
+  }
+  return null
 }
 
 export function findTutorPane(root, id) {

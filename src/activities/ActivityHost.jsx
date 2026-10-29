@@ -124,7 +124,7 @@ export function ActivityView({
   const ui = getTaskActivityUi(task)
   if (!ui || ui.id === UNKNOWN_ACTIVITY_ID || !ui.StudentView) {
     return (
-      <div className="act-host">
+      <div className="act-host" data-tp-pane="activity">
         {showHeader && (
           <ActivityHeader task={task} lessonType={lessonType} topicLibrary={topicLibrary} />
         )}
