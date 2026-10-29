@@ -294,7 +294,7 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: texts must be a list.` | `texts` is not a list. | Write `texts` as a list of `{ title, body }` voices, or leave it out. |
 | `Task … text …: title is required.` | A text has no `title`. | Give it a short title; it names the voice card. |
 | `Task … text …: body is required.` | A text has no `body`. | Add the text the model learns from. |
-| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters (6000 with `mode: write`). | Shorten it, or split it into two texts. |
+| `Task … text …: body is longer than … characters.` | A `body` is over 4000 characters (80000 with `mode: write`). | Shorten it, or split it into two texts. |
 | `Task … text …: body needs at least 2 words.` | A `body` has fewer than two words, so there are no word pairs. | Write a few sentences. |
 | `Task … text …: emoji must be one short emoji.` | `emoji` is empty, not text, or too long. | Use a single emoji, or leave it out. |
 | `Task …: panels must be a list.` | `panels` is not a list. | Write `panels: [stats, silly]`. |

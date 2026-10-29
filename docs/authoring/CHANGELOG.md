@@ -37,6 +37,18 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-10-29
+
+- **Next-Word write mode: typed start word, mixed packs, bigger packs.** In write mode the student
+  can type any word into **Start with** (if the bot has never read it, it says so instead of
+  writing). With the `voices` panel the pack chips in the fold are on/off switches, so the student
+  can mix packs; new optional task field `maxPacks` (1 up to the number of `texts`, default 3). A
+  write-mode `texts` body may now be up to 80000 characters (was 6000), enough for about 1,000
+  sentences. Each sentence the student types in My writing also counts as 5 copies, so a few lines
+  show up against a big pack ("Copied word for word!" still checks the real sentences only).
+  - Affects: next_word (write mode) · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-29-next-word-write-mode-any-start-word-mix-packs-bigger-packs.md
+
 ## 2026-10-28
 
 - **New activity: Mind Reader (`type: rps_mind_reader`).** The student plays rock-paper-scissors

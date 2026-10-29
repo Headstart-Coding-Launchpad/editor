@@ -127,7 +127,7 @@ export default defineActivity({
             type: 'string',
             required: true,
             authored: true,
-            description: 'Up to 4000 characters (6000 with mode: write).',
+            description: 'Up to 4000 characters (80000 with mode: write, about 1,000 sentences).',
           },
           { name: 'emoji', type: 'string', description: 'One emoji for the voice card.' },
         ],

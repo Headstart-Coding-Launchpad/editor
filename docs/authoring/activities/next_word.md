@@ -63,7 +63,7 @@ tasks:
 | `lookBack` | No | A whole number from 1 to `maxLookBack` (default 1). How many words back the model looks. With the `lookback` panel it is where the student starts and they can change it; without the panel it is fixed. |
 | `maxLookBack` | No | A whole number from 1 to 3 (default 3). The most words back the student can pick with the `lookback` panel. |
 | `maxPacks` | No | Write mode with the `voices` panel: how many packs the student can switch on at once to mix (1 up to the number of `texts`, default 3). At least one stays on. |
-| `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters; 6000 in write mode) and an optional `emoji` for its card. |
+| `texts` | No | Voices the student can switch to (only shown with the `voices` panel). Each has a `title`, a `body` (2 to about 4000 characters; 80000 in write mode, about 1,000 sentences) and an optional `emoji` for its card. |
 
 ### Panels
 

@@ -8,6 +8,7 @@ import {
   sharedState,
   trainingBodyOf,
   trainingSentencesOf,
+  validateNextWordTask,
   writeText,
 } from '../next_word.js'
 
@@ -167,5 +168,33 @@ describe('mixed packs reach the tutor (#342)', () => {
       JSON.stringify(sharedState({ packs: ['text:0', 'text:2'], voice: 'text:0' }))
     )
     expect(shared.packs).toEqual(['text:0', 'text:2'])
+  })
+})
+
+describe('a pack of about 1,000 sentences (#342)', () => {
+  const BIG = Array.from(
+    { length: 1000 },
+    (_, i) => `Headline number ${i} says the team ${['wins', 'loses', 'draws'][i % 3]} again today.`
+  ).join(' ')
+  const TASK = {
+    id: 1,
+    taskType: 'activity',
+    activityType: 'next_word',
+    mode: 'write',
+    texts: [{ title: 'Big', body: BIG }],
+  }
+
+  it('is accepted by validation (it was over the old 6,000-character cap)', () => {
+    expect(BIG.length).toBeGreaterThan(6000)
+    expect(BIG.length).toBeLessThan(80000)
+    expect(validateNextWordTask(TASK, 1)).toEqual([])
+  })
+
+  it('builds the model and writes quickly enough for a classroom laptop', () => {
+    const started = performance.now()
+    const model = activeModel(TASK, { ...initialNextWordState(TASK), own: 'I like pizza. ' })
+    const { text } = writeText(model, { lookBack: 2, maxWords: 12, random: seededRandom(3) })
+    expect(text.length).toBeGreaterThan(0)
+    expect(performance.now() - started).toBeLessThan(1000)
   })
 })

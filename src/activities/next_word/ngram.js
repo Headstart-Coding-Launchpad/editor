@@ -15,7 +15,8 @@ export const MAX_PASTE_CHARS = 1200
 // Longest authored text body (validated).
 export const MAX_TEXT_CHARS = 4000
 // Longest authored text body in write mode (a pack of about 60 sentences).
-export const MAX_WRITE_TEXT_CHARS = 6000
+// About 1,000 headline-length sentences (#342). Packs sit in the lesson, not in the shared state.
+export const MAX_WRITE_TEXT_CHARS = 80000
 // Longest generated text kept in the state.
 export const MAX_GENERATED_CHARS = 400
 
