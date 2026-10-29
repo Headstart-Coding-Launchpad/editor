@@ -74,7 +74,10 @@ tasks:
   the drawing. The work per frame is capped, so it stays smooth on a low-end Chromebook.
 - **Watch it try** runs the learned moves greedily (no exploring) once from `R`, walks the route on
   the map and shows the result on the map's bottom edge. If the robot ends on the treasure, a small
-  💎 stays in the cell corner.
+  💎 stays in the cell corner. A robot with sensible rewards doesn't walk into the same wall twice
+  from the same square on its own map and prefers squares it hasn't stood on yet, so one unlucky
+  habit doesn't leave it stuck forever; a robot paid for wandering or bumping walls stays daft on
+  purpose.
 - **What it learned** (a view on the map, after the first Train) draws a small arrow in each open
   square for the move the robot currently rates best there (no arrow where it has no opinion yet, or
   on walls and the treasure). It updates live while training. Student-side only.
@@ -90,7 +93,8 @@ the right, 5 controls on the default screen and at most 7 after the first Train.
   when the task sets `senses` or `maxSenses`).
 - **Right column**, top to bottom: the one **main button** (Train, then Pause while training, then
   Watch it try, then Try a new map when `testMaps` is set; if the robot got lost, **Train more**
-  becomes the main button and Watch it try the outline one); **Train more** as the outline button
+  becomes the main button, and the outline one is Try a new course when the task has `testMaps` or
+  `randomCourses`, else Watch it try); **Train more** as the outline button
   after training; one yellow tip line; the **What does it get points for?** card (Find the
   treasure, Each step, Bump a wall, plus Fall in a pit / Pick up a coin only when the map has `X` /
   `C`, with the caption "Changing anything makes it forget"); the **What can it sense?** fold

@@ -324,7 +324,7 @@ function RewardBotView({ task, state: stateProp, onChange, readOnly = false, les
 
   function go() {
     if (readOnly || running || !onChange || state.trained === 0) return
-    const result = greedyRun(env, state.rewards, getAgent())
+    const result = greedyRun(env, state.rewards, getAgent(), { avoidLoops: true })
     const finish = () => {
       onChange((prev) => withGoResult(normalizeGameAgentState(task, prev), result))
       setLastLocal({ kind: 'go', reached: result.reached })
@@ -508,7 +508,10 @@ function RewardBotView({ task, state: stateProp, onChange, readOnly = false, les
     } else if (!last) {
       action = { main: watchBtn, secondary: moreBtn }
     } else if (lost) {
-      action = { main: moreBtn, secondary: last.kind === 'test' ? newMapBtn : watchBtn }
+      action = {
+        main: moreBtn,
+        secondary: last.kind === 'test' || courseMode ? newMapBtn : watchBtn,
+      }
     } else {
       action = { main: hasTests ? newMapBtn : watchBtn, secondary: moreBtn }
     }

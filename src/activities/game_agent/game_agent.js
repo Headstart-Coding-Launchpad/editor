@@ -435,7 +435,11 @@ export function agentAfter(env, rewards, trained, senses = ['position'], courseE
 // With `unseen` (a map nobody trained on) the robot meets situations it never saw. It then does
 // what it learned for the closest situation it does know (closestKnown), and it doesn't walk into
 // the same wall twice from the same square. The run stops after MAX_TEST_MOVES.
-export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
+// With `avoidLoops` (a map it trained on, where it can still get stuck) it follows what it learned
+// but doesn't walk into the same wall twice from the same square, and prefers a square it hasn't
+// stood on yet over one it has. A robot that is paid for wandering or bumping walls stays daft on
+// purpose (that is the lesson), so the loop rules only apply when it isn't.
+export function greedyRun(env, rewards, agent, { unseen = false, avoidLoops = false } = {}) {
   let s = env.start
   let score = 0
   let reached = false
@@ -443,19 +447,24 @@ export function greedyRun(env, rewards, agent, { unseen = false } = {}) {
   const cells = [s]
   const taken = new Set()
   const bumped = new Set()
+  const stood = new Set([s])
+  const safe = avoidLoops && rewards.step <= 0 && rewards.wall <= 0
   const cap = unseen ? Math.min(env.cap, MAX_TEST_MOVES) : env.cap
   for (let steps = 0; steps < cap; steps++) {
     const key = stateKey(env, s, agent.senses ?? ['position'], taken)
     // A square number means nothing on another map, so it never matches what it learned there.
     const a = unseen
       ? testMove(agent, key.replace(/(^|\|)p(\d+)/, '$1n$2'), s, bumped, steps)
-      : bestAction(agent, key)
+      : safe
+        ? loopSafeMove(env, agent, key, s, bumped, stood)
+        : bestAction(agent, key)
     const out = stepWorld(env, rewards, s, a, taken)
     if (out.bumped) bumped.add(`${s}:${a}`)
     moves += ACTIONS[a].letter
     score += out.reward
     s = out.s
     cells.push(s)
+    stood.add(s)
     if (out.done) {
       reached = out.reached
       break
@@ -496,6 +505,23 @@ export function closestKnown(agent, key) {
     }
   }
   return best
+}
+
+// The learned moves for this situation, best first, skipping moves that already hit a wall from
+// this square and preferring one that leads somewhere the robot hasn't stood yet.
+function loopSafeMove(env, agent, key, s, bumped, stood) {
+  const row = agent.q.get(key)
+  if (!row) return bestAction(agent, key)
+  const order = [0, 1, 2, 3].sort((x, y) => row[y] - row[x] || x - y)
+  const open = order.filter((a) => !bumped.has(`${s}:${a}`))
+  const pool = open.length ? open : order
+  const fresh = pool.find((a) => {
+    const r = Math.floor(s / env.cols) + ACTIONS[a].dr
+    const c = (s % env.cols) + ACTIONS[a].dc
+    if (r < 0 || c < 0 || r >= env.rows || c >= env.cols) return false
+    return !stood.has(r * env.cols + c)
+  })
+  return fresh ?? pool[0]
 }
 
 // A move on a new map: the learned move for this situation (or the closest known one), best first,

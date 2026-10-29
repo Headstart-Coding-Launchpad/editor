@@ -473,3 +473,39 @@ describe('a new map (senses that carry over)', () => {
     expect(closestKnown(newAgent(train, ['walls']), 'w0000')).toBe(null)
   })
 })
+
+describe('Watch it try on the map it trained on (#340)', () => {
+  // The robot only senses walls and where the treasure is, so on this map it keeps walking at the
+  // wall it can feel the treasure behind. Left alone it repeats the same bump forever.
+  const POCKET = parseMap(['#######', '#R#...#', '#.#.#.#', '#.#.#.#', '#...#T#', '#######']).env
+  const SENSES = ['walls', 'treasure_direction']
+
+  it('gets stuck in the pocket without the loop rules', () => {
+    for (const trained of [5, 25, 100]) {
+      const agent = agentAfter(POCKET, DEFAULT_REWARDS, trained, SENSES)
+      expect(greedyRun(POCKET, DEFAULT_REWARDS, agent).reached).toBe(false)
+    }
+  })
+
+  it('reaches the treasure when it does not repeat a wall bump and prefers new squares', () => {
+    for (const trained of [5, 25, 100]) {
+      const agent = agentAfter(POCKET, DEFAULT_REWARDS, trained, SENSES)
+      const run = greedyRun(POCKET, DEFAULT_REWARDS, agent, { avoidLoops: true })
+      expect(run.reached).toBe(true)
+      expect(run.steps).toBeLessThan(30)
+    }
+  })
+
+  it('leaves a robot that is paid for wandering as daft as it was', () => {
+    const agent = agentAfter(POCKET, SILLY, 25, SENSES)
+    const plain = greedyRun(POCKET, SILLY, agent)
+    expect(greedyRun(POCKET, SILLY, agent, { avoidLoops: true }).moves).toBe(plain.moves)
+  })
+
+  it('does not change a route the robot already learned well', () => {
+    const env = envOf(TASK)
+    const agent = agentAfter(env, DEFAULT_REWARDS, 50)
+    const plain = greedyRun(env, DEFAULT_REWARDS, agent)
+    expect(greedyRun(env, DEFAULT_REWARDS, agent, { avoidLoops: true }).moves).toBe(plain.moves)
+  })
+})

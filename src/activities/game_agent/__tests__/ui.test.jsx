@@ -163,6 +163,24 @@ describe('Game agent UI', () => {
     expect(screen.getByTestId('ga-watch')).toHaveClass('act-btn--secondary')
   })
 
+  it('offers Try a new course after a lost Watch it try when the lesson has random courses (#340)', async () => {
+    const task = { ...TASK, randomCourses: { size: 5, walls: 0.15, pits: 0, seed: 'class' } }
+    renderView({
+      task,
+      initialState: {
+        ...definition.initialState(task),
+        rewards: { treasure: 0, step: 5, wall: -5, pit: -10 },
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Train$/ }))
+    await advance(40000)
+    for (let i = 0; i < 20 && screen.queryByTestId('ga-pause'); i++) await advance(40000)
+    fireEvent.click(screen.getByRole('button', { name: /Watch it try/ }))
+    await advance(10000)
+    expect(screen.getByTestId('ga-train-more')).toHaveClass('act-btn--main')
+    expect(screen.getByTestId('ga-go-new')).toHaveClass('act-btn--secondary')
+  })
+
   it('clears a stale training flag left by a reload', () => {
     const { state } = renderView({
       initialState: { ...definition.initialState(TASK), training: true },
