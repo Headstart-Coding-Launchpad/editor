@@ -757,6 +757,10 @@ export function buildSessionReport({
   const supportRevealLog = session?.supportRevealLog ?? {}
   const taskRatingLog = session?.taskRatingLog ?? {}
   const sideQuestLog = session?.sideQuestLog ?? {}
+  // A student is someone who joined (a students/{id} node, or one in the archive) or did work.
+  // An id that shows up only in badges, signals or peer-help records, with no join and no work, is
+  // a removed student or a tutor / Presentation device, and would drag every class total down
+  // (completion reading 5/6 when every real child finished), so it is left out (#231).
   const anonymousIds = Array.from(
     new Set([
       ...Object.keys(studentsSnapshot),
@@ -767,13 +771,8 @@ export function buildSessionReport({
       ...Object.keys(sideQuestLog),
       ...exampleOpenStudentIds(session),
       ...Object.keys(session?.draftLog ?? {}),
-      ...Object.keys(session?.badges ?? {}),
-      ...Object.keys(session?.studentSignals ?? {}),
       ...(sessionArchive?.visits ?? []).flatMap((visit) =>
         Object.keys(visit.studentSnapshots ?? {})
-      ),
-      ...Object.values(peerHelp ?? {}).flatMap((request) =>
-        [request?.stuckId, request?.helperId].filter(Boolean)
       ),
     ])
   )
