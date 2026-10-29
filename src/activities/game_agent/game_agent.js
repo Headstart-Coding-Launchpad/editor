@@ -592,6 +592,11 @@ export const maxSensesOf = (task) =>
     ? Math.min(task.maxSenses, SENSE_KEYS.length)
     : SENSE_KEYS.length
 
+// Walls and a compass are the senses that help on a map it has not seen.
+export const hasUsefulSenses = (state) =>
+  state.senses.includes('walls') &&
+  (state.senses.includes('treasure_direction') || state.senses.includes('treasure_direction_4'))
+
 // The student picks senses only when the task sets `senses` or `maxSenses`.
 export const sensesChoosable = (task) => task?.senses !== undefined || task?.maxSenses !== undefined
 
@@ -907,7 +912,9 @@ export function hintFor(state, task = null) {
   if (state.trained === 0) return 'Press Train to let the robot practise.'
   if (state.goes === 0 && state.tests === 0) return 'Press Go! to see where the robot goes.'
   if (state.tests > 0 && !state.testReached) {
-    return 'The robot got lost on the new map. Try other senses, so it can find the way on a map it has not seen.'
+    if (sensesChoosable(task) && !hasUsefulSenses(state))
+      return 'The robot got lost on the new map. Try other senses, so it can find the way on a map it has not seen.'
+    return 'The robot got lost on the new map. Train it more, then try another one.'
   }
   if (rewards.treasure <= 0) return 'The treasure is worth nothing. Give it a big reward.'
   if (rewards.step >= 0)

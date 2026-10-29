@@ -16,6 +16,7 @@ import {
   greedyRun,
   hasCoin,
   hasPit,
+  hasUsefulSenses,
   hintFor,
   maxSensesOf,
   normalizeGameAgentState,
@@ -421,10 +422,8 @@ function RewardBotView({ task, state: stateProp, onChange, readOnly = false, les
         ? derived
         : lastLocal
   const lost = !!last && !last.reached
-  // Only suggest senses it does not have yet (walls and a compass are the useful ones).
-  const hasCompass =
-    state.senses.includes('treasure_direction') || state.senses.includes('treasure_direction_4')
-  const suggestSenses = choosable && !(state.senses.includes('walls') && hasCompass)
+  // Only suggest senses it does not have yet.
+  const suggestSenses = choosable && !hasUsefulSenses(state)
   const beatenLine = courseMode ? (
     <span data-testid="ga-beaten"> {coursesBeaten(state).text}.</span>
   ) : null
@@ -466,7 +465,7 @@ function RewardBotView({ task, state: stateProp, onChange, readOnly = false, les
     else if (!trained) tip = 'Press Train and watch the robot practise.'
     else if (!last) tip = 'Press Watch it try to see where the robot goes.'
     else if (lost && !(last.kind === 'test' && suggestSenses))
-      tip = hintFor(state).replace(/Go!/g, 'Watch it try')
+      tip = hintFor(state, task).replace(/Go!/g, 'Watch it try')
   }
 
   // The one main button moves along: Train, Pause, Watch it try, Try a new map. When the robot

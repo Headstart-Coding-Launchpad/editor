@@ -45,6 +45,30 @@ describe('coursesBeaten', () => {
   })
 })
 
+describe('lost on a new course: the tip', () => {
+  const lostOnTest = (senses) => ({
+    ...initialGameAgentState({}),
+    senses,
+    trained: 1,
+    tests: 1,
+    testReached: false,
+  })
+  const choosable = { senses: ['position'] }
+
+  it('suggests senses only when walls or the compass are missing', async () => {
+    const { hintFor } = await import('../game_agent.js')
+    expect(hintFor(lostOnTest(['position']), choosable)).toMatch(/Try other senses/)
+    const tip = hintFor(lostOnTest(['walls', 'treasure_direction']), choosable)
+    expect(tip).not.toMatch(/senses/)
+    expect(tip).toMatch(/Train it more/)
+  })
+
+  it('never suggests senses when the task does not let the student pick them', async () => {
+    const { hintFor } = await import('../game_agent.js')
+    expect(hintFor(lostOnTest(['position']), {})).not.toMatch(/senses/)
+  })
+})
+
 describe('generateCourse', () => {
   it('makes 200 seeds of solvable courses with no dead-end trap near the way', () => {
     let fallbacks = 0
