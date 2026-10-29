@@ -9402,3 +9402,117 @@ label.te-backdrop-tag,
     transform: none;
   }
 }
+
+/* Learning Tree deck mode: a deck of cards and bins. Cards and bin buttons are at least 44px;
+   sorting works by drag or by tap-then-tap. No animation. */
+.act-lt-board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.act-lt-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 44px;
+}
+.act-lt-deckcard {
+  min-height: 44px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px dashed var(--ui-border);
+  background: #fff;
+  font: inherit;
+  cursor: grab;
+}
+.act-lt-deckcard[aria-pressed='true'] {
+  border: 2px solid var(--colour-primary);
+  background: #ede9fe;
+}
+.act-lt-bins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.act-lt-bin {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ui-border);
+}
+.act-lt-binname {
+  min-height: 36px;
+  font: inherit;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+input.act-lt-binname {
+  border-color: var(--ui-border);
+  background: #fff;
+}
+.act-lt-putin,
+.act-lt-back {
+  min-height: 44px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border);
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.act-lt-back {
+  margin-left: 8px;
+}
+.act-lt-stuck {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+.act-lt-play {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.act-lt-mystery {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+}
+.act-lt-mystery__emoji {
+  font-size: 2.4rem;
+}
+.act-lt-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.95rem;
+}
+.act-lt-question {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.act-lt-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.act-lt-yesno {
+  display: flex;
+  gap: 8px;
+}
+
+.act-lt-step {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--colour-ink-muted, #555);
+}

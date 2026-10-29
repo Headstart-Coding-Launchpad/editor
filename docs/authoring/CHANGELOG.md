@@ -62,6 +62,20 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: recommender · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-10-28-recommender-start-with-ratings-already-set-for-get-out-of-yo.md
 
+- **Learning Tree: `deck` mode, sort a ready-made deck into bins, then play 20 Questions.** New
+  optional `deck` (4 to 16 cards, each `{ name, emoji, yes }`), `studentLabels` and
+  `twentyQuestions` on a `learning_tree` task. The student drags a card into a bin (or taps a
+  card, then a bin) and the tree regrows at once from the sorted cards; `features` may be left out
+  (it becomes every tag the deck uses). With `twentyQuestions` a **Play 20 Questions** button has
+  the tree ask about a `testItems` card one question at a time, light its path and guess a bin,
+  and the student marks it right or wrong. Passing uses `passAt` on the rounds played: graded by
+  the test item's `label`, or, with `studentLabels` (the student renamed the bins), by the rounds
+  the student marked right. `testItems` may add an `emoji`. The tutor card reads
+  `sorted 8 · 20Q 3 of 4`. Without `deck` nothing changes. See
+  [activities/learning_tree.md](activities/learning_tree.md).
+  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-10-28-learning-tree-card-deck-dragged-into-bins-and-a-20-questions.md
+
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every

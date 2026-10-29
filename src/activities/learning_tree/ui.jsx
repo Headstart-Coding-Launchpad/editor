@@ -5,6 +5,7 @@ import {
   allowedFeaturesOf,
   picksOf,
   clampDepth,
+  deckOn,
   depthOf,
   maxDepthOf,
   studentDepthOn,
@@ -17,6 +18,8 @@ import {
 } from './learning_tree.js'
 import { pathOf } from './tree.js'
 import LearningTreeBuilderEditor from './LearningTreeBuilderEditor.jsx'
+import Tree from './TreeDiagram.jsx'
+import LearningTreeDeckView from './DeckView.jsx'
 
 // Learning Tree UI. Controlled view: ActivityHost passes `state`, `onChange(next | prev =>
 // next)`, `readOnly` (teacher views and review). Never write to Firebase or storage here.
@@ -27,47 +30,10 @@ import LearningTreeBuilderEditor from './LearningTreeBuilderEditor.jsx'
 // a removal or Try it reaches the state. The tutor's read-only view shows the same examples,
 // tree and test results.
 
-// `on` is the set of boxes on the route a test item took (empty when none is picked).
-function Tree({ node, features, labels, on }) {
-  const lit = on.has(node) ? ' act-lt-on' : ''
-  if (node.leaf) {
-    return (
-      <div
-        className={`act-lt-box act-lt-leaf act-lt-tone-${node.label % 6}${lit}`}
-        data-testid="lt-leaf"
-      >
-        <strong>{labels[node.label]}</strong>
-        <span className="act-lt-count">{node.n}</span>
-      </div>
-    )
-  }
-  return (
-    <div className="act-lt-node">
-      <div className={`act-lt-box act-lt-question${lit}`} data-testid="lt-question">
-        {featureQuestion(features[node.feature])}
-      </div>
-      <div className="act-lt-kids">
-        <div className={`act-lt-kid${on.has(node) && on.has(node.yes) ? ' act-lt-on' : ''}`}>
-          <span className={`act-lt-branch${on.has(node) && on.has(node.yes) ? ' act-lt-on' : ''}`}>
-            yes
-          </span>
-          <Tree node={node.yes} features={features} labels={labels} on={on} />
-        </div>
-        <div className={`act-lt-kid${on.has(node) && on.has(node.no) ? ' act-lt-on' : ''}`}>
-          <span className={`act-lt-branch${on.has(node) && on.has(node.no) ? ' act-lt-on' : ''}`}>
-            no
-          </span>
-          <Tree node={node.no} features={features} labels={labels} on={on} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // The add form folds to one bar once this many animals are in (or the lesson's cap, if smaller).
 const FOLD_AT = 4
 
-export function LearningTreeStudentView({ task, state, onChange, readOnly = false }) {
+function LearningTreePlainView({ task, state, onChange, readOnly = false }) {
   const features = featuresOf(task)
   const labels = labelsOf(task)
   const clean = normalizeState(task, state)
@@ -407,6 +373,14 @@ export function LearningTreeStudentView({ task, state, onChange, readOnly = fals
         }
       />
     </div>
+  )
+}
+
+export function LearningTreeStudentView(props) {
+  return deckOn(props.task) ? (
+    <LearningTreeDeckView {...props} />
+  ) : (
+    <LearningTreePlainView {...props} />
   )
 }
 

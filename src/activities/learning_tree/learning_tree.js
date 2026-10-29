@@ -26,8 +26,61 @@ export const DEFAULT_PASS_SHARE = 0.8
 
 const isText = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
 
+export const MIN_DECK = 4
+export const MAX_DECK = 16
+
+// Deck mode (task.deck): ready-made cards the student sorts into the label bins. Cards are
+// { name, emoji, yes }. Without a deck the activity is the add-an-example form.
+// State in deck mode adds: b = one char per card ('-' in the deck, else the bin's label index),
+// ln = the bin names the child typed (studentLabels), q = one char per test item for 20 Questions
+// ('-' not played, 'r'/'w' the child marked the tree's guess right/wrong). The examples are
+// derived from b.
+export function deckCardsOf(task) {
+  return Array.isArray(task?.deck) ? task.deck : []
+}
+
+export function deckOn(task) {
+  return deckCardsOf(task).length > 0
+}
+
+export function studentLabelsOn(task) {
+  return deckOn(task) && task?.studentLabels === true
+}
+
+export function twentyQuestionsOn(task) {
+  return deckOn(task) && task?.twentyQuestions === true
+}
+
+// The features: task.features, or (deck mode, none given) every tag the deck cards use.
 export function featuresOf(task) {
-  return Array.isArray(task?.features) ? task.features.map((f) => String(f)) : []
+  if (Array.isArray(task?.features)) return task.features.map((f) => String(f))
+  const out = []
+  for (const card of deckCardsOf(task)) {
+    for (const tag of Array.isArray(card?.yes) ? card.yes : []) {
+      if (!out.includes(String(tag))) out.push(String(tag))
+    }
+  }
+  return out
+}
+
+// The deck as rows: { name, emoji, f: [0|1...] }.
+export function deckRowsOf(task) {
+  const features = featuresOf(task)
+  return deckCardsOf(task).map((card, i) => {
+    const yes = Array.isArray(card?.yes) ? card.yes.map(String) : []
+    return {
+      name: String(card?.name ?? `Card ${i + 1}`),
+      emoji: String(card?.emoji ?? ''),
+      f: features.map((f) => (yes.includes(f) ? 1 : 0)),
+    }
+  })
+}
+
+// The bin names the child sees: their own when they renamed a bin (studentLabels), else the lesson's.
+export function displayLabelsOf(task, state) {
+  const labels = labelsOf(task)
+  if (!studentLabelsOn(task) || !Array.isArray(state?.ln)) return labels
+  return labels.map((l, i) => String(state.ln[i] ?? '').trim() || l)
 }
 
 export function labelsOf(task) {
@@ -106,6 +159,7 @@ export function testRowsOf(task) {
       return {
         id: `t${i + 1}`,
         name: String(item?.name ?? `Item ${i + 1}`),
+        emoji: typeof item?.emoji === 'string' ? item.emoji : '',
         f: features.map((f) => (yes.includes(f) ? 1 : 0)),
         l: labels.indexOf(String(item?.label)),
       }
@@ -135,20 +189,46 @@ export function normalizeState(task, raw) {
   const featureCount = featuresOf(task).length
   const labelCount = labelsOf(task).length
   const cap = maxExamplesOf(task)
-  const examples = (Array.isArray(raw.examples) ? raw.examples : [])
-    .filter(
-      (ex) =>
-        ex &&
-        typeof ex.f === 'string' &&
-        ex.f.length === featureCount &&
-        /^[01]*$/.test(ex.f) &&
-        Number.isInteger(ex.l) &&
-        ex.l >= 0 &&
-        ex.l < labelCount
+  let out
+  if (deckOn(task)) {
+    const deck = deckRowsOf(task)
+    const bRaw = typeof raw.b === 'string' ? raw.b : ''
+    const b = deck
+      .map((_, i) => (/^\d$/.test(bRaw[i] ?? '') && Number(bRaw[i]) < labelCount ? bRaw[i] : '-'))
+      .join('')
+    const examples = deck.flatMap((card, i) =>
+      b[i] === '-' ? [] : [{ n: card.name.slice(0, MAX_NAME), f: card.f.join(''), l: Number(b[i]) }]
     )
-    .slice(0, cap)
-    .map((ex) => ({ n: String(ex.n ?? '').slice(0, MAX_NAME), f: ex.f, l: ex.l }))
-  const out = { v: 1, examples, tried: raw.tried === true && examples.length > 0 }
+    out = { v: 1, examples, b, tried: false }
+    if (studentLabelsOn(task) && Array.isArray(raw.ln)) {
+      out.ln = Array.from({ length: labelCount }, (_, i) =>
+        String(raw.ln[i] ?? '').slice(0, MAX_NAME)
+      )
+    }
+    if (twentyQuestionsOn(task)) {
+      const rows = testRowsOf(task).length
+      const qRaw = typeof raw.q === 'string' && examples.length >= 2 ? raw.q : ''
+      out.q = Array.from({ length: rows }, (_, i) =>
+        qRaw[i] === 'r' || qRaw[i] === 'w' ? qRaw[i] : '-'
+      ).join('')
+      out.tried = out.q.includes('r') || out.q.includes('w')
+    } else out.tried = raw.tried === true && examples.length > 0
+  } else {
+    const examples = (Array.isArray(raw.examples) ? raw.examples : [])
+      .filter(
+        (ex) =>
+          ex &&
+          typeof ex.f === 'string' &&
+          ex.f.length === featureCount &&
+          /^[01]*$/.test(ex.f) &&
+          Number.isInteger(ex.l) &&
+          ex.l >= 0 &&
+          ex.l < labelCount
+      )
+      .slice(0, cap)
+      .map((ex) => ({ n: String(ex.n ?? '').slice(0, MAX_NAME), f: ex.f, l: ex.l }))
+    out = { v: 1, examples, tried: raw.tried === true && examples.length > 0 }
+  }
   if (studentDepthOn(task) && Number.isInteger(raw.d)) out.d = clampDepth(task, raw.d)
   const picks = picksOf(task)
   if (
@@ -194,14 +274,44 @@ export function gradeTask(task, state) {
   const tree = treeOf(task, state)
   const rows = testRowsOf(task)
   const scored = scoreTree(tree, rows)
-  const tried = state?.tried === true
   const target = targetOf(task, rows.length)
+  if (twentyQuestionsOn(task)) {
+    // 20 Questions: only the cards the child has played count. With studentLabels the bins are
+    // the child's own, so a round passes when the child marked it right; otherwise it passes
+    // when the tree's guess matches the test item's label.
+    const q = typeof state?.q === 'string' ? state.q : ''
+    const mine = studentLabelsOn(task)
+    const played = rows.map((_, i) => q[i] === 'r' || q[i] === 'w')
+    const results = scored.results.map((r, i) => ({
+      ...r,
+      right: played[i] && (mine ? q[i] === 'r' : r.right),
+    }))
+    const correct = results.filter((r) => r.right).length
+    const tried = played.some(Boolean)
+    return {
+      tree,
+      depth: treeDepth(tree),
+      count: state?.examples?.length ?? 0,
+      tried,
+      total: rows.length,
+      playedCount: played.filter(Boolean).length,
+      played,
+      correct,
+      results,
+      rows,
+      target,
+      passed: tried && rows.length > 0 && correct >= target,
+    }
+  }
+  const tried = state?.tried === true
   return {
     tree,
     depth: treeDepth(tree),
     count: state?.examples?.length ?? 0,
     tried,
     total: rows.length,
+    playedCount: tried ? rows.length : 0,
+    played: rows.map(() => tried),
     correct: tried ? scored.correct : 0,
     results: scored.results,
     rows,
@@ -213,6 +323,15 @@ export function gradeTask(task, state) {
 // A hint for a tree that did not pass yet. Short, plain, points at the problem, no answer.
 export function hintFor(task, state) {
   const g = gradeTask(task, state)
+  if (deckOn(task)) {
+    if (g.count < 2) return 'Drag some cards into the bins first.'
+    if (!g.tried)
+      return twentyQuestionsOn(task)
+        ? 'Press Play 20 Questions to test your tree on a new card.'
+        : 'Press Try it to see how your tree does on new cards.'
+    if (g.passed) return null
+    return `Your tree got ${g.correct} of ${g.playedCount}. Sort the cards a different way and play again.`
+  }
   if (g.count === 0)
     return 'Add some examples first. Name an item, tick what is true, pick a label.'
   if (picksOf(task) && allowedFeaturesOf(task, state).length === 0)
@@ -237,7 +356,8 @@ export function sharedState(task, state) {
     depth: g.depth,
     chosenDepth: depthOf(task, clean),
     ...(picksOf(task) ? { chosenFeatures: chosenFeaturesOf(task, clean) } : {}),
-    score: g.tried ? { correct: g.correct, total: g.total } : null,
+    score: g.tried ? { correct: g.correct, total: g.playedCount } : null,
+    ...(deckOn(task) ? { sorted: g.count, labelNames: displayLabelsOf(task, clean) } : {}),
   }
 }
 
@@ -245,7 +365,9 @@ export function sharedState(task, state) {
 export function itemResultsOf(task, state) {
   const g = gradeTask(task, state)
   if (!g.tried) return {}
-  return Object.fromEntries(g.rows.map((row, i) => [row.id, g.results[i].right]))
+  return Object.fromEntries(
+    g.rows.flatMap((row, i) => (g.played[i] ? [[row.id, g.results[i].right]] : []))
+  )
 }
 
 // Authoring validation shared by the Builder and the CLI. `n` is the 1-based task number.
@@ -259,17 +381,34 @@ export function validateLearningTreeTask(task, n) {
   let featureNames = []
   let labelNames = []
 
+  if (task?.deck != null) {
+    const deck = task.deck
+    if (!Array.isArray(deck) || deck.length < MIN_DECK || deck.length > MAX_DECK) {
+      errors.push(`${where}: deck needs ${MIN_DECK} to ${MAX_DECK} cards.`)
+    }
+    if (task.studentLabels != null && typeof task.studentLabels !== 'boolean') {
+      errors.push(`${where}: studentLabels must be true or false.`)
+    }
+    if (task.twentyQuestions != null && typeof task.twentyQuestions !== 'boolean') {
+      errors.push(`${where}: twentyQuestions must be true or false.`)
+    }
+  } else if (task?.studentLabels != null || task?.twentyQuestions != null) {
+    errors.push(`${where}: studentLabels and twentyQuestions need a deck.`)
+  }
+
+  // Deck mode may leave `features` out: then every tag the cards use is a feature.
+  const featureList = features == null && deckOn(task) ? featuresOf(task) : features
   if (
-    !Array.isArray(features) ||
-    features.length < 1 ||
-    features.length > MAX_FEATURES ||
-    !features.every((f) => isText(f, 24)) ||
-    new Set(features).size !== features.length
+    !Array.isArray(featureList) ||
+    featureList.length < 1 ||
+    featureList.length > MAX_FEATURES ||
+    !featureList.every((f) => isText(f, 24)) ||
+    new Set(featureList).size !== featureList.length
   ) {
     errors.push(
       `${where}: features must be 1 to ${MAX_FEATURES} different names, each 1 to 24 characters.`
     )
-  } else featureNames = features
+  } else featureNames = featureList
 
   if (
     !Array.isArray(labels) ||
@@ -314,6 +453,23 @@ export function validateLearningTreeTask(task, n) {
         `${where}: studentPicksFeatures must be a whole number from 1 to the number of features (${most}).`
       )
     }
+  }
+
+  if (Array.isArray(task?.deck)) {
+    task.deck.forEach((card, i) => {
+      const label = `${where} card ${i + 1}`
+      if (!isText(card?.name, MAX_NAME)) {
+        errors.push(`${label}: name is required (1 to ${MAX_NAME} characters).`)
+      }
+      if (!isText(card?.emoji, 8)) errors.push(`${label}: emoji is required.`)
+      if (
+        !Array.isArray(card?.yes) ||
+        !card.yes.every((f) => featureNames.includes(f)) ||
+        new Set(card.yes).size !== card.yes.length
+      ) {
+        errors.push(`${label}: yes must list only the task's features, each once.`)
+      }
+    })
   }
 
   const items = task?.testItems
@@ -370,6 +526,7 @@ export function validateLearningTreeWarnings(task, n) {
 // A tree that works: the lesson's own test items as examples, tried. (The student's real
 // examples are their own, so this is only for "show answers" and the contract tests.)
 export function solutionFor(task) {
+  if (deckOn(task)) return deckSolutionFor(task)
   const examples = testRowsOf(task)
     .slice(0, maxExamplesOf(task))
     .map((row) => ({ n: row.name.slice(0, MAX_NAME), f: row.f.join(''), l: row.l }))
@@ -388,4 +545,41 @@ export function solutionFor(task) {
       .join('')
   }
   return state
+}
+
+// Deck mode "show answers": split the deck on the feature that best separates the test items,
+// the side that mostly shares the feature going to the label those items mostly have.
+function deckSolutionFor(task) {
+  const rows = testRowsOf(task)
+  const labelCount = labelsOf(task).length
+  const deck = deckRowsOf(task)
+  let best = 0
+  let bestGain = -1
+  featuresOf(task).forEach((_, i) => {
+    const gain = informationGain(rows, i, labelCount)
+    if (gain > bestGain + 1e-9) {
+      best = i
+      bestGain = gain
+    }
+  })
+  const majority = (side) => {
+    const counts = new Array(labelCount).fill(0)
+    rows.filter((r) => r.f[best] === side).forEach((r) => (counts[r.l] += 1))
+    return counts.indexOf(Math.max(...counts))
+  }
+  const yesLabel = majority(1)
+  let noLabel = majority(0)
+  if (noLabel === yesLabel) noLabel = (yesLabel + 1) % labelCount
+  const b = deck.map((card) => String(card.f[best] === 1 ? yesLabel : noLabel)).join('')
+  const state = { v: 1, b, examples: [], tried: false }
+  if (twentyQuestionsOn(task)) state.q = 'r'.repeat(rows.length)
+  else state.tried = true
+  if (studentLabelsOn(task)) state.ln = labelsOf(task)
+  const picks = picksOf(task)
+  if (picks) {
+    state.u = featuresOf(task)
+      .map((_, i) => (i === best ? '1' : '0'))
+      .join('')
+  }
+  return normalizeState(task, state)
 }

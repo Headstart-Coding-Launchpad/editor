@@ -58,6 +58,9 @@ tasks:
 | `maxExamples` | No | The most examples a student can add: a whole number from 4 to 40. Default `20`. |
 | `maxDepth` | No | The most questions in a row the tree may ask: a whole number from 1 to 5. Default `3`. |
 | `studentDepth` | No | `true` (default) shows a small − / + dial, "How many questions deep", so the student can grow a shallower tree (1 up to `maxDepth`, which is also where it starts). `false` hides the dial. Must be true or false. |
+| `deck` | No | A ready-made deck of 4 to 16 cards, each `{ name, emoji, yes }` (`yes` lists the card's true features). The student sorts the cards into the bins and the tree grows from them; no add form. See [Deck mode](#deck-mode-deck). |
+| `studentLabels` | No | With `deck`: `true` lets the student rename the bins, and passing then counts the 20 Questions rounds they mark ✓. Default `false`. |
+| `twentyQuestions` | No | With `deck`: `true` adds **Play 20 Questions**: the tree asks about each test item one question at a time and guesses its bin. Default `false`. |
 | `studentPicksFeatures` | No | A whole number from 1 to the number of `features`. The student ticks which features the tree may use (up to this many; the buttons are at least 44px) and the tree regrows from only those. They start with none ticked, so the tree is a single answer box until they pick. The examples still record every feature. Leave it out and the tree uses all of them (as before). |
 | `passAt` | No | How many test items the tree must sort right: a share above 0 and below 1 (`0.8`) or a whole number of items (`4`). Default `0.8`, rounded up (4 of 5). |
 
@@ -103,6 +106,55 @@ and the tree gets test items wrong.
 
 The default screen has 5 controls (name, "Which are true?", "Add it as", Max questions, Try it);
 with the form folded it has 4, and 5 with `studentPicksFeatures`.
+
+### Deck mode (`deck`)
+
+Instead of typing examples, the student **sorts a ready-made deck**. Add `deck` (4 to 16 cards,
+each `{ name, emoji, yes }`) and the add form is replaced by the deck and one bin per label.
+
+```yaml
+- type: learning_tree
+  title: Would you eat it?
+  deck:
+    - { name: Doughnut, emoji: "🍩", yes: [is_sweet, is_fried] }
+    - { name: Apple, emoji: "🍎", yes: [is_sweet, is_crunchy] }
+    - { name: Liver, emoji: "🥩", yes: [] }
+    - { name: Sprouts, emoji: "🥦", yes: [is_crunchy] }
+  labels: ["I'd eat it", "No thanks"]
+  studentLabels: true
+  twentyQuestions: true
+  testItems:
+    - { name: Cookie, emoji: "🍪", yes: [is_sweet, is_crunchy], label: "I'd eat it" }
+    - { name: Olive, emoji: "🫒", yes: [], label: "No thanks" }
+```
+
+| Field | Notes |
+|---|---|
+| `deck` | 4 to 16 cards. `yes` lists the features true for the card. `features` can be left out: it is then every tag the deck uses (still at most 6). |
+| `studentLabels` | `true` lets the student rename the bins (a text box on each bin). Default `false`. |
+| `twentyQuestions` | `true` adds the **Play 20 Questions** test (needs 2 sorted cards). Without it the usual **Try it on new cards** button tests the tree on `testItems`. |
+| `testItems[].emoji` | Optional emoji shown on the mystery card. |
+
+The student drags a card into a bin, or taps a card and then a bin (Enter on the card, then
+Enter on the bin, works too); **Back to the deck** puts a selected card back. The tree regrows
+at once and the other settings (`maxDepth`, `studentDepth`, `studentPicksFeatures`, `passAt`) work as above.
+If the sorted cards cannot be split by any question it says "It can only use the questions it was
+given."
+
+**Play 20 Questions.** A mystery `testItems` card is shown with its facts. The tree asks its
+questions one at a time ("is sweet?"), the student answers Yes or No from the card (a wrong answer is
+refused with "Look at the card again"), the path lights up, and at an answer box the tree says
+"I think: I'd eat it". The student marks it right or wrong, then plays the next card. Moving a
+card clears the rounds. The task passes when enough rounds are right (`passAt`):
+without `studentLabels` a round is right when the tree's guess equals the test item's `label`;
+with `studentLabels` the bins are the student's own, so it counts the rounds the student marked right.
+
+The deck screen has 3 to 5 controls (the sort board counts as one, plus the Max questions
+dial, **Tree may use** if set, and the Play button).
+
+Tutor view: the card reads `sorted 8 · 20Q 3 of 4`; the shared state carries the bins (`b`), the
+bin names (`ln`), the rounds (`q`) and `sorted`; **Complete (show answers)** sorts the deck on the
+best feature and marks every round right.
 
 ### How the tree is built
 
