@@ -34,6 +34,8 @@ import {
   MIN_TEMPERATURE,
   describeCount,
   joinTokens,
+  nextOptions,
+  normaliseWord,
 } from './ngram.js'
 
 // Next Word, write mode: the bot writes a sentence word by word from a start word the student
@@ -74,6 +76,7 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   const [writing, setWriting] = useState(false)
   const [whyIndex, setWhyIndex] = useState(null)
   const [foldPref, setFoldPref] = useState(null)
+  const [startNote, setStartNote] = useState('')
   const timersRef = useRef([])
   useEffect(
     () => () => {
@@ -90,7 +93,13 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
   }, [])
 
   const openers = model ? openingWordsOf(model) : []
-  const startWord = openers.includes(state.startWord) ? state.startWord : ''
+  // Any word can be typed; only its first word counts. What it does with a word the bot has never
+  // read (or that nothing follows) is told in go().
+  const typedStart =
+    String(state.startWord ?? '')
+      .trim()
+      .split(/\s+/)[0] ?? ''
+  const startWord = normaliseWord(typedStart)
 
   function update(patch) {
     if (watching) return
@@ -123,6 +132,15 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
       finish()
       return
     }
+    if (startWord && nextOptions(model, startWord).total === 0) {
+      setStartNote(
+        model.successors.has(startWord)
+          ? `Nothing comes after ${quote(typedStart)} in what it read. Try another word.`
+          : `I’ve never read ${quote(typedStart)} yet. Try another word.`
+      )
+      return
+    }
+    setStartNote('')
     const tokens = writeTokens(model, {
       start: startWord,
       lookBack,
@@ -257,20 +275,26 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
         <label htmlFor={`${id}-start`} className="act-nw-heading">
           Start with
         </label>
-        <select
+        <input
           id={`${id}-start`}
           className="act-nw-select"
-          value={startWord}
-          disabled={watching || writing || openers.length === 0}
-          onChange={(event) => update({ startWord: event.target.value })}
-        >
-          <option value="">any word</option>
+          type="text"
+          list={`${id}-openers`}
+          value={state.startWord}
+          maxLength={24}
+          placeholder="any word"
+          autoComplete="off"
+          disabled={watching || writing}
+          onChange={(event) => {
+            setStartNote('')
+            update({ startWord: event.target.value })
+          }}
+        />
+        <datalist id={`${id}-openers`}>
           {openers.map((word) => (
-            <option key={word} value={word}>
-              {word}
-            </option>
+            <option key={word} value={word} />
           ))}
-        </select>
+        </datalist>
       </section>
 
       {panels.includes('lookback') && (
@@ -346,6 +370,11 @@ export default function NextWordWriteView({ task, state: rawState, onChange, rea
       {done && state.copied && (
         <p className="act-nw-copied" role="status" data-testid="next_word-copied">
           ⚠ Copied word for word!
+        </p>
+      )}
+      {startNote && (
+        <p className="act-nw-hint" role="status" data-testid="next_word-start-note">
+          {startNote}
         </p>
       )}
       {done && words.length > 1 && !why && (

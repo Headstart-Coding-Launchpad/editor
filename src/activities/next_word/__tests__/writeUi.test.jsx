@@ -158,3 +158,34 @@ describe('Next Word write mode: logic', () => {
     expect(validateNextWordTask({ ...long, mode: undefined }, 1).join()).toMatch(/longer than 4000/)
   })
 })
+
+describe('Next Word write mode: any typed start word (#342)', () => {
+  const type = (value) =>
+    fireEvent.change(screen.getByLabelText('Start with'), { target: { value } })
+
+  it('writes from a word the student types, whatever its case, even one not in the openers list', () => {
+    renderView()
+    type('  MAT ')
+    go()
+    expect(screen.getByTestId('next_word-sentence').textContent.trim().startsWith('mat')).toBe(true)
+  })
+
+  it('says so, and writes nothing, when the bot has never read the word', () => {
+    renderView()
+    type('dragon')
+    go()
+    expect(screen.getByTestId('next_word-start-note')).toHaveTextContent(
+      'I’ve never read “dragon” yet'
+    )
+    expect(screen.getByTestId('next_word-sentence')).toHaveTextContent('Press Go!')
+  })
+
+  it('clears the note as soon as the word is changed, and keeps the 5-control limit', () => {
+    const { container } = renderView()
+    type('dragon')
+    go()
+    type('cat')
+    expect(screen.queryByTestId('next_word-start-note')).toBeNull()
+    expect(countControls(container)).toBeLessThanOrEqual(5)
+  })
+})
