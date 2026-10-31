@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import EmojiPickerButton from '../../shared/EmojiPickerButton'
@@ -55,6 +55,10 @@ export default function PythonEditor({
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
   const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
+  // The symbol row and the emoji key sit behind one "Keys" button, closed to start with, so the
+  // bar is Keys, Blocks and Run rather than a dozen small keys (child-facing rules, Hub #315).
+  const [keysOpen, setKeysOpen] = useState(false)
+  const hasKeys = showSymbolButtons || showEmojiButton
 
   return (
     <div style={s.wrap} data-testid="editor-panel">
@@ -66,7 +70,19 @@ export default function PythonEditor({
       )}
       {(showSymbolButtons || showEmojiButton || showBlocks) && (
         <div style={s.symbolBar} role="toolbar" aria-label="Python editor tools">
-          {showSymbolButtons &&
+          {hasKeys && (
+            <button
+              type="button"
+              style={{ ...s.blocksBtn, ...(keysOpen ? s.blocksBtnOn : null) }}
+              aria-pressed={keysOpen}
+              title="Show keys for symbols and emoji"
+              onClick={() => setKeysOpen((v) => !v)}
+            >
+              Keys
+            </button>
+          )}
+          {keysOpen &&
+            showSymbolButtons &&
             SYMBOL_BUTTONS.map((symbol) => (
               <button
                 key={symbol}
@@ -77,7 +93,7 @@ export default function PythonEditor({
                 {symbol}
               </button>
             ))}
-          {showEmojiButton && (
+          {keysOpen && showEmojiButton && (
             <EmojiPickerButton onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)} />
           )}
           {showBlocks && (

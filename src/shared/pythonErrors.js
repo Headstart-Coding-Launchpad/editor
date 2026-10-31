@@ -169,9 +169,15 @@ const EXPLAINERS = [
     return {
       title: name ? `Python doesn't know the name ${name}` : "Python doesn't know a name",
       rungs: [
-        `Check the spelling of ${name ?? 'each name'} on ${onLine(err)}.`,
-        'Python only knows names you have made (with =) or that come with Python. If you meant some writing, it needs quotes.',
-        '```python\nanimal = "cat"       # makes the name animal\nprint(animal)        # uses it\nprint("animal")      # quotes: prints the word\n```',
+        suggest
+          ? `Python thinks you meant ${suggest}. Check the spelling of ${name} on ${onLine(err)}.`
+          : `Check the spelling of ${name ?? 'each name'} on ${onLine(err)}.`,
+        suggest
+          ? 'Python knows the name it suggested, but not the way you spelled it. One wrong letter makes it a different name.'
+          : 'Python only knows names you have made (with =) or that come with Python. If you meant some writing, it needs quotes.',
+        suggest
+          ? `\`\`\`python\n${suggest}("hello")   # spelled right: works\n${name}("hello")   # one letter off: Python does not know it\n\`\`\``
+          : '```python\nanimal = "cat"       # makes the name animal\nprint(animal)        # uses it\nprint("animal")      # quotes: prints the word\n```',
         suggest
           ? `Did you mean ${suggest}? Change ${name} to ${suggest}.`
           : name

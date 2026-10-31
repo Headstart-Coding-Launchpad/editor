@@ -66,6 +66,7 @@ describe('PythonEditor — touch symbol bar', () => {
     const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
 
+    await user.click(screen.getByRole('button', { name: 'Keys' }))
     await user.click(screen.getByRole('button', { name: ':' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith(':')
@@ -92,8 +93,21 @@ describe('PythonEditor — emoji button', () => {
     insertAtCursor.mockClear()
   })
 
-  it('shows the emoji button on a non-touch device while interactive', () => {
+  it('keeps the symbol keys and the emoji key folded until Keys is pressed', async () => {
+    touchDevice = true
+    const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: ':' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'emoji-picker' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Keys' }))
+    expect(screen.getByRole('button', { name: ':' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'emoji-picker' })).toBeInTheDocument()
+  })
+
+  it('shows the emoji button on a non-touch device while interactive', async () => {
+    const user = userEvent.setup()
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Keys' }))
     expect(screen.getByRole('button', { name: 'emoji-picker' })).toBeInTheDocument()
   })
 
@@ -106,6 +120,7 @@ describe('PythonEditor — emoji button', () => {
     const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
 
+    await user.click(screen.getByRole('button', { name: 'Keys' }))
     await user.click(screen.getByRole('button', { name: 'emoji-picker' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith('🎉')

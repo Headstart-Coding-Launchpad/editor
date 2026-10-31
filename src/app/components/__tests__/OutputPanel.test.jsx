@@ -225,4 +225,26 @@ describe('OutputPanel status and placeholder', () => {
     )
     expect(outputPlaceholder({ running: true })).toBeNull()
   })
+
+  it('says nothing under a picture the Stage drew, but still explains a silent run without one', () => {
+    expect(outputPlaceholder({ runStatus: 'success', drew: true })).toBeNull()
+    expect(outputPlaceholder({ runStatus: 'success' })).toMatch(/didn't print anything/)
+  })
+
+  it('puts the plain-words help first and folds the raw Python message away', async () => {
+    const user = userEvent.setup()
+    render(
+      <OutputPanel
+        output={"Line 1: NameError: name 'pritn' is not defined. Did you mean: 'print'?"}
+        runStatus="error"
+        errorHelp
+        code="pritn('hi')"
+        collapsible={false}
+      />
+    )
+    expect(screen.getByTestId('error-help')).toBeInTheDocument()
+    expect(screen.queryByText(/NameError/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'What Python said' }))
+    expect(await screen.findByText(/NameError/)).toBeInTheDocument()
+  })
 })
