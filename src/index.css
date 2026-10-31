@@ -7722,7 +7722,7 @@ label.te-backdrop-tag,
    1366x768 laptop (child-facing review 2026-10-28); a wider screen keeps the full width. */
 .act-station__scene {
   position: relative;
-  width: min(100%, calc((100vh - 250px) * 1.6));
+  width: min(100%, calc((100vh - 340px) * 1.6));
   margin-inline: auto;
   min-width: 560px;
   aspect-ratio: 1600 / 1000;
