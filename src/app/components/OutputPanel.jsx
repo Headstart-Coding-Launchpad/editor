@@ -3,6 +3,7 @@ import { useTypewriterOutput } from '../hooks/useTypewriterOutput'
 import { useChartsLoading } from '../../shared/stage/chartsStatus.js'
 import { CHARTS_LOADING_MESSAGE } from '../../shared/stage/charts.js'
 import ErrorHelp from './ErrorHelp'
+import { explainPythonError } from '../../shared/pythonErrors.js'
 
 const CODE_FONT_STYLE = {
   fontFamily: "'JetBrains Mono', monospace",
@@ -61,9 +62,17 @@ export function outputStatus({
 }
 
 // The grey line in an empty output: never "Run your code…" under a "Ran OK".
-export function outputPlaceholder({ runStatus, running, waitingForInput, loadingCharts = false }) {
+// `drew`: the Stage or a chart shows the result, so a silent run is not "nothing happened".
+export function outputPlaceholder({
+  runStatus,
+  running,
+  waitingForInput,
+  loadingCharts = false,
+  drew = false,
+}) {
   if (running && loadingCharts && !waitingForInput) return CHARTS_LOADING_MESSAGE
   if (running || waitingForInput) return null
+  if (runStatus === 'success' && drew) return null
   if (runStatus === 'success') return "Your code ran. It didn't print anything."
   return 'Run your code to see output here.'
 }
@@ -99,9 +108,12 @@ export default function OutputPanel({
   // their code to sharpen a few fixes. Off for mirrors, Show it and previews.
   errorHelp = false,
   code = '',
+  // The Stage drew something this run: no "didn't print anything" line under the picture.
+  drew = false,
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const [showRaw, setShowRaw] = useState(false)
   const displayedOutput = useTypewriterOutput(output)
 
   const preRef = useRef(null)
@@ -109,6 +121,11 @@ export default function OutputPanel({
   const prevRunningRef = useRef(running)
   const prevOutputRef = useRef(output)
   const contentCollapsed = collapsible && isCollapsed
+
+  // A new run starts with Python's own message folded away again.
+  useEffect(() => {
+    setShowRaw(false)
+  }, [output])
 
   useEffect(() => {
     if (openOnRun && running && !prevRunningRef.current) {
@@ -171,7 +188,15 @@ export default function OutputPanel({
     running,
     waitingForInput: inputPrompt !== null,
     loadingCharts,
+    drew,
   })
+  // Plain words first; Python's own message folds under "What Python said".
+  const showHelp =
+    errorHelp &&
+    runStatus === 'error' &&
+    !running &&
+    !contentCollapsed &&
+    !!explainPythonError(output, { code })
   const showCursor = running || (output && displayedOutput !== output)
   return (
     <div
@@ -209,7 +234,19 @@ export default function OutputPanel({
         </div>
       </div>
 
-      {!contentCollapsed && (
+      {showHelp && <ErrorHelp key={output} output={output} code={code} />}
+      {showHelp && (
+        <button
+          type="button"
+          className="btn-ghost-outline"
+          style={s.rawToggle}
+          aria-expanded={showRaw}
+          onClick={() => setShowRaw((v) => !v)}
+        >
+          {showRaw ? 'Hide what Python said' : 'What Python said'}
+        </button>
+      )}
+      {!contentCollapsed && (!showHelp || showRaw) && (
         <pre ref={preRef} style={large ? { ...s.pre, ...s.preLarge } : s.pre}>
           {displayedOutput
             ? splitEmojiRuns(displayedOutput).map((run, index) =>
@@ -253,14 +290,12 @@ export default function OutputPanel({
           )}
         </pre>
       )}
-      {!contentCollapsed && errorHelp && runStatus === 'error' && !running && (
-        <ErrorHelp key={output} output={output} code={code} />
-      )}
     </div>
   )
 }
 
 const s = {
+  rawToggle: { alignSelf: 'flex-start', minHeight: 36, margin: '0 8px 8px', fontSize: '0.85rem' },
   preLarge: { fontSize: 'clamp(1.1rem, 2.4vw, 2rem)', lineHeight: 1.4 },
   panel: {
     display: 'flex',
