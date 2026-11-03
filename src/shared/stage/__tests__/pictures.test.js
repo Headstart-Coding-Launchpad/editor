@@ -96,6 +96,8 @@ describe('the stage module (Python side)', () => {
     expect(STAGE_MODULE_PY).toContain('_js.__hsStageImage(')
     expect(STAGE_MODULE_PY).toContain('_js.__hsStageSnapshot(')
     expect(STAGE_MODULE_PY).toContain('_js.__hsStageColour(')
+    expect(STAGE_MODULE_PY).toContain("__all__ += ['recolour']")
+    expect(STAGE_MODULE_PY).toContain('def recolour(*args, **kwargs):')
   })
 
   it('keeps rgb() numbers within 0-255, rounded', () => {

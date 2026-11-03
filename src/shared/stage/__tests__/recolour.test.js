@@ -68,7 +68,10 @@ try:
 except Exception as error:
     print(type(error).__name__ + ': ' + str(error))
 `
-  const input = [JSON.stringify(workerAnswers()), JSON.stringify(STAGE_MODULE_PY), JSON.stringify(script)].join('\n') + '\n'
+  const input =
+    [JSON.stringify(workerAnswers()), JSON.stringify(STAGE_MODULE_PY), JSON.stringify(script)].join(
+      '\n'
+    ) + '\n'
   const result = spawnSync(PYTHON, ['-I', '-c', harness], {
     input,
     encoding: 'utf8',
@@ -149,7 +152,12 @@ print(rows)
     ]
     const out = runPython(
       `${FOX}\n` +
-        tries.map((line) => `try:\n    ${line}\nexcept Exception as e:\n    print(type(e).__name__ + ': ' + str(e))\n`).join('') +
+        tries
+          .map(
+            (line) =>
+              `try:\n    ${line}\nexcept Exception as e:\n    print(type(e).__name__ + ': ' + str(e))\n`
+          )
+          .join('') +
         'print(spy == original)\n'
     )
     expect(out).toEqual([
@@ -158,7 +166,7 @@ print(rows)
       "TypeError: recolour(): picture should be a list of colours, like spy = load_image(\"pixel_fox\", size=16), not the text 'spy'. Use the picture's name without quotes, like recolour(spy, ...)",
       "TypeError: recolour(): picture is a tuple, which can't be changed. Make it a list first, like spy = list(spy)",
       "TypeError: recolour() needs three things: the picture, the colour to find and the colour to put instead, like recolour(spy, 'orange', 'blue')",
-      'TypeError: recolour() has no colour= — it takes picture, old and new, like recolour(spy, \'orange\', \'blue\')',
+      "TypeError: recolour() has no colour= — it takes picture, old and new, like recolour(spy, 'orange', 'blue')",
       "TypeError: recolour(): old should be a colour, like 'orange', '#ff8800' or rgb(255, 136, 0), not None",
       'True',
     ])

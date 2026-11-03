@@ -10,6 +10,12 @@
  * - load_image(name, size=32) and snapshot(size=32) → a flat list of '#rrggbb', row by row, from
  *   the worker (__hsStageImage / __hsStageSnapshot, src/modules/python/stagePictureBridge.js),
  *   which answers 'ok|rrggbbrrggbb…' or 'Kind|message'.
+ * - recolour(picture, old, new) changes, in the list itself, every square that is colour old to
+ *   new, so a later grid(picture, ...) draws it (2026-11-03, Python L1 L9 Secret spy photo). Exact
+ *   match, no tolerance: colours are compared as '#rrggbb' however they are written (a name, any
+ *   case, '#RRGGBB', an (r, g, b) tuple; names are asked of the worker once per call), whole
+ *   numbers as palette indexes. A list of rows is recoloured row by row. Returns None, like
+ *   list.sort().
  * - (r, g, b) tuples, as Pillow writes colours, work wherever a drawing call takes a colour:
  *   _draw is wrapped so every tuple of numbers in a shape's values, a grid's cells and its
  *   palette becomes '#rrggbb' before it is sent. A grid's own rows stay rows; with width= the
@@ -134,6 +140,85 @@ def snapshot(*args, **kwargs):
     if _js is None:
         return []
     return _hs_pixels('snapshot', _js.__hsStageSnapshot(_payload('snapshot', args, kwargs)))
+
+
+_HS_SEE_THROUGH = frozenset(('transparent', 'none', 'clear'))
+_HS_COLOUR_EXAMPLE = "'orange', '#ff8800' or rgb(255, 136, 0)"
+
+
+# What a value matches as, for recolour(): '#rrggbb' for any colour however it is written, the
+# number itself for a palette index, 'transparent' for a see-through word. A picture's value that
+# is none of these gives None and never matches; old and new (strict) raise instead.
+def _hs_match_key(value, known, strict=False, name='old'):
+    if _hs_is_colour_tuple(value):
+        return '#%02x%02x%02x' % tuple(int(max(0, min(255, n)) + 0.5) for n in value[:3])
+    if _hs_is_number(value):
+        return value
+    if not isinstance(value, str):
+        if strict:
+            raise TypeError('recolour(): ' + name + ' should be a colour, like ' + _HS_COLOUR_EXAMPLE + ', not ' + _hs_given(value)) from None
+        return None
+    text = value.strip().lower()
+    if text in known:
+        return known[text]
+    if len(text) == 7 and text[0] == '#' and _HS_HEX_DIGITS.issuperset(text[1:]):
+        key = text
+    elif text in _HS_SEE_THROUGH:
+        key = 'transparent'
+    elif _js is None:
+        key = text
+    else:
+        answer = str(_js.__hsStageColour('recolour', _payload('recolour', [value], {})) or '')
+        if answer.startswith('ok|'):
+            key = answer[3:]
+        elif strict:
+            _raise(answer or 'ValueError|recolour(): ' + name + ' should be a colour, like ' + _HS_COLOUR_EXAMPLE)
+        else:
+            key = None
+    known[text] = key
+    return key
+
+
+def recolour(*args, **kwargs):
+    """recolour(picture, old, new): changes every square of the picture that is colour old to
+    colour new, in the picture itself. recolour(spy, 'orange', 'royalblue') then grid(spy, width=16)."""
+    names = ('picture', 'old', 'new')
+    for key in kwargs:
+        if key not in names:
+            raise TypeError('recolour() has no ' + key + "= — it takes picture, old and new, like recolour(spy, 'orange', 'blue')") from None
+    values = list(args)
+    for i, key in enumerate(names):
+        if key in kwargs:
+            if i < len(values):
+                raise TypeError('recolour() got ' + key + ' twice') from None
+            values.append(kwargs[key])
+    if len(values) != 3:
+        raise TypeError("recolour() needs three things: the picture, the colour to find and the colour to put instead, like recolour(spy, 'orange', 'blue')") from None
+    picture, old, new = values
+    if isinstance(picture, tuple):
+        raise TypeError("recolour(): picture is a tuple, which can't be changed. Make it a list first, like spy = list(spy)") from None
+    if not isinstance(picture, list):
+        message = 'recolour(): picture should be a list of colours, like spy = load_image("pixel_fox", size=16), not ' + _hs_given(picture)
+        if isinstance(picture, str):
+            message += ". Use the picture's name without quotes, like recolour(spy, ...)"
+        raise TypeError(message) from None
+    known = {}
+    find = _hs_match_key(old, known, True, 'old')
+    _hs_match_key(new, known, True, 'new')
+    put = _hs_tuple_colour(new)
+
+    def swap(items):
+        for i, item in enumerate(items):
+            if not isinstance(item, list) and _hs_match_key(item, known) == find:
+                items[i] = put
+
+    swap(picture)
+    for row in picture:
+        if isinstance(row, list):
+            swap(row)
+
+
+__all__ += ['recolour']
 
 
 def _hs_tuple_colour(value):

@@ -19,7 +19,7 @@
  * src/modules/python/variableCapture.py.js). It also sends the student's name for the list
  * (`label`, found in the calling frame) so "pixels is one long list" can name it.
  *
- * Image Lab's calls (rgb, red, green, blue, load_image, snapshot) and (r, g, b) tuples as
+ * Image Lab's calls (rgb, red, green, blue, load_image, snapshot, recolour) and (r, g, b) tuples as
  * colours are added at the end (./stagePicturesPy.js).
  *
  * Exported as plain text; nothing here runs in Node.
