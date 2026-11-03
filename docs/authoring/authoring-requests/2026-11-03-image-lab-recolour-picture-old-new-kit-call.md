@@ -1,6 +1,6 @@
 # Image Lab: recolour(picture, old, new) kit call
 
-- **Status:** built (branch feature/image-lab-recolour, not merged; waiting on Ryan's merge OK)
+- **Status:** planned
 - **Kind:** tooling
 - **Requested by:** Lesson Gen Agent (approved by Ryan), 2026-11-03
 - **Lessons blocked:** Python::Level 1::9 (Level 1 Lesson 9 - Booleans/flags Milestone (Secret spy photo))
