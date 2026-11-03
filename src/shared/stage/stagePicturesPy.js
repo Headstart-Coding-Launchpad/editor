@@ -14,8 +14,9 @@
  *   new, so a later grid(picture, ...) draws it (2026-11-03, Python L1 L9 Secret spy photo). Exact
  *   match, no tolerance: colours are compared as '#rrggbb' however they are written (a name, any
  *   case, '#RRGGBB', an (r, g, b) tuple; names are asked of the worker once per call), whole
- *   numbers as palette indexes. A list of rows is recoloured row by row. Returns None, like
- *   list.sort().
+ *   numbers (from 0) as palette indexes, never mixed with colours. A list of rows is recoloured row
+ *   by row; a tuple row (grid() draws those too) is replaced by a new tuple in the picture.
+ *   Returns None, like list.sort().
  * - (r, g, b) tuples, as Pillow writes colours, work wherever a drawing call takes a colour:
  *   _draw is wrapped so every tuple of numbers in a shape's values, a grid's cells and its
  *   palette becomes '#rrggbb' before it is sent. A grid's own rows stay rows; with width= the
@@ -179,21 +180,37 @@ def _hs_match_key(value, known, strict=False, name='old'):
     return key
 
 
+def _hs_palette_number(name, value):
+    if isinstance(value, float) and not value.is_integer() or value != value:
+        raise TypeError('recolour(): ' + name + ' should be a colour, or a whole number from 0 for a palette, like recolour(rows, 1, 2), not ' + _hs_given(value)) from None
+    if value < 0:
+        raise ValueError('recolour(): ' + name + ' is ' + _hs_given(value) + ', but palette numbers start at 0, like recolour(rows, 1, 2)') from None
+
+
+# Is this item of a picture a row (a list, or a tuple that isn't one (r, g, b) colour)? Matches
+# grid(), which draws list and tuple rows alike.
+def _hs_is_row(item, numbers):
+    if isinstance(item, list):
+        return True
+    return isinstance(item, tuple) and (numbers or not _hs_is_colour_tuple(item))
+
+
 def recolour(*args, **kwargs):
     """recolour(picture, old, new): changes every square of the picture that is colour old to
     colour new, in the picture itself. recolour(spy, 'orange', 'royalblue') then grid(spy, width=16)."""
+    example = "like recolour(spy, 'orange', 'blue')"
     names = ('picture', 'old', 'new')
     for key in kwargs:
         if key not in names:
-            raise TypeError('recolour() has no ' + key + "= — it takes picture, old and new, like recolour(spy, 'orange', 'blue')") from None
+            raise TypeError('recolour() has no ' + key + '= — it takes picture, old and new, ' + example) from None
     values = list(args)
     for i, key in enumerate(names):
         if key in kwargs:
             if i < len(values):
-                raise TypeError('recolour() got ' + key + ' twice') from None
+                raise TypeError('recolour(): ' + key + ' is given twice, once in its place and once as ' + key + '=. Give it once, ' + example) from None
             values.append(kwargs[key])
     if len(values) != 3:
-        raise TypeError("recolour() needs three things: the picture, the colour to find and the colour to put instead, like recolour(spy, 'orange', 'blue')") from None
+        raise TypeError('recolour() needs three things: the picture, the colour to find and the colour to put instead, ' + example) from None
     picture, old, new = values
     if isinstance(picture, tuple):
         raise TypeError("recolour(): picture is a tuple, which can't be changed. Make it a list first, like spy = list(spy)") from None
@@ -205,17 +222,53 @@ def recolour(*args, **kwargs):
     known = {}
     find = _hs_match_key(old, known, True, 'old')
     _hs_match_key(new, known, True, 'new')
+    numbers = _hs_is_number(old)
+    if numbers:
+        _hs_palette_number('old', old)
+    if _hs_is_number(new):
+        _hs_palette_number('new', new)
+    if numbers != _hs_is_number(new):
+        first, second = ('old', 'new') if numbers else ('new', 'old')
+        raise TypeError('recolour(): ' + first + ' is a palette number but ' + second + " is a colour. Use two colours, like recolour(spy, 'orange', 'blue'), or two numbers, like recolour(rows, 1, 2)") from None
     put = _hs_tuple_colour(new)
 
-    def swap(items):
-        for i, item in enumerate(items):
-            if not isinstance(item, list) and _hs_match_key(item, known) == find:
-                items[i] = put
+    # The squares, row by row; a picture made only of the other kind of value gets a plain error.
+    rows = [picture] + [row for row in picture if _hs_is_row(row, numbers)]
+    has_number = has_colour = False
+    for row in rows:
+        for item in row:
+            if _hs_is_row(item, numbers):
+                continue
+            if _hs_is_number(item):
+                has_number = True
+            elif isinstance(item, str) or _hs_is_colour_tuple(item):
+                has_colour = True
+    try:
+        label = _hs_name_of(picture, _sys._getframe(1)) or 'the picture'
+    except Exception:
+        label = 'the picture'
+    if numbers and has_colour and not has_number:
+        raise TypeError('recolour(): ' + label + " is made of colours, not palette numbers, so old should be a colour, like recolour(spy, 'orange', 'blue')") from None
+    if not numbers and has_number and not has_colour:
+        raise TypeError('recolour(): ' + label + ' is made of palette numbers, not colours, so old should be a number, like recolour(rows, 1, 2)') from None
 
-    swap(picture)
-    for row in picture:
+    def swap(items):
+        changed = list(items)
+        for i, item in enumerate(changed):
+            if not _hs_is_row(item, numbers) and _hs_match_key(item, known) == find:
+                changed[i] = put
+        return changed
+
+    picture[:] = swap(picture)
+    for i, row in enumerate(picture):
         if isinstance(row, list):
-            swap(row)
+            row[:] = swap(row)
+        elif _hs_is_row(row, numbers):
+            # A tuple row can't change, so the picture gets a new tuple in its place (only when
+            # something in it changed).
+            changed = tuple(swap(row))
+            if changed != row:
+                picture[i] = changed
 
 
 __all__ += ['recolour']

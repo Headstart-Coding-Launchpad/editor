@@ -847,7 +847,10 @@ picture is a plain list of colours that `grid(pixels, width=size)` draws.
 - `recolour(picture, old, new)`: changes the list in place (returns `None`, like `list.sort()`),
   so the next `grid(picture, width=…)` shows it. Exact match, no tolerance: `old` matches a pixel
   of the same colour however either is written (`"orange"`, `"#FFA500"`, `(255, 165, 0)` are one
-  colour), and a whole number matches a palette index. A list of rows is recoloured row by row.
+  colour). Palette grids use whole numbers from 0 for both `old` and `new` (`recolour(rows, 1,
+  2)`); mixing a number with a colour, or a number on a picture of colours (or the reverse), is a
+  plain TypeError. A list of rows is recoloured row by row; a tuple row (grid draws those too) is
+  replaced by a new tuple in the picture.
   Pixels that are something else are left alone; nothing matching is not an error. A string
   picture, a tuple, a missing value, or an `old`/`new` that isn't a colour is a plain TypeError
   or ValueError naming `recolour()`.
