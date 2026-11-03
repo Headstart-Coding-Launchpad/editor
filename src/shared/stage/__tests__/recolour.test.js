@@ -140,6 +140,70 @@ print(rows)
     expect(out).toEqual(["[['black', 'white'], ['white', 'black']]"])
   })
 
+  it('takes palette numbers the way grid() does: whole numbers from 0, never mixed with colours', () => {
+    const tries = [
+      'recolour(rows, 1, 2)',
+      'recolour(rows, 7.5, 2)',
+      'recolour(rows, 1, -3)',
+      "recolour(rows, 1, 'blue')",
+      'recolour(spy, 3, 4)',
+      "recolour(rows, 'orange', 'blue')",
+    ]
+    const out = runPython(
+      `rows = [[0, 1, 1], [1, 0, 0]]
+${FOX}
+` +
+        tries
+          .map(
+            (line) =>
+              `try:
+    ${line}
+except Exception as e:
+    print(type(e).__name__ + ': ' + str(e))
+`
+          )
+          .join('') +
+        'print(rows, spy == original)\n'
+    )
+    expect(out).toEqual([
+      'TypeError: recolour(): old should be a colour, or a whole number from 0 for a palette, like recolour(rows, 1, 2), not 7.5',
+      'ValueError: recolour(): new is -3, but palette numbers start at 0, like recolour(rows, 1, 2)',
+      "TypeError: recolour(): old is a palette number but new is a colour. Use two colours, like recolour(spy, 'orange', 'blue'), or two numbers, like recolour(rows, 1, 2)",
+      "TypeError: recolour(): spy is made of colours, not palette numbers, so old should be a colour, like recolour(spy, 'orange', 'blue')",
+      'TypeError: recolour(): rows is made of palette numbers, not colours, so old should be a number, like recolour(rows, 1, 2)',
+      '[[0, 2, 2], [2, 0, 0]] True',
+    ])
+  })
+
+  it('recolours rows that are tuples too, as grid() draws them (rebuilt in the picture)', () => {
+    const out = runPython(`rows = [('orange', 'white'), ['white', 'orange'], ('white', 'white')]
+row0 = rows[0]
+recolour(rows, 'orange', 'black')
+print(rows)
+print(row0, rows[2] is not None)
+pixels = [(255, 165, 0), (1, 2, 3)]
+recolour(pixels, 'orange', 'white')
+print(pixels)
+`)
+    expect(out).toEqual([
+      "[('black', 'white'), ['white', 'black'], ('white', 'white')]",
+      "('orange', 'white') True",
+      "['white', (1, 2, 3)]",
+    ])
+  })
+
+  it('explains a value given twice in plain words', () => {
+    const out = runPython(`${FOX}
+try:
+    recolour(spy, 'orange', old='blue')
+except Exception as e:
+    print(type(e).__name__ + ': ' + str(e))
+`)
+    expect(out).toEqual([
+      "TypeError: recolour(): old is given twice, once in its place and once as old=. Give it once, like recolour(spy, 'orange', 'blue')",
+    ])
+  })
+
   it('explains wrong values in plain words, naming recolour()', () => {
     const tries = [
       "recolour(spy, 'blu', 'white')",
