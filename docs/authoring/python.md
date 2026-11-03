@@ -802,6 +802,7 @@ for i in range(40):                # a spinning rainbow tunnel
 | `red(c)`, `green(c)`, `blue(c)` | draws nothing: returns how much red, green or blue is in colour `c`, 0–255 |
 | `load_image(name, size=32)` | draws nothing: returns a library picture as one long list of `'#rrggbb'`, row by row |
 | `snapshot(size=32)` | draws nothing: returns the drawing so far as one long list of `'#rrggbb'`, row by row |
+| `recolour(picture, old, new)` | draws nothing: changes every pixel of `picture` that is colour `old` to `new`, in the list itself |
 
 Only the first value is needed (the first two for `rect` and `polygon`, the four ends for
 `line`). Every value can also be given by name (`colour="red"`, `x=100`; `color=` works too).
@@ -843,6 +844,13 @@ picture is a plain list of colours that `grid(pixels, width=size)` draws.
   when the program writes their names in quotes; a missing download is a RuntimeError.
 - `snapshot(size=32)`: `size` 1–100. Each pixel is the colour at the middle of its square, as
   `stage_pixel` reads it; text and emoji are left out.
+- `recolour(picture, old, new)`: changes the list in place (returns `None`, like `list.sort()`),
+  so the next `grid(picture, width=…)` shows it. Exact match, no tolerance: `old` matches a pixel
+  of the same colour however either is written (`"orange"`, `"#FFA500"`, `(255, 165, 0)` are one
+  colour), and a whole number matches a palette index. A list of rows is recoloured row by row.
+  Pixels that are something else are left alone; nothing matching is not an error. A string
+  picture, a tuple, a missing value, or an `old`/`new` that isn't a colour is a plain TypeError
+  or ValueError naming `recolour()`.
 - Wherever a drawing call takes a colour (a shape's colour or `outline=`, a grid cell, a palette
   entry), an `(r, g, b)` tuple (or `(r, g, b, a)`, alpha ignored) works too. A grid's rows stay
   rows: a tuple there is a colour only inside a row, or in a flat list drawn with `width=`.

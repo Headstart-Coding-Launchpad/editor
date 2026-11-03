@@ -37,6 +37,21 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-03
+
+- **Image Lab: `recolour(picture, old, new)`.** A new Python Stage call (from `from stage import
+  *`) that changes every pixel of `picture` that is colour `old` to `new`, in the list itself, so
+  the next `grid(picture, width=…)` shows it; recolouring back restores the picture exactly. It
+  gives Level 1 a one-line colour swap with no `for`/`range`/indexing (Secret spy photo). Exact
+  match, no tolerance, but a colour matches however it is written (`"orange"`, `"#ffa500"`,
+  `(255, 165, 0)`); whole numbers match palette indexes; a list of rows works too. Nothing
+  matching is not an error; wrong values get plain-words errors naming `recolour()`. Returns
+  `None` (so `spy = recolour(spy, …)` is a mistake worth a hint). Best on pixel art: a photo's
+  pixels are hex codes that rarely match exactly. See [stage.md → Image
+  Lab](stage.md#10-image-lab-pictures-are-lists).
+  - Affects: python (stage module, Image Lab) · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-11-03-image-lab-recolour-picture-old-new-kit-call.md
+
 ## 2026-10-29
 
 - **Next-Word write mode: typed start word, mixed packs, bigger packs.** In write mode the student

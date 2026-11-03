@@ -73,6 +73,7 @@ rest are added as students grow. Every value can also be given by name (`colour=
 | `red`, `green`, `blue` | `red("orange")` | `if green(c) > 200 and red(c) < 100:` | draws nothing: how much of that colour is in `c`, 0 to 255 (see 10) |
 | `load_image` | `load_image("fox")` | `load_image("fox", size=64)` | draws nothing: gives back a picture from the image library as a list (see 10) |
 | `snapshot` | `snapshot()` | `snapshot(size=16)` | draws nothing: gives back what the Stage shows as a list (see 10) |
+| `recolour` | `recolour(spy, "orange", "royalblue")` | `recolour(spy, disguise, real)` | draws nothing: changes every pixel of one colour to another, in the picture itself (see 10) |
 
 **Extras on every shape** (`circle`, `square`, `rect`, `polygon`):
 
@@ -241,6 +242,7 @@ slow-mo steps through it, and every list lesson works on it.
 | `snapshot()` | 1,024 colours (32 × 32) | what the Stage shows so far; `snapshot(size=16)` for another size (1 to 100) |
 | `rgb(r, g, b)` | `"#rrggbb"` | each number 0 to 255; numbers are rounded and kept within 0 to 255, so `rgb(red(c) + 80, …)` never errors |
 | `red(c)`, `green(c)`, `blue(c)` | 0 to 255 | `c` is any Stage colour: a name, a hex code, a pixel, or an `(r, g, b)` tuple |
+| `recolour(spy, "orange", "royalblue")` | nothing (changes `spy`) | every pixel that is `old` becomes `new`, in the list itself; a one-line colour swap with no loop (Level 1) |
 
 - **Draw a picture** with `grid(fox, width=32)` (the width is the `size` it was loaded at). The
   pixel at row `r`, column `c` is `fox[r * 32 + c]`. Forgetting `width=` says "fox is one long
@@ -307,6 +309,29 @@ grid(fox, width=32)
 
 The same task on the photo `fox` changes nothing, because a photo's pixels are hex codes and
 none is exactly orange: give Level 1 colour swaps a pixel-art picture.
+
+Swap one colour with no loop (Level 1, before `for`/`range`): `recolour(picture, old, new)`
+changes the list itself, so `grid()` afterwards shows it, and recolouring back restores it
+exactly. The match is exact (no tolerance), but a colour matches however it is written:
+`"orange"`, `"#ffa500"` and `(255, 165, 0)` are the same. Pixels keep `new` as written, so a
+later `spy[i] == "royalblue"` is true. On a photo it changes only pixels of exactly that hex
+code, so keep it for pixel art too.
+
+```python
+from stage import *
+spy = load_image("pixel_fox", size=16)
+real = "orange"
+disguise = "royalblue"
+recolour(spy, real, disguise)
+password = input("Password? ")
+unlocked = password == "fox"
+if unlocked:
+    recolour(spy, disguise, real)
+grid(spy, width=16)
+```
+
+`spy = recolour(spy, …)` is a mistake (it gives back `None`, as `list.sort()` does); a string
+in place of the picture (`recolour("spy", …)`) says to use the name without quotes.
 
 Opposite colours (Level 2 arithmetic):
 
