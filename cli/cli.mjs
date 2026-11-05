@@ -184,6 +184,7 @@ const loadTopics = () => import('./topics.mjs')
 const loadAssets = () => import('./assets.mjs')
 const loadTypeAssets = () => import('./type-assets.mjs')
 const loadFeedback = () => import('./feedback.mjs')
+const loadReviewNotes = () => import('./reviewNotes.mjs')
 const loadTopicUtils = () => import('./topic-utils.mjs')
 const loadLevels = () => import('./levels.mjs')
 const loadClasses = () => import('./classes.mjs')
@@ -293,6 +294,28 @@ await yargs(hideBin(process.argv))
         cmd(async ({ lessonId, latest }) => {
           const { listTimingRuns } = await loadLessons()
           print(await listTimingRuns(lessonId, { latest }))
+        })
+      )
+
+      .command(
+        'notes <id>',
+        'Preview review notes an admin left on tasks (?preview=true), oldest first as JSON. With --set <noteId> --status picked_up|done, moves one note on (never backwards)',
+        {
+          since: { type: 'string', describe: 'Only notes made on or after this ISO date' },
+          status: {
+            type: 'string',
+            describe: 'Filter by status (new, picked_up, done); with --set, the new status',
+          },
+          set: { type: 'string', describe: 'Note id to move on (needs --status picked_up|done)' },
+        },
+        cmd(async ({ id, since, status, set }) => {
+          const { listReviewNotes, setReviewNoteStatus } = await loadReviewNotes()
+          if (set != null) {
+            if (!status) throw new Error('--set needs --status picked_up|done')
+            print(await setReviewNoteStatus(id, String(set), status))
+            return
+          }
+          print(await listReviewNotes(id, { since, status }))
         })
       )
 
