@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
@@ -1476,7 +1476,7 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     render(<StudentModal {...mkProps({ lesson, onSetCopyCodeOverride })} />)
     await user.click(screen.getByRole('button', { name: /^More/ }))
     await user.click(screen.getByTestId('edit-copy-code'))
-    const box = screen.getByTestId('copy-code-edit-text')
+    const box = within(screen.getByTestId('copy-code-edit-text')).getByTestId('code-editor')
     expect(box).toHaveValue('print(1)')
     await user.clear(box)
     await user.type(box, 'print(2)')

@@ -1752,6 +1752,7 @@ export default function StudentModal({
         <CopyCodeEditDialog
           studentName={student.displayName}
           taskTitle={task.title ?? 'This task'}
+          language={taskLesson?.type === 'html' ? 'html' : 'python'}
           initialText={
             effectiveCopyCode(
               task,

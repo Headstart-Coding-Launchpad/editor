@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { CodeEditor } from '../../shared/CodeEditor'
 
 /**
  * The tutor's editor for a task's "Type this out" text (the Copy code panel), opened from a
@@ -10,6 +11,7 @@ import { createPortal } from 'react-dom'
  * @param {string} props.studentName
  * @param {string} props.taskTitle
  * @param {string} props.initialText what this student sees now
+ * @param {'python'|'html'} [props.language] the task's code language
  * @param {boolean} props.hasOwnOverride this student has a version of their own
  * @param {(scope: 'student'|'class', text: string) => void} props.onSave
  * @param {() => void} props.onClearStudent
@@ -19,6 +21,7 @@ export default function CopyCodeEditDialog({
   studentName,
   taskTitle,
   initialText,
+  language = 'python',
   hasOwnOverride,
   onSave,
   onClearStudent,
@@ -50,15 +53,14 @@ export default function CopyCodeEditDialog({
           What the Type this out box shows. Clear the text to hide the box. The lesson itself is not
           changed.
         </p>
-        <textarea
-          style={s.textarea}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          spellCheck={false}
-          aria-label="Type this out text"
-          data-testid="copy-code-edit-text"
-          autoFocus
-        />
+        <div style={s.editor} data-testid="copy-code-edit-text" aria-label="Type this out text">
+          <CodeEditor
+            value={text}
+            language={language}
+            onChange={setText}
+            style={{ height: '100%' }}
+          />
+        </div>
         <div style={s.actions}>
           <button
             type="button"
@@ -121,14 +123,6 @@ const s = {
   },
   title: { margin: 0, fontSize: '1.05rem' },
   note: { margin: 0, fontSize: '0.85rem', color: 'var(--colour-text-muted, #6b7280)' },
-  textarea: {
-    minHeight: 200,
-    fontFamily: 'var(--font-code)',
-    fontSize: 13,
-    padding: 10,
-    borderRadius: 8,
-    border: '1px solid #cbd5e1',
-    resize: 'vertical',
-  },
+  editor: { height: 240, border: '1px solid #cbd5e1', borderRadius: 8, overflow: 'hidden' },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
 }
