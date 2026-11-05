@@ -75,13 +75,12 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * not one stopped, timed out or short of input answers, nor a typed redraw dropped by
  * cancelTypedEdit) is handed, after it paints (when it does), to `onPreviewResult({ typed, code, taskId,
  * moduleType, status, outputRaw, result })` (request 131: useStudentCodeState commitLivePass
- * judges it and may tick the task from a typed one, returning true when it did). It is called
- * synchronously and runs nothing: a preview never runs any program but its own. `canLiveTick(code)`
- * says whether a typed redraw of `code` could tick (only those redraw the same code again after
- * a preview of it that did not tick; every other preview of unchanged code is skipped). This hook
- * never judges or writes anything. `cancelTypedEdit()` (Reset, a tutor's edit or override, any
- * replacement of the work, an un-solve) drops a typed redraw still waiting and keeps one already
- * running from painting or being reported.
+ * judges it and may tick the task from a typed one). It is called synchronously and runs nothing:
+ * a preview never runs any program but its own, and a preview of the same code as the last one
+ * run is skipped (typed or not). This hook never judges or writes anything. `cancelTypedEdit()`
+ * (Reset, a tutor's edit or override, any replacement of the work, an un-solve) drops a typed
+ * redraw still waiting or queued, keeps one already running from painting or being reported, and
+ * forgets the last preview so the same code typed again redraws.
  */
 export function useScrubPreview({
   moduleType,
@@ -99,7 +98,6 @@ export function useScrubPreview({
   runtimeReady = false,
   freePlay = false,
   onPreviewResult = null,
-  canLiveTick = null,
 }) {
   const contextRef = useRef(null)
   contextRef.current = {
@@ -116,7 +114,6 @@ export function useScrubPreview({
     isRunLocked,
     publishPreview,
     onPreviewResult,
-    canLiveTick,
   }
   // The answers of the student's last Run, per task: `{ taskId, answers }`, or null.
   const runAnswersRef = useRef(null)
@@ -133,15 +130,10 @@ export function useScrubPreview({
   if (!schedulerRef.current) {
     schedulerRef.current = createPreviewScheduler({
       run: (job) => runPreview(job),
-      // A typed redraw that could tick (request 131, `liveTick`) repeats the last preview of the
-      // same code unless that one ticked the task through onPreviewResult; every other preview of
-      // unchanged code is skipped, as before. forgetLastPreview (a task un-solved) forgets even
-      // one that ticked.
-      isSame: (a, b) =>
-        a.code === b.code &&
-        a.fileName === b.fileName &&
-        a.taskId === b.taskId &&
-        (!a.liveTick || b.typedDelivered === true),
+      // A preview of unchanged code is skipped, typed or not (request 131: no second run; the
+      // transition rule could never tick on it anyway, its verdict would be the same).
+      // cancelTypedEdit (Reset, a tutor's edit or override, an un-solve) forgets the last one.
+      isSame: (a, b) => a.code === b.code && a.fileName === b.fileName && a.taskId === b.taskId,
     })
   }
 
@@ -229,9 +221,8 @@ export function useScrubPreview({
       })
     }
     // Request 131: every finished preview's own result, judged (and a typed one maybe ticked)
-    // at once; nothing else runs. Marked on the job the scheduler remembers as the last run
-    // (its isSame above) only when it ticked.
-    const ticked = after.onPreviewResult?.({
+    // at once; nothing else runs.
+    after.onPreviewResult?.({
       typed: job.typed === true,
       code: job.code,
       taskId: job.taskId,
@@ -240,7 +231,6 @@ export function useScrubPreview({
       outputRaw: output.raw,
       result,
     })
-    if (ticked === true) job.typedDelivered = true
   }
 
   // A task change drops any waiting preview, the replay note and a waiting check on release.
@@ -262,12 +252,15 @@ export function useScrubPreview({
   }, [task?.id, moduleType])
   useEffect(() => () => clearTimeout(typedTimerRef.current), [])
 
-  // Drops a typed redraw still waiting for the pause, and keeps one already running from painting
-  // or being checked (its generation is old).
+  // Drops a typed redraw still waiting for the pause or queued in the scheduler, keeps one already
+  // running from painting or being checked (its generation is old), and forgets the last preview
+  // (a job that bails is never remembered as run), so the same code typed again redraws.
   function cancelTypedEdit() {
     clearTimeout(typedTimerRef.current)
     typedTimerRef.current = null
     typedGenRef.current += 1
+    schedulerRef.current.cancel()
+    schedulerRef.current.reset()
   }
 
   function typedEdit(code) {
@@ -293,7 +286,6 @@ export function useScrubPreview({
         quietErrors: true,
         typed: true,
         typedGen: typedGenRef.current,
-        liveTick: now.canLiveTick?.(code) === true,
       })
     }, TYPED_PREVIEW_DELAY_MS)
   }
@@ -388,8 +380,6 @@ export function useScrubPreview({
   return {
     scrubPreview,
     settleScrubPreview: () => schedulerRef.current.settle(),
-    // Forgets the last preview run, so the same code previews (and may tick) again.
-    forgetLastPreview: () => schedulerRef.current.reset(),
     scrubReplayAnswers: replayAnswers,
     clearScrubReplay: () => setReplayAnswers(null),
     rememberRunAnswers,

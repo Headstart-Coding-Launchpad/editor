@@ -35,6 +35,12 @@ vi.mock('../runRecord', async (importOriginal) => {
   return { ...actual, recordRun: vi.fn(actual.recordRun) }
 })
 import { missingRecordRunFields, recordRun } from '../runRecord'
+// judgeRun, spied (still the real one): a task that can never tick is never judged.
+vi.mock('../runJudge', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, judgeRun: vi.fn(actual.judgeRun) }
+})
+import { judgeRun } from '../runJudge'
 
 beforeEach(() => {
   localStorage.clear()
@@ -43,6 +49,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   recordRun.mockClear()
+  judgeRun.mockClear()
 })
 
 const WRONG = 'from stage import *\nprint("ho")'
@@ -1294,5 +1301,104 @@ describe("a live pass's records", () => {
       expect.stringContaining('live pass is ticked but its records failed'),
       expect.objectContaining({ message: 'late boom' })
     )
+  })
+})
+
+// Round 6 (fifth review).
+describe('round 6: unchanged code, stale redraws, ineligible tasks, queued redraws', () => {
+  // Like runsTheCode, but a run of `slowCode` waits for release() before finishing.
+  function codeWaits(slowCode) {
+    let release
+    const gate = new Promise((resolve) => {
+      release = resolve
+    })
+    const run = mockModuleRun('python', async (callbacks, code) => {
+      if (code === slowCode) await gate
+      callbacks.onOutput(output(code), 'stdout')
+      return { status: 'success', stage: STAGE }
+    })
+    return { run, release: () => release() }
+  }
+
+  it('unchanged code is never redrawn again, even on a task that can tick', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, ALSO_WRONG)
+    // A key and its undo before the pause: the same code as the last redraw.
+    actSync(() => h.result.current.handleCodeChange(`${ALSO_WRONG} `, EDITOR))
+    await typeAndPause(h, ALSO_WRONG)
+    expect(run.mock.calls.map(([code]) => code)).toEqual([ALSO_WRONG])
+  })
+
+  it("a slow redraw finishing after more typing keeps the student's earlier miss", async () => {
+    const SLOW = 'from stage import *\nprint("h'
+    const { run, release } = codeWaits(SLOW)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ runOnOpen: true }),
+      currentTaskId: 't1',
+    })
+    // The run on open: the starter misses.
+    await wait(500)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).toEqual([WRONG])
+    // A typed redraw that is slow; the student keeps typing the answer meanwhile.
+    actSync(() => h.result.current.handleCodeChange(SLOW, EDITOR))
+    await wait(600)
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    await wait(600)
+    release()
+    await wait(700)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).toEqual([WRONG, SLOW, RIGHT])
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it.each([
+    ['run_attempted', { check: { type: 'run_attempted' } }],
+    ['Python tests', { tests: [{ id: 'a', check: CHECK }] }],
+    ['stage_pixel (not allow-listed)', { check: { type: 'stage_pixel', x: 1, y: 1 } }],
+    ['submit mode', { interactionMode: 'submit' }],
+  ])('a task that can never tick (%s) is never judged on a redraw', async (_name, patch) => {
+    runsTheCode()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const h = renderStudentCodeState({ lesson: liveLesson(patch), currentTaskId: 't1' })
+    await typeAfterMiss(h, RIGHT)
+    expect(judgeRun).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalledWith('Failed to check a live pass:', expect.anything())
+    expect(h.result.current.checkPassed).toBe(false)
+  })
+
+  it('a Turtle task is never judged on a redraw', async () => {
+    mockModuleRun('turtle', () => ({ status: 'success', turtle: { commands: [] } }))
+    const h = renderStudentCodeState({
+      lesson: turtleLesson({ tasks: [stageTask('t1')] }),
+      currentTaskId: 't1',
+    })
+    await typeAfterMiss(h, RIGHT)
+    expect(judgeRun).not.toHaveBeenCalled()
+  })
+
+  it('a queued typed redraw dropped by Reset: the same code typed again previews and paints', async () => {
+    const SLOW = `${WRONG}\n# first`
+    const { run, release } = codeWaits(SLOW)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ interactionMode: 'submit' }),
+      currentTaskId: 't1',
+    })
+    // One redraw running (held), and a typed redraw of ALSO_WRONG queued behind it.
+    actSync(() => h.result.current.handleCodeChange(SLOW, EDITOR))
+    await wait(600)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await wait(600)
+    actSync(() => h.result.current.handleResetCode())
+    release()
+    await wait(300)
+    await act(async () => {})
+    expect(h.result.current.output).not.toContain('hm')
+    // The student types the same code again.
+    await typeAndPause(h, ALSO_WRONG)
+    expect(run.mock.calls.map(([code]) => code)).toEqual([SLOW, ALSO_WRONG])
+    expect(h.result.current.output).toContain('hm')
   })
 })
