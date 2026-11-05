@@ -5,9 +5,14 @@ import { QuizTypeIcon } from '../quiz/QuizTypeIcon.jsx'
 import { switchQuizType } from '../quiz/quizBuilder.js'
 import { ChoiceCardSummary, QuizActivityStudentView } from '../quiz/QuizActivityViews.jsx'
 import { QuizOptionPicture } from '../../app/components/quiz/QuizOptionPicture.jsx'
-import { optionHasPicture } from '../../shared/quizPictureOptions.js'
+import {
+  PICTURE_QUIZ_MAX_OPTIONS,
+  optionHasPicture,
+  quizHasPictureOptions,
+} from '../../shared/quizPictureOptions.js'
 
-// Builder editor (moved from src/builder/components/task-editor/QuizEditors.jsx, unchanged).
+// Builder editor (moved from src/builder/components/task-editor/QuizEditors.jsx), plus the
+// picture option fields (request 128).
 export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
   const options = task.options?.length
     ? task.options
@@ -35,6 +40,23 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
       _checkTested: false,
     })
   }
+
+  function updateOption(index, change) {
+    updateOptions(options.map((o, i) => (i === index ? change(o) : o)))
+  }
+
+  // Removing a picture keeps the option (its caption becomes its words, or it is left empty for
+  // the author to fill in).
+  function removePicture(index) {
+    updateOption(index, ({ image: _image, emoji: _emoji, alt: _alt, ...rest }) => ({
+      ...rest,
+      text: rest.text ?? '',
+    }))
+  }
+
+  // A picture quiz takes 2 to 4 options (validation says so too); adding a 5th is blocked here.
+  const pictureCapReached =
+    quizHasPictureOptions({ options }) && options.length >= PICTURE_QUIZ_MAX_OPTIONS
 
   function setCorrectAnswer(answer) {
     onUpdate({
@@ -72,17 +94,42 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
               </span>
             </label>
             <div className="te-quiz-option-editor">
-              {/* Picture options are authored in YAML / the CLI for now (request 128); the
-                  Builder shows the picture read-only and keeps image, emoji and alt on edit. */}
+              {/* Pictures are added in YAML / the CLI for now (request 128). Here the author can
+                  edit the alt text (the caption is the option text below) or remove the picture;
+                  image and emoji are kept on every other edit. */}
               {optionHasPicture(option) && (
                 <div
                   className="te-quiz-option-picture"
                   data-testid={`quiz-option-picture-${option.id}`}
                 >
-                  <QuizOptionPicture option={option} size={56} />
-                  <span>
-                    <strong>Picture</strong> (set in the lesson YAML): {option.alt || 'no alt text'}
-                  </span>
+                  <QuizOptionPicture option={option} size={56} decorative />
+                  <div className="te-quiz-option-picture-fields">
+                    <input
+                      type="text"
+                      className="te-input"
+                      aria-label={`Option ${option.id.toUpperCase()} alt text`}
+                      placeholder="Alt text: what the picture shows"
+                      value={typeof option.alt === 'string' ? option.alt : ''}
+                      maxLength={200}
+                      onChange={(event) =>
+                        updateOption(index, (o) => ({ ...o, alt: event.target.value }))
+                      }
+                    />
+                    {!(typeof option.alt === 'string' && option.alt.trim()) && (
+                      <span className="te-quiz-option-picture-missing">
+                        Add alt text: say what the picture shows
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="te-remove-btn"
+                    onClick={() => removePicture(index)}
+                    aria-label={`Remove picture from option ${option.id.toUpperCase()}`}
+                    title="Remove picture"
+                  >
+                    x
+                  </button>
                 </div>
               )}
               <MarkdownFieldEditor
@@ -90,9 +137,7 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
                 minHeight={118}
                 ariaLabel={`Option ${option.id.toUpperCase()} Markdown editor views`}
                 value={option.text ?? ''}
-                onChange={(value) =>
-                  updateOptions(options.map((o, i) => (i === index ? { ...o, text: value } : o)))
-                }
+                onChange={(value) => updateOption(index, (o) => ({ ...o, text: value }))}
                 placeholder={
                   optionHasPicture(option)
                     ? `Option ${option.id.toUpperCase()} caption (optional)`
@@ -129,9 +174,17 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
           type="button"
           className="te-add-check-btn"
           onClick={() => updateOptions([...options, { id: '', text: '' }])}
+          disabled={pictureCapReached}
+          aria-describedby={pictureCapReached ? `quiz-picture-cap-${task.id}` : undefined}
         >
           + Add option
         </button>
+        {pictureCapReached && (
+          <p className="te-act-note" id={`quiz-picture-cap-${task.id}`}>
+            Picture quizzes take 2 to {PICTURE_QUIZ_MAX_OPTIONS} options, so they stay big enough to
+            tap.
+          </p>
+        )}
       </div>
     </Field>
   )
