@@ -52,8 +52,8 @@ Entries written before 2026-09-29 are not tagged.
   pictures, and no pictures on any other quiz type (an empty `image: ""` / `emoji: ""` is no
   picture; an `emoji` must really be one emoji). Pictures are added in YAML for now; the Builder
   edits the alt text and caption, removes a picture, stops a picture quiz at 4 options, and turns
-  pictures into words when the quiz is switched to another type (switching back in the same
-  session restores them). Quizzes with no pictures read exactly as before. A picture in the
+  pictures into words when the quiz is switched to another type, after an inline "this cannot be
+  undone" confirm. Quizzes with no pictures read exactly as before. A picture in the
   question (`explainer` Markdown) with word or code options already worked and is now
   documented. See [quiz-tasks.md](quiz-tasks.md#picture-options).
   - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves:

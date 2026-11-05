@@ -2124,6 +2124,34 @@ select {
 .te-quiz-type-meta--active {
   color: rgba(255, 255, 255, 0.82);
 }
+/* Leaving multiple choice on a picture quiz: an inline yes/no, never a browser dialog. */
+.te-quiz-type-confirm {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.te-quiz-type-confirm__actions {
+  display: flex;
+  gap: 8px;
+}
+.te-quiz-type-confirm__btn {
+  padding: 5px 12px;
+  border-radius: var(--ui-radius-sm);
+  border: 1px solid var(--colour-warning-text);
+  background: #fff;
+  color: var(--colour-warning-text);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.te-quiz-type-confirm__btn--go {
+  background: var(--colour-warning-text);
+  color: #fff;
+}
 
 /* Activity gallery and activity editors (Builder, plan step 2.4) */
 .te-activity-gallery {

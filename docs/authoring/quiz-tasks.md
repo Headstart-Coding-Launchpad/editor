@@ -130,10 +130,10 @@ option an `image` (or an `emoji`) plus `alt`, and optionally a short `text` capt
   kept on every other edit. Adding a picture, or changing which picture, is done in the lesson
   YAML for now. A picture quiz stops at 4 options (Add option is disabled, with a note). Switching
   the quiz to another type (a poll, say) turns each picture into words (its caption, else its alt
-  text), so the saved poll has no pictures and validates; switching back to multiple choice in
-  the same Builder session brings the pictures back (and any option words you did not edit). The
-  pictures are only remembered in the open Builder, not saved: after a reload the poll is just a
-  poll.
+  text), so the saved poll has no pictures and validates. This cannot be undone, so on a quiz with
+  pictures the Builder asks first, inline under the quiz types: "Keep Multiple choice" changes
+  nothing, "Continue" converts. Switching back to multiple choice gives word options; add the
+  pictures again in YAML.
 
 **A picture in the question** ("Which code drew this?") needs nothing new: put the picture in
 the `explainer` as Markdown (`![Red circle in the middle](https://...)`) and keep code or word

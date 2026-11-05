@@ -69,9 +69,10 @@ describe('word-only options read exactly as before picture options (characteriza
   })
 })
 
-describe('switching quiz type in the Builder can be undone', () => {
+describe('switching quiz type in the Builder is pure (no hidden picture memory)', () => {
   const task = {
     id: 'pic-switch-1',
+    title: 'Pick the fox',
     taskType: 'quiz',
     quizType: 'multiple_choice',
     options: [
@@ -81,29 +82,26 @@ describe('switching quiz type in the Builder can be undone', () => {
     check: { type: 'answer_equals', value: 'a' },
   }
 
-  it('multiple choice -> poll -> multiple choice keeps the pictures', () => {
+  it('multiple choice -> poll -> multiple choice keeps the words, not the pictures', () => {
     const poll = switchQuizType(task, 'poll')
     expect(poll.options.some((o) => o.image || o.emoji || o.alt)).toBe(false)
     expect(validate(poll).errors).toEqual([])
     const back = switchQuizType(poll, 'multiple_choice')
-    expect(back.options).toEqual(task.options)
+    expect(back.options).toEqual([
+      { id: 'a', text: 'Red circle on top' },
+      { id: 'b', text: 'Fox' },
+    ])
   })
 
-  it('multiple choice -> confidence (no options) -> multiple choice keeps the pictures', () => {
-    const back = switchQuizType(switchQuizType(task, 'confidence'), 'multiple_choice')
-    expect(back.options).toEqual(task.options)
-  })
-
-  it('an option edited on the poll keeps its edit; its picture still comes back', () => {
+  it('the same switch gives the same result every time (nothing kept between calls)', () => {
     const poll = switchQuizType(task, 'poll')
-    const edited = {
-      ...poll,
-      options: poll.options.map((o) => (o.id === 'b' ? { ...o, text: 'Fox cub' } : o)),
-    }
-    const back = switchQuizType(edited, 'multiple_choice')
-    expect(back.options[1]).toEqual({ id: 'b', emoji: '🦊', alt: 'A fox', text: 'Fox cub' })
-    // An option whose words were only the alt text gets its empty caption back.
-    expect(back.options[0]).toEqual({ id: 'a', image: url('a'), alt: 'Red circle on top' })
+    const other = { ...task, options: [{ id: 'a', text: 'Cat' }, { id: 'b', text: 'Dog' }] }
+    // Another task with the same id and title, switched in the same session, gets no pictures.
+    const back = switchQuizType(switchQuizType(other, 'poll'), 'multiple_choice')
+    expect(back.options.some((o) => o.image || o.emoji)).toBe(false)
+    expect(switchQuizType(poll, 'multiple_choice').options.some((o) => o.image || o.emoji)).toBe(
+      false
+    )
   })
 })
 
@@ -130,6 +128,29 @@ describe('picture validation is exact', () => {
     expect(validate(match).errors.filter((e) => /picture/.test(e))).toEqual([])
     const withPicture = { ...match, options: [{ id: 'a', text: 'x', emoji: '🦊' }] }
     expect(validate(withPicture).errors.some((e) => /has a picture/.test(e))).toBe(true)
+  })
+
+  it('a non-text image, emoji or alt is flagged on every quiz type that carries options', () => {
+    for (const quizType of ['multiple_choice', 'poll', 'short_answer', 'match', 'fill_blank']) {
+      for (const [field, value] of [
+        ['image', 5],
+        ['emoji', true],
+        ['alt', { words: 'x' }],
+      ]) {
+        const { errors } = validate({
+          taskType: 'quiz',
+          quizType,
+          options: [
+            { id: 'a', text: 'Yes' },
+            { id: 'b', text: 'No', [field]: value },
+          ],
+          check: quizType === 'multiple_choice' ? { type: 'answer_equals', value: 'a' } : null,
+        })
+        expect(errors, `${quizType} ${field}`).toContain(
+          `Task 1 is a quiz but option b has ${field} that is not text (write it as a quoted string)`
+        )
+      }
+    }
   })
 
   it('an emoji picture must be one emoji: a letter, digit, "?" or word is an error', () => {

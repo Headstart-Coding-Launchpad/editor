@@ -252,7 +252,7 @@ describe('picture options: switching quiz type in the Builder', () => {
     }
   })
 
-  it('switching back to multiple choice keeps the pictures', () => {
+  it('re-choosing multiple choice on a multiple-choice quiz keeps the pictures', () => {
     const task = picTask([A, B])
     expect(switchQuizType(task, 'multiple_choice').options).toEqual([A, B])
   })

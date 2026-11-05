@@ -37,7 +37,7 @@ export const CODE_ARRANGE_PYTHON_MODULE_TYPES = Object.freeze(['python', 'turtle
 // alt text on every picture, https images, one emoji, and every option should have a picture.
 // The quiz also guards at render time (QuizOptionPicture), for data that skipped this.
 function validatePictureFieldTypes(task, { n, errors }) {
-  for (const option of task.options ?? []) {
+  for (const option of Array.isArray(task.options) ? task.options : []) {
     for (const field of PICTURE_FIELDS) {
       if (option?.[field] != null && typeof option[field] !== 'string')
         errors.push(
@@ -96,7 +96,6 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
     // A picture option may leave its caption (`text`) empty.
     if (task.options?.some((option) => !optionHasPicture(option) && !option.text?.trim()))
       errors.push(`Task ${n} is a quiz but has an empty option text`)
-    validatePictureFieldTypes(task, { n, errors })
     if (quizHasPictureOptions(task)) validatePictureOptions(task, { n, errors, warnings })
     if (task.check?.type !== 'answer_equals' || !task.check.value)
       errors.push(`Task ${n} is a quiz but no correct answer has been selected`)
@@ -166,6 +165,9 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
         `Task ${n} is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored`
       )
   }
+  // image / emoji / alt must be text on every quiz type that has options (a stray number or list
+  // from YAML would otherwise slip past the picture checks, which only see text).
+  validatePictureFieldTypes(task, { n, errors })
   // Pictures are multiple-choice only (the poll has its own message above). A quiz switched to
   // another type in the Builder loses them (switchQuizType), so this catches YAML and imports.
   if (quizType !== 'multiple_choice' && quizType !== 'poll') {

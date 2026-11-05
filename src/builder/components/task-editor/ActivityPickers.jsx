@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Field } from './TaskEditorFields'
 import {
   getGalleryActivityDefinitions,
@@ -7,6 +7,7 @@ import {
 } from '../../../activities/registry.pure.js'
 import { getActivityUi } from '../../../activities/registry.js'
 import { UNKNOWN_ACTIVITY_ID } from '../../../activities/resolve.js'
+import { quizHasPictureOptions } from '../../../shared/quizPictureOptions.js'
 
 // Registry-driven pickers for the Builder's Quiz and Activity task formats (plan step 2.4).
 // Adding an activity (or a quiz sub-type) to the registry adds it here with no Builder change:
@@ -15,9 +16,25 @@ import { UNKNOWN_ACTIVITY_ID } from '../../../activities/resolve.js'
 /**
  * Quiz-type picker: every category 'quiz' activity. `onSelect(definition)` receives the chosen
  * activity; `onQuizTypeChange(quizType)` is kept for older callers.
+ *
+ * Picture options are multiple-choice only, and leaving multiple choice turns each picture into
+ * its caption (switchQuizType) for good. So on a quiz with pictures, choosing another quiz type
+ * first shows an inline warning: "Keep Multiple choice" changes nothing, "Continue" converts.
  */
 export function QuizTypePicker({ task, onSelect, onQuizTypeChange }) {
   const activeId = getTaskActivity(task)?.id
+  // { taskId, definition }: the switch waiting for the author's yes, for this task only.
+  const [pending, setPending] = useState(null)
+  const pendingDefinition = pending && pending.taskId === task?.id ? pending.definition : null
+  const choose = (definition) => {
+    setPending(null)
+    onSelect?.(definition)
+    onQuizTypeChange?.(definition.legacy?.quizType)
+  }
+  const losesPictures = (definition) =>
+    definition.id !== activeId &&
+    definition.legacy?.quizType !== 'multiple_choice' &&
+    quizHasPictureOptions(task)
   return (
     <Field label="Quiz type">
       <div className="te-quiz-type-grid">
@@ -34,8 +51,8 @@ export function QuizTypePicker({ task, onSelect, onQuizTypeChange }) {
               data-activity={definition.id}
               title={definition.description || undefined}
               onClick={() => {
-                onSelect?.(definition)
-                onQuizTypeChange?.(definition.legacy?.quizType)
+                if (losesPictures(definition)) setPending({ taskId: task?.id, definition })
+                else choose(definition)
               }}
             >
               {Icon ? <Icon /> : <span aria-hidden="true">{definition.icon}</span>}
@@ -51,6 +68,34 @@ export function QuizTypePicker({ task, onSelect, onQuizTypeChange }) {
           )
         })}
       </div>
+      {pendingDefinition ? (
+        <div
+          className="te-act-message te-act-message--warning te-quiz-type-confirm"
+          role="alert"
+          data-testid="quiz-type-picture-confirm"
+        >
+          <span>
+            Switching to {pendingDefinition.label} turns the pictures into their captions. This
+            cannot be undone.
+          </span>
+          <span className="te-quiz-type-confirm__actions">
+            <button
+              type="button"
+              className="te-quiz-type-confirm__btn"
+              onClick={() => setPending(null)}
+            >
+              Keep Multiple choice
+            </button>
+            <button
+              type="button"
+              className="te-quiz-type-confirm__btn te-quiz-type-confirm__btn--go"
+              onClick={() => choose(pendingDefinition)}
+            >
+              Continue to {pendingDefinition.label}
+            </button>
+          </span>
+        </div>
+      ) : null}
     </Field>
   )
 }
