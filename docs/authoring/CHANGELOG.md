@@ -48,6 +48,24 @@ Entries written before 2026-09-29 are not tagged.
   Stage only. See [quiz-tasks.md](quiz-tasks.md#picture-options).
   - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves: none
 
+- **Keyboard: `showKey` and `highlight: "key:<key>"`.** A `symbols` or `find_key` task with
+  `showKey: true` shows the target big above the practice area (with "Shift + 9" under it when it
+  needs Shift) and lights its key, and both Shift keys when needed, on the keyboard picture from
+  the start: a steady amber glow that pulses twice (no pulse with reduce motion). A press that
+  isn't the target gets a calm line, "Hold Shift, then press 9" or "That was 8. Press the glowing
+  keys."; the "Look for…" hint is not needed. Left out, nothing changes: the key lights after two
+  misses. The Builder turns `showKey` on for a new `find_key` / `symbols` task. Each finished
+  `find_key` / `symbols` item now saves `tries` (once, with the result), and the tutor card adds
+  the hardest item once it took 3 or more presses (`2/5 done · ( took 3 tries`). Keyboard tasks
+  also take `highlight: "key:("` (any UK character, letters once, or `Space`, `Enter`, `Tab`,
+  `Shift`, in quotes): the key glows for 20 seconds on the picture or the on-screen keyboard when
+  the task opens, and tutors can do the same live from the Highlight menu. Modes with no picture
+  on laptops (`type_text`, `type_code`, `edit_text`, `shortcuts`, `falling_words`) get a warning.
+  `highlight` on any other activity is an error: "the <activity> activity has no highlight
+  targets". UK layout only. See [activities/keyboard.md](activities/keyboard.md).
+  - Affects: keyboard (symbols, find_key), cli · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-11-05-keyboard-symbols-mode-show-the-target-symbol-big-and-light-i-2.md
+
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
   picture instead of words: `image` (an `https://` URL, normally a lesson asset from `assets
   upload`) or `emoji` (one emoji), with required `alt` text and an optional `text` caption.

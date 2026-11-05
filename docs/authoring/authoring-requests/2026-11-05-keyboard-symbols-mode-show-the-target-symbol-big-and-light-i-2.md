@@ -1,6 +1,6 @@
 # Keyboard symbols mode: show the target symbol big and light its key from the start
 
-- **Status:** open
+- **Status:** planned
 - **Kind:** activity mode
 - **Requested by:** Ryan (approved by Ryan), 2026-11-05
 - **Lessons blocked:** none yet
@@ -31,4 +31,10 @@ Same gap as watching request #132 (filed by the revision agent); refiled as requ
 
 ## Resolution
 
-<!-- Filled in by whoever builds it: PR link, activity/module id, docs link. -->
+Built on branch `feature/keyboard-symbols-showkey` (not merged yet). Activity `keyboard`:
+`showKey: true` on `symbols` / `find_key` shows the target big with "Shift + 9" under it and
+lights its key and both Shift keys from the start, with calm miss lines; each finished item saves
+`tries` and the tutor card shows the hardest one. Keyboard tasks also take
+`highlight: "key:<key>"` and the tutor's live Highlight menu (UK layout only). Docs:
+[activities/keyboard.md](../activities/keyboard.md), [lesson-schema.md](../lesson-schema.md)
+(`highlight`), CHANGELOG 2026-11-05.

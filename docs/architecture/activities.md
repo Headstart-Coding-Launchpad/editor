@@ -291,6 +291,19 @@ It reuses the tutor-mediated roster route of `carryCodeFromLesson` (`src/shared/
 - **Student.** `useStudentCodeState` runs `useCrossLessonCarry` for the task (own state = the activity's aux file exists). A live student with none holds: `LessonTaskContent` shows `CarryHoldNotice` ("Fetching your saved work…") instead of the activity. On `found`, `useActivityState` sets the state to `carrySlot.apply(task, carried)` and saves it as their own (a reload never waits again). On `none` / `starter` / `missing` it stays `initialState(task)`. Solo, the presentation window, the Builder preview, sandboxes and "No class" sessions never wait.
 - Rules: `carryInbox` accepts `kind: 'activity_slot'`; sizes are capped as for code. No localStorage scan across lessons.
 
+## Highlight targets
+
+An activity may declare `highlightTargets` on `defineActivity`, the same specs as a module's
+`capabilities.highlightTargets` (`{ id, label, options?, optionNames?, example? }`, no panes),
+so a task's `highlight` field and the tutor's Highlight menu can make one of its controls glow
+(`src/shared/controlHighlight.js`). A hosted activity task's scope is `activity:<id>`
+(`highlightScopeForTask`); every function there that takes a module type takes the scope too.
+StudentView runs the highlight for such a task outside the sandbox (no reveal panes), and
+StudentModal / TeacherView list its targets. The UI marks each control with
+`data-highlight-target`. Only the Keyboard declares any (`key:<key>`, `keyboard/keyTargets.js`,
+request 133); `highlight` on another activity is an error ("the <activity> activity has no
+highlight targets").
+
 ## Unknown activities
 
 A task whose `activityType` this bundle doesn't know resolves to the `unknown` definition: the
