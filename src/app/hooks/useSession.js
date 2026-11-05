@@ -1756,8 +1756,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       source !== 'scrub'
     if (runOfLivePass) {
       const nextRetries = cached.retries + 1
-      await update(ref(db, `${basePath}/${cached.key}`), { retries: nextRetries, source: null })
       attemptCacheRef.current[cacheKey] = { ...cached, retries: nextRetries, source: null }
+      await update(ref(db, `${basePath}/${cached.key}`), { retries: nextRetries, source: null })
       return
     }
     if (onSolvedTask) return
@@ -1808,6 +1808,17 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     // contain values the Realtime Database's set() rejects (e.g. undefined), and since
     // callers never await/catch this, that rejection used to vanish silently — the
     // attempt just never reached the report. A string is always writable.
+    // The cache is filled before the write is awaited (request 131 round 7): a Run pressed
+    // right after a live tick, on a slow network, still sees the live attempt and takes it over.
+    attemptCacheRef.current[cacheKey] = {
+      serialized,
+      key: newRef.key,
+      attemptNumber,
+      retries: 0,
+      passed,
+      scrubMiss,
+      source: source === 'scrub' || source === 'live' ? source : null,
+    }
     await set(newRef, {
       submission: serialized,
       passed,
@@ -1823,15 +1834,6 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       loggedAt: serverTimestamp(),
       passedAt: passed ? serverTimestamp() : null,
     })
-    attemptCacheRef.current[cacheKey] = {
-      serialized,
-      key: newRef.key,
-      attemptNumber,
-      retries: 0,
-      passed,
-      scrubMiss,
-      source: source === 'scrub' || source === 'live' ? source : null,
-    }
   }
 
   // Marks this tab's latest logged attempt on a task as having errored, for an error reported

@@ -2261,6 +2261,40 @@ describe('useSession', () => {
       expect(firebaseMocks.update).not.toHaveBeenCalled()
     })
 
+    // Round 7: on a slow network the live attempt's write is still pending when the Run of the
+    // same code is pressed; the Run must still take the source over.
+    it('a Run right after a live pass whose write is still pending takes the source over', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      let finishWrite
+      firebaseMocks.set.mockImplementationOnce(
+        () => new Promise((resolve) => (finishWrite = resolve))
+      )
+      let livePending
+      await act(async () => {
+        livePending = result.current.logAttempt('student-slow', 9, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'live',
+        })
+      })
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-slow', 9, {
+          submission: 'x = 1',
+          passed: true,
+          onSolvedTask: true,
+        })
+      })
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-slow/9/mockHighlightId' },
+        { retries: 1, source: null }
+      )
+      await act(async () => {
+        finishWrite()
+        await livePending
+      })
+    })
+
     it('a Run of a solved task logs nothing unless it repeats a live pass of the same code', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {
