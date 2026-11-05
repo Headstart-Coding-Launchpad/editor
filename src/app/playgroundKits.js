@@ -8,6 +8,7 @@ import { PLAYGROUND_LESSON_TYPES } from '../shared/composedLesson'
 
 // The playground type that opens on the kit chooser.
 const CHOOSER_PLAYGROUND_TYPE = 'python'
+export const CHOOSER_PATH = `/playground/${CHOOSER_PLAYGROUND_TYPE}`
 
 const PICTURE_LAB_STARTER = `from stage import *
 
@@ -101,8 +102,6 @@ export function kitPath(kit) {
     ? `/playground/${kit.playgroundType}`
     : `${CHOOSER_PATH}?kit=${encodeURIComponent(kit.id)}`
 }
-
-export const CHOOSER_PATH = `/playground/${CHOOSER_PLAYGROUND_TYPE}`
 
 // Playground types a student reaches as a kit card in the chooser (Turtle, Arcade), so the Landing
 // picker doesn't list them again.
