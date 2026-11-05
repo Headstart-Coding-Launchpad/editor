@@ -134,3 +134,31 @@ export function pythonKitLessonId(kitId) {
 export const LANDING_PLAYGROUND_TYPES = Object.freeze(
   PLAYGROUND_LESSON_TYPES.filter((type) => !KIT_PLAYGROUND_TYPES.includes(type))
 )
+
+// The kit a student opened last on this device, for the chooser's "Carry on" mark. A new
+// localStorage key (no existing key changes); best-effort, like the other device settings.
+export const LAST_KIT_STORAGE_KEY = 'headstart_playground_last_kit'
+
+export function loadLastKitId() {
+  try {
+    const id = localStorage.getItem(LAST_KIT_STORAGE_KEY)
+    return getKit(id) ? id : null
+  } catch {
+    return null
+  }
+}
+
+export function saveLastKitId(id) {
+  try {
+    if (getKit(id)) localStorage.setItem(LAST_KIT_STORAGE_KEY, id)
+  } catch {
+    // Storage full or blocked: the chooser just shows no Carry on mark.
+  }
+}
+
+// The kit a playground is showing: the Python kit, or the kit card that routes to this type
+// (Turtle, Game); null for playgrounds that are not kits (Electronics, Scratch).
+export function kitIdForPlayground(type, pythonKit = null) {
+  if (pythonKit) return pythonKit.id
+  return MAIN_KITS.find((kit) => kit.playgroundType === type)?.id ?? null
+}

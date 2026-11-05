@@ -105,6 +105,31 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
     ).toBeInTheDocument()
   })
 
+  it('Switch kit goes back to the chooser with the last kit marked Carry on', async () => {
+    const user = userEvent.setup()
+    renderAt('/playground/python')
+
+    await user.click(screen.getByRole('button', { name: /beats/i }))
+    expect(screen.getByTestId('lesson-id').textContent).toBe('__playground__python:beats')
+    await user.click(screen.getByRole('button', { name: /switch kit/i }))
+
+    expect(screen.getByTestId('where').textContent).toBe('/playground/python')
+    const beats = screen.getByRole('button', { name: /beats/i })
+    expect(beats).toHaveTextContent(/carry on/i)
+    expect(screen.getByRole('button', { name: /picture lab/i })).not.toHaveTextContent(/carry on/i)
+  })
+
+  it('a Blank page student finds More kits already open with Carry on', () => {
+    localStorage.setItem('headstart_playground_last_kit', 'blank')
+    renderAt('/playground/python')
+
+    expect(screen.getByRole('button', { name: /blank page/i })).toHaveTextContent(/carry on/i)
+    expect(screen.getByRole('button', { name: /fewer kits/i })).toHaveAttribute(
+      'aria-expanded',
+      'true'
+    )
+  })
+
   it('Scratch has no Help topics', () => {
     renderAt('/playground/scratch')
 

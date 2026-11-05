@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
@@ -11,8 +11,11 @@ import {
   canSwitchKit,
   getPythonKit,
   hasKitChooser,
+  kitIdForPlayground,
   kitPath,
+  loadLastKitId,
   pythonKitLessonId,
+  saveLastKitId,
 } from '../playgroundKits'
 
 const PLAYGROUND_TYPES = new Set(PLAYGROUND_LESSON_TYPES)
@@ -51,7 +54,21 @@ export default function PlaygroundView() {
     [type, kit, showChooser]
   )
 
-  if (showChooser) return <PlaygroundKitChooser onPick={(picked) => navigate(kitPath(picked))} />
+  // Opening a kit (from the chooser, a lesson's Open Playground or a link) makes it the chooser's
+  // "Carry on" kit next time.
+  const openedKitId = lesson ? kitIdForPlayground(type, kit) : null
+  useEffect(() => {
+    if (openedKitId) saveLastKitId(openedKitId)
+  }, [openedKitId])
+
+  if (showChooser) {
+    return (
+      <PlaygroundKitChooser
+        carryOnKitId={loadLastKitId()}
+        onPick={(picked) => navigate(kitPath(picked))}
+      />
+    )
+  }
   if (!lesson) return <LoadingScreen error="That playground is not available." />
 
   // Turtle and Arcade are kits in the Python chooser too, so they get Switch kit as well.
