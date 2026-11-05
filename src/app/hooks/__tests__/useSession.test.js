@@ -2224,6 +2224,99 @@ describe('useSession', () => {
       )
     })
 
+    // Request 131 round 4: a pressed Run of the code a typed redraw ticked is a Run of it: the
+    // attempt's source becomes the Run's (null), so the report no longer says "no Run".
+    it('a Run of the same code after a live pass takes the source over (and counts as a retry)', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'live',
+        })
+      })
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 1',
+          passed: true,
+          onSolvedTask: true,
+        })
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).toHaveBeenCalledWith(
+        { path: 'sessions/lesson-1/attemptLog/student-live/9/mockHighlightId' },
+        { retries: 1, source: null }
+      )
+      // Once a Run's, later Runs of a solved task change nothing.
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 1',
+          passed: true,
+          onSolvedTask: true,
+        })
+      })
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it('a Run of a solved task logs nothing unless it repeats a live pass of the same code', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        // No cached attempt (a reload): nothing to take over, so nothing is written.
+        await result.current.logAttempt('student-fresh', 9, {
+          submission: 'x = 1',
+          passed: true,
+          onSolvedTask: true,
+        })
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      await act(async () => {
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'live',
+        })
+      })
+      firebaseMocks.update.mockClear()
+      firebaseMocks.set.mockClear()
+      await act(async () => {
+        // Other code, or the checks a scrub ran: not a Run of the ticked code.
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 2',
+          passed: true,
+          onSolvedTask: true,
+        })
+        await result.current.logAttempt('student-live', 9, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'scrub',
+          onSolvedTask: true,
+        })
+      })
+      expect(firebaseMocks.set).not.toHaveBeenCalled()
+      expect(firebaseMocks.update).not.toHaveBeenCalled()
+    })
+
+    it("a live pass of a Run's failed code keeps the Run's source", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-run', 9, { submission: 'x = 1', passed: false })
+      })
+      firebaseMocks.update.mockClear()
+      await act(async () => {
+        await result.current.logAttempt('student-run', 9, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'live',
+        })
+      })
+      const [, updates] = firebaseMocks.update.mock.calls.at(-1)
+      expect(updates).toEqual(expect.objectContaining({ passed: true, retries: 1 }))
+      expect(updates).not.toHaveProperty('source')
+    })
+
     it('pushes a code_arrange tile miss under the student’s own node, not the attempt log', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

@@ -1720,7 +1720,9 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   //
   // `source: 'scrub'` marks an attempt the checks on a live scrub's release made (P6-20) rather
   // than a press of Run, and `source: 'live'` a pass a typed redraw ticked (request 131); a retry
-  // keeps the first entry's.
+  // keeps the first entry's, except that a Run of the very code a typed redraw ticked takes it over
+  // (`onSolvedTask: true`, recordRun's Run of a solved task: it only ever does that, and is a
+  // retry of that attempt with the Run's source, null). A live pass never overwrites a Run's.
   async function logAttempt(
     anonymousId,
     taskId,
@@ -1735,15 +1737,31 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       changeable,
       placements,
       source,
+      onSolvedTask,
     } = {}
   ) {
     const cacheKey = `${anonymousId}:${taskId}`
     const cached = attemptCacheRef.current[cacheKey]
-    if (cached?.passed && !changeable) return
-
     const serialized =
       typeof submission === 'string' ? submission : JSON.stringify(submission ?? null)
     const basePath = `sessions/${lessonId}/attemptLog/${anonymousId}/${taskId}`
+
+    // A pressed Run of the code a typed redraw ticked (request 131): the attempt is now a Run's.
+    const runOfLivePass =
+      cached?.passed &&
+      cached.source === 'live' &&
+      cached.serialized === serialized &&
+      passed &&
+      source !== 'live' &&
+      source !== 'scrub'
+    if (runOfLivePass) {
+      const nextRetries = cached.retries + 1
+      await update(ref(db, `${basePath}/${cached.key}`), { retries: nextRetries, source: null })
+      attemptCacheRef.current[cacheKey] = { ...cached, retries: nextRetries, source: null }
+      return
+    }
+    if (onSolvedTask) return
+    if (cached?.passed && !changeable) return
 
     if (auto === AUTO_CHECK_LEAVE) {
       await set(push(ref(db, basePath)), {
@@ -1812,6 +1830,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       retries: 0,
       passed,
       scrubMiss,
+      source: source === 'scrub' || source === 'live' ? source : null,
     }
   }
 
