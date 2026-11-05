@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CodeEditor } from '../../shared/CodeEditor'
 
@@ -28,6 +28,11 @@ export default function CopyCodeEditDialog({
   onClose,
 }) {
   const [text, setText] = useState(initialText ?? '')
+  const editorRef = useRef(null)
+  // Keyboard users land in the editor (the old textarea had autoFocus).
+  useEffect(() => {
+    editorRef.current?.getView?.()?.focus()
+  }, [])
   return createPortal(
     <div
       className="ui-modal-backdrop"
@@ -39,7 +44,8 @@ export default function CopyCodeEditDialog({
         if (event.target === event.currentTarget) onClose()
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
+        // CodeMirror uses Escape to close its autocomplete popup (and marks it handled).
+        if (event.key === 'Escape' && !event.defaultPrevented) {
           event.stopPropagation()
           onClose()
         }
@@ -53,8 +59,9 @@ export default function CopyCodeEditDialog({
           What the Type this out box shows. Clear the text to hide the box. The lesson itself is not
           changed.
         </p>
-        <div style={s.editor} data-testid="copy-code-edit-text" aria-label="Type this out text">
+        <div style={s.editor} data-testid="copy-code-edit-text" role="group" aria-label="Type this out text">
           <CodeEditor
+            ref={editorRef}
             value={text}
             language={language}
             onChange={setText}

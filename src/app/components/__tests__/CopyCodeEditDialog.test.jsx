@@ -36,4 +36,25 @@ describe('CopyCodeEditDialog', () => {
     fireEvent.click(screen.getByTestId('copy-code-save-class'))
     expect(onSave).toHaveBeenCalledWith('class', 'for i in range(3):\n    print(i)')
   })
+
+  it('closes on Escape, but not when the editor already used it (autocomplete popup)', () => {
+    const onClose = vi.fn()
+    render(
+      <CopyCodeEditDialog
+        studentName="Jamie"
+        taskTitle="Loops"
+        initialText=""
+        hasOwnOverride={false}
+        onSave={() => {}}
+        onClearStudent={() => {}}
+        onClose={onClose}
+      />
+    )
+    const editor = screen.getByTestId('code-editor')
+    editor.addEventListener('keydown', (e) => e.preventDefault())
+    fireEvent.keyDown(editor, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })
