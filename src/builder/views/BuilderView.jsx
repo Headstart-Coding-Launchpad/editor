@@ -23,6 +23,7 @@ import { firestore } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import { useTopicLibrary } from '../../shared/topicLibrary'
 import { collectLessonTopicReferences, validateLessonTopics } from '../../shared/topicAudit'
+import { listTaskReviewNotes } from '../../app/reviewNotes/reviewNotesService'
 
 export default function BuilderView({
   lesson,
@@ -36,6 +37,7 @@ export default function BuilderView({
   const [metaOpen, setMetaOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'done' | 'error'
   const [taskFeedback, setTaskFeedback] = useState([])
+  const [taskReviewNotes, setTaskReviewNotes] = useState([])
   const { role, user } = useAuth()
   const navigate = useNavigate()
   const {
@@ -95,6 +97,21 @@ export default function BuilderView({
       })
       .catch(() => setTaskFeedback([]))
   }, [lesson?.id, selectedTaskId])
+
+  // Preview review notes (admins only, by the rules): read-only here, newest first.
+  useEffect(() => {
+    if (!selectedTaskId || !lesson?.id || role !== 'admin') {
+      setTaskReviewNotes([])
+      return
+    }
+    let cancelled = false
+    listTaskReviewNotes(lesson.id, selectedTaskId)
+      .then((notes) => !cancelled && setTaskReviewNotes(notes))
+      .catch(() => !cancelled && setTaskReviewNotes([]))
+    return () => {
+      cancelled = true
+    }
+  }, [lesson?.id, selectedTaskId, role])
 
   function handleDownload() {
     if (errors.length) {
@@ -330,7 +347,7 @@ export default function BuilderView({
                   }))
                 }}
               />
-              <TaskFeedbackPanel feedback={taskFeedback} />
+              <TaskFeedbackPanel feedback={taskFeedback} reviewNotes={taskReviewNotes} />
             </>
           ) : (
             <div style={s.empty}>

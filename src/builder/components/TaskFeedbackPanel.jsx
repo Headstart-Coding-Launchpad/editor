@@ -1,37 +1,82 @@
 import React, { useState } from 'react'
+import {
+  CHIP_COLOURS,
+  reviewNoteStatusLabel,
+  reviewNoteTagLabel,
+} from '../../app/reviewNotes/reviewNotes'
 
-export default function TaskFeedbackPanel({ feedback = [] }) {
+// `reviewNotes`: the admin's preview review notes on this task (read-only), newest first.
+export default function TaskFeedbackPanel({ feedback = [], reviewNotes = [] }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
-  if (feedback.length === 0) return null
+  const [notesOpen, setNotesOpen] = useState(false)
+  if (feedback.length === 0 && reviewNotes.length === 0) return null
 
   return (
     <section style={s.section}>
-      <>
-        <button
-          type="button"
-          style={s.feedbackHeader}
-          onClick={() => setFeedbackOpen((o) => !o)}
-          aria-expanded={feedbackOpen}
-        >
-          <span style={s.feedbackTitle}>Teacher Feedback ({feedback.length})</span>
-          <span style={{ ...s.chevron, transform: feedbackOpen ? 'rotate(180deg)' : 'none' }}>
-            ▾
-          </span>
-        </button>
-        {feedbackOpen && (
-          <div style={s.feedbackBody}>
-            {feedback.map((item, i) => (
-              <div key={i} style={s.feedbackItem}>
-                <div style={s.meta}>
-                  <span style={s.email}>{item.teacherEmail}</span>
-                  <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
+      {reviewNotes.length > 0 && (
+        <>
+          <button
+            type="button"
+            style={{ ...s.feedbackHeader, background: '#f0f9ff' }}
+            onClick={() => setNotesOpen((o) => !o)}
+            aria-expanded={notesOpen}
+          >
+            <span style={{ ...s.feedbackTitle, color: '#0369a1' }}>
+              Preview notes ({reviewNotes.length})
+            </span>
+            <span style={{ ...s.chevron, transform: notesOpen ? 'rotate(180deg)' : 'none' }}>
+              ▾
+            </span>
+          </button>
+          {notesOpen && (
+            <ul style={s.notesBody}>
+              {reviewNotes.map((note) => (
+                <li key={note.id} style={{ ...s.feedbackItem, borderLeftColor: '#7dd3fc' }}>
+                  <div style={s.meta}>
+                    <span style={{ ...s.chip, ...CHIP_COLOURS[note.status] }}>
+                      {reviewNoteStatusLabel(note.status)}
+                    </span>
+                    {note.tag && <span style={s.email}>{reviewNoteTagLabel(note.tag)}</span>}
+                    <span style={s.date}>
+                      {note.createdAt ? new Date(note.createdAt).toLocaleString() : ''}
+                      {note.lessonVersion != null ? ` · v${note.lessonVersion}` : ''}
+                    </span>
+                  </div>
+                  <p style={s.text}>{note.text}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {feedback.length > 0 && (
+        <>
+          <button
+            type="button"
+            style={s.feedbackHeader}
+            onClick={() => setFeedbackOpen((o) => !o)}
+            aria-expanded={feedbackOpen}
+          >
+            <span style={s.feedbackTitle}>Teacher Feedback ({feedback.length})</span>
+            <span style={{ ...s.chevron, transform: feedbackOpen ? 'rotate(180deg)' : 'none' }}>
+              ▾
+            </span>
+          </button>
+          {feedbackOpen && (
+            <div style={s.feedbackBody}>
+              {feedback.map((item, i) => (
+                <div key={i} style={s.feedbackItem}>
+                  <div style={s.meta}>
+                    <span style={s.email}>{item.teacherEmail}</span>
+                    <span style={s.date}>{new Date(item.submittedAt).toLocaleString()}</span>
+                  </div>
+                  <p style={s.text}>{item.text}</p>
                 </div>
-                <p style={s.text}>{item.text}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </section>
   )
 }
@@ -80,6 +125,24 @@ const s = {
     background: '#fff',
     maxHeight: 320,
     overflowY: 'auto',
+  },
+  notesBody: {
+    listStyle: 'none',
+    margin: 0,
+    padding: '8px 14px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    background: '#fff',
+    maxHeight: 240,
+    overflowY: 'auto',
+  },
+  chip: {
+    borderRadius: 999,
+    padding: '1px 8px',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
   },
   feedbackItem: {
     borderLeft: '3px solid #86efac',
