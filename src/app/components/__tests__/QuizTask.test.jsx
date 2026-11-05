@@ -624,6 +624,12 @@ describe('QuizTask student-facing clarity (HSC Audit)', () => {
     )
     expect(screen.queryByText(/Got it!/)).toBeNull()
     expect(screen.queryByText(/✅/)).toBeNull()
+    expect(screen.getByText(/Mention what print shows/)).toBeTruthy() // the failed-check banner
+  })
+
+  it('a checked short answer whose check was not evaluated still shows Got it', () => {
+    render(<QuizTask task={legacy.SHORT_ANSWER_TASK} selectedAnswer="text" submitted />)
+    expect(screen.getByText(/Got it!/)).toBeTruthy()
   })
 
   it('a correct checked short answer still shows the tick', () => {

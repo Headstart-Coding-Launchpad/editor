@@ -15,7 +15,7 @@ export default function QuizTask({
   // (text) => void: the unsubmitted text typed so far (short answer, typed gaps), for the tutor.
   onDraftChange,
   submitted = false,
-  checkPassed = false,
+  checkPassed, // undefined = the check was not evaluated (ShortAnswerQuiz tells that from false)
   disabled = false,
   showQuestion = false,
   showResult = true,

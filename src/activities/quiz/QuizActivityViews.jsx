@@ -61,7 +61,7 @@ export function QuizActivityStudentView({
       onSelectAnswer={onSelectAnswer}
       onDraftChange={readOnly ? undefined : onDraft}
       submitted={!!result?.submitted}
-      checkPassed={result?.passed ?? false}
+      checkPassed={result?.passed ?? undefined}
       disabled={readOnly}
       showResult={teacher}
       showCorrectAnswer={teacher}

@@ -57,8 +57,9 @@ export default function ShortAnswerQuiz({
       <ShownResponsesWall responses={getShownResponses(classView.session, task.id)} />
     ) : null
 
-  // A task with a check has a right answer: no "Got it" while it is wrong. Open ones always get it.
-  const markedWrong = !!task?.check && !checkPassed
+  // A task with a check has a right answer: no "Got it" once the check was evaluated and failed.
+  // Unevaluated (checkPassed undefined) and open answers always get it.
+  const markedWrong = !!task?.check && checkPassed === false
   const submittedAnswer = localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')
 
   return (
