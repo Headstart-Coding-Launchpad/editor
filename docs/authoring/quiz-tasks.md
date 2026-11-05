@@ -91,25 +91,33 @@ option an `image` (or an `emoji`) plus `alt`, and optionally a short `text` capt
   them with the [`lessons screenshot`](lesson-screenshot-cli.md) command or a Stage export. Only
   `https://` URLs are accepted, by validation and again when the quiz draws the card: an image
   that is not `https://` is never loaded (the card shows the emoji instead, else the alt text in
-  words), and an image that fails to load shows the same fallback, never an empty box. Images
-  load lazily and send no referrer.
+  words), and an image that fails to load shows the same fallback, never an empty box. With no
+  alt text (a validation error) the caption, else the option id, stands in for it. Images load
+  lazily and send no referrer.
 - **Layout:** 2 or 3 pictures sit side by side, 4 make a 2x2 grid, and the cards stack in one
-  column when the options area is under 480px wide (measured on the quiz itself, so it also works
-  in the tutor's student window and modal). Every card is the same size; the picture fills it
-  without being cropped (a square or 4:3 PNG of about 400px looks best) and the caption sits
-  underneath. Cards are at least 120px tall, so they are easy to tap on an iPad.
+  column when the options area is under 480px wide, going back to side by side only above 520px
+  (measured on the quiz itself, so it also works in the tutor's student window and modal; the gap
+  stops the layout flipping). Every card is the same size; the picture fills it without being
+  cropped (a square or 4:3 PNG of about 400px looks best) and the caption sits underneath. Cards
+  are 120px tall at full size, easy to tap on an iPad; in a short pane they shrink with the rest of
+  the quiz (down to 78px) so four stacked cards still fit above Next, and the options scroll only
+  when even that does not fit.
 - **Mixed options:** an option with no picture is drawn as a normal word card in the same grid
   (Markdown and code work as usual). It works, but validation warns, because the cards look
   uneven. A lesson stored with more than 4 options (a validation error) still shows all of them,
   in more rows.
 - **Choosing:** one tap chooses and submits, exactly as with word options. The chosen card gets
-  a tick badge and a thick outline. Keyboard: Tab to a card, Enter or Space.
+  a tick badge and a thick outline. Keyboard: Tab to a card, Enter or Space (as for word options;
+  no quiz in the app uses arrow keys). After submitting, screen readers also hear the verdict in
+  words on the card ("Your answer", "Your answer, incorrect", "Correct answer").
 - **Rules (validation):** `alt` is required on every picture (200 characters at most); `image`
-  must be `https://`; an option has `image` or `emoji`, not both; `emoji` is one emoji; `image`,
-  `emoji` and `alt` must be text; 2 to 4 options when any option has a picture; `text` may be
-  empty on a picture option. Mixing picture and word-only options is a warning. Pictures work
-  only on multiple-choice quizzes: on a poll, match, fill-in or short-answer quiz they are an
-  error.
+  must be `https://`; an option has `image` or `emoji`, not both; `emoji` is exactly one emoji
+  (a letter, digit or `?` is not); `image`, `emoji` and `alt` must be text; 2 to 4 options when
+  any option has a picture; `text` may be empty on a picture option. An empty `image: ""` or
+  `emoji: ""` counts as no picture (a placeholder is fine). Mixing picture and word-only options
+  is a warning. Pictures work only on single-answer multiple-choice quizzes: on a poll (including
+  a pick-several poll), match, fill-in or short-answer quiz they are an error. Quizzes with no
+  pictures read exactly as before, everywhere.
 - **Order:** as everywhere, options show in the order written. Shuffle them once when you write
   the lesson, so the tutor can say "picture B" to the whole room.
 - **Tutor view:** the student card shows a small thumbnail of the chosen picture with its id and
@@ -121,8 +129,11 @@ option an `image` (or an `emoji`) plus `alt`, and optionally a short `text` capt
   red) and a remove-picture button; the option text box is the caption. `image` and `emoji` are
   kept on every other edit. Adding a picture, or changing which picture, is done in the lesson
   YAML for now. A picture quiz stops at 4 options (Add option is disabled, with a note). Switching
-  the quiz to another type (a poll, say) turns each picture into words: its caption, else its alt
-  text.
+  the quiz to another type (a poll, say) turns each picture into words (its caption, else its alt
+  text), so the saved poll has no pictures and validates; switching back to multiple choice in
+  the same Builder session brings the pictures back (and any option words you did not edit). The
+  pictures are only remembered in the open Builder, not saved: after a reload the poll is just a
+  poll.
 
 **A picture in the question** ("Which code drew this?") needs nothing new: put the picture in
 the `explainer` as Markdown (`![Red circle in the middle](https://...)`) and keep code or word
