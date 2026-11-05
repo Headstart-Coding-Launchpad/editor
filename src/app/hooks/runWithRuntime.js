@@ -333,36 +333,42 @@ export async function runWithRuntime(ctx) {
   const isFreePlay = refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current
   const source = ctx.runOptions?.source
   // The verdict (runJudge.js, pure), then its feedback on screen, then the records (runRecord.js).
-  const judgement = judgeRun({
-    task,
-    definition,
-    code: nextCode,
-    status,
-    outputRaw: outputBuffer.raw,
-    result,
-    panelContext,
-    alreadySolved,
-    isFreePlay,
-    source,
-  })
-  const { passed, suggestion, evaluation, isScrubRun, hasTests, checkTask } = judgement
-  if (!alreadySolved && !isFreePlay) {
-    if (evaluation) feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
-    if (!hasTests && checkTask?.check)
-      feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
-    // A failed scrub release is not a failed attempt, so it does not step the support offers.
-    if (!(isScrubRun && !passed)) {
-      feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+  // setRunning(false) is in a finally: a throw from a check or a rejected/throwing write still
+  // propagates unchanged, but no longer leaves Run stuck on Stop. On success it runs once, after
+  // await recordRun, exactly where it was.
+  try {
+    const judgement = judgeRun({
+      task,
+      definition,
+      code: nextCode,
+      status,
+      outputRaw: outputBuffer.raw,
+      result,
+      panelContext,
+      alreadySolved,
+      isFreePlay,
+      source,
+    })
+    const { passed, suggestion, evaluation, isScrubRun, hasTests, checkTask } = judgement
+    if (!alreadySolved && !isFreePlay) {
+      if (evaluation) feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
+      if (!hasTests && checkTask?.check)
+        feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
+      // A failed scrub release is not a failed attempt, so it does not step the support offers.
+      if (!(isScrubRun && !passed)) {
+        feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
+      }
     }
-  }
 
-  await recordRun(ctx, {
-    code: nextCode,
-    outputRaw: outputBuffer.raw,
-    status,
-    result,
-    judgement,
-    source,
-  })
-  setRunning(false)
+    await recordRun(ctx, {
+      code: nextCode,
+      outputRaw: outputBuffer.raw,
+      status,
+      result,
+      judgement,
+      source,
+    })
+  } finally {
+    setRunning(false)
+  }
 }

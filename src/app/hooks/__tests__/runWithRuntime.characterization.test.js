@@ -70,6 +70,8 @@ async function run({
   teacherAssisted = false,
   stillOnTask = true,
   writeStudentRun = () => Promise.resolve(),
+  writeStudentStageResult = () => undefined,
+  buildContext = undefined,
 } = {}) {
   const log = []
   const spy =
@@ -83,7 +85,7 @@ async function run({
     ...base,
     checking: {
       ...base.checking,
-      buildContext: spy('checking.buildContext', base.checking.buildContext),
+      buildContext: spy('checking.buildContext', buildContext ?? base.checking.buildContext),
     },
   }
   let code = startCode
@@ -144,7 +146,7 @@ async function run({
       writeStudentCode: spy('writeStudentCode'),
       writeStudentRun: spy('writeStudentRun', writeStudentRun),
       writeStudentTurtleResult: spy('writeStudentTurtleResult'),
-      writeStudentStageResult: spy('writeStudentStageResult'),
+      writeStudentStageResult: spy('writeStudentStageResult', writeStudentStageResult),
       writeStudentTaskRun: spy('writeStudentTaskRun'),
       logAttempt: spy('logAttempt'),
     },
@@ -920,7 +922,7 @@ describe('runWithRuntime characterization: stopped', () => {
 })
 
 describe('runWithRuntime characterization: a rejected writeStudentRun', () => {
-  it('rejects the Run before the rest of the record and before setRunning(false)', async () => {
+  it('rejects the Run before the rest of the record, and still ends it (finally)', async () => {
     const { log, error } = await run({
       writeStudentRun: () => Promise.reject(new Error('PERMISSION_DENIED')),
     })
@@ -938,7 +940,56 @@ describe('runWithRuntime characterization: a rejected writeStudentRun', () => {
       applyCheckFeedback [true,"",{"scrub":false}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
-      writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]"
+      writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
+      setRunning [false]"
+    `)
+  })
+})
+
+describe('runWithRuntime characterization: a throw in the Run tail', () => {
+  it('a throwing writeStudentStageResult rejects the Run and still ends it once', async () => {
+    const { log, error } = await run({
+      writeStudentStageResult: () => {
+        throw new Error('stage write broke')
+      },
+    })
+    expect(error?.message).toBe('stage write broke')
+    expect(log).toMatchInlineSnapshot(`
+      "runtime.run ["print(\\"hi\\")","t1",{}]
+      setInputPrompt [null]
+      setOutput ["hi\\n"]
+      setRunStatus ["success"]
+      setTurtleResult [null]
+      setStageResult [null]
+      variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
+      checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
+      updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":""},true]
+      applyCheckFeedback [true,"",{"scrub":false}]
+      updateSupportStageForAttempt [true]
+      saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
+      writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
+      writeStudentStageResult ["stu-1",null]
+      setRunning [false]"
+    `)
+  })
+
+  it('a throwing check rejects the Run before any feedback or record and still ends it', async () => {
+    const { log, error } = await run({
+      buildContext: () => {
+        throw new Error('check broke')
+      },
+    })
+    expect(error?.message).toBe('check broke')
+    expect(log).toMatchInlineSnapshot(`
+      "runtime.run ["print(\\"hi\\")","t1",{}]
+      setInputPrompt [null]
+      setOutput ["hi\\n"]
+      setRunStatus ["success"]
+      setTurtleResult [null]
+      setStageResult [null]
+      variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
+      checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
+      setRunning [false]"
     `)
   })
 })
