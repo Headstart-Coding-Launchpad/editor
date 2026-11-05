@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { fetchSessionReports } from '../../shared/lessonService'
 import TeacherReportModal from './TeacherReportModal'
 import { useAuth } from '../../auth/useAuth'

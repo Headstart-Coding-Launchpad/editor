@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { anonymizeSessionReport, reportToYamlText } from '../../shared/lessonReport'
 import { StarRatingDisplay } from './StarRatingFeedbackFields'
 import AfterClassFeedbackForm from './AfterClassFeedbackForm'
