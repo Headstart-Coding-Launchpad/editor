@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
@@ -114,10 +114,10 @@ describe('picture answer options (Fun moment)', () => {
       ],
     }
     render(<QuizTask task={task} />)
-    const fox = screen.getByRole('radio', { name: 'Fox' })
+    const fox = screen.getByRole('radio', { name: 'Fox: A fox' })
     expect(within(fox).getByRole('img', { name: 'A fox' })).toHaveTextContent('🦊')
     expect(within(fox).getByText('Fox')).toBeInTheDocument()
-    const owl = screen.getByRole('radio', { name: 'Owl' })
+    const owl = screen.getByRole('radio', { name: 'Owl: An owl' })
     expect(owl.querySelector('img')).toHaveAttribute('alt', 'An owl')
   })
 
@@ -170,11 +170,13 @@ describe('picture options: the Builder editor (pictures are authored in YAML for
     const user = userEvent.setup()
     const onUpdate = vi.fn()
     render(<QuizOptionsBuilder task={PICTURE_TASK} onUpdate={onUpdate} />)
-    expect(
-      within(screen.getByTestId('quiz-option-picture-a')).getByRole('img', {
-        name: 'Red circle above a blue background',
-      })
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('quiz-option-picture-a').querySelector('img')).toHaveAttribute(
+      'src',
+      PICTURE_TASK.options[0].image
+    )
+    expect(screen.getByLabelText('Option A alt text')).toHaveValue(
+      'Red circle above a blue background'
+    )
 
     await user.click(screen.getAllByTitle('Remove option')[1])
     const next = onUpdate.mock.calls.at(-1)[0]
@@ -188,8 +190,8 @@ describe('picture options: the Builder editor (pictures are authored in YAML for
 
 describe('picture options: the tutor view', () => {
   it('ChoiceCardSummary shows a thumbnail of the chosen picture with its id and alt', () => {
-    render(<ChoiceCardSummary task={PICTURE_TASK} raw="a" />)
-    const thumb = screen.getByRole('img', { name: 'Red circle above a blue background' })
+    const { container } = render(<ChoiceCardSummary task={PICTURE_TASK} raw="a" />)
+    const thumb = container.querySelector('img')
     expect(thumb).toHaveAttribute('src', PICTURE_TASK.options[0].image)
     expect(parseInt(thumb.style.width, 10)).toBe(40)
     expect(screen.getByText('a')).toBeInTheDocument()
@@ -201,8 +203,8 @@ describe('picture options: the tutor view', () => {
       ...PICTURE_TASK,
       options: [{ id: 'a', emoji: '🦊', alt: 'A fox', text: 'Fox' }, PICTURE_TASK.options[1]],
     }
-    render(<ChoiceCardSummary task={task} raw="a" />)
-    expect(screen.getByRole('img', { name: 'A fox' })).toHaveTextContent('🦊')
+    const { container } = render(<ChoiceCardSummary task={task} raw="a" />)
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveTextContent('🦊')
     expect(screen.getByText('Fox')).toBeInTheDocument()
   })
 
@@ -228,9 +230,141 @@ describe('picture options: the tutor view', () => {
     expect(onChange).not.toHaveBeenCalled()
 
     const note = screen.getByText(/Correct answer:/).closest('div')
-    expect(within(note).getByRole('img', { name: 'Only a blue background' })).toHaveAttribute(
-      'src',
-      PICTURE_TASK.options[1].image
+    expect(note.querySelector('img')).toHaveAttribute('src', PICTURE_TASK.options[1].image)
+    expect(note).toHaveTextContent('Only a blue background')
+  })
+})
+
+describe('picture options: runtime safety (data that skipped validation)', () => {
+  it('renders an image only from an https URL, lazily and with no referrer', () => {
+    render(<QuizTask task={PICTURE_TASK} />)
+    const img = screen.getAllByRole('radio')[0].querySelector('img')
+    expect(img).toHaveAttribute('referrerpolicy', 'no-referrer')
+    expect(img).toHaveAttribute('loading', 'lazy')
+  })
+
+  it('a non-https image falls back to the emoji, else to the alt text in words', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', image: 'javascript:alert(1)', emoji: '🦊', alt: 'A fox' },
+        { id: 'b', image: 'http://x.test/owl.png', alt: 'An owl' },
+        { id: 'c', image: 'data:image/png;base64,AAAA', alt: 'A cat' },
+      ],
+    }
+    const { container } = render(<QuizTask task={task} />)
+    expect(container.querySelector('img')).toBeNull()
+    expect(screen.getByRole('radio', { name: 'A fox' })).toHaveTextContent('🦊')
+    expect(screen.getByRole('radio', { name: 'An owl' })).toHaveTextContent('An owl')
+    expect(screen.getByRole('radio', { name: 'A cat' })).toHaveTextContent('A cat')
+  })
+
+  it('a picture that fails to load shows its emoji, else its alt text, never an empty box', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', image: png('gone'), alt: 'A red circle' },
+        { id: 'b', image: png('gone-too'), alt: 'A blue square' },
+      ],
+    }
+    render(<QuizTask task={task} />)
+    const card = screen.getByRole('radio', { name: 'A red circle' })
+    fireEvent.error(card.querySelector('img'))
+    expect(card.querySelector('img')).toBeNull()
+    expect(card).toHaveTextContent('A red circle')
+  })
+})
+
+describe('picture options: mixed options and more than four', () => {
+  it('an option with no picture is a normal text card (no empty picture box), code readable', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', emoji: '🦊', alt: 'A fox' },
+        { id: 'b', text: '`print("hi")`' },
+      ],
+    }
+    render(<QuizTask task={task} />)
+    const words = screen.getAllByRole('radio')[1]
+    expect(words.querySelector('[data-picture-box]')).toBeNull()
+    expect(within(words).getByText('print("hi")').tagName).toBe('CODE')
+    expect(screen.getAllByRole('radio')[0].querySelector('[data-picture-box]')).not.toBeNull()
+  })
+
+  it('shows every option in the grid when a lesson has more than four (no data loss)', () => {
+    const E = { id: 'e', emoji: '⭐', alt: 'A star' }
+    render(<QuizTask task={{ ...PICTURE_TASK, options: [...PICTURE_TASK.options, E] }} />)
+    expect(screen.getAllByRole('radio')).toHaveLength(5)
+    expect(screen.getByRole('radio', { name: 'A star' })).toBeInTheDocument()
+  })
+})
+
+describe('picture options: screen readers', () => {
+  it('names a captioned card by caption and alt, as plain text', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', emoji: '🦊', alt: 'A fox sitting in snow', text: '**Fox**' },
+        { id: 'b', image: png('owl'), alt: 'An owl', text: 'Owl' },
+      ],
+    }
+    render(<QuizTask task={task} />)
+    expect(screen.getByRole('radio', { name: 'Fox: A fox sitting in snow' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Owl: An owl' })).toBeInTheDocument()
+  })
+
+  it('the tutor thumbnail is not announced twice beside its label', () => {
+    const { container } = render(<ChoiceCardSummary task={PICTURE_TASK} raw="a" />)
+    const thumb = container.querySelector('img')
+    expect(thumb).toHaveAttribute('alt', '')
+    expect(screen.getByText('Red circle above a blue background')).toBeInTheDocument()
+  })
+})
+
+describe('picture options: the Builder edits alt text and can remove a picture', () => {
+  it('edits the alt text of a picture option', () => {
+    const onUpdate = vi.fn()
+    render(<QuizOptionsBuilder task={PICTURE_TASK} onUpdate={onUpdate} />)
+    const alt = screen.getByLabelText('Option A alt text')
+    fireEvent.change(alt, { target: { value: 'A red ball' } })
+    expect(onUpdate.mock.calls.at(-1)[0].options[0]).toEqual({
+      ...PICTURE_TASK.options[0],
+      alt: 'A red ball',
+    })
+  })
+
+  it('flags a missing alt text inline', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [{ ...PICTURE_TASK.options[0], alt: '' }, PICTURE_TASK.options[1]],
+    }
+    render(<QuizOptionsBuilder task={task} onUpdate={vi.fn()} />)
+    expect(screen.getByTestId('quiz-option-picture-a')).toHaveTextContent(
+      'Add alt text: say what the picture shows'
     )
+  })
+
+  it('removes a picture, keeping the option', async () => {
+    const user = userEvent.setup()
+    const onUpdate = vi.fn()
+    render(<QuizOptionsBuilder task={PICTURE_TASK} onUpdate={onUpdate} />)
+    await user.click(screen.getByRole('button', { name: 'Remove picture from option B' }))
+    expect(onUpdate.mock.calls.at(-1)[0].options[1]).toEqual({ id: 'b', text: '' })
+  })
+
+  it('does not add a fifth option to a picture quiz, and says why', () => {
+    render(<QuizOptionsBuilder task={PICTURE_TASK} onUpdate={vi.fn()} />)
+    expect(screen.getByRole('button', { name: /add option/i })).toBeDisabled()
+    expect(screen.getByText(/picture quizzes take 2 to 4 options/i)).toBeInTheDocument()
+  })
+
+  it('still adds options to a picture quiz with fewer than four', () => {
+    render(
+      <QuizOptionsBuilder
+        task={{ ...PICTURE_TASK, options: PICTURE_TASK.options.slice(0, 3) }}
+        onUpdate={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: /add option/i })).toBeEnabled()
   })
 })
