@@ -12,7 +12,6 @@ import { getShowVariables } from '../../shared/variablesPanel/variablesPanel.js'
 import { getRunCounts, taskCountsRuns } from '../../shared/runCounts.js'
 import { PYTHON_CHECK_TYPES } from '../../modules/python/checks.js'
 import { STAGE_CHECK_TYPES, STAGE_TEXT_OPERATORS, finite } from '../../shared/stage/checks.js'
-import { visibleCommands } from '../../shared/stage/commands.js'
 import { DEFAULT_TEXT_OPERATOR } from '../../shared/checkHelpers.js'
 import { getPythonSlowMo, slowMoThroughRun } from '../../modules/python/slowMo/config.js'
 import { getActivityId } from '../../activities/resolve.js'
@@ -137,36 +136,73 @@ export function judgeRun({
 // as output_contains / code_does_not_contain are normalised first); every type not listed here,
 // including any added later, ticks on Run only (runJudge.test.js lists each registry type and its
 // decision):
-// - output, code, stage_text_shown: only the positive operators (STAGE_TEXT_OPERATORS: contains,
-//   equals, matches_regex; no operator is contains, as on Run); never not_*.
+// - output, code (`value`), stage_text_shown (`text`): only the positive operators
+//   (STAGE_TEXT_OPERATORS: contains, equals, matches_regex; no operator is contains, as on Run),
+//   never not_*, and only with a value that is not trivially true (meaningfulTextValue: not
+//   empty, not only wildcards, no empty option, no regex that matches anything).
 // - code_structure: nested_in, directly_nested_in; never not_nested_in.
 // - stage_colour_used: yes (something specific is drawn).
-// - stage_matches_target, stage_pixel: yes, but only on a drawn Stage that differs from the
-//   starter's (liveTickStageAllows): either can pass on a blank Stage or the starter's drawing.
 // - stage_shape_count: at least min (min >= 1, or neither min nor max: at least 1) or exactly
 //   min (min === max >= 1); never an upper bound alone, a min of 0 or a range.
 // - variable_equals, variable_dict_contains, variable_dict_equals, variable_dict_key_value,
 //   variable_array_contains, variable_array_equals, variable_array_nth_item: yes (a value).
-// - no: code_no_error, output_not_empty, output_empty, output_line_count, max_lines (pass on
-//   any or trivial code), variable_exists, variable_type (pass on half-typed code),
-//   variable_not_equals (negative), run_attempted, answer, the name-tag panel's and run counts'
-//   checks, input checks and every other module's checks.
-// The positive text operators are the Stage's own list (contains, equals, matches_regex); a check
-// with no operator is compared with the evaluator's default (DEFAULT_TEXT_OPERATOR, contains) on
-// Run, so it is read the same way here.
+// - no (Run only): stage_pixel and stage_matches_target (either can pass on a blank Stage or on
+//   the starter's drawing), code_no_error, output_not_empty, output_empty, output_line_count,
+//   max_lines (pass on any or trivial code), variable_exists, variable_type (pass on half-typed
+//   code), variable_not_equals (negative), run_attempted, answer, the name-tag panel's and run
+//   counts' checks, input checks and every other module's checks.
 export const LIVE_TICK_TEXT_OPERATORS = STAGE_TEXT_OPERATORS
-const positiveText = (check) =>
-  LIVE_TICK_TEXT_OPERATORS.includes(check.operator ?? DEFAULT_TEXT_OPERATOR)
+
+// A regex that could match (almost) anything: it matches the empty text, has an alternation, or
+// has no literal letter, digit or symbol left once escapes, character classes, groups,
+// quantifiers and anchors are taken out ('.+', '\S+', '[a-z]+', '^.*$').
+function trivialRegex(pattern, flags) {
+  let regex
+  try {
+    regex = new RegExp(pattern, String(flags ?? ''))
+  } catch {
+    return true
+  }
+  if (regex.test('') || pattern.includes('|')) return true
+  const literal = pattern
+    .replace(/\\./g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\{\d*,?\d*\}/g, '')
+    .replace(/[.^$*+?()[\]{}|\s]/g, '')
+  return literal === ''
+}
+
+// Text with something real in it once wildcards (`*`), quotes, commas and spaces are removed.
+const hasLiteral = (text) => text.replace(/[*"',\s]/g, '') !== ''
+
+/**
+ * Whether a positive text check's value needs positive evidence (conservative): a non-empty
+ * string or a number; for contains / equals, not only wildcards, and every `"a","b"` option has
+ * text of its own (an empty option is contained in anything); for matches_regex, not a regex
+ * that matches anything (trivialRegex). Pure.
+ */
+export function meaningfulTextValue(value, operator, flags) {
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (typeof value !== 'string' || !hasLiteral(value)) return false
+  if ((operator ?? DEFAULT_TEXT_OPERATOR) === 'matches_regex') return !trivialRegex(value, flags)
+  const trimmed = value.trim()
+  if (trimmed.startsWith('"')) {
+    const options = [...trimmed.matchAll(/"([^"]*)"/g)].map((m) => m[1])
+    if (options.length === 0 || !options.every(hasLiteral)) return false
+  }
+  return true
+}
+
+const positiveText = (field) => (check) =>
+  LIVE_TICK_TEXT_OPERATORS.includes(check.operator ?? DEFAULT_TEXT_OPERATOR) &&
+  meaningfulTextValue(check[field], check.operator, check.flags)
 const always = () => true
 export const LIVE_TICK_COMPLETION_CHECKS = Object.freeze({
-  output: positiveText,
-  code: positiveText,
+  output: positiveText('value'),
+  code: positiveText('value'),
   code_structure: (check) => ['nested_in', 'directly_nested_in'].includes(check.operator),
-  // Only on a drawn Stage that differs from the starter's (liveTickStageAllows).
-  stage_matches_target: always,
   stage_colour_used: always,
-  stage_pixel: always,
-  stage_text_shown: positiveText,
+  stage_text_shown: positiveText('text'),
   stage_shape_count: (check) => {
     const min = finite(check.min)
     const max = finite(check.max)
@@ -224,31 +260,6 @@ export function liveTickCompletionCheck(check) {
     ? LIVE_TICK_COMPLETION_CHECKS[plain[0].type]
     : null
   return rule?.(plain[0]) === true
-}
-
-// Completion checks that can pass on a blank Stage (stage_pixel on the background colour) or on
-// the starter's own drawing (stage_matches_target with a loose tolerance): they tick only on a
-// drawn Stage that differs from the starter's (liveTickStageAllows).
-export const LIVE_TICK_DRAWN_STAGE_CHECKS = Object.freeze(['stage_pixel', 'stage_matches_target'])
-
-/** Whether `task`'s completion checks need the starter's Stage to tick (liveTickStageAllows). */
-export function liveTickNeedsStarterStage(task) {
-  const plain = plainChecks(task?.check)
-  return !!plain && plain.some((c) => LIVE_TICK_DRAWN_STAGE_CHECKS.includes(c.type))
-}
-
-/**
- * Whether a typed redraw's Stage (`commands`) may tick `task` (request 131): always, unless a
- * completion check is in LIVE_TICK_DRAWN_STAGE_CHECKS; then only when something is drawn (after
- * the last clear) and the drawing is not the starter's (`starterCommands`, from a run of the
- * starter code; null when unknown, which never ticks). Pure.
- */
-export function liveTickStageAllows({ task, commands, starterCommands }) {
-  if (!liveTickNeedsStarterStage(task)) return true
-  const drawn = Array.isArray(commands) ? commands : []
-  if (visibleCommands(drawn).length === 0) return false
-  if (!Array.isArray(starterCommands)) return false
-  return JSON.stringify(drawn) !== JSON.stringify(starterCommands)
 }
 
 function allCompletionChecksTick(check) {

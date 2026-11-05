@@ -9,8 +9,7 @@ import {
   judgeRun,
   liveTickCompletionCheck,
   liveTickEligible,
-  liveTickNeedsStarterStage,
-  liveTickStageAllows,
+  meaningfulTextValue,
 } from '../runJudge'
 import { checkRegistry } from '../../../modules/checks'
 import { DEFAULT_TEXT_OPERATOR } from '../../../shared/checkHelpers'
@@ -244,6 +243,9 @@ const LIVE_TICK_DECISIONS = {
     [{ operator: 'not_contains', value: 'a' }, false],
     [{ operator: 'not_equals', value: 'a' }, false],
     [{ operator: 'not_matches_regex', value: 'a' }, false],
+    [{ operator: 'contains', value: '' }, false],
+    [{ operator: 'equals', value: '*' }, false],
+    [{ operator: 'matches_regex', value: '.*' }, false],
   ],
   output_line_count: false,
   output_not_empty: false,
@@ -265,14 +267,16 @@ const LIVE_TICK_DECISIONS = {
     [{ operator: 'not_nested_in', inner: 'a', outer: 'for' }, false],
   ],
   max_lines: false,
-  stage_matches_target: true,
+  stage_matches_target: false,
   stage_colour_used: true,
-  stage_pixel: true,
+  stage_pixel: false,
   stage_text_shown: [
     [{ text: 'hi' }, true],
     [{ text: 'hi', operator: 'equals' }, true],
     [{ text: 'hi', operator: 'matches_regex' }, true],
     [{ text: 'hi', operator: 'not_contains' }, false],
+    [{ text: '' }, false],
+    [{ text: '*' }, false],
   ],
   stage_shape_count: [
     [{}, true],
@@ -335,48 +339,53 @@ describe('live tick completion checks: each registry type and its decision (requ
   })
 })
 
-// Request 131 round 4: a stage_pixel or stage_matches_target check can pass on a blank Stage (the
-// default background) or on the starter's own drawing, so it ticks only on a drawn Stage that
-// differs from the starter's.
-describe('liveTickStageAllows', () => {
-  const DOT = { type: 'circle', x: 10, y: 10, r: 5, colour: 'red' }
-  const BOX = { type: 'rect', x: 0, y: 0, w: 5, h: 5, colour: 'blue' }
-  const pixel = { check: { type: 'stage_pixel', x: 1, y: 1, colour: 'white' } }
-
-  it('needs the starter Stage only for stage_pixel and stage_matches_target', () => {
-    expect(liveTickNeedsStarterStage(pixel)).toBe(true)
-    expect(
-      liveTickNeedsStarterStage({ check: [task.check, { type: 'stage_matches_target' }] })
-    ).toBe(true)
-    expect(liveTickNeedsStarterStage(task)).toBe(false)
-    expect(liveTickNeedsStarterStage({ check: { type: 'stage_colour_used', colour: 'red' } })).toBe(
-      false
-    )
+// Request 131 round 5: a positive text check ticks only with a value that is not trivially true
+// (conservative: some real answers are left to Run).
+describe('meaningfulTextValue', () => {
+  it.each([
+    ['', 'contains'],
+    ['   ', 'contains'],
+    ['*', 'contains'],
+    ['**', 'equals'],
+    ['"",""', 'contains'],
+    ['"a",""', 'contains'],
+    ['"*"', 'contains'],
+    [null, 'contains'],
+    [undefined, 'equals'],
+    [{}, 'contains'],
+    [NaN, 'equals'],
+    ['.*', 'matches_regex'],
+    ['.+', 'matches_regex'],
+    ['^$', 'matches_regex'],
+    ['^.*$', 'matches_regex'],
+    ['\\S+', 'matches_regex'],
+    ['\\w', 'matches_regex'],
+    ['[a-z]+', 'matches_regex'],
+    ['(.)', 'matches_regex'],
+    ['.{3}', 'matches_regex'],
+    ['hi|.+', 'matches_regex'],
+    ['a?', 'matches_regex'],
+    ['(', 'matches_regex'],
+  ])('%j with %s is trivially true', (value, operator) => {
+    expect(meaningfulTextValue(value, operator)).toBe(false)
   })
 
-  it('a blank Stage never ticks those checks', () => {
-    expect(liveTickStageAllows({ task: pixel, commands: [], starterCommands: [DOT] })).toBe(false)
-    expect(
-      liveTickStageAllows({ task: pixel, commands: [{ type: 'clear' }], starterCommands: [DOT] })
-    ).toBe(false)
+  it.each([
+    ['hi', 'contains'],
+    ['*hi*', 'contains'],
+    ['"hi","hello"', 'contains'],
+    ['Hello, world', 'equals'],
+    [42, 'equals'],
+    ['^hi$', 'matches_regex'],
+    ['colou?r', 'matches_regex'],
+    ['\\d+ cats', 'matches_regex'],
+    ['hi', undefined],
+  ])('%j with %s needs a real answer', (value, operator) => {
+    expect(meaningfulTextValue(value, operator)).toBe(true)
   })
 
-  it("the starter's own Stage never ticks them; an unknown starter Stage neither", () => {
-    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: [DOT] })).toBe(
-      false
-    )
-    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: null })).toBe(false)
-  })
-
-  it('a drawn Stage that differs from the starter ticks', () => {
-    expect(liveTickStageAllows({ task: pixel, commands: [DOT, BOX], starterCommands: [DOT] })).toBe(
-      true
-    )
-    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: [] })).toBe(true)
-  })
-
-  it('other checks are not held by the Stage', () => {
-    expect(liveTickStageAllows({ task, commands: [], starterCommands: null })).toBe(true)
+  it('a regex that matches only with its flags is judged with them', () => {
+    expect(meaningfulTextValue('HI', 'matches_regex', 'i')).toBe(true)
   })
 })
 
