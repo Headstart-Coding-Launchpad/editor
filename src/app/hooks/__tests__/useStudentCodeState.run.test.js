@@ -651,3 +651,25 @@ describe('handleRun on runtime-less modules', () => {
     expect(h.result.current.running).toBe(false)
   })
 })
+
+// A rejected run write (permission denied: the session ended, the tutor removed the student)
+// used to reject handleRun before setRunning(false), leaving Run stuck on Stop for good.
+describe('handleRun — a rejected writeStudentRun', () => {
+  it('ends the Run, keeps the tick and the rest of the record, and warns', async () => {
+    mockModuleRun('python', printing('hi\n'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    h.writers.writeStudentRun.mockImplementationOnce(() =>
+      Promise.reject(new Error('PERMISSION_DENIED'))
+    )
+    await act(async () => {
+      await expect(h.result.current.handleRun()).resolves.toBeUndefined()
+    })
+    expect(h.result.current.running).toBe(false)
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(h.writers.writeStudentStageResult).toHaveBeenCalledTimes(1)
+    expect(h.writers.writeStudentTaskRun).toHaveBeenCalledWith(ANON, 't1', 'print("start")')
+    expect(h.writers.logAttempt).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('writeStudentRun'), expect.any(Error))
+  })
+})
