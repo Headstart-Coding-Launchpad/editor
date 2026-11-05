@@ -1077,7 +1077,7 @@ What students get:
     name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
     `interactionMode: submit`, an on-idle feedback check, `input()` in the code or `setupCode`,
     or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal, so it ticks).
-    Turtle and Electronics never tick while typing.
+    Turtle, Electronics and `code_arrange` tasks never tick while typing.
   - **The tutor.** A tutor's **Mark Fail** ("not yet") stops live ticks on that task until the
     student presses Run. A task without `scrub`, `runOnOpen` or a `#@lock-values` line has no
     typed redraw, so it still ticks only on Run: give a typed Stage task `runOnOpen: true` to get
