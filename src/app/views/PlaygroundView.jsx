@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
 import PlaygroundHelpTopics from '../components/PlaygroundHelpTopics'
@@ -9,6 +9,7 @@ import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import {
   CHOOSER_PATH,
   canSwitchKit,
+  getKit,
   getPythonKit,
   hasKitChooser,
   kitIdForPlayground,
@@ -47,7 +48,12 @@ export default function PlaygroundView() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   // The Python playground opens on the kit chooser until a kit is picked (?kit=<id>).
-  const kit = hasKitChooser(type) ? getPythonKit(searchParams.get('kit')) : null
+  const kitParam = hasKitChooser(type) ? searchParams.get('kit') : null
+  const kit = getPythonKit(kitParam)
+  // ?kit=turtle or ?kit=game names a kit with its own playground: go there. Unknown ids fall
+  // through to the chooser.
+  const namedKit = getKit(kitParam)
+  const ownPlaygroundKit = namedKit?.playgroundType ? namedKit : null
   const showChooser = hasKitChooser(type) && !kit
   const lesson = useMemo(
     () => (PLAYGROUND_TYPES.has(type) && !showChooser ? makeLesson(type, kit) : null),
@@ -61,14 +67,8 @@ export default function PlaygroundView() {
     if (openedKitId) saveLastKitId(openedKitId)
   }, [openedKitId])
 
-  if (showChooser) {
-    return (
-      <PlaygroundKitChooser
-        carryOnKitId={loadLastKitId()}
-        onPick={(picked) => navigate(kitPath(picked))}
-      />
-    )
-  }
+  if (ownPlaygroundKit) return <Navigate to={kitPath(ownPlaygroundKit)} replace />
+  if (showChooser) return <KitChooserScreen onPick={(picked) => navigate(kitPath(picked))} />
   if (!lesson) return <LoadingScreen error="That playground is not available." />
 
   // Turtle and Arcade are kits in the Python chooser too, so they get Switch kit as well.
@@ -99,6 +99,13 @@ export default function PlaygroundView() {
       playgroundControls={controls}
     />
   )
+}
+
+// Reads the Carry on kit once each time the chooser is shown (PlaygroundView itself stays mounted
+// across ?kit= changes, so the read lives here).
+function KitChooserScreen({ onPick }) {
+  const [carryOnKitId] = useState(loadLastKitId)
+  return <PlaygroundKitChooser carryOnKitId={carryOnKitId} onPick={onPick} />
 }
 
 const s = {

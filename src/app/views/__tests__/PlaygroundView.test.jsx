@@ -10,6 +10,13 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({ type: playgroundType }),
   useSearchParams: () => [new URLSearchParams(playgroundSearch)],
   useNavigate: () => vi.fn(),
+  Navigate: ({ to, replace }) => (
+    <a data-testid="redirect" data-replace={String(replace)} href={to} />
+  ),
+}))
+
+vi.mock('../../components/PlaygroundKitChooser', () => ({
+  default: () => <div data-testid="chooser" />,
 }))
 
 vi.mock('../StudentView', () => ({
@@ -107,5 +114,28 @@ describe('PlaygroundView', () => {
     const lesson = renderPlayground('python')
 
     expect(lesson).toMatchObject({ id: '__playground__python', isPlayground: true })
+  })
+
+  it.each([
+    ['turtle', '/playground/turtle'],
+    ['game', '/playground/arcade'],
+  ])("sends ?kit=%s to that kit's own playground", (kit, path) => {
+    playgroundType = 'python'
+    playgroundSearch = `kit=${kit}`
+    render(<PlaygroundView />)
+
+    const redirect = screen.getByTestId('redirect')
+    expect(redirect).toHaveAttribute('href', path)
+    expect(redirect).toHaveAttribute('data-replace', 'true')
+    expect(screen.queryByTestId('chooser')).not.toBeInTheDocument()
+  })
+
+  it('shows the kit chooser for an unknown ?kit= id', () => {
+    playgroundType = 'python'
+    playgroundSearch = 'kit=nope'
+    render(<PlaygroundView />)
+
+    expect(screen.getByTestId('chooser')).toBeInTheDocument()
+    expect(screen.queryByTestId('redirect')).not.toBeInTheDocument()
   })
 })
