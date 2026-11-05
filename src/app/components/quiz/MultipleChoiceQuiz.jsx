@@ -47,6 +47,9 @@ export default function MultipleChoiceQuiz({
   const optionsGridRef = React.useRef(null)
   const [optionsScale, setOptionsScale] = React.useState(1)
   const entrance = useChoiceEntrance()
+  // Unique per rendered copy: a tutor sees many student windows of the same task at once, so
+  // the verdict ids (aria-describedby) cannot come from the task and option ids alone.
+  const instanceId = React.useId()
 
   // Options render in the order the lesson author wrote them. They are shuffled once, by
   // the authoring agent, when the lesson is written; shuffling again per mount gave every
@@ -197,7 +200,7 @@ export default function MultipleChoiceQuiz({
                     : active && submitted
                       ? 'Your answer'
                       : null
-              const verdictId = `quiz-picture-verdict-${task?.id ?? 'task'}-${option.id}`
+              const verdictId = `quiz-picture-verdict-${instanceId}-${option.id}`
               return (
                 <div
                   key={option.id}
@@ -334,13 +337,12 @@ export default function MultipleChoiceQuiz({
             />
           )}
           <span style={s.correctAnswerText}>
-            <InlineMarkdown
-              content={
-                optionHasPicture(correctOption)
-                  ? quizOptionLabel(correctOption)
-                  : normalizeQuizAnswerText(correctOption?.text ?? correctId)
-              }
-            />
+            {/* A caption is Markdown, as on the card; a picture's alt text or id is plain words. */}
+            {optionHasPicture(correctOption) && !quizOptionHasCaption(correctOption) ? (
+              quizOptionLabel(correctOption)
+            ) : (
+              <InlineMarkdown content={normalizeQuizAnswerText(correctOption?.text ?? correctId)} />
+            )}
           </span>
         </div>
       )}
@@ -354,6 +356,10 @@ export default function MultipleChoiceQuiz({
       {footer}
     </div>
   )
+}
+
+function quizOptionHasCaption(option) {
+  return typeof option?.text === 'string' && option.text.trim() !== ''
 }
 
 function hasFencedCodeBlock(content) {

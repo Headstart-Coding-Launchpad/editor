@@ -472,6 +472,51 @@ describe('the verdict is in words for screen readers', () => {
     expect(other).not.toHaveAccessibleDescription()
   })
 
+  it('two copies of one task (a tutor watching many students) each describe their own card', () => {
+    render(
+      <>
+        <QuizTask task={PICTURE_TASK} selectedAnswer="a" submitted checkPassed={false} />
+        <QuizActivityStudentView
+          task={PICTURE_TASK}
+          state="a"
+          readOnly
+          teacher
+          result={{ submitted: true, passed: false }}
+        />
+      </>
+    )
+    const ids = [...document.querySelectorAll('[role=radio][aria-describedby]')].map((el) =>
+      el.getAttribute('aria-describedby')
+    )
+    expect(new Set(ids).size).toBe(ids.length)
+    // Both students chose a: each window's card reads its own verdict.
+    const red = screen.getAllByRole('radio', { name: 'Red circle above a blue background' })
+    expect(red[0]).toHaveAccessibleDescription('Your answer')
+    expect(red[1]).toHaveAccessibleDescription('Your answer, incorrect')
+  })
+
+  it('the "Correct answer" note shows alt text or an id literally, never as Markdown', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', emoji: '🦊', alt: 'A fox' },
+        { id: 'b', emoji: '🐍', alt: 'Snake *not* a rope' },
+      ],
+    }
+    render(
+      <QuizActivityStudentView
+        task={task}
+        state="a"
+        readOnly
+        teacher
+        result={{ submitted: true, passed: false }}
+      />
+    )
+    const note = screen.getByText(/Correct answer:/).closest('div')
+    expect(note).toHaveTextContent('Snake *not* a rope')
+    expect(note.querySelector('em')).toBeNull()
+  })
+
   it("a submitted answer with no reveal is described as the student's answer", () => {
     render(<QuizTask task={PICTURE_TASK} selectedAnswer="c" submitted checkPassed={false} />)
     expect(screen.getByRole('radio', { name: 'A purple circle' })).toHaveAccessibleDescription(
