@@ -4,7 +4,7 @@ import EmojiPicker, { EmojiStyle } from 'emoji-picker-react'
 // Native emoji style renders the picker's grid using the browser/OS emoji font
 // instead of fetching image sprites from a CDN, so this stays fully offline —
 // consistent with the rest of the app having no backend/CDN calls.
-export default function EmojiPickerButton({ onInsert, disabled = false }) {
+export default function EmojiPickerButton({ onInsert, disabled = false, size = 32 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
 
@@ -21,7 +21,7 @@ export default function EmojiPickerButton({ onInsert, disabled = false }) {
     <div ref={wrapRef} style={s.wrap}>
       <button
         type="button"
-        style={s.trigger}
+        style={{ ...s.trigger, minWidth: size, height: size }}
         disabled={disabled}
         aria-label="Insert emoji"
         aria-expanded={open}

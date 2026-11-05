@@ -9,7 +9,34 @@ import { describeRunCount } from '../../shared/runCounts.js'
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
 // students aren't hunting through keyboard shift layers mid-task.
-const SYMBOL_BUTTONS = [...'()[]{}"\',:=#+-*/<>!._']
+// Most-used first (the colon leads), then the rarer ones.
+const SYMBOL_BUTTONS = [
+  ':',
+  '(',
+  ')',
+  '[',
+  ']',
+  '{',
+  '}',
+  '"',
+  "'",
+  ',',
+  '=',
+  '#',
+  '\\',
+  '%',
+  '+',
+  '-',
+  '*',
+  '/',
+  '<',
+  '>',
+  '!',
+  '.',
+  '_',
+]
+// Touch keys are 44px square (Apple's minimum tap size).
+const TOUCH_KEY = 44
 
 export default function PythonEditor({
   code,
@@ -55,9 +82,10 @@ export default function PythonEditor({
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
   const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
-  // On touch the symbol row is always showing (request #125); only the emoji key sits behind "Keys".
+  // Non-touch: one "Keys" button folds the emoji key away. Touch (request #125): the symbol row is
+  // always showing with the emoji key at its end, so there is no Keys button.
   const [keysOpen, setKeysOpen] = useState(false)
-  const hasKeys = showEmojiButton
+  const touchKeys = showSymbolButtons
 
   return (
     <div style={s.wrap} data-testid="editor-panel">
@@ -69,7 +97,7 @@ export default function PythonEditor({
       )}
       {(showSymbolButtons || showEmojiButton || showBlocks) && (
         <div style={s.symbolBar} role="toolbar" aria-label="Python editor tools">
-          {hasKeys && (
+          {showEmojiButton && !touchKeys && (
             <button
               type="button"
               style={{ ...s.blocksBtn, ...(keysOpen ? s.blocksBtnOn : null) }}
@@ -85,19 +113,26 @@ export default function PythonEditor({
               <button
                 key={symbol}
                 type="button"
-                style={s.symbolBtn}
+                style={{ ...s.symbolBtn, ...s.touchKey }}
                 onClick={() => editorRef.current?.insertAtCursor(symbol)}
               >
                 {symbol}
               </button>
             ))}
-          {keysOpen && showEmojiButton && (
-            <EmojiPickerButton onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)} />
+          {showEmojiButton && (touchKeys || keysOpen) && (
+            <EmojiPickerButton
+              size={touchKeys ? TOUCH_KEY : undefined}
+              onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)}
+            />
           )}
           {showBlocks && (
             <button
               type="button"
-              style={{ ...s.blocksBtn, ...(blockGuidesOn ? s.blocksBtnOn : null) }}
+              style={{
+                ...s.blocksBtn,
+                ...(touchKeys ? s.touchKey : null),
+                ...(blockGuidesOn ? s.blocksBtnOn : null),
+              }}
               aria-pressed={blockGuidesOn}
               title={
                 blockGuidesOn
@@ -217,6 +252,7 @@ const s = {
     borderRadius: 6,
     cursor: 'pointer',
   },
+  touchKey: { minWidth: TOUCH_KEY, height: TOUCH_KEY, marginLeft: 0 },
   blocksBtn: {
     marginLeft: 'auto',
     height: 32,

@@ -100,15 +100,21 @@ describe('PythonEditor — emoji button', () => {
     insertAtCursor.mockClear()
   })
 
-  it('keeps the emoji key folded until Keys is pressed, symbols stay visible', async () => {
+  it('on touch the emoji key sits in the always-visible row and there is no Keys toggle', () => {
     touchDevice = true
-    const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
-    expect(screen.getByRole('button', { name: ':' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'emoji-picker' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Keys' }))
+    expect(screen.queryByRole('button', { name: 'Keys' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: ':' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'emoji-picker' })).toBeInTheDocument()
+  })
+
+  it('puts the colon first and makes touch keys 44px', () => {
+    touchDevice = true
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    const toolbar = screen.getByRole('toolbar', { name: /python editor tools/i })
+    expect(toolbar.firstChild).toHaveTextContent(':')
+    expect(screen.getByRole('button', { name: ':' }).style.height).toBe('44px')
+    expect(screen.getByRole('button', { name: ':' }).style.minWidth).toBe('44px')
   })
 
   it('shows the emoji button on a non-touch device while interactive', async () => {
