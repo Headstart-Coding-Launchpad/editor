@@ -97,11 +97,16 @@ option an `image` (or an `emoji`) plus `alt`, and optionally a short `text` capt
 - **Layout:** 2 or 3 pictures sit side by side, 4 make a 2x2 grid, and the cards stack in one
   column when the options area is under 480px wide, going back to side by side only above 520px
   (measured on the quiz itself, so it also works in the tutor's student window and modal; the gap
-  stops the layout flipping). Every card is the same size; the picture fills it without being
-  cropped (a square or 4:3 PNG of about 400px looks best) and the caption sits underneath. Cards
-  are 120px tall at full size, easy to tap on an iPad; in a short pane they shrink with the rest of
-  the quiz (down to 78px) so four stacked cards still fit above Next, and the options scroll only
-  when even that does not fit.
+  stops the layout flipping). Every card is the same size, with the caption under the picture.
+  The picture is scaled to fit, never cropped: its height has a cap tied to the screen height
+  (about a fifth of it, 96px to 200px; lower when the cards stack in one column), and its width
+  follows its shape. The cards hug their pictures and the grid sits centred, so four squarish
+  Stage pictures make a tidy 2x2 block, and a 2x2 grid plus a short question (code and a line)
+  fits a 1366x768 or 1024x768 screen without scrolling. Export Stage pictures about 2:1 or
+  square, cropped to the Stage only (no editor or window around it), about 400px wide. Cards are
+  at least 120px tall at full size, easy to tap on an iPad; in a short pane they shrink with the
+  rest of the quiz (down to 78px) so four stacked cards still fit above Next, and the options
+  scroll only when even that does not fit.
 - **Mixed options:** an option with no picture is drawn as a normal word card in the same grid
   (Markdown and code work as usual). It works, but validation warns, because the cards look
   uneven. A lesson stored with more than 4 options (a validation error) still shows all of them,

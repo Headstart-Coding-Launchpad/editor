@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-05
 
+- **Multiple choice: picture cards sized to the screen.** A picture option's picture is now scaled
+  to fit, with a height cap tied to the screen height (96px to 200px, lower in one column), and
+  the cards hug their pictures in a centred grid, so a 2x2 grid of squarish Stage pictures plus a
+  short question fits a 1366x768 or 1024x768 screen without scrolling. Before, the cards stretched
+  to fill the screen and the pictures showed at their natural size (found in Lesson Gen's first
+  real picture quiz, "Which Corner?"). Export Stage pictures about 2:1 or square, cropped to the
+  Stage only. See [quiz-tasks.md](quiz-tasks.md#picture-options).
+  - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves: none
+
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
   picture instead of words: `image` (an `https://` URL, normally a lesson asset from `assets
   upload`) or `emoji` (one emoji), with required `alt` text and an optional `text` caption.
