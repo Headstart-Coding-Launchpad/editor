@@ -69,6 +69,17 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: keyboard (symbols, find_key), cli · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-11-05-keyboard-symbols-mode-show-the-target-symbol-big-and-light-i-2.md
 
+- **Python Stage: typing the right code ticks the task, no Run needed.** On a task whose typing
+  redraws the Stage (`scrub`, `runOnOpen` or a `#@lock-values` line), the redraw's own result is
+  checked: the moment it passes, the task ticks and is recorded exactly like a Run of that code
+  (the attempt is marked `source: live`). A redraw that doesn't pass shows nothing, so wrong-code
+  feedback still comes only from Run. Never on tasks with `run_attempted`, name tags, run counts,
+  `tests`, submit mode, an on-idle feedback check, `input()`, or `slowMo` where Run plays in
+  slow-mo; never Turtle or Electronics. A tutor's Mark Fail stops it on that task until the
+  student presses Run. See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
+  - Affects: python · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-11-05-stage-tasks-run-the-completion-check-on-live-redraw-tick-whe.md
+
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
   picture instead of words: `image` (an `https://` URL, normally a lesson asset from `assets
   upload`) or `emoji` (one emoji), with required `alt` text and an optional `text` caption.

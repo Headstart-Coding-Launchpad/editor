@@ -1064,8 +1064,24 @@ What students get:
 - **Typing redraws too.** On a task with `scrub`, `runOnOpen` or a `#@lock-values` line (Python
   and Turtle), the code re-runs as the same preview half a second after the student stops
   typing, so typing a new number, colour or name updates the Stage or drawing like a scrub. If the
-  half-typed code errors, the last picture and output stay. It's not a Run: no checks, nothing
-  logged. Not in a sandbox.
+  half-typed code errors, the last picture and output stay. Not in a sandbox.
+  - **It ticks when the code is right** (Python Stage tasks, live lessons and solo). When a typed
+    redraw's own result passes the task's checks, the task ticks at once (tick, chime, Next),
+    with no Run pressed. It is recorded exactly as a Run of that code (the tutor's card, Go Live,
+    the report and share link see a passing Run), and its attempt is marked `source: live`. A
+    redraw that does not pass shows and records nothing: wrong-code feedback only ever comes from
+    Run. The program is not run a second time.
+  - **Which tasks.** Every check (completion, feedback, and any wrapped inside one) must be an
+    output, `code`, `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*`
+    check. A task never ticks while typing when it has `run_attempted` ("press Run and watch"),
+    name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
+    `interactionMode: submit`, an on-idle feedback check, `input()` in the code or `setupCode`,
+    or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal, so it ticks).
+    Turtle and Electronics never tick while typing.
+  - **The tutor.** A tutor's **Mark Fail** ("not yet") stops live ticks on that task until the
+    student presses Run. A task without `scrub`, `runOnOpen` or a `#@lock-values` line has no
+    typed redraw, so it still ticks only on Run: give a typed Stage task `runOnOpen: true` to get
+    both the redraw and the tick.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
   no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed
