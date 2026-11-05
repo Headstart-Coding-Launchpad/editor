@@ -6,6 +6,8 @@ import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
   optionHasPicture,
   quizHasPictureOptions,
+  quizOptionAriaLabel,
+  quizOptionDescription,
   quizOptionLabel,
 } from '../../../shared/quizPictureOptions'
 import { QuizOptionPicture } from './QuizOptionPicture'
@@ -52,7 +54,9 @@ export default function MultipleChoiceQuiz({
   const displayedOptions = options
 
   // Picture answer options (request 128): equal cards in a grid (2 or 3 side by side, 4 as
-  // 2x2, one column in a narrow pane via .quiz-picture-frame in index.css). Never on a poll.
+  // 2x2, one column in a narrow pane via .quiz-picture-grid in index.css). Never on a poll. An
+  // option with no picture is drawn as a normal word card in the same grid; more than 4 options
+  // (a validation error) still all show, in more rows.
   const pictureMode = !multiple && task?.quizType !== 'poll' && quizHasPictureOptions(task)
   const pictureColumns = options.length === 3 ? 3 : 2
 
@@ -130,7 +134,11 @@ export default function MultipleChoiceQuiz({
             const bg = verdict ? verdict.background : active ? colour.active : colour.background
             const border = verdict ? verdict.border : colour.border
             const textColour = verdict ? verdict.text : active ? '#fff' : colour.text
-            const optionText = normalizeQuizAnswerText(option.text)
+            // A picture option's words are its caption; outside picture mode (a poll, say) a
+            // stray picture option is named by its alt text rather than left blank.
+            const optionText = normalizeQuizAnswerText(
+              pictureMode || option.text?.trim() ? option.text : quizOptionDescription(option)
+            )
             const usesBlockMarkdown = hasFencedCodeBlock(optionText)
             const usesScratchMarkdown = isScratchMarkdown(optionText)
             const chooseOption = () => {
@@ -152,7 +160,7 @@ export default function MultipleChoiceQuiz({
               }
             }
 
-            if (pictureMode) {
+            if (pictureMode && optionHasPicture(option)) {
               const caption = optionText.trim()
               // The tick badge: ✓ on the chosen card (or the revealed right answer), ✗ on a
               // chosen wrong answer once a tutor's view reveals the verdict.
@@ -164,7 +172,7 @@ export default function MultipleChoiceQuiz({
                   role="radio"
                   aria-checked={active}
                   aria-disabled={locked || undefined}
-                  aria-label={caption || quizOptionLabel(option)}
+                  aria-label={quizOptionAriaLabel(option)}
                   tabIndex={locked ? -1 : 0}
                   className={optionEntrance.className}
                   style={{
@@ -199,7 +207,7 @@ export default function MultipleChoiceQuiz({
                         </span>
                       )}
                     </div>
-                    <div style={s.pictureBox}>
+                    <div style={s.pictureBox} data-picture-box="">
                       <QuizOptionPicture option={option} />
                     </div>
                   </div>
@@ -283,6 +291,7 @@ export default function MultipleChoiceQuiz({
             <QuizOptionPicture
               option={correctOption}
               size={40}
+              decorative
               style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}
             />
           )}

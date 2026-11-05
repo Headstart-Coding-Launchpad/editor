@@ -176,6 +176,7 @@ export function ChoiceCardSummary({ task, raw }) {
         <QuizOptionPicture
           option={option}
           size={40}
+          decorative
           style={{ borderRadius: 6, background: '#fff', border: '1px solid #e5e7eb' }}
         />
       )}
