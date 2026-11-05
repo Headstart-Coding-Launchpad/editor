@@ -182,20 +182,26 @@ export default function MultipleChoiceQuiz({
                   onClick={chooseOption}
                   onKeyDown={onKeyDown}
                 >
-                  <span style={{ ...s.pictureOptionId, background: colour.active }}>
-                    {option.id}
-                  </span>
-                  {badge && (
-                    <span
-                      data-testid="quiz-picture-tick"
-                      aria-hidden="true"
-                      style={{ ...s.pictureTick, background: ring }}
-                    >
-                      {badge}
-                    </span>
-                  )}
-                  <div style={s.pictureBox}>
-                    <QuizOptionPicture option={option} />
+                  <div style={s.pictureRow}>
+                    {/* The letter and the tick sit in their own column, never over the
+                        picture (a "Which Corner?" picture has its answer in a corner). */}
+                    <div style={s.pictureSide}>
+                      <span style={{ ...s.pictureOptionId, background: colour.active }}>
+                        {option.id}
+                      </span>
+                      {badge && (
+                        <span
+                          data-testid="quiz-picture-tick"
+                          aria-hidden="true"
+                          style={{ ...s.pictureTick, background: ring }}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </div>
+                    <div style={s.pictureBox}>
+                      <QuizOptionPicture option={option} />
+                    </div>
                   </div>
                   {caption && (
                     <div className="quiz-option-text" style={s.pictureCaption}>

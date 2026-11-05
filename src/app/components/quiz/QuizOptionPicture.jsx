@@ -30,7 +30,7 @@ export function QuizOptionPicture({ option, size = null, style }) {
         alignItems: 'center',
         justifyContent: 'center',
         lineHeight: 1,
-        fontSize: size ? Math.round(size * 0.75) : 'clamp(2.5rem, 9vh, 5.5rem)',
+        fontSize: size ? Math.round(size * 0.75) : 'clamp(3rem, 12vh, 7rem)',
         ...style,
       }}
     >
