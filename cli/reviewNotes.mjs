@@ -73,15 +73,22 @@ export async function listReviewNotes(lessonId, { since = null, status = null } 
   )
 }
 
-/** Moves one note on and returns it. Setting the status it already has changes nothing. */
+/**
+ * Moves one note on and returns it. Setting the status it already has changes nothing.
+ * The read, the forward-only check and the write run in one transaction, so two agents setting
+ * the same note at once cannot move it backwards (done → picked_up), and a note deleted in
+ * between gives the not-found error instead of a raw Firestore one.
+ */
 export async function setReviewNoteStatus(lessonId, noteId, status) {
   if (!noteId) throw new Error('--set needs a note id')
   const ref = notesCollection(lessonId).doc(noteId)
-  const snap = await ref.get()
-  if (!snap.exists) throw new Error(`No review note '${noteId}' on lesson '${lessonId}'`)
-  const data = snap.data()
-  if (!checkStatusMove(data.status, status)) return noteFromDoc(noteId, data)
-  const statusChangedAt = new Date()
-  await ref.update({ status, statusChangedAt })
-  return noteFromDoc(noteId, { ...data, status, statusChangedAt })
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new Error(`No review note '${noteId}' on lesson '${lessonId}'`)
+    const data = snap.data()
+    if (!checkStatusMove(data.status, status)) return noteFromDoc(noteId, data)
+    const statusChangedAt = new Date()
+    tx.update(ref, { status, statusChangedAt })
+    return noteFromDoc(noteId, { ...data, status, statusChangedAt })
+  })
 }

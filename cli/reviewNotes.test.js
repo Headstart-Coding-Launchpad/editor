@@ -1,11 +1,35 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({ records: new Map(), updates: [] }))
+const state = vi.hoisted(() => ({ records: new Map(), updates: [], beforeCommit: null }))
+
+// Like Firestore: a transaction re-runs when a doc it read changed before it committed.
+async function mockRunTransaction(fn) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const reads = new Map()
+    const writes = []
+    const tx = {
+      get: async (ref) => {
+        reads.set(ref.key, state.records.get(ref.key))
+        return ref.get()
+      },
+      update: (ref, patch) => writes.push({ ref, patch }),
+    }
+    const result = await fn(tx)
+    const hook = state.beforeCommit
+    state.beforeCommit = null
+    if (hook) hook()
+    if ([...reads].some(([key, seen]) => state.records.get(key) !== seen)) continue
+    for (const { ref, patch } of writes) await ref.update(patch)
+    return result
+  }
+  throw new Error('transaction kept conflicting')
+}
 
 function mockCollection(path) {
   return {
     doc: (id) => ({
+      key: `${path}/${id}`,
       get: async () => {
         const data = state.records.get(`${path}/${id}`)
         return { exists: data != null, id, data: () => data }
@@ -26,7 +50,9 @@ function mockCollection(path) {
   }
 }
 
-vi.mock('./firebase.mjs', () => ({ db: { collection: (name) => mockCollection(name) } }))
+vi.mock('./firebase.mjs', () => ({
+  db: { collection: (name) => mockCollection(name), runTransaction: mockRunTransaction },
+}))
 
 import {
   checkStatusMove,
@@ -115,5 +141,18 @@ describe('lessons notes', () => {
     expect(same.status).toBe('done')
     expect(state.updates).toHaveLength(0)
     expect(checkStatusMove('new', 'done')).toBe(true)
+  })
+
+  it('a done that lands mid-set is re-read, so picked_up cannot move the note backwards', async () => {
+    state.beforeCommit = () =>
+      state.records.set(`${P}/b`, { ...state.records.get(`${P}/b`), status: 'done' })
+    await expect(setReviewNoteStatus('L', 'b', 'picked_up')).rejects.toThrow(/cannot go back/)
+    expect(state.records.get(`${P}/b`).status).toBe('done')
+  })
+
+  it('a note deleted mid-set gives the friendly not-found error', async () => {
+    state.beforeCommit = () => state.records.delete(`${P}/b`)
+    await expect(setReviewNoteStatus('L', 'b', 'done')).rejects.toThrow(/No review note 'b'/)
+    expect(state.records.has(`${P}/b`)).toBe(false)
   })
 })
