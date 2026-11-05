@@ -5,6 +5,9 @@
 // `name` is what a screen reader says: "Your tutor is pointing at the open bracket key".
 export const PYTHON_KEY_ROW = Object.freeze([
   { symbol: ':', name: 'colon' },
+  // The Tab key: indents (not a typed symbol). It follows the colon, which ends the line it
+  // indents the next one after. `label` is what the key shows, `title` its accessible name.
+  { symbol: 'Tab', name: 'indent', label: '⇥', title: 'Indent (Tab)', indent: true },
   { symbol: '(', name: 'open bracket' },
   { symbol: ')', name: 'close bracket' },
   { symbol: '[', name: 'open square bracket' },

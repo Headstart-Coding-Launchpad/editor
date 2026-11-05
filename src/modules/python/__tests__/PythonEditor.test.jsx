@@ -11,9 +11,10 @@ import pythonDefinition from '../definition.js'
 // insertAtCursor imperative API the real CodeEditor provides, so PythonEditor's
 // symbol-bar wiring can be exercised without mounting a real editor.
 const insertAtCursor = vi.fn()
+const indentAtCursor = vi.fn()
 vi.mock('../../../shared/CodeEditor', () => ({
   CodeEditor: React.forwardRef(function MockCodeEditor(props, ref) {
-    React.useImperativeHandle(ref, () => ({ insertAtCursor }))
+    React.useImperativeHandle(ref, () => ({ insertAtCursor, indentAtCursor }))
     return (
       <div
         data-testid="code-editor"
@@ -82,6 +83,37 @@ describe('PythonEditor — touch symbol bar', () => {
   })
 })
 
+describe('PythonEditor — Tab / indent key (request #125)', () => {
+  beforeEach(() => {
+    indentAtCursor.mockClear()
+    insertAtCursor.mockClear()
+  })
+
+  it('shows an "Indent (Tab)" key right after the colon on touch, 44px', () => {
+    touchDevice = true
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    const tab = screen.getByRole('button', { name: 'Indent (Tab)' })
+    expect(tab).toHaveTextContent('⇥')
+    expect(tab.style.height).toBe('44px')
+    expect(tab.previousSibling).toHaveTextContent(':')
+  })
+
+  it('indents with the editor, not by inserting text', async () => {
+    touchDevice = true
+    const user = userEvent.setup()
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Indent (Tab)' }))
+    expect(indentAtCursor).toHaveBeenCalledTimes(1)
+    expect(insertAtCursor).not.toHaveBeenCalled()
+  })
+
+  it('is not shown without a touch screen', () => {
+    touchDevice = false
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Indent (Tab)' })).not.toBeInTheDocument()
+  })
+})
+
 describe('PythonEditor — tutor key highlight targets (request #126)', () => {
   it('marks each touch key so a key:<symbol> highlight can find it', () => {
     touchDevice = true
@@ -97,7 +129,7 @@ describe('PythonEditor — tutor key highlight targets (request #126)', () => {
       const button = [...container.querySelectorAll('[data-highlight-target]')].find(
         (el) => el.getAttribute('data-highlight-target') === `key:${key}`
       )
-      expect(button?.textContent).toBe(key)
+      expect(button?.textContent).toBe(key === 'Tab' ? '⇥' : key)
     }
   })
 })

@@ -78,6 +78,7 @@ export default defineModule({
         label: 'Keys',
         options: PYTHON_KEY_SYMBOLS,
         optionNames: PYTHON_KEY_SPOKEN,
+        example: '(',
         touchOnly: true,
       },
     ],

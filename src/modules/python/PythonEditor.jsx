@@ -5,7 +5,7 @@ import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
 import { describeRunCount } from '../../shared/runCounts.js'
-import { PYTHON_KEY_SYMBOLS } from './keyRow.js'
+import { PYTHON_KEY_ROW } from './keyRow.js'
 
 // The tap-to-insert symbol row on touch/iPad (and the keys a tutor's `key:(` highlight can make
 // glow) is one shared list in ./keyRow.js.
@@ -83,16 +83,21 @@ export default function PythonEditor({
             </button>
           )}
           {showSymbolButtons &&
-            PYTHON_KEY_SYMBOLS.map((symbol) => (
+            PYTHON_KEY_ROW.map(({ symbol, label, title, indent }) => (
               <button
                 key={symbol}
                 type="button"
                 style={{ ...s.symbolBtn, ...s.touchKey }}
+                aria-label={title}
                 // A tutor's `key:(` highlight finds its key by this (src/shared/controlHighlight.js).
                 data-highlight-target={`key:${symbol}`}
-                onClick={() => editorRef.current?.insertAtCursor(symbol)}
+                onClick={() =>
+                  indent
+                    ? editorRef.current?.indentAtCursor()
+                    : editorRef.current?.insertAtCursor(symbol)
+                }
               >
-                {symbol}
+                {label ?? symbol}
               </button>
             ))}
           {showEmojiButton && (touchKeys || keysOpen) && (

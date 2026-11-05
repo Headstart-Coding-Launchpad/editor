@@ -57,6 +57,7 @@ describe('control highlight targets', () => {
     expect(text('key::')).toBe('colon key')
     expect(text('key:"')).toBe('quote key')
     expect(text('key:.')).toBe('full stop key')
+    expect(text('key:Tab')).toBe('indent key')
     for (const key of keys) {
       expect(highlightTargetText(key)).toMatch(/^[a-z ]+ key$/)
     }

@@ -39,6 +39,12 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-05
 
+- **Python: an Indent (Tab) key on the touch key row, and `highlight: "key:Tab"`.** iPad students
+  with no hardware keyboard get a `⇥` key right after the colon that indents the current line (or
+  every selected line) by one step. A task or tutor can make it glow like any other key.
+  - Affects: python · Existing lessons: no changes needed · Resolves: none (Hub request #125,
+    Tab/indent key)
+
 - **Python: `highlight: "key:("` makes one key glow.** A new `key:<symbol>` target for the task's
   `highlight` field (and the tutor's live Highlight menus, as a "Keys" chip group): one key on the
   Python touch key row glows when the task opens, until the student taps it (which types it at the

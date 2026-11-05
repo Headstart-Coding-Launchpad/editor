@@ -286,6 +286,24 @@ describe('CodeEditor teacher highlights', () => {
   })
 })
 
+describe('CodeEditor indentAtCursor (touch Tab key)', () => {
+  it('indents the current line, and every selected line, by one indent unit', async () => {
+    const { render, act } = await import('@testing-library/react')
+    const ref = React.createRef()
+    const doc = ['if x:', 'print(1)', 'print(2)', ''].join('\n')
+    const utils = render(<CodeEditor ref={ref} value={doc} language="python" />)
+    const view = EditorView.findFromDOM(utils.container.querySelector('.cm-editor'))
+    view.dispatch({ selection: { anchor: 8 } })
+    act(() => ref.current.indentAtCursor())
+    expect(view.state.doc.line(2).text).toBe('    print(1)')
+    expect(view.state.doc.line(3).text).toBe('print(2)')
+    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } })
+    act(() => ref.current.indentAtCursor())
+    expect(view.state.doc.line(1).text).toBe('    if x:')
+    expect(view.state.doc.line(3).text).toBe('    print(2)')
+  })
+})
+
 describe('isAutocompletePick (✨ Autocomplete Ace)', () => {
   function updateFor(spec) {
     const state = EditorState.create({ doc: 'pri' })

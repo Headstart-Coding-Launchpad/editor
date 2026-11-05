@@ -7,6 +7,7 @@ import React, { useContext, useEffect, useImperativeHandle, useMemo, useRef } fr
 import { Compartment, EditorState, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType, keymap } from '@codemirror/view'
 import { indentUnit } from '@codemirror/language'
+import { indentMore } from '@codemirror/commands'
 import {
   createBaseExtensions,
   readOnlyCompartment,
@@ -718,6 +719,13 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
           // Typed through an on-screen button, so it is the user's own input.
           userEvent: 'input.type',
         })
+        view.focus()
+      },
+      // The touch Tab key: one indent unit on the cursor's line, or on every selected line.
+      indentAtCursor() {
+        const view = viewRef.current
+        if (!view || readOnly) return
+        indentMore(view)
         view.focus()
       },
       // The CodeMirror view, for add-ons kept in their own files (Python slow-mo's line marker).

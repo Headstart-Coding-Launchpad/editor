@@ -132,7 +132,7 @@ export function describeHighlightTargets(moduleType) {
     .map((spec) => {
       if (!spec.options) return spec.id
       if (spec.optionNames) {
-        return `"${spec.id}:<symbol>" (in quotes, e.g. "${spec.id}:${spec.options[1] ?? spec.options[0]}")`
+        return `"${spec.id}:<symbol>" (in quotes, e.g. "${spec.id}:${spec.example ?? spec.options[0]}")`
       }
       return `${spec.id}:<${spec.options.join('|')}>`
     })

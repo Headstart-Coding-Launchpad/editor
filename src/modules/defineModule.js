@@ -575,6 +575,7 @@ function validateHighlightTargets(type, targets, panes) {
         aliases: Object.freeze([...(target.aliases ?? [])]),
         options: target.options ? Object.freeze([...target.options]) : null,
         optionNames: target.optionNames ? Object.freeze({ ...target.optionNames }) : null,
+        example: typeof target.example === 'string' ? target.example : null,
         touchOnly: target.touchOnly === true,
       })
     })
