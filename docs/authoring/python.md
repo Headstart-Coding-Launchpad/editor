@@ -1072,22 +1072,39 @@ What students get:
     redraw that does not pass shows and records nothing: wrong-code feedback only ever comes from
     Run. The program is not run a second time.
   - **Which checks.** Typing runs half-typed code, so every completion check must need real
-    evidence of the right answer: `output` / `code` with `contains`, `equals` or `matches_regex`;
-    `code_structure` `nested_in` / `directly_nested_in`; `stage_matches_target`,
-    `stage_colour_used`, `stage_pixel`, `stage_text_shown`; `stage_shape_count` with no bounds, a
-    `min` of 1 or more, or `min` equal to `max`; and the value checks `variable_equals`,
-    `variable_dict_*` and `variable_array_*`. Checks that pass on almost any code tick on Run
-    only: `code_no_error`, `output_not_empty`, `output_empty`, `output_line_count`, `max_lines`,
-    any `not_` operator, `variable_exists`, `variable_type`, `variable_not_equals`, and a stage
-    count with only a `max` (or a range). Feedback checks only need to be output, `code`,
-    `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*` checks (they can
-    only hold a tick back). Each must be a plain check with its own `type` (a check list is read
-    flat; any other type means no tick). Code that is the task's starter code (spaces and blank
-    lines aside) never ticks: if the starter already passes, the student's change is needed. A task
-    never ticks while typing when it has `run_attempted` ("press Run and watch"), name tags
-    (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
-    `interactionMode: submit`, `copyCode` (its first Run measures how far the code is from the
-    copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
+    evidence of the right answer. Each must be a plain check with its own `type` (a check list
+    is read flat; any type not listed here means no tick).
+    - **Completion checks that can tick:** `output` and `code` with `contains`, `equals` or
+      `matches_regex` (no `operator` means `contains`, as on Run); `code_structure` with
+      `nested_in` or `directly_nested_in`; `stage_colour_used`; `stage_text_shown` with
+      `contains` (the default), `equals` or `matches_regex`; `stage_shape_count` with no bounds, a
+      `min` of 1 or more, or `min` equal to `max`; `stage_pixel` and `stage_matches_target` only
+      when the Stage has something drawn and the drawing is not the starter code's own (either
+      can pass on a blank Stage or on what the starter draws); and the value checks
+      `variable_equals`, `variable_dict_contains`, `variable_dict_equals`,
+      `variable_dict_key_value`, `variable_array_contains`, `variable_array_equals` and
+      `variable_array_nth_item`.
+    - **Completion checks that tick on Run only** (they pass on almost any code):
+      `code_no_error`, `output_not_empty`, `output_empty`, `output_line_count`, `max_lines`,
+      `variable_exists`, `variable_type` and `variable_not_equals`; any `not_` operator; a
+      `stage_shape_count` with only a `max`, a `min` of 0 or a range; and every other type.
+    - **Feedback checks** (they can only hold a tick back) must each be one of: `output`,
+      `output_line_count`, `output_not_empty`, `output_empty`, `code_no_error`, `code`,
+      `code_structure`, `max_lines`, `stage_matches_target`, `stage_shape_count`,
+      `stage_colour_used`, `stage_pixel`, `stage_text_shown`, `variable_exists`,
+      `variable_type`, `variable_equals`, `variable_not_equals`, `variable_dict_contains`,
+      `variable_dict_equals`, `variable_dict_key_value`, `variable_array_contains`,
+      `variable_array_equals` or `variable_array_nth_item`, shown after an attempt.
+  - **Only a change that makes it pass.** Code that already passed before the student started
+    typing never ticks, however small the change on top of it (a space, a `#` comment): the
+    starter code, code carried from an earlier task, a tutor's edit, a Complete or support stage,
+    Reset, restored work. That code runs once, quietly, to find out (nothing shown or sent). The
+    student presses Run for those; after a Reset to a starter that doesn't pass, typing ticks
+    again. Code that is the starter code itself (spaces and blank lines aside) never ticks either.
+  - **Never while typing.** A task never ticks while typing when it has `run_attempted` ("press
+    Run and watch"), name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`),
+    Python `tests`, `interactionMode: submit`, `copyCode` (its first Run measures how far the code
+    is from the copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
     `setupCode`, or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal,
     so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing.
   - **Only the student's own typing.** Typing, pasting, deleting or scrubbing in the editor can
@@ -1096,13 +1113,15 @@ What students get:
     from an earlier task and saved work loaded on opening. The student presses Run for those (or
     types a change of their own).
   - **In the report** a pass that ticked while typing is listed as "Passed N (while typing, no
-    Run)". It still counts as an attempt, and as a first try when it came first.
+    Run)". It still counts as an attempt, and as a first try when it came first. If the student
+    then presses Run on the same code, it is listed as a Run's pass.
   - **The tutor.** A tutor's **Mark Fail** ("not yet") stops live ticks on that task until the
     student presses Run (or Run in slow-mo) themselves. The checks a scrub runs when it ends and
     the tutor's own remote Run don't lift it, and it holds after a page reload until the
     student's next Run. A new Mark Fail stops them again. A task without `scrub`, `runOnOpen` or
-    a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage task `runOnOpen: true` to get
-    both the redraw and the tick.
+    a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage
+    task `runOnOpen: true` to get both the redraw and the tick. Reset, a tutor's edit or Mark
+    Fail drops a redraw still waiting, so old code never paints over them.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
   no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed

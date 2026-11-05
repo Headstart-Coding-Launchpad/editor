@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   LIVE_TICK_COMPLETION_CHECKS,
@@ -375,5 +377,44 @@ describe('liveTickStageAllows', () => {
 
   it('other checks are not held by the Stage', () => {
     expect(liveTickStageAllows({ task, commands: [], starterCommands: null })).toBe(true)
+  })
+})
+
+// docs/authoring/python.md ("Typing redraws too" > "Which checks") lists the check types from
+// these tables; each list must name exactly the types the code allows.
+describe('python.md live tick check lists match the code', () => {
+  const doc = readFileSync(resolve(process.cwd(), 'docs/authoring/python.md'), 'utf8').replace(
+    /\r\n/g,
+    '\n'
+  )
+  const registry = new Set(checkRegistry.list().map((def) => def.type))
+  // The registry types named in backticks in the sub-bullet that starts with `label`.
+  function typesIn(label) {
+    const at = doc.indexOf(`    - **${label}`)
+    expect(at, label).toBeGreaterThan(-1)
+    const rest = doc.slice(at + 6)
+    const next = rest.search(/\n {2,4}- /)
+    const text = next === -1 ? rest : rest.slice(0, next)
+    return [...text.matchAll(/`([a-z_]+)`/g)].map((m) => m[1]).filter((t) => registry.has(t))
+  }
+  const sorted = (list) => [...new Set(list)].sort()
+
+  it('the feedback check list is LIVE_TICK_FEEDBACK_CHECK_TYPES', () => {
+    expect(sorted(typesIn('Feedback checks'))).toEqual(sorted(LIVE_TICK_FEEDBACK_CHECK_TYPES))
+  })
+
+  it('the completion checks that can tick are LIVE_TICK_COMPLETION_CHECKS', () => {
+    expect(sorted(typesIn('Completion checks that can tick'))).toEqual(
+      sorted(Object.keys(LIVE_TICK_COMPLETION_CHECKS))
+    )
+  })
+
+  it('the Run-only list is every feedback type that can never tick as a completion check', () => {
+    const runOnly = LIVE_TICK_FEEDBACK_CHECK_TYPES.filter(
+      (type) => !Object.prototype.hasOwnProperty.call(LIVE_TICK_COMPLETION_CHECKS, type)
+    )
+    const listed = typesIn('Completion checks that tick on Run only')
+    // stage_shape_count is named there for its Run-only bounds; it can tick otherwise.
+    expect(sorted(listed.filter((t) => t !== 'stage_shape_count'))).toEqual(sorted(runOnly))
   })
 })
