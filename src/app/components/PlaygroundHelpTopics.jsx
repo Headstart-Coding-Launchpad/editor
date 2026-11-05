@@ -11,7 +11,6 @@ import { MarkdownRenderer } from '../../shared/markdown'
 export default function PlaygroundHelpTopics({ type, style }) {
   const offered = getModuleDefinition(type)?.capabilities.topicLibrary ?? false
   const [open, setOpen] = useState(false)
-  const { topics, loading } = useTopicLibrary(type, offered)
   if (!offered) return null
   return (
     <>
@@ -24,23 +23,28 @@ export default function PlaygroundHelpTopics({ type, style }) {
       >
         ? Help topics
       </button>
-      {open &&
-        (loading && topics.length === 0 ? (
-          <span role="status" style={s.loading}>
-            Loading topics...
-          </span>
-        ) : (
-          <TopicLibraryDialog
-            topics={topics}
-            renderMarkdown={MarkdownRenderer}
-            topicType={type}
-            onClose={() => setOpen(false)}
-          />
-        ))}
+      {open && <HelpTopicsDialog type={type} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-const s = {
-  loading: { fontSize: 12, color: '#fff', whiteSpace: 'nowrap' },
+// Mounted only while open, so closing and reopening after a failed load fetches again. The dialog
+// (and its Close button) shows at once; loading and errors show inside it.
+function HelpTopicsDialog({ type, onClose }) {
+  const { topics, loading, error } = useTopicLibrary(type)
+  let status = null
+  if (topics.length === 0) {
+    if (loading) status = 'Loading topics...'
+    else if (error) status = "Couldn't load topics, try again."
+    else status = 'No help topics here yet.'
+  }
+  return (
+    <TopicLibraryDialog
+      topics={topics}
+      renderMarkdown={MarkdownRenderer}
+      topicType={type}
+      onClose={onClose}
+      status={status}
+    />
+  )
 }

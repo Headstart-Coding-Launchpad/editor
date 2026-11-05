@@ -104,6 +104,8 @@ export function TopicLibraryDialog({
   onSendToAll,
   students,
   onSendToIndividual,
+  // Shown in place of the topics while there are none yet (loading, or the fetch failed).
+  status = null,
 }) {
   const badgeSignals = useBadgeSignals()
   const [query, setQuery] = useState('')
@@ -182,7 +184,7 @@ export function TopicLibraryDialog({
                   <span style={s.resultMeta}>{topic.category}</span>
                 </button>
               ))}
-              {filteredTopics.length === 0 && <p style={s.empty}>No matching topics.</p>}
+              {filteredTopics.length === 0 && !status && <p style={s.empty}>No matching topics.</p>}
             </div>
           </aside>
           <article style={s.detail}>
@@ -327,6 +329,10 @@ export function TopicLibraryDialog({
                   </div>
                 )}
               </>
+            ) : status ? (
+              <p style={s.empty} role="status">
+                {status}
+              </p>
             ) : (
               <p style={s.empty}>No topics are available for this lesson type.</p>
             )}

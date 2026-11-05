@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { getDocs } from 'firebase/firestore'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearTopicCache } from '../../../shared/topicLibrary'
 import PlaygroundHelpTopics from '../PlaygroundHelpTopics'
 
 vi.mock('../../../shared/firebase', () => ({ firestore: {}, db: {} }))
@@ -18,6 +20,8 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 describe('PlaygroundHelpTopics', () => {
+  beforeEach(() => clearTopicCache())
+
   it.each(['python', 'turtle', 'arcade', 'electronics'])('shows Help topics for %s', (type) => {
     render(<PlaygroundHelpTopics type={type} />)
     expect(screen.getByRole('button', { name: /help topics/i })).toBeInTheDocument()
@@ -41,5 +45,33 @@ describe('PlaygroundHelpTopics', () => {
 
     await user.click(screen.getByRole('button', { name: /close topic library/i }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows the dialog with its Close button while topics are still loading', async () => {
+    getDocs.mockImplementationOnce(() => new Promise(() => {}))
+    const user = userEvent.setup()
+    render(<PlaygroundHelpTopics type="python" />)
+
+    await user.click(screen.getByRole('button', { name: /help topics/i }))
+
+    const dialog = screen.getByRole('dialog', { name: /topic library/i })
+    expect(dialog).toHaveTextContent('Loading topics...')
+    await user.click(screen.getByRole('button', { name: /close topic library/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('says the topics could not load, and loads them on the next open', async () => {
+    getDocs.mockImplementationOnce(() => Promise.reject(new Error('offline')))
+    const user = userEvent.setup()
+    render(<PlaygroundHelpTopics type="python" />)
+
+    await user.click(screen.getByRole('button', { name: /help topics/i }))
+    const dialog = screen.getByRole('dialog', { name: /topic library/i })
+    expect(await screen.findByText(/couldn't load topics, try again/i)).toBeInTheDocument()
+    expect(dialog).not.toHaveTextContent('No matching topics')
+
+    await user.click(screen.getByRole('button', { name: /close topic library/i }))
+    await user.click(screen.getByRole('button', { name: /help topics/i }))
+    expect(await screen.findByRole('dialog', { name: /topic library/i })).toHaveTextContent('Loops')
   })
 })
