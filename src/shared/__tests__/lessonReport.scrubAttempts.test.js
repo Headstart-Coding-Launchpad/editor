@@ -103,6 +103,10 @@ describe('failed scrub releases are not attempts', () => {
     expect(alice.attempts).toBe(1)
     expect(alice).not.toHaveProperty('scrubChecks')
     expect(isFailedScrubAttempt({ source: 'live', passed: true })).toBe(false)
+    // The attempt list says it ticked while typing, so the modal can tell it from a Run.
+    expect(alice.distinctAttempts).toEqual([
+      expect.objectContaining({ passed: true, source: 'live' }),
+    ])
   })
 
   it('omits scrubChecks when nobody had a failed release', () => {

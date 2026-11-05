@@ -253,7 +253,7 @@ function StudentTaskRow({ task }) {
                     ? 'Scrub check (not an attempt)'
                     : `${formatAttemptStatus(a)} ${a.attemptNumber}${
                         a.retries > 0 ? ` (retried ${a.retries}x)` : ''
-                      }`}
+                      }${a.source === 'live' ? ' (while typing, no Run)' : ''}`}
                 </span>
                 {a.suggestion && <span style={s.suggestion}>{a.suggestion}</span>}
               </div>

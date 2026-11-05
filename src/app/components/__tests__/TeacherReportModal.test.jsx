@@ -96,6 +96,37 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('📖 2 references: Hint, Solution')).toBeInTheDocument()
   })
 
+  it('labels a pass a typed redraw ticked (source live, request 131) as while typing', () => {
+    const liveReport = {
+      ...report,
+      students: [
+        {
+          ...report.students[0],
+          tasks: [
+            {
+              ...report.students[0].tasks[0],
+              attempts: 1,
+              distinctAttempts: [
+                {
+                  attemptNumber: 1,
+                  passed: true,
+                  retries: 0,
+                  suggestion: null,
+                  submission: 'print("hello")',
+                  source: 'live',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    render(<TeacherReportModal report={liveReport} onClose={vi.fn()} />)
+    fireEvent.click(screen.getByText('Student 1'))
+    fireEvent.click(screen.getByRole('button', { name: /Task One/ }))
+    expect(screen.getByText('Passed 1 (while typing, no Run)')).toBeInTheDocument()
+  })
+
   it('renders override counts and per-student override detail', () => {
     const overriddenReport = {
       ...report,

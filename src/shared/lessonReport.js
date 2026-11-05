@@ -909,8 +909,12 @@ export function buildSessionReport({
             suggestion: entry.suggestion || null,
             submission: normalizeSubmission(task, entry.submission),
             ...(placements ? { placements } : {}),
-            // The checks a live scrub ran when it ended (P6-20), not a press of Run.
-            ...(entry.source === 'scrub' ? { source: 'scrub' } : {}),
+            // The checks a live scrub ran when it ended (P6-20), not a press of Run; 'live': a
+            // pass a typed redraw ticked (request 131), also not a press of Run. Both are still
+            // counted as attempts (a live pass is the student's first try when it comes first).
+            ...(entry.source === 'scrub' || entry.source === 'live'
+              ? { source: entry.source }
+              : {}),
           }
         }),
       }
