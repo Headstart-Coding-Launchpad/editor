@@ -10,6 +10,11 @@
 // string of the sorted ticked ids ('["a","c"]', '' for none), counted once per option.
 import { encodePollChoice, parsePollChoice } from '../../shared/classPolls.js'
 import { defineQuizActivity, printTable } from '../quiz/quizActivity.js'
+import { quizOptionDescription } from '../../shared/quizPictureOptions.js'
+
+// A poll option's words. Polls take no pictures (validation), but a stray picture option from an
+// import or a direct write is named by its alt text rather than left blank.
+const optionWords = (option) => option?.text || quizOptionDescription(option)
 
 function optionIds(task) {
   return (task?.options ?? []).map((option) => option.id)
@@ -80,12 +85,12 @@ export default defineQuizActivity('poll', {
   summarize: (task, state) => {
     if (task?.multiple === true) {
       const text = parsePollChoice(state)
-        .map((id) => `${id} ${(task?.options ?? []).find((o) => o.id === id)?.text || ''}`.trim())
+        .map((id) => `${id} ${optionWords((task?.options ?? []).find((o) => o.id === id))}`.trim())
         .join(', ')
       return { text, tone: 'neutral' }
     }
     const option = (task?.options ?? []).find((candidate) => candidate.id === state)
-    return { text: `${state} ${option?.text || 'Selected option'}`, tone: 'neutral' }
+    return { text: `${state} ${optionWords(option) || 'Selected option'}`, tone: 'neutral' }
   },
 
   printHtml: (task, { esc }) =>
@@ -93,7 +98,7 @@ export default defineQuizActivity('poll', {
       ? printTable(
           'Options',
           ['ID', 'Text'],
-          task.options.map((opt) => [opt.id, opt.text]),
+          task.options.map((opt) => [opt.id, optionWords(opt)]),
           esc
         )
       : '',
@@ -106,7 +111,7 @@ export default defineQuizActivity('poll', {
     summaryFields: (task, perStudent) => {
       const optionDistribution = (task?.options ?? []).map((option) => ({
         id: option.id,
-        text: option.text ?? '',
+        text: optionWords(option) ?? '',
         count: 0,
       }))
       for (const t of perStudent) {

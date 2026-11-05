@@ -7,7 +7,7 @@ import {
   printTable,
 } from '../quiz/quizActivity.js'
 import {
-  isHttpsUrl,
+  optionPictureSource,
   quizHasPictureOptions,
   quizOptionDescription,
 } from '../../shared/quizPictureOptions.js'
@@ -116,20 +116,29 @@ export default defineQuizActivity('multiple_choice', {
           ),
 })
 
+// The picture cell is built here (escaped) and handed to printTable as `{ html }`; every other
+// cell is plain text that printTable escapes. Only an https image is printed (as on screen); the
+// picture is decorative (alt="") because the Alt text column beside it says what it shows.
 function printPictureOptions(task, esc) {
-  const head = ['ID', 'Picture', 'Caption', 'Alt text', 'Feedback']
-    .map((header) => `<th>${header}</th>`)
-    .join('')
-  const rows = task.options
-    .map((opt) => {
-      const picture = isHttpsUrl(opt.image)
-        ? `<img src="${esc(opt.image.trim())}" alt="${esc(opt.alt)}" style="max-width:120px;max-height:90px;object-fit:contain">`
-        : opt.emoji
-          ? `<span style="font-size:2em" role="img" aria-label="${esc(opt.alt)}">${esc(opt.emoji)}</span>`
-          : ''
-      const cells = [opt.id, null, opt.text ?? '', opt.alt ?? '', opt.feedback || '']
-      return `<tr>${cells.map((cell) => (cell === null ? `<td>${picture}</td>` : `<td>${esc(cell)}</td>`)).join('')}</tr>`
-    })
-    .join('')
-  return `<div class="field"><div class="field-label">Options</div><table class="data-table"><tr>${head}</tr>${rows}</table></div>`
+  return printTable(
+    'Options',
+    ['ID', 'Picture', 'Caption', 'Alt text', 'Feedback'],
+    task.options.map((opt) => [
+      opt.id,
+      { html: printPictureCell(opt, esc) },
+      typeof opt.text === 'string' ? opt.text : '',
+      typeof opt.alt === 'string' ? opt.alt : '',
+      opt.feedback || '',
+    ]),
+    esc
+  )
+}
+
+function printPictureCell(option, esc) {
+  const picture = optionPictureSource(option)
+  if (picture?.kind === 'image')
+    return `<img src="${esc(picture.src)}" alt="" style="max-width:120px;max-height:90px;object-fit:contain">`
+  if (picture?.kind === 'emoji')
+    return `<span style="font-size:2em" aria-hidden="true">${esc(picture.emoji)}</span>`
+  return ''
 }

@@ -215,10 +215,14 @@ export function summarizeItemFailures(perStudent, items, normalize, idKey, descr
 
 // ─── Print ───────────────────────────────────────────────────────────────────
 
+// A cell is plain text (escaped here) or `{ html }`, already-escaped HTML built by the caller
+// (a picture option's thumbnail).
 export function printTable(label, headers, rows, esc) {
   const head = headers.map((header) => `<th>${header}</th>`).join('')
+  const cellHtml = (cell) =>
+    cell && typeof cell === 'object' && typeof cell.html === 'string' ? cell.html : esc(cell)
   const body = rows
-    .map((cells) => `<tr>${cells.map((cell) => `<td>${esc(cell)}</td>`).join('')}</tr>`)
+    .map((cells) => `<tr>${cells.map((cell) => `<td>${cellHtml(cell)}</td>`).join('')}</tr>`)
     .join('')
   return `<div class="field"><div class="field-label">${label}</div><table class="data-table"><tr>${head}</tr>${body}</table></div>`
 }

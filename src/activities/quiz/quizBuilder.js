@@ -1,3 +1,5 @@
+import { stripOptionPicture } from '../../shared/quizPictureOptions.js'
+
 // Builder task conversions for the legacy quiz activities (moved from TaskEditor with plan step
 // 2.4; the results are unchanged). Each quiz_<type>/ui.jsx exposes `builderConvert` built from
 // switchQuizType, so the Builder's quiz-type picker needs no per-type code. Pure.
@@ -36,9 +38,21 @@ export function toQuizTask(task) {
   }
 }
 
+// Picture options are multiple-choice only: leaving multiple choice turns each picture into words
+// (its caption, else its alt text) rather than blocking the switch, so no option goes blank.
+function withoutPictures(options) {
+  return Array.isArray(options) ? options.map(stripOptionPicture) : options
+}
+
 // Switching an existing quiz to another quiz type. Fields the new type shares are kept; the new
 // type's required fields get empty defaults (the author fills them in).
 export function switchQuizType(task, quizType) {
+  if (quizType !== 'multiple_choice' && Array.isArray(task.options))
+    return switchQuizTypeInner({ ...task, options: withoutPictures(task.options) }, quizType)
+  return switchQuizTypeInner(task, quizType)
+}
+
+function switchQuizTypeInner(task, quizType) {
   if (quizType === 'multiple_choice') {
     const options = task.options?.length ? task.options : makeDefaultQuizOptions()
     const answer = options.some((o) => o.id === task.check?.value) ? task.check.value : ''
