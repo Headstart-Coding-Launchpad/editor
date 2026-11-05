@@ -74,9 +74,12 @@ Entries written before 2026-09-29 are not tagged.
   checked: the moment it passes, the task ticks and is recorded exactly like a Run of that code
   (the attempt is marked `source: live`). A redraw that doesn't pass shows nothing, so wrong-code
   feedback still comes only from Run. Never on tasks with `run_attempted`, name tags, run counts,
-  `tests`, submit mode, an on-idle feedback check, `input()`, or `slowMo` where Run plays in
-  slow-mo; never Turtle or Electronics. A tutor's Mark Fail stops it on that task until the
-  student presses Run. See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
+  `tests`, submit mode, `copyCode` (its first Run measures the copy), an on-idle feedback check,
+  `input()`, or `slowMo` where Run plays in slow-mo; never Turtle, Electronics or `code_arrange`.
+  Only the student's own typing ticks: a peer-help change or copied shared work redraws but
+  doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
+  themselves (a scrub's release checks and the tutor's remote Run don't lift it; it holds after a
+  reload). See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
   - Affects: python · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-11-05-stage-tasks-run-the-completion-check-on-live-redraw-tick-whe.md
 

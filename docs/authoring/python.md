@@ -1071,16 +1071,23 @@ What students get:
     the report and share link see a passing Run), and its attempt is marked `source: live`. A
     redraw that does not pass shows and records nothing: wrong-code feedback only ever comes from
     Run. The program is not run a second time.
-  - **Which tasks.** Every check (completion, feedback, and any wrapped inside one) must be an
-    output, `code`, `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*`
-    check. A task never ticks while typing when it has `run_attempted` ("press Run and watch"),
-    name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
-    `interactionMode: submit`, an on-idle feedback check, `input()` in the code or `setupCode`,
-    or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal, so it ticks).
-    Turtle, Electronics and `code_arrange` tasks never tick while typing.
+  - **Which tasks.** Every check (completion and feedback) must be an output, `code`,
+    `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*` check, each a plain
+    check with its own `type` (a check list is read flat; any other type means no tick). A task
+    never ticks while typing when it has `run_attempted` ("press Run and watch"), name tags
+    (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
+    `interactionMode: submit`, `copyCode` (its first Run measures how far the code is from the
+    copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
+    `setupCode`, or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal,
+    so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing.
+  - **Only the student's own typing.** Typing or scrubbing in the editor can tick. A classmate's
+    accepted peer-help change and copied shared work still redraw, but never tick: the student
+    presses Run for those.
   - **The tutor.** A tutor's **Mark Fail** ("not yet") stops live ticks on that task until the
-    student presses Run. A task without `scrub`, `runOnOpen` or a `#@lock-values` line has no
-    typed redraw, so it still ticks only on Run: give a typed Stage task `runOnOpen: true` to get
+    student presses Run (or Run in slow-mo) themselves. The checks a scrub runs when it ends and
+    the tutor's own remote Run don't lift it, and it holds after a page reload until the
+    student's next Run. A new Mark Fail stops them again. A task without `scrub`, `runOnOpen` or
+    a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage task `runOnOpen: true` to get
     both the redraw and the tick.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
