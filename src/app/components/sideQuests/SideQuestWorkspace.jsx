@@ -116,6 +116,9 @@ export default function SideQuestWorkspace({
     connected: false,
     teacherPresentation: false,
     previewMode: true,
+    // The mount-time clear would wipe the in-memory store the lesson preview / presentation
+    // keeps its task saves in (what carryCodeFrom reads), and this side-quest's own seed.
+    keepSeededWork: true,
     ...SIDE_QUEST_SESSION_WRITES,
   })
 
