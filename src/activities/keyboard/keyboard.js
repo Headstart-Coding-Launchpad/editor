@@ -50,6 +50,10 @@ export const NAMED_KEYS = [
   'ArrowDown',
 ]
 
+// Modes whose task may set `showKey` (request 133): the target big, its keys lit from the start.
+// They are also the modes that show the keyboard picture on a laptop.
+export const SHOW_KEY_MODES = ['find_key', 'symbols']
+
 const MAX_TEXT_LENGTH = 200
 
 const capitalsIn = (text) => [...text].filter((c) => c !== c.toLowerCase()).length
@@ -116,7 +120,7 @@ export function validateKeyboardTask(task, n) {
   // showKey (request 133): find_key and symbols only.
   if (task.showKey != null) {
     if (typeof task.showKey !== 'boolean') errors.push(`${where}: showKey must be true or false.`)
-    else if (!['find_key', 'symbols'].includes(task.mode)) {
+    else if (!SHOW_KEY_MODES.includes(task.mode)) {
       warnings.push(
         `${where}: showKey only works in find_key and symbols modes; it is ignored here.`
       )
@@ -124,7 +128,7 @@ export function validateKeyboardTask(task, n) {
   }
   // highlight: "key:…" (request 133 part B) glows on the keyboard picture, which laptops only
   // show in find_key and symbols; tablets' on-screen keyboard shows it in every mode.
-  if (task.highlight != null && !['find_key', 'symbols'].includes(task.mode)) {
+  if (task.highlight != null && !SHOW_KEY_MODES.includes(task.mode)) {
     warnings.push(
       `${where}: highlight only shows on the on-screen keyboard (tablets) in ${task.mode} mode; laptops have no keyboard picture here.`
     )

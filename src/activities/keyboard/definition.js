@@ -8,6 +8,7 @@ import {
   keyboardItems,
   validateKeyboardTask,
   KEYBOARD_MODES,
+  SHOW_KEY_MODES,
 } from './keyboard.js'
 import { roundSummaryText } from '../round.js'
 import { keyboardHighlightTargets } from './keyTargets.js'
@@ -39,8 +40,6 @@ export const KEYBOARD_MODE_LABELS = {
 }
 
 const ITEM_MODES = KEYBOARD_MODES.filter((mode) => mode !== 'falling_words')
-// Modes whose task may set showKey (request 133).
-export const SHOW_KEY_MODES = ['find_key', 'symbols']
 // The tutor card names the item that took the most presses once it took this many (request 133).
 const TRIES_WORTH_SHOWING = 3
 

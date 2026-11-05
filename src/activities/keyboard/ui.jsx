@@ -10,6 +10,7 @@ import TypeCodeBlock from './TypeCodeBlock.jsx'
 import FallingWordsView from './FallingWordsView.jsx'
 import {
   NAMED_KEYS,
+  SHOW_KEY_MODES,
   describeComboPart,
   describeItem,
   gradeKeyboardItem,
@@ -49,8 +50,6 @@ import {
 // item is discrete (see classifyChange in definition.js).
 
 const MISSES_BEFORE_HINT = 2
-// Modes whose task may set `showKey` (request 133): the target big, its keys lit from the start.
-const SHOW_KEY_MODES = ['find_key', 'symbols']
 const NATIVE_TEXT_COMBOS = new Set([
   'mod+c',
   'mod+x',

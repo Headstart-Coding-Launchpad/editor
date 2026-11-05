@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS, SHOW_KEY_MODES } from './definition.js'
-import { KEYBOARD_MODES, NAMED_KEYS } from './keyboard.js'
+import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS } from './definition.js'
+import { KEYBOARD_MODES, NAMED_KEYS, SHOW_KEY_MODES } from './keyboard.js'
 import { EDIT_REQUIRE_KEYS } from './editText.js'
 import { DEFAULT_TYPE_CODE_ACCURACY, TYPE_CODE_LANGUAGES, tabWidthFor } from './typeCode.js'
 import {
