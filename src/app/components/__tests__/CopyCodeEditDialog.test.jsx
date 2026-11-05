@@ -57,4 +57,23 @@ describe('CopyCodeEditDialog', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('does not close on a backdrop click, only via Cancel (or Escape)', () => {
+    const onClose = vi.fn()
+    render(
+      <CopyCodeEditDialog
+        studentName="Jamie"
+        taskTitle="Loops"
+        initialText=""
+        hasOwnOverride={false}
+        onSave={() => {}}
+        onClearStudent={() => {}}
+        onClose={onClose}
+      />
+    )
+    fireEvent.click(screen.getByRole('dialog'))
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

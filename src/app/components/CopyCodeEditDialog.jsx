@@ -40,9 +40,6 @@ export default function CopyCodeEditDialog({
       aria-modal="true"
       aria-labelledby="copy-code-edit-title"
       style={s.overlay}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
       onKeyDown={(event) => {
         // CodeMirror uses Escape to close its autocomplete popup (and marks it handled).
         if (event.key === 'Escape' && !event.defaultPrevented) {
