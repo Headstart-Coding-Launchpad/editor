@@ -236,6 +236,8 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: targetCpm must be a positive number.` | `type_code` `targetCpm` is zero, negative or not a number. | Use a positive number of characters a minute, or remove it to skip the speed goal. |
 | `Task …: type_code language must be one of ….` | `language` is not `python` or `html`. | Use `python` (Tab = 4 spaces) or `html` (Tab = 2 spaces), or remove it for `python`. |
 | `Task …: showHistory must be true or false.` / `Task … item …: showHistory must be true or false.` | `showHistory` is not a boolean. | Write `showHistory: true`, or remove it. |
+| `Task …: showKey must be true or false.` | `showKey` is not a boolean. | Write `showKey: true`, or remove it. |
+| `Task …: showKey only works in find_key and symbols modes; it is ignored here.` (warning) | `showKey` on another mode. | Remove it, or change the mode. |
 | `Task …: showHistory only works on type_text, type_code and falling_words tasks, so it is ignored here.` (warning) | Only typing modes keep a speed and accuracy history. | Remove `showHistory`, or use a typing mode. |
 | `Task … item …: showHistory on an item only works on type_text and type_code tasks, so it is ignored here.` (warning) | Per-item `showHistory` was set on another mode. | Remove it, or set `showHistory` on the task. |
 | `Task … item …: code is required.` | A `type_code` item has no `code`, or only spaces. | Add the block to type (a YAML block scalar keeps its lines and indentation). |

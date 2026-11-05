@@ -44,6 +44,7 @@ tasks:
     type: keyboard
     description: Some symbols need Shift. On a UK keyboard `@` is Shift + '.
     mode: symbols
+    showKey: true
     items:
       - id: a
         char: "@"
@@ -130,6 +131,7 @@ tasks:
 | `coreItems` | No | How many items make the round, 1 to the number of `items`. The task passes when that many are done; later items are **bonus** reps. Default: all items. Ignored (with a warning) for `falling_words`, which is one round with no item list. |
 | `items` | Yes | One or more items, played in order, each with a unique `id`. Every mode except `falling_words`, which has `words` instead. |
 | `requireShiftForCapitals` | No | `type_text`: a capital typed with Caps Lock doesn't count; the hint says to hold Shift. Can also be set per item. **Off when left out of the YAML**; the Builder turns it on for a new task, so write `true` when you want it. |
+| `showKey` | No | `find_key` and `symbols`: show the target big above the practice area (with the keys in words under it when it needs Shift, e.g. "Shift + 9") and light its key, and both Shift keys when it needs Shift, on the keyboard picture from the start, with a steady amber glow that pulses twice (no pulse with *reduce motion*). A press that isn't the target gets a calm line: "Hold Shift, then press 9" for the right key without Shift, otherwise "That was 8. Press the glowing keys." **Off when left out of the YAML** (the key lights after two misses, as before); the Builder turns it on for a new `find_key` or `symbols` task. |
 | `minAccuracy` | No | `type_text` and `type_code`: fraction of characters that must be right, above 0 and at most 1. Default `1` (exact) for `type_text`, `0.9` for `type_code`. |
 | `targetWpm` | No | `type_text`: optional speed goal in words a minute. Accuracy is always checked; speed only when this is set. Scores are kept across lessons for matched students; see [Typing history](#typing-history-showhistory). |
 | `minKept` | No | `edit_text`: share (above 0, at most 1; default `0.9`) of the characters `start` and `target` have in common that must survive untouched. Deleting the line and typing it again fails. |
@@ -145,8 +147,8 @@ tasks:
 | Mode | Item fields | Notes |
 |---|---|---|
 | `type_text` | `text` (required, ≤ 200 characters, only characters on the layout) | The line is shown with each typed character marked right or wrong, plus accuracy (and speed when `targetWpm` is set). Enter or reaching the end finishes the line. |
-| `find_key` | `key`: one typeable character or a named key (`Enter`, `Backspace`, `Tab`, `Shift`, `Space`, `CapsLock`, `Delete`, `Escape`, `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`); optional `prompt` | After two wrong presses the key lights up on a keyboard picture. |
-| `symbols` | `char`: one character on the layout; optional `prompt` | Symbols that need Shift only count when Shift was held. UK examples: Shift + 2 = `"`, Shift + ' = `@`, Shift + 3 = `£`. |
+| `find_key` | `key`: one typeable character or a named key (`Enter`, `Backspace`, `Tab`, `Shift`, `Space`, `CapsLock`, `Delete`, `Escape`, `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`); optional `prompt` | After two wrong presses the key lights up on a keyboard picture (from the start with `showKey: true`). |
+| `symbols` | `char`: one character on the layout; optional `prompt` | Symbols that need Shift only count when Shift was held. UK examples: Shift + 9 = `(`, Shift + 0 = `)`, Shift + 2 = `"`, Shift + ; = `:`, Shift + [ ] = `{ }`, Shift + = = `+`, Shift + ' = `@`, Shift + # = `~`, Shift + 3 = `£`; `, = . ; [ ] #` need no Shift. With `showKey: true` the symbol shows big and its keys glow from the start. |
 | `shortcuts` | `combo` like `Ctrl+C` (`Ctrl` also matches Cmd on a Mac), or Shift with a non-typing key such as `Shift+Tab` or `Shift+ArrowLeft` (`Shift+A` is just typing, so it is rejected); `prompt` (a warning if missing); optional `practiceText` for the practice box | Browser-reserved shortcuts (Ctrl+W, Ctrl+T, Ctrl+N, Ctrl+Q, Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+Shift+T, Ctrl+Shift+N, Ctrl+Shift+W, Alt+F4, Alt+Tab) are rejected: the page never sees them, so teach those with a quiz question. Copying/cutting/pasting with the right-click menu is noticed and the hint asks for the keys instead. The item's shortcut counts wherever the student presses it on the page, and the browser's own action (such as Ctrl+S's save dialog) is blocked; copy, cut, paste, select-all, undo and redo only count in the practice box because they act on its text. A Tab shortcut (`Shift+Tab`) is practised in a row of three fields instead of the practice box (`practiceText` is not used), and focus really moves back a field. |
 | `edit_text` | `start` and `target` (both required, ≤ 200 characters on the layout, and different); optional `prompt`; optional `requireKeys`: a list of `Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End` and `select` (any Shift selection: Shift + an arrow, Home or End, or Ctrl+A) | The student edits `start` in place: arrows, Home/End and Shift selection move and select, Backspace deletes left, Delete deletes right, typing inserts (replacing a selection); clicking a letter puts the cursor before it. Paste and drag-drop do nothing. The line finishes when it matches `target` exactly (capitals and punctuation included). It then passes only if it was **edited, not retyped** (see `minKept`) and every `requireKeys` key was used. |
 | `type_code` | `code` (required): a block of code with newlines and indentation, ≤ 1000 characters and ≤ 30 lines, only characters on the layout; optional `prompt` | See [Typing code](#typing-code-type_code). |
@@ -204,6 +206,10 @@ way. Every typing mode records `mode`, `accuracy` (0–1), `cpm` (correct charac
 |---|---|
 | `type_text` | `typed`, `shiftCapitals`, `capsLockCapitals`, `source` |
 | `type_code` | `typed`, `source` |
+
+`find_key` and `symbols` items store `pressed` / `typedChar` (and `shift`), `source`, and `tries`:
+how many presses the item took (1 = first go), saved once with the finished result, never per
+keystroke.
 | `falling_words` | `cleared`, `missed`, `score`, `source` (stored as one item with id `round`; `accuracy` is the share of keystrokes that matched the start of a token on screen) |
 
 ## Typing history (`showHistory`)
@@ -308,7 +314,18 @@ passes on every machine. Prompts, hints and the keyboard picture use the student
 
 - The student card shows `n/m done` (plus `· n retyped` for `edit_text` lines typed out again
   instead of edited); the modal shows the student's results read-only, with each retyped line's
-  hint.
+  hint. `find_key` and `symbols` cards add the item that took the most presses, once it took 3 or
+  more: `2/5 done · ( took 3 tries`.
+- With `showKey`, the modal follows the student's item and shows the same big symbol and lit keys
+  (worked out from the task). Missed presses are not sent live; the card learns the count when
+  the item is finished.
+- **Highlight ▸** (the tutor's control highlight, and a task's `highlight` field) can make one key
+  glow for 20 seconds on the keyboard picture or the on-screen keyboard: `highlight: "key:Enter"`,
+  `"key:("`, `"key:Shift"`. The family is every character on the UK layout (letters once, any
+  case) plus `Space`, `Enter`, `Tab` and `Shift`; a symbol must be in quotes. The keys only show in
+  `find_key` and `symbols` on a laptop (the picture) and in every mode with the on-screen keyboard
+  (tablets); other modes get a validation warning. Another activity's `highlight` is an error
+  ("the <activity> activity has no highlight targets").
 - `type_code` cards add the average accuracy and speed of the blocks finished so far: `2/3 done ·
   94% · 71 cpm`. While the tutor watches a student, the modal shows the block with every typed
   character marked as they type it.

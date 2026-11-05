@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS } from './definition.js'
+import definition, { HISTORY_MODES, KEYBOARD_MODE_LABELS, SHOW_KEY_MODES } from './definition.js'
 import { KEYBOARD_MODES, NAMED_KEYS } from './keyboard.js'
 import { EDIT_REQUIRE_KEYS } from './editText.js'
 import { DEFAULT_TYPE_CODE_ACCURACY, TYPE_CODE_LANGUAGES, tabWidthFor } from './typeCode.js'
@@ -59,6 +59,10 @@ export function changeKeyboardMode(task, mode) {
   if (mode !== 'type_code') for (const field of TYPE_CODE_OPTIONS) delete next[field]
   if (mode !== 'falling_words') for (const field of FALLING_OPTIONS) delete next[field]
   if (!HISTORY_MODES.includes(mode)) delete next.showHistory
+  // A new find_key / symbols task shows its key from the start (request 133); a task already in
+  // one of those modes keeps its own choice.
+  if (!SHOW_KEY_MODES.includes(mode)) delete next.showKey
+  else if (!SHOW_KEY_MODES.includes(task.mode)) next.showKey = true
   if (mode === 'falling_words') {
     // A round has no items: just the words and how long it lasts.
     delete next.items
@@ -365,6 +369,20 @@ export default function KeyboardBuilderEditor({ task, onUpdate }) {
               />
             </InlineField>
           </div>
+        </Field>
+      )}
+
+      {SHOW_KEY_MODES.includes(mode) && (
+        <Field label="Key help">
+          <label className="te-check-toggle">
+            <input
+              type="checkbox"
+              checked={task.showKey === true}
+              onChange={(e) => setOptional('showKey', e.target.checked ? true : undefined)}
+            />
+            Show the target big and light its keys from the start (off: the key lights after two
+            misses)
+          </label>
         </Field>
       )}
 

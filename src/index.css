@@ -5458,6 +5458,66 @@ label.te-backdrop-tag,
   }
 }
 
+/* Keyboard showKey (request 133): the target symbol big above the practice area, and its keys
+   lit from the start with a steady amber glow that pulses twice, then stays on. */
+.act-key-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 6px;
+}
+
+.act-key-target__symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  height: 112px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border: 3px solid #f59e0b;
+  border-radius: 18px;
+  background: #fffbeb;
+  color: var(--colour-text, #1f2937);
+  font-family: var(--font-code);
+  font-size: 96px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.act-key-target__symbol--word {
+  font-size: 48px;
+}
+
+.act-key-target__keys {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.act-practice--compact {
+  min-height: 52px;
+}
+
+.act-osk__key--highlight.act-osk__key--glow {
+  background: #f59e0b;
+  border-color: #b45309;
+  color: #1f2937;
+  box-shadow:
+    0 0 0 3px rgba(245, 158, 11, 0.45),
+    0 0 14px rgba(245, 158, 11, 0.75);
+  animation: act-key-glow 0.7s ease-in-out 2;
+}
+
+@keyframes act-key-glow {
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(245, 158, 11, 0.35),
+      0 0 22px rgba(245, 158, 11, 0.9);
+  }
+}
+
 /* Mouse */
 .act-stage {
   position: relative;
@@ -5540,7 +5600,8 @@ label.te-backdrop-tag,
 
 @media (prefers-reduced-motion: reduce) {
   .act-bit,
-  .act-osk__key--highlight {
+  .act-osk__key--highlight,
+  .act-osk__key--highlight.act-osk__key--glow {
     transition: none;
     animation: none;
   }

@@ -116,6 +116,8 @@ export default function OnScreenKeyboard({
   layout = DEFAULT_LAYOUT,
   interactive = false,
   highlightCodes = [],
+  // showKey (request 133): the lit keys get a stronger amber glow that pulses twice, then stays.
+  glow = false,
   onKey,
   showCtrl = false,
   platform = null,
@@ -185,6 +187,7 @@ export default function OnScreenKeyboard({
                 wide ? 'act-osk__key--wide' : '',
                 code === 'Space' ? 'act-osk__key--space' : '',
                 highlighted.has(code) ? 'act-osk__key--highlight' : '',
+                glow && highlighted.has(code) ? 'act-osk__key--glow' : '',
               ]
                 .filter(Boolean)
                 .join(' ')

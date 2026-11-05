@@ -147,3 +147,15 @@ describe('Keyboard BuilderEditor: type_code and falling_words', () => {
     expect(errorsOf(back)).toEqual([])
   })
 })
+
+describe('Keyboard Builder: showKey default (request 133)', () => {
+  it('turns showKey on for a new find_key or symbols task and keeps an author choice', () => {
+    const typeText = definition.defaultTask({ id: 1 })
+    expect(changeKeyboardMode(typeText, 'symbols').showKey).toBe(true)
+    expect(changeKeyboardMode(typeText, 'find_key').showKey).toBe(true)
+    const off = { ...changeKeyboardMode(typeText, 'symbols'), showKey: undefined }
+    delete off.showKey
+    expect(changeKeyboardMode(off, 'find_key')).not.toHaveProperty('showKey')
+    expect(changeKeyboardMode({ ...off, showKey: true }, 'type_text')).not.toHaveProperty('showKey')
+  })
+})

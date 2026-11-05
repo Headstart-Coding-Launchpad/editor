@@ -90,7 +90,7 @@ describe('Keyboard UI: find_key and symbols', () => {
     expect(picture.querySelector('[data-code="KeyQ"]')).toHaveClass('act-osk__key--highlight')
     expect(screen.getByText(/Look for Q/)).toBeInTheDocument()
     press(area, 'q', { code: 'KeyQ' })
-    expect(state().items.a).toEqual({ pressed: true, source: 'hardware' })
+    expect(state().items.a).toEqual({ pressed: true, source: 'hardware', tries: 3 })
   })
 
   it('records Shift for a UK symbol', () => {
@@ -99,7 +99,7 @@ describe('Keyboard UI: find_key and symbols', () => {
     const area = screen.getByTestId('keyboard-practice')
     press(area, '3', { code: 'Digit3' })
     press(area, '£', { code: 'Digit3', shiftKey: true })
-    expect(state().items.a).toEqual({ typedChar: '£', shift: true, source: 'hardware' })
+    expect(state().items.a).toEqual({ typedChar: '£', shift: true, source: 'hardware', tries: 2 })
     expect(keyboard.grade(task, state()).passed).toBe(true)
   })
 })

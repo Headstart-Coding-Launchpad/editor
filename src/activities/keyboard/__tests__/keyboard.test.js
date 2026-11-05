@@ -193,3 +193,20 @@ describe('keyboardBadgeResult', () => {
     expect(keyboardBadgeResult(two, shown).accuracy).toBeNull()
   })
 })
+
+describe('showKey (request 133)', () => {
+  const symbols = { mode: 'symbols', items: [{ id: 'a', char: '(' }] }
+
+  it('accepts true or false on find_key and symbols, rejects other values', () => {
+    expect(validateKeyboardTask({ ...symbols, showKey: true }, 1)).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(validateKeyboardTask({ ...symbols, showKey: 'yes' }, 1).errors).toEqual([
+      'Task 1: showKey must be true or false.',
+    ])
+    expect(validateKeyboardTask({ ...typeText, showKey: true }, 1).warnings).toEqual([
+      'Task 1: showKey only works in find_key and symbols modes; it is ignored here.',
+    ])
+  })
+})

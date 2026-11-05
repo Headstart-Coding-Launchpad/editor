@@ -5,7 +5,7 @@ import TutorItemPicker from '../ui/TutorItemPicker.jsx'
 import { useRoundFlow } from '../ui/useRoundFlow.js'
 import { coreCountOf } from '../round.js'
 import ActivityCorrect, { SpinTick } from '../ui/ActivityCorrect.jsx'
-import OnScreenKeyboard, { codesForKey } from './OnScreenKeyboard.jsx'
+import OnScreenKeyboard, { charsByCode, codesForKey } from './OnScreenKeyboard.jsx'
 import TypeCodeBlock from './TypeCodeBlock.jsx'
 import FallingWordsView from './FallingWordsView.jsx'
 import {
@@ -25,6 +25,8 @@ import {
   createInputRecorder,
   getKeyForChar,
   isModifierKey,
+  keyLabel,
+  keyName,
   normalizeCombo,
   normalizeKeyEvent,
   typedCharacters,
@@ -36,8 +38,8 @@ import {
 // result that keyboard.js grades:
 //   type_text: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, shiftCapitals,
 //                capsLockCapitals, source, done }
-//   find_key:  { pressed, source }
-//   symbols:   { typedChar, shift, source }
+//   find_key:  { pressed, source, tries }
+//   symbols:   { typedChar, shift, source, tries }   (tries: presses it took, saved once on finish)
 //   shortcuts: { performed, via: 'keyboard' | 'menu', source }
 //   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
 //   type_code: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, source, done }
@@ -46,6 +48,8 @@ import {
 // item is discrete (see classifyChange in definition.js).
 
 const MISSES_BEFORE_HINT = 2
+// Modes whose task may set `showKey` (request 133): the target big, its keys lit from the start.
+const SHOW_KEY_MODES = ['find_key', 'symbols']
 const NATIVE_TEXT_COMBOS = new Set([
   'mod+c',
   'mod+x',
@@ -100,6 +104,36 @@ function pressesKey(event, itemKey, layout) {
   const target = getKeyForChar(itemKey, layout)
   if (target && event.code === target.code) return true
   return String(event.key).toLowerCase() === String(itemKey).toLowerCase()
+}
+
+// showKey (request 133): the target shown big ("(" or "Enter") and, when it needs Shift, the words
+// under it ("Shift + 9"). Null words when they would only repeat the target.
+function bigTarget(task, item, platform) {
+  const raw = task.mode === 'symbols' ? item.char : item.key
+  const text = NAMED_KEYS.includes(raw)
+    ? keyName(raw, platform)
+    : raw === ' '
+      ? 'Space'
+      : /^[a-z]$/.test(raw ?? '')
+        ? raw.toUpperCase()
+        : String(raw ?? '')
+  const words = describeItem(task, item, platform)
+  return { text, words: words && words !== text ? words : null }
+}
+
+// The calm line after a press that was not the target (showKey only): never "wrong". The right
+// key without Shift gets "Hold Shift, then press 9"; anything else names what was pressed.
+function calmMissText(task, item, event, glowingCount) {
+  const layout = task?.layout ?? DEFAULT_LAYOUT
+  if (task.mode === 'symbols') {
+    const target = getKeyForChar(item.char, layout)
+    const plain = target ? charsByCode(layout)[target.code]?.plain : null
+    if (target?.shift && !event.mods.shift && (event.code === target.code || event.key === plain)) {
+      return `Hold Shift, then press ${keyLabel(target.code)}`
+    }
+  }
+  const pressed = event.key === ' ' ? 'Space' : event.key
+  return `That was ${pressed}. Press the glowing ${glowingCount > 1 ? 'keys' : 'key'}.`
 }
 
 // The edit_text line: every character, the text cursor and any Shift selection. Clicking a
@@ -203,6 +237,8 @@ export function KeyboardStudentView({
   const currentId = current?.id
   const targetCombo = mode === 'shortcuts' ? normalizeCombo(current?.combo) : ''
   const tabPractice = targetCombo.split('+').pop() === 'tab'
+  const showKey = SHOW_KEY_MODES.includes(mode) && task?.showKey === true
+  const hintKey = mode === 'find_key' ? current?.key : mode === 'symbols' ? current?.char : null
   const pageKeyRef = useRef(null)
 
   // A new item starts a new recording and puts the caret back in the practice area.
@@ -277,9 +313,19 @@ export function KeyboardStudentView({
     updateResult(() => next)
   }
 
-  function miss(description) {
+  function miss(description, event) {
     setMisses((prev) => ({ ...prev, [current.id]: (prev[current.id] ?? 0) + 1 }))
-    setLastWrong(description)
+    setLastWrong(
+      showKey && event
+        ? calmMissText(task, current, event, codesForKey(hintKey, layout).length)
+        : description
+    )
+  }
+
+  // find_key and symbols save how many presses the item took (request 133), once, in the
+  // finished result: no extra writes, and the tutor card can say "( took 3 tries".
+  function finishWithTries(next) {
+    finishItem({ ...next, tries: (misses[current.id] ?? 0) + 1 })
   }
 
   // Marked as you go: finishing the core items passes the task (useActivityState auto-submits
@@ -407,9 +453,9 @@ export function KeyboardStudentView({
 
   function handleFindKey(event) {
     if (pressesKey(event, current.key, layout)) {
-      finishItem({ pressed: true, source: event.source })
+      finishWithTries({ pressed: true, source: event.source })
     } else if (!event.repeat) {
-      miss(`You pressed ${event.key === ' ' ? 'Space' : event.key}.`)
+      miss(`You pressed ${event.key === ' ' ? 'Space' : event.key}.`, event)
     }
     return true
   }
@@ -417,9 +463,9 @@ export function KeyboardStudentView({
   function handleSymbols(event) {
     if (isModifierKey(event.key) || event.key.length !== 1) return false
     if (event.key === current.char) {
-      finishItem({ typedChar: event.key, shift: event.mods.shift, source: event.source })
+      finishWithTries({ typedChar: event.key, shift: event.mods.shift, source: event.source })
     } else {
-      miss(`You typed ${event.key === ' ' ? 'a space' : event.key}.`)
+      miss(`You typed ${event.key === ' ' ? 'a space' : event.key}.`, event)
     }
     return true
   }
@@ -469,7 +515,7 @@ export function KeyboardStudentView({
   function onPracticeKeyUp(domEvent) {
     if (readOnly || finished || mode !== 'find_key' || current.key !== 'CapsLock') return
     const event = normalizeKeyEvent(domEvent)
-    if (event.key === 'CapsLock') finishItem({ pressed: true, source: event.source })
+    if (event.key === 'CapsLock') finishWithTries({ pressed: true, source: event.source })
   }
 
   function onPracticeKeyDown(domEvent) {
@@ -524,9 +570,11 @@ export function KeyboardStudentView({
   const inBonus = flow.doneCount >= core && core < items.length
 
   const missCount = misses[current.id] ?? 0
-  const showHint = !finished && missCount >= MISSES_BEFORE_HINT
-  const hintKey = mode === 'find_key' ? current.key : mode === 'symbols' ? current.char : null
-  const highlightCodes = showHint && hintKey ? codesForKey(hintKey, layout) : []
+  // With showKey the keys are lit from the start, so the "Look for…" line is not needed.
+  const showHint = !finished && !showKey && missCount >= MISSES_BEFORE_HINT
+  const lightKeys = !finished && (showKey || showHint)
+  const highlightCodes = lightKeys && hintKey ? codesForKey(hintKey, layout) : []
+  const target = showKey ? bigTarget(task, current, platform) : null
   const showPicture = !virtualKeyboard && (mode === 'find_key' || mode === 'symbols')
   const needsRealKeyboard = !!REAL_KEYBOARD_NOTES[mode] && virtualKeyboard
 
@@ -553,6 +601,23 @@ export function KeyboardStudentView({
           result={result}
           finished={finished}
         />
+      )}
+
+      {target && (
+        <div className="act-key-target">
+          <span
+            className={`act-key-target__symbol${[...target.text].length > 1 ? ' act-key-target__symbol--word' : ''}`}
+            data-testid="keyboard-target-symbol"
+            aria-label={`Press ${target.words ?? target.text}`}
+          >
+            <span aria-hidden="true">{target.text}</span>
+          </span>
+          {target.words && (
+            <span className="act-key-target__keys" data-testid="keyboard-target-keys">
+              {target.words}
+            </span>
+          )}
+        </div>
       )}
 
       {mode === 'type_text' && (
@@ -654,7 +719,7 @@ export function KeyboardStudentView({
       ) : (
         <div
           ref={practiceRef}
-          className="act-practice"
+          className={showKey ? 'act-practice act-practice--compact' : 'act-practice'}
           role="textbox"
           tabIndex={readOnly ? -1 : 0}
           aria-readonly={readOnly || undefined}
@@ -722,6 +787,7 @@ export function KeyboardStudentView({
           layout={layout}
           interactive={virtualKeyboard}
           highlightCodes={highlightCodes}
+          glow={showKey}
           showCtrl={mode === 'shortcuts'}
           platform={platform}
           onKey={(event) => {

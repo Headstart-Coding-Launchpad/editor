@@ -113,6 +113,15 @@ export function validateKeyboardTask(task, n) {
     errors.push(`${where}: type_code language must be one of ${TYPE_CODE_LANGUAGES.join(', ')}.`)
   }
   validateShowHistory(task, where, errors, warnings)
+  // showKey (request 133): find_key and symbols only.
+  if (task.showKey != null) {
+    if (typeof task.showKey !== 'boolean') errors.push(`${where}: showKey must be true or false.`)
+    else if (!['find_key', 'symbols'].includes(task.mode)) {
+      warnings.push(
+        `${where}: showKey only works in find_key and symbols modes; it is ignored here.`
+      )
+    }
+  }
   if (task.mode === 'falling_words') {
     if (task.coreItems != null) {
       warnings.push(

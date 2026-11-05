@@ -38,6 +38,25 @@ export const KEYBOARD_MODE_LABELS = {
 }
 
 const ITEM_MODES = KEYBOARD_MODES.filter((mode) => mode !== 'falling_words')
+// Modes whose task may set showKey (request 133).
+export const SHOW_KEY_MODES = ['find_key', 'symbols']
+// The tutor card names the item that took the most presses once it took this many (request 133).
+const TRIES_WORTH_SHOWING = 3
+
+// " · ( took 3 tries" for the finished find_key / symbols item that took the most presses.
+function hardestItemText(task, state) {
+  if (!SHOW_KEY_MODES.includes(task?.mode)) return ''
+  let hardest = null
+  for (const item of keyboardItems(task)) {
+    const tries = Number(state?.items?.[item.id]?.tries)
+    if (Number.isFinite(tries) && tries >= TRIES_WORTH_SHOWING && tries > (hardest?.tries ?? 0)) {
+      hardest = { tries, label: task.mode === 'symbols' ? item.char : item.key }
+    }
+  }
+  return hardest
+    ? ` · ${hardest.label === ' ' ? 'Space' : hardest.label} took ${hardest.tries} tries`
+    : ''
+}
 // Modes whose results carry speed and accuracy, kept as typing history across lessons.
 export const HISTORY_MODES = ['type_text', 'type_code', 'falling_words']
 
@@ -144,6 +163,13 @@ export default defineActivity({
         modes: ['type_text'],
         description:
           'Capitals must be typed with Shift, not Caps Lock. Off when left out (a new task made in the Builder turns it on).',
+      },
+      {
+        name: 'showKey',
+        type: 'boolean',
+        modes: SHOW_KEY_MODES,
+        description:
+          'Show the target big and light its key (and Shift) on the keyboard picture from the start. Off when left out (a new task made in the Builder turns it on).',
       },
       {
         name: 'minAccuracy',
@@ -406,7 +432,7 @@ export default defineActivity({
           }).length
         : 0
     return {
-      text: `${doneText}${retyped ? ` · ${retyped} retyped` : ''}`,
+      text: `${doneText}${retyped ? ` · ${retyped} retyped` : ''}${hardestItemText(task, state)}`,
       tone: done ? 'success' : 'neutral',
     }
   },
