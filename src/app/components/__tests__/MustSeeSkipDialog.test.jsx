@@ -23,6 +23,11 @@ describe('MustSeeSkipDialog', () => {
     expect(onSkip).toHaveBeenCalledTimes(1)
   })
 
+  it('Cancel uses the white-surface ghost style so it is visible on the dialog', () => {
+    render(<MustSeeSkipDialog taskTitle="T" onGoToIt={vi.fn()} onSkip={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByTestId('must-see-cancel').className).toBe('btn-ghost-outline')
+  })
+
   it('closes on Escape without skipping', () => {
     const onClose = vi.fn()
     const onSkip = vi.fn()

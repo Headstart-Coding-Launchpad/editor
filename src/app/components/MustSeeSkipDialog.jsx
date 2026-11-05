@@ -52,7 +52,7 @@ export default function MustSeeSkipDialog({ taskTitle, onGoToIt, onSkip, onClose
           </button>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn-ghost-outline"
             onClick={onClose}
             data-testid="must-see-cancel"
           >
