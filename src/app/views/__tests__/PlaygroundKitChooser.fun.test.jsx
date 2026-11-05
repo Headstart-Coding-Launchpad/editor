@@ -1,0 +1,113 @@
+// Fun moment (sketch "LaunchPad playground kit chooser", 2026-11-05, section 5): one tap on a kit
+// and the editor already holds code that does something on the first Run. The Python playground
+// opens on a "Pick a kit" chooser with 5 controls (4 kit cards + More kits); Picture Lab loads the
+// pixel fox; Turtle goes to its own playground; Help topics is in every playground but Scratch.
+import React from 'react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import PlaygroundView from '../PlaygroundView'
+
+vi.mock('../../../shared/firebase', () => ({ firestore: {}, db: {} }))
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(() => ({})),
+  getDocs: vi.fn(() =>
+    Promise.resolve({
+      docs: [
+        {
+          id: 'for-loops',
+          data: () => ({ title: 'For loops', types: ['python', 'turtle'], summary: 'Repeat' }),
+        },
+      ],
+    })
+  ),
+}))
+
+// The real StudentView needs Pyodide and Firebase; the playground's own job is the lesson it
+// builds and the controls it hands to the top bar.
+vi.mock('../StudentView', () => ({
+  default: ({ lesson, playgroundControls }) => (
+    <div>
+      <pre data-testid="editor">{lesson.tasks[0].starterCode}</pre>
+      <output data-testid="lesson-id">{lesson.id}</output>
+      <div data-testid="top-bar">{playgroundControls}</div>
+    </div>
+  ),
+}))
+
+function Where() {
+  const location = useLocation()
+  return <output data-testid="where">{location.pathname + location.search}</output>
+}
+
+function renderAt(path) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route
+          path="/playground/:type"
+          element={
+            <>
+              <PlaygroundView />
+              <Where />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>
+  )
+}
+
+describe('Fun moment: pick a kit and the first Run already does something', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('opens on a chooser with exactly 5 controls: 4 kit cards and More kits', () => {
+    renderAt('/playground/python')
+
+    const chooser = screen.getByRole('region', { name: /pick a kit/i })
+    const buttons = within(chooser).getAllByRole('button')
+    expect(buttons.map((b) => b.getAttribute('data-kit'))).toEqual([
+      'turtle',
+      'game',
+      'picture',
+      'beats',
+      'more',
+    ])
+    expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+  })
+
+  it('tapping Picture Lab opens the editor holding the pixel fox, with Help topics', async () => {
+    const user = userEvent.setup()
+    renderAt('/playground/python')
+
+    await user.click(screen.getByRole('button', { name: /picture lab/i }))
+
+    expect(screen.getByTestId('editor').textContent).toContain('load_image("pixel_fox")')
+    expect(screen.getByTestId('where').textContent).toBe('/playground/python?kit=picture')
+    const topBar = screen.getByTestId('top-bar')
+    expect(within(topBar).getByRole('button', { name: /help topics/i })).toBeInTheDocument()
+    expect(within(topBar).getByRole('button', { name: /switch kit/i })).toBeInTheDocument()
+  })
+
+  it('tapping Turtle lands on the Turtle playground with import turtle', async () => {
+    const user = userEvent.setup()
+    renderAt('/playground/python')
+
+    await user.click(screen.getByRole('button', { name: /turtle/i }))
+
+    expect(screen.getByTestId('where').textContent).toBe('/playground/turtle')
+    expect(screen.getByTestId('editor').textContent).toContain('import turtle')
+    expect(
+      within(screen.getByTestId('top-bar')).getByRole('button', { name: /help topics/i })
+    ).toBeInTheDocument()
+  })
+
+  it('Scratch has no Help topics', () => {
+    renderAt('/playground/scratch')
+
+    expect(screen.queryByRole('button', { name: /help topics/i })).not.toBeInTheDocument()
+  })
+})
