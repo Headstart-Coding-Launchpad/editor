@@ -1,5 +1,9 @@
 import React from 'react'
-import { optionHasPicture, optionPictureSource } from '../../../shared/quizPictureOptions'
+import {
+  optionHasPicture,
+  optionPictureName,
+  optionPictureSource,
+} from '../../../shared/quizPictureOptions'
 
 // The picture of a picture answer option (`image` URL or `emoji`, with `alt`), shared by the
 // quiz card (fills its box, never cropped) and the tutor's thumbnails (StudentCard summary,
@@ -8,12 +12,14 @@ import { optionHasPicture, optionPictureSource } from '../../../shared/quizPictu
 // Validation is not enough here: a Builder save, a direct Firestore write or an import can store
 // anything. So only an https image is ever loaded (lazily, with no referrer); otherwise, and when
 // the image fails to load, the card shows the emoji, else the alt text in words, never an empty
-// box. `decorative`: the label beside it already says what it shows (tutor thumbnails), so the
+// box. With no alt text (a validation error) the caption, else the option id, stands in for it, as
+// the accessible name and the words: never an empty name or a '?'. `decorative`: the label beside it already says what it shows (tutor thumbnails), so the
 // picture is hidden from screen readers rather than announced twice.
 export function QuizOptionPicture({ option, size = null, style, decorative = false }) {
   const [failedSrc, setFailedSrc] = React.useState(null)
   if (!optionHasPicture(option)) return null
   const alt = typeof option.alt === 'string' ? option.alt.trim() : ''
+  const name = optionPictureName(option)
   const source = optionPictureSource(option)
   const box = size
     ? { width: size, height: size, flexShrink: 0 }
@@ -37,7 +43,7 @@ export function QuizOptionPicture({ option, size = null, style, decorative = fal
   if (fallbackEmoji) {
     return (
       <span
-        {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': alt })}
+        {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': name })}
         data-quiz-picture="emoji"
         style={{
           ...box,
@@ -45,7 +51,9 @@ export function QuizOptionPicture({ option, size = null, style, decorative = fal
           alignItems: 'center',
           justifyContent: 'center',
           lineHeight: 1,
-          fontSize: size ? Math.round(size * 0.75) : 'clamp(3rem, 12vh, 7rem)',
+          fontSize: size
+            ? Math.round(size * 0.75)
+            : 'calc(var(--quiz-option-scale, 1) * clamp(3rem, 12vh, 7rem))',
           ...style,
         }}
       >
@@ -78,7 +86,7 @@ export function QuizOptionPicture({ option, size = null, style, decorative = fal
         ...style,
       }}
     >
-      {alt || '?'}
+      {name}
     </span>
   )
 }

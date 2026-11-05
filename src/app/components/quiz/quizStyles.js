@@ -160,8 +160,10 @@ export const baseStyles = {
   pictureOptions: {
     gridTemplateColumns: undefined,
   },
-  // Equal cards, at least 120px tall (a big iPad tap target); the picture fills the card above
-  // its optional caption.
+  // Equal cards, 120px tall at least at full size (a big iPad tap target); the picture fills the
+  // card above its optional caption. The minimum heights, padding, letter and tick follow
+  // --quiz-option-scale, so shrinkToFit can fit four stacked cards in a short pane (down to 0.65:
+  // a 78px card) before the frame scrolls.
   pictureOption: {
     position: 'relative',
     display: 'flex',
@@ -170,7 +172,7 @@ export const baseStyles = {
     width: '100%',
     height: '100%',
     minWidth: 0,
-    minHeight: 120,
+    minHeight: 'calc(var(--quiz-option-scale, 1) * 120px)',
     padding: 'calc(var(--quiz-option-scale, 1) * 10px)',
     border: '3px solid',
     borderRadius: 10,
@@ -182,7 +184,7 @@ export const baseStyles = {
   },
   pictureRow: {
     flex: '1 1 0',
-    minHeight: 72,
+    minHeight: 'calc(var(--quiz-option-scale, 1) * 72px)',
     display: 'flex',
     gap: 8,
   },
@@ -194,8 +196,8 @@ export const baseStyles = {
     gap: 8,
   },
   pictureOptionId: {
-    width: 30,
-    height: 30,
+    width: 'calc(var(--quiz-option-scale, 1) * 30px)',
+    height: 'calc(var(--quiz-option-scale, 1) * 30px)',
     borderRadius: 6,
     color: '#fff',
     display: 'inline-flex',
@@ -203,19 +205,31 @@ export const baseStyles = {
     justifyContent: 'center',
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
-    fontSize: '1rem',
+    fontSize: 'calc(var(--quiz-option-scale, 1) * 1rem)',
     textTransform: 'uppercase',
   },
   pictureTick: {
-    width: 30,
-    height: 30,
+    width: 'calc(var(--quiz-option-scale, 1) * 30px)',
+    height: 'calc(var(--quiz-option-scale, 1) * 30px)',
     borderRadius: '50%',
     color: '#fff',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '1.15rem',
+    fontSize: 'calc(var(--quiz-option-scale, 1) * 1.15rem)',
     fontWeight: 700,
+  },
+  // The verdict in words, for screen readers only.
+  visuallyHidden: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    whiteSpace: 'nowrap',
+    border: 0,
   },
   // The picture itself is absolutely placed (so it never sets the card's size). The 200px width
   // (a flex basis of auto, so it counts in intrinsic sizing) gives the card a real width in a

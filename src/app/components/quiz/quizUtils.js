@@ -49,6 +49,17 @@ export function fitScratchQuizScale({
   return Math.max(minimumScale, Math.min(...limits))
 }
 
+// Picture cards stack in one column when the options frame is under 480px wide, and go back to
+// side by side only above 520px: the gap stops a frame whose width follows the layout (a
+// shrink-to-fit parent, a scrollbar) flipping back and forth. A width of 0 (not laid out yet,
+// or hidden) keeps the current layout.
+export const PICTURE_NARROW_BELOW = 480
+export const PICTURE_WIDE_ABOVE = 520
+export function nextPictureNarrow(wasNarrow, width) {
+  if (!(width > 0)) return wasNarrow
+  return wasNarrow ? width <= PICTURE_WIDE_ABOVE : width < PICTURE_NARROW_BELOW
+}
+
 const OPTIONS_MIN_SCALE = 0.65
 const OPTIONS_SCALE_STEP = 0.05
 const OPTIONS_MAX_SHRINK_STEPS = 8

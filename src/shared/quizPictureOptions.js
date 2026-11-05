@@ -91,6 +91,13 @@ export function quizOptionLabel(option) {
   return quizOptionDescription(option) || String(option?.id ?? '')
 }
 
+// What a picture is called where it stands alone (an emoji's name, a broken image's words): the
+// alt text, else the caption as plain text, else the option id. Never ''.
+export function optionPictureName(option) {
+  if (nonEmpty(option?.alt)) return option.alt.trim()
+  return hintPlainText(option?.text) || String(option?.id ?? '') || 'Picture'
+}
+
 // A screen reader's name for a card, in plain text: "Caption: alt" when both exist (and
 // differ), else whichever there is, else the id. Markdown in the caption is flattened.
 export function quizOptionAriaLabel(option) {

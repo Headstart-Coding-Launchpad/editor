@@ -14,15 +14,13 @@ import { QuizOptionPicture } from './QuizOptionPicture'
 import {
   baseStyles as s,
   fitScratchQuizScale,
+  nextPictureNarrow,
   normalizeQuizAnswerText,
   OPTION_COLOURS,
   OPTION_VERDICT_COLOURS,
   QuestionPanel,
   shrinkToFit,
 } from './quizUtils'
-
-// Under this options-frame width, picture cards stack in one column.
-const PICTURE_NARROW_WIDTH = 480
 
 export default function MultipleChoiceQuiz({
   task,
@@ -71,13 +69,26 @@ export default function MultipleChoiceQuiz({
     // A rising option (its first-view entrance) is translated down, which scrollHeight counts
     // as overflow; measure with the options at rest so the entrance never shrinks them. An
     // !important declaration outranks the animation without restarting it.
+    // `running` guards against re-entry: our own writes (columns, scale) can resize the frame.
+    let running = false
     const run = () => {
-      // Picture cards go to one column when the frame is narrow (index.css). Set on the DOM
-      // before measuring, so the fit below sees the final layout and nothing re-renders.
+      if (running) return
+      running = true
+      try {
+        fit()
+      } finally {
+        running = false
+      }
+    }
+    const fit = () => {
+      // Picture cards go to one column when the frame is narrow (index.css), with hysteresis
+      // (nextPictureNarrow) so a frame whose width follows the layout cannot flip back and
+      // forth. Set on the DOM before measuring, so the fit below sees the final layout and
+      // nothing re-renders.
       if (pictureMode)
         content.toggleAttribute(
           'data-picture-narrow',
-          container.clientWidth > 0 && container.clientWidth < PICTURE_NARROW_WIDTH
+          nextPictureNarrow(content.hasAttribute('data-picture-narrow'), container.clientWidth)
         )
       else content.removeAttribute('data-picture-narrow')
       const options = Array.from(content.children)
@@ -176,6 +187,17 @@ export default function MultipleChoiceQuiz({
               // chosen wrong answer once a tutor's view reveals the verdict.
               const badge = isWrong ? '✗' : active || isCorrect ? '✓' : null
               const ring = verdict ? verdict.border : colour.active
+              // The verdict in words for screen readers (the tick and colour are aria-hidden).
+              const verdictWords = isWrong
+                ? 'Your answer, incorrect'
+                : isCorrect && active
+                  ? 'Your answer, correct'
+                  : isCorrect
+                    ? 'Correct answer'
+                    : active && submitted
+                      ? 'Your answer'
+                      : null
+              const verdictId = `quiz-picture-verdict-${task?.id ?? 'task'}-${option.id}`
               return (
                 <div
                   key={option.id}
@@ -183,6 +205,7 @@ export default function MultipleChoiceQuiz({
                   aria-checked={active}
                   aria-disabled={locked || undefined}
                   aria-label={quizOptionAriaLabel(option)}
+                  aria-describedby={verdictWords ? verdictId : undefined}
                   tabIndex={locked ? -1 : 0}
                   className={optionEntrance.className}
                   style={{
@@ -225,6 +248,11 @@ export default function MultipleChoiceQuiz({
                     <div className="quiz-option-text" style={s.pictureCaption}>
                       <InlineMarkdown content={caption} />
                     </div>
+                  )}
+                  {verdictWords && (
+                    <span id={verdictId} style={s.visuallyHidden}>
+                      {verdictWords}
+                    </span>
                   )}
                 </div>
               )

@@ -121,11 +121,11 @@ describe('picture answer options (Fun moment)', () => {
     expect(owl.querySelector('img')).toHaveAttribute('alt', 'An owl')
   })
 
-  it('picture cards keep the picture uncropped (object-fit contain) and at least 120px tall', () => {
+  it('picture cards keep the picture uncropped (object-fit contain) and 120px tall at full size', () => {
     render(<QuizTask task={PICTURE_TASK} />)
     const radio = screen.getAllByRole('radio')[0]
     expect(radio.querySelector('img').style.objectFit).toBe('contain')
-    expect(parseInt(radio.style.minHeight, 10)).toBeGreaterThanOrEqual(120)
+    expect(radio.style.minHeight).toBe('calc(var(--quiz-option-scale, 1) * 120px)')
   })
 
   it('a word-only quiz is unchanged (no picture cards)', () => {
@@ -366,5 +366,168 @@ describe('picture options: the Builder edits alt text and can remove a picture',
       />
     )
     expect(screen.getByRole('button', { name: /add option/i })).toBeEnabled()
+  })
+})
+
+// Round 2 of the review.
+const WORD_ONLY = {
+  id: 5,
+  title: 'Old word quiz',
+  taskType: 'quiz',
+  quizType: 'multiple_choice',
+  options: [
+    { id: 'a', text: 42 },
+    { id: 'b', text: '' },
+    { id: 'c', text: '   ' },
+  ],
+  check: { type: 'answer_equals', value: 'a' },
+}
+
+describe('word-only quizzes are unchanged (characterization)', () => {
+  it('the quiz and the poll draw numeric and blank option text as before', () => {
+    const { unmount } = render(<QuizTask task={WORD_ONLY} showQuestion />)
+    const radios = screen.getAllByRole('radio')
+    expect(radios).toHaveLength(3)
+    expect(radios[0]).toHaveTextContent('42')
+    unmount()
+    render(<QuizTask task={{ ...WORD_ONLY, quizType: 'poll', check: null }} showQuestion />)
+    expect(screen.getAllByRole('radio')[0]).toHaveTextContent('42')
+  })
+
+  it('the revealed correct answer note still reads a numeric option', () => {
+    render(
+      <QuizActivityStudentView
+        task={WORD_ONLY}
+        state="b"
+        readOnly
+        teacher
+        result={{ submitted: true, passed: false }}
+      />
+    )
+    expect(screen.getByText(/Correct answer:/).closest('div')).toHaveTextContent('42')
+  })
+
+  it('ChoiceCardSummary: String() of numeric text, "Selected answer" for blank', () => {
+    const { unmount } = render(<ChoiceCardSummary task={WORD_ONLY} raw="a" />)
+    expect(screen.getByText('42')).toBeInTheDocument()
+    unmount()
+    render(<ChoiceCardSummary task={WORD_ONLY} raw="b" />)
+    expect(screen.getByText('Selected answer')).toBeInTheDocument()
+  })
+
+  it('ChoiceCardSummary on a multi-select poll reads word options as before', () => {
+    const poll = { ...WORD_ONLY, quizType: 'poll', multiple: true, check: null }
+    const { container } = render(<ChoiceCardSummary task={poll} raw='["a","b"]' />)
+    expect(container).toHaveTextContent('42')
+    expect(container.querySelector('img')).toBeNull()
+  })
+})
+
+describe('picture with no alt text: never an empty name or a "?"', () => {
+  it('an emoji with no alt is named by the caption, else the option id', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', emoji: '🦊', text: 'Fox' },
+        { id: 'b', emoji: '🐢' },
+      ],
+    }
+    render(<QuizTask task={task} />)
+    expect(screen.getByRole('img', { name: 'Fox' })).toHaveTextContent('🦊')
+    expect(screen.getByRole('img', { name: 'b' })).toHaveTextContent('🐢')
+  })
+
+  it('a broken image with no alt shows the caption, else the id, in words', () => {
+    const task = {
+      ...PICTURE_TASK,
+      options: [
+        { id: 'a', image: png('gone'), text: 'Owl' },
+        { id: 'b', image: png('gone-too') },
+      ],
+    }
+    render(<QuizTask task={task} />)
+    for (const img of document.querySelectorAll('[role=radio] img')) fireEvent.error(img)
+    const words = [...document.querySelectorAll('[data-quiz-picture="words"]')]
+    expect(words.map((el) => el.textContent)).toEqual(['Owl', 'b'])
+    expect(document.body).not.toHaveTextContent('?')
+  })
+})
+
+describe('the verdict is in words for screen readers', () => {
+  it('after submit the chosen and the right card say so in text, not only colour', () => {
+    render(
+      <QuizActivityStudentView
+        task={PICTURE_TASK}
+        state="a"
+        readOnly
+        teacher
+        result={{ submitted: true, passed: false }}
+      />
+    )
+    const chosen = screen.getByRole('radio', { name: 'Red circle above a blue background' })
+    expect(chosen).toHaveAccessibleDescription('Your answer, incorrect')
+    const right = screen.getByRole('radio', { name: 'Only a blue background' })
+    expect(right).toHaveAccessibleDescription('Correct answer')
+    const other = screen.getByRole('radio', { name: 'A purple circle' })
+    expect(other).not.toHaveAccessibleDescription()
+  })
+
+  it("a submitted answer with no reveal is described as the student's answer", () => {
+    render(<QuizTask task={PICTURE_TASK} selectedAnswer="c" submitted checkPassed={false} />)
+    expect(screen.getByRole('radio', { name: 'A purple circle' })).toHaveAccessibleDescription(
+      'Your answer'
+    )
+  })
+})
+
+describe('picture layout: one column with hysteresis, and cards that shrink', () => {
+  it('goes to one column under 480px and back to two only above 520px', () => {
+    let width = 700
+    let callback = null
+    const original = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      constructor(cb) {
+        callback = cb
+      }
+      observe() {}
+      disconnect() {}
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get() {
+        return width
+      },
+    })
+    try {
+      render(<QuizTask task={PICTURE_TASK} />)
+      const grid = screen.getByRole('radiogroup')
+      const resize = (next) => {
+        width = next
+        callback([])
+      }
+      expect(grid).not.toHaveAttribute('data-picture-narrow')
+      resize(479)
+      expect(grid).toHaveAttribute('data-picture-narrow')
+      resize(500)
+      expect(grid).toHaveAttribute('data-picture-narrow')
+      resize(521)
+      expect(grid).not.toHaveAttribute('data-picture-narrow')
+      resize(500)
+      expect(grid).not.toHaveAttribute('data-picture-narrow')
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'clientWidth', descriptor)
+      globalThis.ResizeObserver = original
+    }
+  })
+
+  it('the card and picture minimum heights follow the shrink scale', () => {
+    render(<QuizTask task={PICTURE_TASK} />)
+    const card = screen.getAllByRole('radio')[0]
+    expect(card.style.minHeight).toContain('var(--quiz-option-scale')
+    expect(card.style.minHeight).toContain('120px')
+    expect(card.querySelector('[data-picture-box]').parentElement.style.minHeight).toContain(
+      'var(--quiz-option-scale'
+    )
   })
 })
