@@ -25,22 +25,7 @@ hat   = "x.x.x.x.x.x.x.x."
 play(kick, snare, hat, tempo=100)
 `
 
-const CHARTS_STARTER = `import matplotlib.pyplot as plt
-
-planets = {"Mercury": 4879, "Venus": 12104, "Earth": 12742, "Mars": 6779}
-
-names = []
-sizes = []
-for name, size in planets.items():
-    names.append(name)
-    sizes.append(size)
-
-plt.bar(names, sizes, color="orange")
-plt.title("How wide are the planets?")
-plt.show()
-`
-
-// The four kits on the chooser's first screen (at most 5 controls with More kits).
+// The four kit cards on the chooser (5 controls with the Blank page button).
 export const MAIN_KITS = Object.freeze([
   {
     id: 'turtle',
@@ -72,19 +57,16 @@ export const MAIN_KITS = Object.freeze([
   },
 ])
 
-// Behind "More kits".
-export const MORE_KITS = Object.freeze([
-  {
-    id: 'charts',
-    label: 'Charts',
-    icon: '📊',
-    blurb: 'Draw a bar chart',
-    starterCode: CHARTS_STARTER,
-  },
-  { id: 'blank', label: 'Blank page', icon: '📄', blurb: 'Start from nothing', starterCode: '' },
-])
+// The button under the cards: start from nothing.
+export const BLANK_KIT = Object.freeze({
+  id: 'blank',
+  label: 'Blank page',
+  icon: '📄',
+  blurb: 'Start from nothing',
+  starterCode: '',
+})
 
-const ALL_KITS = [...MAIN_KITS, ...MORE_KITS]
+const ALL_KITS = [...MAIN_KITS, BLANK_KIT]
 
 export function getKit(id) {
   return ALL_KITS.find((kit) => kit.id === id) ?? null

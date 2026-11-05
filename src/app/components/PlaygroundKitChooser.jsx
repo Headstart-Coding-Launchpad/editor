@@ -1,13 +1,10 @@
-import { useState } from 'react'
 import TopBar from './TopBar'
-import { MAIN_KITS, MORE_KITS } from '../playgroundKits'
+import { MAIN_KITS, BLANK_KIT } from '../playgroundKits'
 
-// The Python playground's first screen: "Pick a kit to start". Four kit cards and More kits (5
-// controls); Charts and Blank page sit behind More kits. `carryOnKitId` marks the kit the student
-// used last ("Carry on"); `onPick(kit)` opens it.
+// The Python playground's first screen: "Pick a kit to start". Four kit cards and a Blank page
+// button (5 controls), nothing hidden. `carryOnKitId` marks the kit the student used last
+// ("Carry on", Blank page too); `onPick(kit)` opens it.
 export default function PlaygroundKitChooser({ onPick, carryOnKitId = null }) {
-  const [moreOpen, setMoreOpen] = useState(() => MORE_KITS.some((k) => k.id === carryOnKitId))
-
   function card(kit) {
     const carryOn = kit.id === carryOnKitId
     return (
@@ -39,15 +36,14 @@ export default function PlaygroundKitChooser({ onPick, carryOnKitId = null }) {
           <div style={s.grid}>{MAIN_KITS.map(card)}</div>
           <button
             type="button"
-            data-kit="more"
+            data-kit={BLANK_KIT.id}
             className="btn-ghost-outline"
-            style={s.more}
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen((open) => !open)}
+            style={s.blank}
+            onClick={() => onPick(BLANK_KIT)}
           >
-            {moreOpen ? 'Fewer kits ▴' : 'More kits ▾'}
+            {BLANK_KIT.id === carryOnKitId && <span style={s.blankCarryOn}>Carry on</span>}
+            Start with a blank page
           </button>
-          {moreOpen && <div style={s.grid}>{MORE_KITS.map(card)}</div>}
         </section>
       </main>
     </div>
@@ -120,5 +116,21 @@ const s = {
   icon: { fontSize: '2.4rem', lineHeight: 1 },
   label: { fontWeight: 700, fontSize: '1.1rem' },
   blurb: { fontSize: '0.85rem', color: 'var(--colour-muted)', textAlign: 'center' },
-  more: { alignSelf: 'center', minHeight: 44, padding: '8px 22px', fontSize: '0.95rem' },
+  blank: {
+    alignSelf: 'center',
+    minHeight: 44,
+    padding: '8px 22px',
+    fontSize: '0.95rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  blankCarryOn: {
+    padding: '2px 8px',
+    borderRadius: 999,
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+  },
 }

@@ -1,6 +1,6 @@
 // Fun moment (sketch "LaunchPad playground kit chooser", 2026-11-05, section 5): one tap on a kit
 // and the editor already holds code that does something on the first Run. The Python playground
-// opens on a "Pick a kit" chooser with 5 controls (4 kit cards + More kits); Picture Lab loads the
+// opens on a "Pick a kit" chooser with 5 controls (4 kit cards + a Blank page button); Picture Lab loads the
 // pixel fox; Turtle goes to its own playground; Help topics is in every playground but Scratch.
 import React from 'react'
 import { render, screen, within } from '@testing-library/react'
@@ -64,7 +64,7 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
     localStorage.clear()
   })
 
-  it('opens on a chooser with exactly 5 controls: 4 kit cards and More kits', () => {
+  it('opens on a chooser with exactly 5 controls: 4 kit cards and a Blank page button', () => {
     renderAt('/playground/python')
 
     const chooser = screen.getByRole('region', { name: /pick a kit/i })
@@ -74,7 +74,7 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
       'game',
       'picture',
       'beats',
-      'more',
+      'blank',
     ])
     expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
   })
@@ -119,15 +119,31 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
     expect(screen.getByRole('button', { name: /picture lab/i })).not.toHaveTextContent(/carry on/i)
   })
 
-  it('a Blank page student finds More kits already open with Carry on', () => {
+  it('the Blank page button is visible with no click and opens the blank editor', async () => {
+    const user = userEvent.setup()
+    renderAt('/playground/python')
+
+    const blank = screen.getByRole('button', { name: /blank page/i })
+    expect(blank).toBeVisible()
+    expect(screen.queryByRole('button', { name: /more kits/i })).not.toBeInTheDocument()
+    await user.click(blank)
+
+    expect(screen.getByTestId('where').textContent).toBe('/playground/python?kit=blank')
+    expect(screen.getByTestId('lesson-id').textContent).toBe('__playground__python')
+    expect(screen.getByTestId('editor').textContent).toBe('')
+  })
+
+  it('a Blank page student sees Carry on on the Blank page button', () => {
     localStorage.setItem('headstart_playground_last_kit', 'blank')
     renderAt('/playground/python')
 
     expect(screen.getByRole('button', { name: /blank page/i })).toHaveTextContent(/carry on/i)
-    expect(screen.getByRole('button', { name: /fewer kits/i })).toHaveAttribute(
-      'aria-expanded',
-      'true'
-    )
+  })
+
+  it('an old ?kit=charts link just shows the chooser', () => {
+    renderAt('/playground/python?kit=charts')
+
+    expect(screen.getByRole('region', { name: /pick a kit/i })).toBeInTheDocument()
   })
 
   it('Scratch has no Help topics', () => {

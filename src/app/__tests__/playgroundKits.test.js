@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   LAST_KIT_STORAGE_KEY,
   LANDING_PLAYGROUND_TYPES,
+  BLANK_KIT,
   MAIN_KITS,
-  MORE_KITS,
   kitIdForPlayground,
   kitPath,
   loadLastKitId,
@@ -15,19 +15,18 @@ import { loadSavedCode, saveCode, studentTaskStorageKey } from '../studentStorag
 describe('playground kits', () => {
   beforeEach(() => localStorage.clear())
 
-  it('has 4 main kits and Charts + Blank page under More kits', () => {
+  it('has 4 kit cards and a separate Blank page kit', () => {
     expect(MAIN_KITS.map((k) => k.id)).toEqual(['turtle', 'game', 'picture', 'beats'])
-    expect(MORE_KITS.map((k) => k.id)).toEqual(['charts', 'blank'])
+    expect(BLANK_KIT.id).toBe('blank')
   })
 
   it('routes Turtle and Game to their own playgrounds, the rest to ?kit=', () => {
-    const paths = Object.fromEntries([...MAIN_KITS, ...MORE_KITS].map((k) => [k.id, kitPath(k)]))
+    const paths = Object.fromEntries([...MAIN_KITS, BLANK_KIT].map((k) => [k.id, kitPath(k)]))
     expect(paths).toEqual({
       turtle: '/playground/turtle',
       game: '/playground/arcade',
       picture: '/playground/python?kit=picture',
       beats: '/playground/python?kit=beats',
-      charts: '/playground/python?kit=charts',
       blank: '/playground/python?kit=blank',
     })
     expect(LANDING_PLAYGROUND_TYPES).not.toContain('turtle')
@@ -35,8 +34,8 @@ describe('playground kits', () => {
   })
 
   it('each Python kit remembers its own code under the existing task key format', () => {
-    const ids = ['picture', 'beats', 'charts', 'blank'].map(pythonKitLessonId)
-    expect(new Set(ids).size).toBe(4)
+    const ids = ['picture', 'beats', 'blank'].map(pythonKitLessonId)
+    expect(new Set(ids).size).toBe(3)
     expect(pythonKitLessonId('blank')).toBe('__playground__python')
     expect(studentTaskStorageKey(pythonKitLessonId('beats'), 1, 'anon')).toBe(
       'headstart___playground__python:beats_1_anon'
@@ -63,7 +62,7 @@ describe('playground kits', () => {
   it('names the kit a playground shows', () => {
     expect(kitIdForPlayground('turtle')).toBe('turtle')
     expect(kitIdForPlayground('arcade')).toBe('game')
-    expect(kitIdForPlayground('python', MORE_KITS[0])).toBe('charts')
+    expect(kitIdForPlayground('python', BLANK_KIT)).toBe('blank')
     expect(kitIdForPlayground('electronics')).toBeNull()
     expect(kitIdForPlayground('scratch')).toBeNull()
   })

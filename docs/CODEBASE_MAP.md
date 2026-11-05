@@ -104,7 +104,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `PlaygroundKitChooser.jsx` | The Python playground's "Pick a kit to start" screen: 4 kit cards + More kits (5 controls; Charts and Blank page behind More), the last kit marked "Carry on" |
+| `PlaygroundKitChooser.jsx` | The Python playground's "Pick a kit to start" screen: 4 kit cards + a visible "Start with a blank page" button (5 controls, nothing hidden), the last kit marked "Carry on" |
 | `PlaygroundHelpTopics.jsx` | A playground's "Help topics" top-bar button: opens `TopicLibraryDialog` with the topic library filtered to the playground type; renders nothing where `capabilities.topicLibrary` is false (Scratch) |
 | `TopBar.jsx` | Header: lesson title, level badge, "Lesson N" when the lesson has a `lessonNumber`, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
