@@ -37,6 +37,18 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-05
+
+- **Python: `highlight: key:(` makes one key glow.** A new `key:<symbol>` target for the task's
+  `highlight` field (and the tutor's live Highlight menus, as a "Keys" chip group): one key on the
+  Python touch key row glows when the task opens, until the student taps it (which types it at the
+  cursor) or for 20 seconds. Keys: `:` `(` `)` `[` `]` `{` `}` `"` `'` `,` `=` `#` `\` `%` `+` `-`
+  `*` `/` `<` `>` `!` `.` `_`. Touch screens only (a keyboard screen has no key row, so nothing
+  glows); Python only for now, not Turtle/Arcade/Electronics. Use it when a new symbol first comes
+  in. An unknown key is a validation error. See [lesson-schema.md](lesson-schema.md) (`highlight`).
+  - Affects: python · Existing lessons: no changes needed · Resolves: none (Hub request #126,
+    tutor key highlight)
+
 ## 2026-11-03
 
 - **Image Lab: `recolour(picture, old, new)`.** A new Python Stage call (from `from stage import
