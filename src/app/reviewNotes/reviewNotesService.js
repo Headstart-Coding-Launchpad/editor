@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   query,
   serverTimestamp,
@@ -22,10 +23,24 @@ function notesCollection(lessonId) {
   return collection(firestore, 'lessons', lessonId, 'reviewNotes')
 }
 
-/** Live list of every note on the lesson; returns the unsubscribe function. */
-export function subscribeReviewNotes(lessonId, onNotes, onError) {
-  return onSnapshot(
+// A safety cap per task: far above any real review, so a runaway writer cannot flood the box.
+export const REVIEW_NOTES_PER_TASK_LIMIT = 200
+
+// One task's notes (its id as a number or text, like the feedback queries). Filtered on taskId
+// only, with no orderBy: an `in` filter plus an orderBy on createdAt would need a composite
+// index, so callers sort (notesForTask oldest first, the Builder newest first).
+function taskNotesQuery(lessonId, taskId) {
+  return query(
     notesCollection(lessonId),
+    where('taskId', 'in', equivalentTaskIds(taskId)),
+    limit(REVIEW_NOTES_PER_TASK_LIMIT)
+  )
+}
+
+/** Live list of one task's notes; returns the unsubscribe function. */
+export function subscribeReviewNotes(lessonId, taskId, onNotes, onError) {
+  return onSnapshot(
+    taskNotesQuery(lessonId, taskId),
     (snap) => onNotes(snap.docs.map((d) => normaliseReviewNote({ id: d.id, ...d.data() }))),
     (err) => onError?.(err)
   )
@@ -61,9 +76,7 @@ export function deleteReviewNote(lessonId, noteId) {
 
 /** The Builder's read-only list for one task, newest first. */
 export async function listTaskReviewNotes(lessonId, taskId) {
-  const snap = await getDocs(
-    query(notesCollection(lessonId), where('taskId', 'in', equivalentTaskIds(taskId)))
-  )
+  const snap = await getDocs(taskNotesQuery(lessonId, taskId))
   return snap.docs
     .map((d) => normaliseReviewNote({ id: d.id, ...d.data() }))
     .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))

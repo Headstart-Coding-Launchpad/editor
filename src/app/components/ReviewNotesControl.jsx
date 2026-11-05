@@ -31,7 +31,8 @@ function formatTime(ms) {
 export default function ReviewNotesControl({ lessonId, lesson, task }) {
   const { user, role } = useAuth() ?? {}
   const isAdmin = role === 'admin' && !!user
-  const { notes, error: loadError } = useReviewNotes(lessonId, isAdmin)
+  const taskId = task?.id
+  const { notes, error: loadError } = useReviewNotes(lessonId, taskId, isAdmin)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [tag, setTag] = useState('')
@@ -41,7 +42,6 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
 
-  const taskId = task?.id
   useEffect(() => {
     // A new task starts with a fresh, closed box.
     setOpen(false)
@@ -69,6 +69,13 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
     setTag('')
     setEditingId(null)
     setError(null)
+  }
+
+  // Close, Escape and a second tap on Feedback all drop an unsaved draft the same way.
+  function close() {
+    resetForm()
+    setMenuId(null)
+    setOpen(false)
   }
 
   async function save() {
@@ -125,7 +132,7 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
         style={s.trigger}
         aria-expanded={open}
         aria-haspopup="dialog"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close() : setOpen(true))}
       >
         <span>{taskNotes.length ? `Feedback (${taskNotes.length})` : 'Feedback'}</span>
         {status && (
@@ -141,7 +148,7 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
           aria-label={`Feedback on task ${taskNumber}`}
           style={s.box}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setOpen(false)
+            if (e.key === 'Escape') close()
           }}
         >
           {loadError && <p style={s.error}>Notes could not load: {loadError}</p>}
@@ -210,7 +217,8 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
             style={s.input}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !saving) save()
+              // Enter while an IME is composing picks a character; it must not save.
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && !saving) save()
             }}
           />
           <div style={s.row}>
@@ -231,15 +239,7 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
               </select>
             </label>
             <span style={{ flex: 1 }} />
-            <button
-              type="button"
-              className="btn-ghost-outline"
-              style={s.action}
-              onClick={() => {
-                resetForm()
-                setOpen(false)
-              }}
-            >
+            <button type="button" className="btn-ghost-outline" style={s.action} onClick={close}>
               Close
             </button>
             <button
@@ -265,7 +265,19 @@ export default function ReviewNotesControl({ lessonId, lesson, task }) {
 }
 
 const s = {
-  wrap: { position: 'relative', marginLeft: 'auto', flexShrink: 0 },
+  // The trigger is 44px tall on a 5px-padded strip: the negative margin keeps the strip 44px.
+  // The open box sits in the flow under the trigger, so the strip grows and pushes the task
+  // down instead of covering the Run button and the editor's top-right corner.
+  wrap: {
+    marginLeft: 'auto',
+    marginTop: -5,
+    marginBottom: -5,
+    paddingLeft: 12,
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
   trigger: {
     minHeight: 44,
     padding: '0 12px',
@@ -285,12 +297,10 @@ const s = {
     flexShrink: 0,
   },
   box: {
-    position: 'absolute',
-    top: 'calc(100% + 6px)',
-    right: 0,
+    margin: '6px 0 10px',
     width: 360,
     maxWidth: 'calc(100vw - 24px)',
-    zIndex: 50,
+    boxSizing: 'border-box',
     background: '#fff',
     color: 'var(--colour-text, #1f2937)',
     border: '1px solid #cbd5e1',

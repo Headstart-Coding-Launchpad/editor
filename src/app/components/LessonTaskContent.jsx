@@ -15,7 +15,6 @@ import CheckFeedbackBanner from './CheckFeedbackBanner'
 import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
 import ReviewNotesControl from './ReviewNotesControl'
-import { useAuth } from '../../auth/useAuth'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
@@ -248,9 +247,6 @@ export default function LessonTaskContent({
   // The activity sits inside the module's own StudentWorkspace (a Turtle or Stage arrangement),
   // which lays out and scrolls its own panes like a code task.
   const activityUsesHostWorkspace = !!moduleHostedActivity?.usesHostWorkspace?.(task)
-  // Review notes are for admins only; tutors in preview keep the plain strip.
-  const { role: authRole } = useAuth() ?? {}
-  const reviewNotesOn = showReviewNotes && authRole === 'admin'
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -877,7 +873,8 @@ export default function LessonTaskContent({
             padding: '5px 16px',
             fontSize: 12,
             fontWeight: 600,
-            ...(reviewNotesOn ? { padding: '0 16px', minHeight: 44, gap: 12 } : null),
+            // The admin's open note box grows the strip; the label stays level with Feedback.
+            ...(showReviewNotes ? { alignItems: 'baseline' } : null),
           }}
         >
           {getEffectiveTaskMode(task) === 'live'
@@ -885,7 +882,11 @@ export default function LessonTaskContent({
             : getEffectiveTaskMode(task) === 'solo'
               ? 'Solo mode only'
               : 'Live + Solo'}
-          {reviewNotesOn && <ReviewNotesControl lessonId={lessonId} lesson={lesson} task={task} />}
+          {/* Only in the Classroom preview, which students are redirected away from (LessonRoute);
+              the control itself checks for an admin and renders nothing for a tutor. */}
+          {showReviewNotes && (
+            <ReviewNotesControl lessonId={lessonId} lesson={lesson} task={task} />
+          )}
         </Banner>
       )}
 

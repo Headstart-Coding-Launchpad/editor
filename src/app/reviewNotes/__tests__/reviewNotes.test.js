@@ -8,6 +8,7 @@ vi.mock('firebase/firestore', () => ({
   doc: (_db, ...segments) => ({ path: segments.join('/') }),
   query: (ref, ...clauses) => ({ ...ref, clauses }),
   where: (field, op, value) => ({ field, op, value }),
+  limit: (n) => ({ limit: n }),
   serverTimestamp: () => 'SERVER_TIME',
   addDoc: vi.fn(async (ref, data) => {
     fs.calls.push({ op: 'add', path: ref.path, data })
@@ -20,7 +21,7 @@ vi.mock('firebase/firestore', () => ({
     return { docs: fs.snapshot }
   }),
   onSnapshot: vi.fn((ref, next) => {
-    fs.calls.push({ op: 'onSnapshot', path: ref.path })
+    fs.calls.push({ op: 'onSnapshot', path: ref.path, clauses: ref.clauses })
     next({ docs: fs.snapshot })
     return () => {}
   }),
@@ -39,6 +40,7 @@ import {
   addReviewNote,
   deleteReviewNote,
   listTaskReviewNotes,
+  REVIEW_NOTES_PER_TASK_LIMIT,
   subscribeReviewNotes,
   updateReviewNote,
 } from '../reviewNotesService'
@@ -144,11 +146,16 @@ describe('review notes service', () => {
     ])
   })
 
-  it('streams normalised notes for the lesson', () => {
+  it('streams normalised notes for one task only (taskId filter, capped, no orderBy index)', () => {
     fs.snapshot = [snapDoc('n1', { taskId: 3, text: 'A', status: 'new', createdAt: 5 })]
     const seen = []
-    subscribeReviewNotes('L', (notes) => seen.push(notes))
-    expect(fs.calls[0]).toEqual({ op: 'onSnapshot', path: 'lessons/L/reviewNotes' })
+    subscribeReviewNotes('L', 3, (notes) => seen.push(notes))
+    expect(fs.calls[0]).toMatchObject({ op: 'onSnapshot', path: 'lessons/L/reviewNotes' })
+    const [taskFilter, cap, ...rest] = fs.calls[0].clauses
+    expect(taskFilter).toMatchObject({ field: 'taskId', op: 'in' })
+    expect(taskFilter.value).toEqual(expect.arrayContaining([3, '3']))
+    expect(cap).toEqual({ limit: REVIEW_NOTES_PER_TASK_LIMIT })
+    expect(rest).toEqual([])
     expect(seen[0][0]).toMatchObject({ id: 'n1', taskId: 3, text: 'A', createdAt: 5 })
   })
 

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthContext from '../../../auth/AuthContext'
@@ -10,7 +10,13 @@ import StudentView from '../../views/StudentView'
 // and as Lesson Gen moves it on (picked_up, then done) the chip follows and the note locks.
 // Real StudentView → LessonTaskContent → preview strip; only Firebase-backed hooks are faked.
 
-const mocks = vi.hoisted(() => ({ lesson: null, notes: [], listeners: new Set(), calls: [] }))
+const mocks = vi.hoisted(() => ({
+  lesson: null,
+  notes: [],
+  listeners: new Set(),
+  calls: [],
+  subscribedTaskIds: [],
+}))
 
 vi.mock('../../../shared/lessonService', () => ({
   fetchLessonById: vi.fn(() => Promise.resolve(mocks.lesson)),
@@ -64,15 +70,19 @@ vi.mock('../../hooks/useIdentity', () => ({
   }),
 }))
 
-// The Firestore side of review notes, kept in memory: one snapshot listener per lesson.
+// The Firestore side of review notes, kept in memory: one snapshot listener per task, which
+// (like the real where('taskId', ...) query) only ever hears that task's notes.
 function emit() {
-  for (const fn of mocks.listeners) fn(mocks.notes.map((n) => ({ ...n })))
+  for (const fn of mocks.listeners) fn()
 }
 vi.mock('../../reviewNotes/reviewNotesService', () => ({
-  subscribeReviewNotes: (lessonId, onNotes) => {
-    mocks.listeners.add(onNotes)
-    onNotes(mocks.notes.map((n) => ({ ...n })))
-    return () => mocks.listeners.delete(onNotes)
+  subscribeReviewNotes: (lessonId, taskId, onNotes) => {
+    mocks.subscribedTaskIds.push(taskId)
+    const listener = () =>
+      onNotes(mocks.notes.filter((n) => String(n.taskId) === String(taskId)).map((n) => ({ ...n })))
+    mocks.listeners.add(listener)
+    listener()
+    return () => mocks.listeners.delete(listener)
   },
   addReviewNote: vi.fn(async (lessonId, note) => {
     mocks.calls.push({ op: 'add', lessonId, note })
@@ -141,6 +151,7 @@ beforeEach(() => {
   mocks.notes = []
   mocks.listeners.clear()
   mocks.calls = []
+  mocks.subscribedTaskIds = []
 })
 
 describe('Preview review notes (Fun moment)', () => {
@@ -217,6 +228,54 @@ describe('Preview review notes (Fun moment)', () => {
     await user.click(within(box).getByRole('button', { name: 'Delete' }))
     expect(mocks.calls.at(-1)).toMatchObject({ op: 'delete', noteId: 'note-1' })
     await waitFor(() => expect(screen.queryByTestId('review-notes-chip')).not.toBeInTheDocument())
+  })
+
+  it('listens to the shown task only', async () => {
+    mocks.notes = [
+      { id: 'x', lessonId: 'L', taskId: 2, text: 'On task 2', status: 'done', createdBy: 'a' },
+    ]
+    renderPreview()
+    expect(await screen.findByRole('button', { name: /^Feedback$/ })).toBeInTheDocument()
+    expect(mocks.subscribedTaskIds).toEqual([3])
+    expect(screen.queryByTestId('review-notes-chip')).not.toBeInTheDocument()
+  })
+
+  it('Escape closes the box and drops the draft, like Close', async () => {
+    const user = userEvent.setup()
+    renderPreview()
+    await user.click(await screen.findByRole('button', { name: /^Feedback/ }))
+    let box = screen.getByRole('dialog', { name: /Feedback on task 3/ })
+    await user.type(within(box).getByRole('textbox', { name: 'Note' }), 'Half a thought')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Feedback/ }))
+    box = screen.getByRole('dialog', { name: /Feedback on task 3/ })
+    expect(within(box).getByRole('textbox', { name: 'Note' })).toHaveValue('')
+  })
+
+  it('does not save on the Enter that ends an IME composition', async () => {
+    const user = userEvent.setup()
+    renderPreview()
+    await user.click(await screen.findByRole('button', { name: /^Feedback/ }))
+    const input = within(screen.getByRole('dialog')).getByRole('textbox', { name: 'Note' })
+    await user.type(input, 'kanji')
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    expect(mocks.calls).toHaveLength(0)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(mocks.calls).toHaveLength(1))
+  })
+
+  it('never mounts outside the Classroom preview (the student path)', async () => {
+    render(
+      <AuthContext.Provider
+        value={{ user: { uid: 'admin-1' }, role: 'admin', handle: null, loading: false }}
+      >
+        <StudentView lessonId="L" forceSolo allowUnrestrictedTaskNavigation initialTaskId={3} />
+      </AuthContext.Provider>
+    )
+    expect(await screen.findByText('Explainer 3')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Feedback/ })).not.toBeInTheDocument()
+    expect(mocks.subscribedTaskIds).toEqual([])
   })
 
   it('shows nothing to a tutor', async () => {
