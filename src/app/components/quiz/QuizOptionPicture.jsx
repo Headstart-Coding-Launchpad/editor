@@ -15,17 +15,34 @@ import {
 // box. With no alt text (a validation error) the caption, else the option id, stands in for it, as
 // the accessible name and the words: never an empty name or a '?'. `decorative`: the label beside it already says what it shows (tutor thumbnails), so the
 // picture is hidden from screen readers rather than announced twice.
-export function QuizOptionPicture({ option, size = null, style, decorative = false }) {
+// `size`: a square thumbnail of that many px. `height` (a CSS length, the quiz card): that tall,
+// an image as wide as its shape (never wider than its box), an emoji or words 4:3. Neither: the
+// picture fills its positioned parent.
+export function QuizOptionPicture({
+  option,
+  size = null,
+  height = null,
+  style,
+  decorative = false,
+}) {
   const [failedSrc, setFailedSrc] = React.useState(null)
   if (!optionHasPicture(option)) return null
   const alt = typeof option.alt === 'string' ? option.alt.trim() : ''
   const name = optionPictureName(option)
   const source = optionPictureSource(option)
+  const showImage = source?.kind === 'image' && failedSrc !== source.src
   const box = size
     ? { width: size, height: size, flexShrink: 0 }
-    : { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+    : height
+      ? {
+          height,
+          width: showImage ? 'auto' : `calc(${height} * 4 / 3)`,
+          maxWidth: '100%',
+          flexShrink: 0,
+        }
+      : { position: 'absolute', inset: 0, width: '100%', height: '100%' }
 
-  if (source?.kind === 'image' && failedSrc !== source.src) {
+  if (showImage) {
     return (
       <img
         src={source.src}

@@ -13,6 +13,7 @@ export {
   CONFIDENCE_COLOURS,
   OPTION_COLOURS,
   OPTION_VERDICT_COLOURS,
+  QUIZ_PICTURE_HEIGHT,
   baseStyles,
   interactionStyles,
   confidenceStyles,
@@ -58,6 +59,17 @@ export const PICTURE_WIDE_ABOVE = 520
 export function nextPictureNarrow(wasNarrow, width) {
   if (!(width > 0)) return wasNarrow
   return wasNarrow ? width <= PICTURE_WIDE_ABOVE : width < PICTURE_NARROW_BELOW
+}
+
+// A loaded picture's shape, for its card's box (--quiz-picture-aspect, quizStyles pictureBox):
+// width over height, from 1.1 (a square Stage picture's card hugs it, with a little room; a tall
+// picture keeps a card wide enough to tap) to 3:1. null when the size is unknown (an SVG with no
+// width and height), which keeps the 4:3 default the box has until the image loads.
+export const PICTURE_ASPECT_MIN = 1.1
+export const PICTURE_ASPECT_MAX = 3
+export function pictureBoxAspect(naturalWidth, naturalHeight) {
+  if (!(naturalWidth > 0) || !(naturalHeight > 0)) return null
+  return Math.min(PICTURE_ASPECT_MAX, Math.max(PICTURE_ASPECT_MIN, naturalWidth / naturalHeight))
 }
 
 const OPTIONS_MIN_SCALE = 0.65

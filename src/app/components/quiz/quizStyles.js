@@ -43,6 +43,16 @@ export const OPTION_VERDICT_COLOURS = {
   },
 }
 
+// A picture option's picture height (request 128, sized after Lesson Gen's first real use): the
+// screen-height cap that .quiz-picture-grid sets in index.css (--quiz-picture-max, lower in one
+// column), times the shrink scale, so shrinkToFit can still make the cards smaller.
+export const QUIZ_PICTURE_HEIGHT =
+  'calc(var(--quiz-option-scale, 1) * var(--quiz-picture-max, 120px))'
+
+// The picture box's width (pictureBox below).
+export const PICTURE_BOX_WIDTH =
+  'max(200px, calc(var(--quiz-picture-max, 120px) * var(--quiz-picture-aspect, 1.3333)))'
+
 export const baseStyles = {
   wrap: {
     display: 'flex',
@@ -157,8 +167,14 @@ export const baseStyles = {
   },
   // Picture answer options (request 128). The columns come from .quiz-picture-grid in
   // index.css (2, 3, or 1 in a narrow pane), so the inline 2-column rule is dropped here.
+  // The grid does not stretch to fill the frame (a word quiz does): it is as tall as its
+  // picture-capped cards need, and (index.css) as wide, centred, so four squarish pictures make
+  // a tidy 2x2 block.
   pictureOptions: {
     gridTemplateColumns: undefined,
+    gridAutoRows: '1fr',
+    minHeight: 0,
+    alignContent: 'start',
   },
   // Equal cards, 120px tall at least at full size (a big iPad tap target); the picture fills the
   // card above its optional caption. The minimum heights, padding, letter and tick follow
@@ -182,8 +198,9 @@ export const baseStyles = {
     color: 'var(--colour-text)',
     transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
   },
+  // A basis of auto, so the picture's height counts in the card's height.
   pictureRow: {
-    flex: '1 1 0',
+    flex: '1 1 auto',
     minHeight: 'calc(var(--quiz-option-scale, 1) * 72px)',
     display: 'flex',
     gap: 8,
@@ -231,13 +248,19 @@ export const baseStyles = {
     whiteSpace: 'nowrap',
     border: 0,
   },
-  // The picture itself is absolutely placed (so it never sets the card's size). The 200px width
-  // (a flex basis of auto, so it counts in intrinsic sizing) gives the card a real width in a
-  // shrink-to-fit parent; it still shrinks in a narrow one and grows in a wide one.
+  // The picture is QUIZ_PICTURE_HEIGHT tall and as wide as its shape, never wider than the box.
+  // The box's width (a flex basis of auto, so it counts in intrinsic sizing) is the full-size
+  // picture's: the height cap times its shape (--quiz-picture-aspect, set when the image loads,
+  // 1.1 to 3, quizUtils pictureBoxAspect; 4:3 until then and for the emoji and words fallbacks),
+  // and at least 200px. Neither part is scaled, so neither shrinking nor a short screen narrows
+  // a shrink-to-fit parent (the tutor's student window) into one column; the box still shrinks
+  // in a narrow column.
   pictureBox: {
-    position: 'relative',
     flex: '1 1 auto',
-    width: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: PICTURE_BOX_WIDTH,
     minWidth: 0,
   },
   pictureCaption: {

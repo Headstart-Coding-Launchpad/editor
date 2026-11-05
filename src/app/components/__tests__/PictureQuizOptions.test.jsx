@@ -1,4 +1,6 @@
 import React from 'react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,6 +10,8 @@ import {
   QuizActivityStudentView,
 } from '../../../activities/quiz/QuizActivityViews'
 import { QuizOptionsBuilder } from '../../../activities/quiz_multiple_choice/ui.jsx'
+import { PICTURE_BOX_WIDTH, QUIZ_PICTURE_HEIGHT, baseStyles } from '../quiz/quizStyles'
+import { pictureBoxAspect } from '../quiz/quizUtils'
 
 vi.mock('../../../shared/useLessonStorageAssets', () => ({
   useLessonStorageAssets: () => ({ storageAssets: [], loading: false, error: null }),
@@ -121,7 +125,7 @@ describe('picture answer options (Fun moment)', () => {
     expect(owl.querySelector('img')).toHaveAttribute('alt', 'An owl')
   })
 
-  it('picture cards keep the picture uncropped (object-fit contain) and 120px tall at full size', () => {
+  it('picture cards keep the picture uncropped (object-fit contain) and at least 120px tall at full size', () => {
     render(<QuizTask task={PICTURE_TASK} />)
     const radio = screen.getAllByRole('radio')[0]
     expect(radio.querySelector('img').style.objectFit).toBe('contain')
@@ -574,5 +578,95 @@ describe('picture layout: one column with hysteresis, and cards that shrink', ()
     expect(card.querySelector('[data-picture-box]').parentElement.style.minHeight).toContain(
       'var(--quiz-option-scale'
     )
+  })
+})
+
+// Lesson Gen's first real lesson (Which Corner?, four squarish Stage screenshots): the pictures
+// showed at their natural size and the 2x2 grid filled the screen, pushing Check/Next off a
+// 1366x768 or 1024x768 screen. The picture's height is now capped by the screen height and the
+// grid hugs its cards (checked in a browser at 1440x900, 1366x768, 1024x768 and 820x1180).
+describe('picture size: capped by the screen height, cards hug the picture', () => {
+  const indexCss = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+  const cssRule = (selector) => {
+    const start = indexCss.indexOf(`${selector} {`)
+    expect(start).toBeGreaterThanOrEqual(0)
+    return indexCss.slice(start, indexCss.indexOf('}', start))
+  }
+
+  it('the height cap is tied to the screen height, lower in one column', () => {
+    expect(cssRule('.quiz-picture-grid')).toContain('--quiz-picture-max: clamp(96px, 22vh, 200px)')
+    expect(cssRule('.quiz-picture-grid[data-picture-narrow]')).toContain(
+      '--quiz-picture-max: clamp(72px, 11vh, 120px)'
+    )
+  })
+
+  it('the grid is as wide as its cards need, centred, never wider than the frame', () => {
+    const rule = cssRule('.quiz-picture-grid')
+    expect(rule).toContain('width: fit-content')
+    expect(rule).toContain('max-width: min(100%, 64rem)')
+    expect(rule).toContain('margin-inline: auto')
+    // One column keeps the full-width cards it had.
+    expect(cssRule('.quiz-picture-grid[data-picture-narrow]')).toContain('width: auto')
+  })
+
+  it('the picture height is the cap times the shrink scale', () => {
+    expect(QUIZ_PICTURE_HEIGHT).toBe(
+      'calc(var(--quiz-option-scale, 1) * var(--quiz-picture-max, 120px))'
+    )
+  })
+
+  it("the picture box is the full-size picture's width (cap times shape), at least 200px", () => {
+    expect(PICTURE_BOX_WIDTH).toBe(
+      'max(200px, calc(var(--quiz-picture-max, 120px) * var(--quiz-picture-aspect, 1.3333)))'
+    )
+    expect(baseStyles.pictureBox).toMatchObject({
+      width: PICTURE_BOX_WIDTH,
+      minWidth: 0,
+      flex: '1 1 auto',
+    })
+    // The picture's height counts in the card's (the old basis of 0 let it overflow).
+    expect(baseStyles.pictureRow.flex).toBe('1 1 auto')
+  })
+
+  it('the picture grid does not stretch its rows to fill the frame (a word quiz still does)', () => {
+    expect(baseStyles.pictureOptions).toMatchObject({ gridAutoRows: '1fr', minHeight: 0 })
+    expect(baseStyles.options.minHeight).toBe('100%')
+    render(<QuizTask task={PICTURE_TASK} />)
+    const grid = screen.getByRole('radiogroup')
+    expect(grid).toHaveClass('quiz-picture-grid')
+    expect(grid).toHaveAttribute('data-picture-columns', '2')
+    expect(grid.style.gridAutoRows).toBe('1fr')
+    expect(grid.style.minHeight).not.toBe('100%')
+  })
+
+  it('the card picture is the capped height and as wide as its shape, uncropped', () => {
+    render(<QuizTask task={PICTURE_TASK} />)
+    const img = screen.getAllByRole('radio')[0].querySelector('img')
+    expect(img.style.objectFit).toBe('contain')
+    expect(img.style.width).toBe('auto')
+    expect(img.style.maxWidth).toBe('100%')
+    expect(img.style.position).not.toBe('absolute')
+  })
+
+  it("records a loaded picture's shape on its box, and forgets it when the picture fails", () => {
+    render(<QuizTask task={PICTURE_TASK} />)
+    const img = screen.getAllByRole('radio')[0].querySelector('img')
+    const box = img.closest('[data-picture-box]')
+    Object.defineProperty(img, 'naturalWidth', { configurable: true, value: 600 })
+    Object.defineProperty(img, 'naturalHeight', { configurable: true, value: 300 })
+    fireEvent.load(img)
+    expect(box.style.getPropertyValue('--quiz-picture-aspect')).toBe('2')
+    fireEvent.error(img)
+    expect(box.style.getPropertyValue('--quiz-picture-aspect')).toBe('')
+  })
+
+  it('pictureBoxAspect: width over height, 1.1 to 3, null when unknown', () => {
+    expect(pictureBoxAspect(275, 275)).toBe(1.1)
+    expect(pictureBoxAspect(200, 150)).toBeCloseTo(4 / 3)
+    expect(pictureBoxAspect(400, 200)).toBe(2)
+    expect(pictureBoxAspect(1000, 100)).toBe(3)
+    expect(pictureBoxAspect(100, 400)).toBe(1.1)
+    expect(pictureBoxAspect(0, 0)).toBeNull()
+    expect(pictureBoxAspect(undefined, 100)).toBeNull()
   })
 })

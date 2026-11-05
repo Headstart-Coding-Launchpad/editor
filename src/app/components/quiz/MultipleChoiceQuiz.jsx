@@ -16,9 +16,11 @@ import {
   fitScratchQuizScale,
   nextPictureNarrow,
   normalizeQuizAnswerText,
+  pictureBoxAspect,
   OPTION_COLOURS,
   OPTION_VERDICT_COLOURS,
   QuestionPanel,
+  QUIZ_PICTURE_HEIGHT,
   shrinkToFit,
 } from './quizUtils'
 
@@ -117,13 +119,49 @@ export default function MultipleChoiceQuiz({
     }
 
     run()
-    if (typeof ResizeObserver === 'undefined') return undefined
+    // A picture card is as wide as its picture's shape, which is only known once the image
+    // loads (or fails, and 4:3 words take its place): record the shape on its box, then fit
+    // again, a frame later so a failed picture's words have rendered. load/error do not
+    // bubble, so capture.
+    let refitFrame = null
+    const refitOnPicture = pictureMode
+      ? (event) => {
+          const img = event?.target
+          const box = img?.parentElement
+          if (img?.tagName === 'IMG' && box?.hasAttribute('data-picture-box')) {
+            const aspect =
+              event.type === 'load' ? pictureBoxAspect(img.naturalWidth, img.naturalHeight) : null
+            if (aspect) box.style.setProperty('--quiz-picture-aspect', String(aspect))
+            else box.style.removeProperty('--quiz-picture-aspect')
+          }
+          if (typeof requestAnimationFrame !== 'function') return run()
+          if (refitFrame === null)
+            refitFrame = requestAnimationFrame(() => {
+              refitFrame = null
+              run()
+            })
+        }
+      : null
+    if (refitOnPicture) {
+      content.addEventListener('load', refitOnPicture, true)
+      content.addEventListener('error', refitOnPicture, true)
+    }
+    const stopPictureRefit = () => {
+      if (!refitOnPicture) return
+      if (refitFrame !== null) cancelAnimationFrame(refitFrame)
+      content.removeEventListener('load', refitOnPicture, true)
+      content.removeEventListener('error', refitOnPicture, true)
+    }
+    if (typeof ResizeObserver === 'undefined') return stopPictureRefit
     // Only observe the frame, not the grid itself: the grid is what we resize,
     // and font-size changes (unlike transform: scale) affect layout, so
     // observing it here would re-trigger this same observer on our own writes.
     const observer = new ResizeObserver(run)
     observer.observe(container)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      stopPictureRefit()
+    }
   }, [displayedOptions, pictureMode])
 
   return (
@@ -244,7 +282,7 @@ export default function MultipleChoiceQuiz({
                       )}
                     </div>
                     <div style={s.pictureBox} data-picture-box="">
-                      <QuizOptionPicture option={option} />
+                      <QuizOptionPicture option={option} height={QUIZ_PICTURE_HEIGHT} />
                     </div>
                   </div>
                   {caption && (
