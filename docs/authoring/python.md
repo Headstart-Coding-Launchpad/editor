@@ -1071,18 +1071,32 @@ What students get:
     the report and share link see a passing Run), and its attempt is marked `source: live`. A
     redraw that does not pass shows and records nothing: wrong-code feedback only ever comes from
     Run. The program is not run a second time.
-  - **Which tasks.** Every check (completion and feedback) must be an output, `code`,
-    `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*` check, each a plain
-    check with its own `type` (a check list is read flat; any other type means no tick). A task
+  - **Which checks.** Typing runs half-typed code, so every completion check must need real
+    evidence of the right answer: `output` / `code` with `contains`, `equals` or `matches_regex`;
+    `code_structure` `nested_in` / `directly_nested_in`; `stage_matches_target`,
+    `stage_colour_used`, `stage_pixel`, `stage_text_shown`; `stage_shape_count` with no bounds, a
+    `min` of 1 or more, or `min` equal to `max`; and the value checks `variable_equals`,
+    `variable_dict_*` and `variable_array_*`. Checks that pass on almost any code tick on Run
+    only: `code_no_error`, `output_not_empty`, `output_empty`, `output_line_count`, `max_lines`,
+    any `not_` operator, `variable_exists`, `variable_type`, `variable_not_equals`, and a stage
+    count with only a `max` (or a range). Feedback checks only need to be output, `code`,
+    `code_no_error`, `code_structure`, `max_lines`, `variable_*` or `stage_*` checks (they can
+    only hold a tick back). Each must be a plain check with its own `type` (a check list is read
+    flat; any other type means no tick). Code that is the task's starter code (spaces and blank
+    lines aside) never ticks: if the starter already passes, the student's change is needed. A task
     never ticks while typing when it has `run_attempted` ("press Run and watch"), name tags
     (`showVariables`) or run counts (`runCounts`, `line_run_count`), Python `tests`,
     `interactionMode: submit`, `copyCode` (its first Run measures how far the code is from the
     copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
     `setupCode`, or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal,
     so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing.
-  - **Only the student's own typing.** Typing or scrubbing in the editor can tick. A classmate's
-    accepted peer-help change and copied shared work still redraw, but never tick: the student
-    presses Run for those.
+  - **Only the student's own typing.** Typing, pasting, deleting or scrubbing in the editor can
+    tick. Code put there any other way still redraws but never ticks: a tutor's edit, a
+    classmate's accepted peer-help change, copied shared work, Reset to starter, code carried
+    from an earlier task and saved work loaded on opening. The student presses Run for those (or
+    types a change of their own).
+  - **In the report** a pass that ticked while typing is listed as "Passed N (while typing, no
+    Run)". It still counts as an attempt, and as a first try when it came first.
   - **The tutor.** A tutor's **Mark Fail** ("not yet") stops live ticks on that task until the
     student presses Run (or Run in slow-mo) themselves. The checks a scrub runs when it ends and
     the tutor's own remote Run don't lift it, and it holds after a page reload until the

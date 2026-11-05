@@ -72,12 +72,18 @@ Entries written before 2026-09-29 are not tagged.
 - **Python Stage: typing the right code ticks the task, no Run needed.** On a task whose typing
   redraws the Stage (`scrub`, `runOnOpen` or a `#@lock-values` line), the redraw's own result is
   checked: the moment it passes, the task ticks and is recorded exactly like a Run of that code
-  (the attempt is marked `source: live`). A redraw that doesn't pass shows nothing, so wrong-code
-  feedback still comes only from Run. Never on tasks with `run_attempted`, name tags, run counts,
+  (the attempt is marked `source: live`; the report lists it as "while typing, no Run" and still
+  counts it as an attempt). A redraw that doesn't pass shows nothing, so wrong-code feedback still
+  comes only from Run. Only completion checks that need real evidence of the right answer tick
+  (output/code `contains`, `equals`, `matches_regex`, nesting, Stage colour/pixel/text/target, an
+  at-least or exact Stage shape count, value checks); `code_no_error`, output empty/not empty,
+  line counts, `max_lines`, `not_` operators, `variable_exists`/`_type`/`_not_equals` and an
+  at-most Stage count tick on Run only, and code equal to the starter never ticks. Never on
+  tasks with `run_attempted`, name tags, run counts,
   `tests`, submit mode, `copyCode` (its first Run measures the copy), an on-idle feedback check,
   `input()`, or `slowMo` where Run plays in slow-mo; never Turtle, Electronics or `code_arrange`.
-  Only the student's own typing ticks: a peer-help change or copied shared work redraws but
-  doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
+  Only the student's own typing ticks: a tutor's edit, a peer-help change, copied shared work,
+  Reset, carried code or saved work loading redraws but doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
   themselves (a scrub's release checks and the tutor's remote Run don't lift it; it holds after a
   reload). See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
   - Affects: python · Existing lessons: no changes needed · Resolves:
