@@ -38,8 +38,10 @@ export function moduleHasHighlightTargets(moduleType) {
 /**
  * Every concrete target for a module, as the tutor menu lists them: plain targets as they are,
  * an `options` family expanded to one entry per option (`category:Motion`).
- * Each is { id, label, pane, group, revealKey }: `group` is the family label (or null) and
- * `revealKey` the word `data-highlight-reveal` uses (the family id, or the target id).
+ * Each is { id, label, pane, group, revealKey, spoken, touchOnly }: `group` is the family label
+ * (or null), `revealKey` the word `data-highlight-reveal` uses (the family id, or the target id),
+ * `spoken` the option's words for a screen reader (or null) and `touchOnly` true for a control
+ * that only exists on touch screens (Python's key row).
  */
 export function listHighlightTargets(moduleType) {
   const list = []
@@ -53,6 +55,8 @@ export function listHighlightTargets(moduleType) {
           group: spec.label,
           revealKey: spec.id,
           option,
+          spoken: spec.optionNames?.[option] ?? null,
+          touchOnly: spec.touchOnly === true,
         })
       }
     } else {
@@ -63,10 +67,26 @@ export function listHighlightTargets(moduleType) {
         group: null,
         revealKey: spec.id,
         option: null,
+        spoken: null,
+        touchOnly: spec.touchOnly === true,
       })
     }
   }
   return list
+}
+
+// The touch-only targets (Python's key row), grouped by family for the Builder's
+// "Keys (touch screens)" optgroup: [{ label, targets }].
+export function touchHighlightGroups(moduleType) {
+  const groups = []
+  for (const target of listHighlightTargets(moduleType)) {
+    if (!target.touchOnly) continue
+    const label = target.group ?? target.label
+    let group = groups.find((entry) => entry.label === label)
+    if (!group) groups.push((group = { label, targets: [] }))
+    group.targets.push(target)
+  }
+  return groups
 }
 
 // The raw target an authored `highlight` field (or a command) names: a string, or an object
@@ -105,16 +125,36 @@ export function resolveHighlightTarget(moduleType, value) {
 }
 
 // The names an author can write for a module, for error messages ("green_flag, stop, …,
-// category:<name>").
+// category:<name>"). A family of symbols (Python's key row) is described, not listed: the full
+// list of keys is long, and a symbol target must be quoted in YAML.
 export function describeHighlightTargets(moduleType) {
   return getModuleHighlightTargets(moduleType)
-    .map((spec) => (spec.options ? `${spec.id}:<${spec.options.join('|')}>` : spec.id))
+    .map((spec) => {
+      if (!spec.options) return spec.id
+      if (spec.optionNames) {
+        return `"${spec.id}:<symbol>" (in quotes, e.g. "${spec.id}:${spec.options[1] ?? spec.options[0]}")`
+      }
+      return `${spec.id}:<${spec.options.join('|')}>`
+    })
     .join(', ')
 }
 
-// The friendly text a student's screen reader hears and the tutor menu shows.
+// A symbol family's id ("key") when an authored name or mapping is aimed at it, so its errors can
+// say to quote it. `highlight: key: (` parses as the mapping { key: "(" }.
+function symbolFamilyNamed(moduleType, value) {
+  const families = getModuleHighlightTargets(moduleType).filter((spec) => spec.optionNames)
+  if (value && typeof value === 'object') {
+    return families.find((spec) => Object.hasOwn(value, spec.id))?.id ?? null
+  }
+  const lower = String(value ?? '').toLowerCase()
+  return families.find((spec) => lower.startsWith(`${spec.id}${OPTION_SEPARATOR}`))?.id ?? null
+}
+
+// The friendly text a student's screen reader hears and the tutor menu shows. A key is named in
+// words ("open bracket key"), never read out as a bare symbol.
 export function highlightTargetText(entry) {
   if (!entry) return ''
+  if (entry.spoken) return entry.spoken
   return entry.group ? `${entry.label} (${entry.group.toLowerCase()})` : entry.label
 }
 
@@ -128,7 +168,12 @@ export function validateTaskHighlight(task, { n, moduleType, isModuleTask }, err
   if (value == null) return
   const name = highlightTargetName(value)
   if (!name) {
-    errors.push(`Task ${n} highlight must be a target name, e.g. highlight: run`)
+    const family = symbolFamilyNamed(moduleType, value)
+    errors.push(
+      family
+        ? `Task ${n} highlight must be one target in quotes, e.g. highlight: "${family}:("`
+        : `Task ${n} highlight must be a target name, e.g. highlight: run`
+    )
     return
   }
   if (!isModuleTask) {
@@ -141,10 +186,18 @@ export function validateTaskHighlight(task, { n, moduleType, isModuleTask }, err
   }
   const entry = resolveHighlightTarget(moduleType, value)
   if (!entry) {
+    const family = symbolFamilyNamed(moduleType, name)
     errors.push(
-      `Task ${n} highlight "${name}" is not a ${moduleType} control. Use one of: ${describeHighlightTargets(moduleType)}`
+      family
+        ? `Task ${n} highlight "${name}" is not a key on the ${moduleType} key row. Write one symbol in quotes, e.g. highlight: "${family}:("`
+        : `Task ${n} highlight "${name}" is not a ${moduleType} control. Use one of: ${describeHighlightTargets(moduleType)}`
     )
     return
+  }
+  if (entry.touchOnly) {
+    warnings?.push(
+      `Task ${n} highlight ${entry.id} only shows on touch screens (iPad); keyboard screens have no key row`
+    )
   }
   if (entry.id === 'costumes_tab' && task.showCostumesTab !== true) {
     warnings?.push(`Task ${n} highlight costumes_tab has no effect without showCostumesTab`)

@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PythonEditor from '../PythonEditor'
-import { PYTHON_HIGHLIGHT_KEYS } from '../definition.js'
+import { PYTHON_KEY_SYMBOLS } from '../keyRow.js'
+import pythonDefinition from '../definition.js'
 
 // CodeMirror's EditorView is not unit-tested (see docs/TESTING.md "What NOT
 // to Test") — mocked here as a forwardRef stub exposing the same
@@ -85,7 +86,14 @@ describe('PythonEditor — tutor key highlight targets (request #126)', () => {
   it('marks each touch key so a key:<symbol> highlight can find it', () => {
     touchDevice = true
     const { container } = render(<PythonEditor code="" onChange={vi.fn()} />)
-    for (const key of PYTHON_HIGHLIGHT_KEYS) {
+    const keyFamily = pythonDefinition.capabilities.highlightTargets.find((t) => t.id === 'key')
+    // One list: the highlight targets are exactly the keys the row draws, in its order.
+    expect(keyFamily.options).toEqual(PYTHON_KEY_SYMBOLS)
+    const drawn = [...container.querySelectorAll('[data-highlight-target^="key:"]')].map((el) =>
+      el.getAttribute('data-highlight-target').slice(4)
+    )
+    expect(drawn).toEqual(PYTHON_KEY_SYMBOLS)
+    for (const key of PYTHON_KEY_SYMBOLS) {
       const button = [...container.querySelectorAll('[data-highlight-target]')].find(
         (el) => el.getAttribute('data-highlight-target') === `key:${key}`
       )

@@ -525,8 +525,10 @@ function validateUiGates(type, def, workSlot) {
 
 // `capabilities.highlightTargets`: the controls a tutor (or a task's `highlight` field) can
 // pulse on the student's screen (src/shared/controlHighlight.js). Each is { id, label, pane?,
-// aliases?, options? }: `pane` is the focusPanes id that holds the control in a compact layout,
-// `aliases` other ids authors may write, and `options` makes it a family (`category:<option>`).
+// aliases?, options?, optionNames?, touchOnly? }: `pane` is the focusPanes id that holds the
+// control in a compact layout, `aliases` other ids authors may write, `options` makes it a family
+// (`category:<option>`), `optionNames` maps an option to the words a screen reader says ("open
+// bracket key" for `(`), and `touchOnly` marks controls that exist on touch screens only.
 // The workspace marks each control with `data-highlight-target="<id>"`.
 const HIGHLIGHT_TARGET_ID = /^[a-z][a-z0-9_]*$/
 function validateHighlightTargets(type, targets, panes) {
@@ -544,7 +546,7 @@ function validateHighlightTargets(type, targets, panes) {
       ) {
         fail(
           type,
-          '"capabilities.highlightTargets" must be { id, label, pane?, aliases?, options? } with unique snake_case ids'
+          '"capabilities.highlightTargets" must be { id, label, pane?, aliases?, options?, optionNames?, touchOnly? } with unique snake_case ids'
         )
       }
       ids.forEach((id) => seen.add(id))
@@ -558,12 +560,22 @@ function validateHighlightTargets(type, targets, panes) {
       ) {
         fail(type, '"capabilities.highlightTargets" options must be a list of names')
       }
+      if (
+        target.optionNames != null &&
+        (!target.options ||
+          typeof target.optionNames !== 'object' ||
+          Object.values(target.optionNames).some((name) => typeof name !== 'string' || !name))
+      ) {
+        fail(type, '"capabilities.highlightTargets" optionNames must map options to words')
+      }
       return Object.freeze({
         id: target.id,
         label: target.label,
         pane: target.pane ?? null,
         aliases: Object.freeze([...(target.aliases ?? [])]),
         options: target.options ? Object.freeze([...target.options]) : null,
+        optionNames: target.optionNames ? Object.freeze({ ...target.optionNames }) : null,
+        touchOnly: target.touchOnly === true,
       })
     })
   )

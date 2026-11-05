@@ -6,13 +6,16 @@ import {
   glowingKeyOnCard,
   highlightTargetName,
   highlightTargetSelector,
+  highlightTargetText,
   listHighlightTargets,
   moduleHasHighlightTargets,
   pickLiveControlHighlight,
   resetTaskHighlightMemory,
   resolveHighlightTarget,
+  touchHighlightGroups,
   validateTaskHighlight,
 } from '../controlHighlight.js'
+import { PYTHON_KEY_ROW } from '../../modules/python/keyRow.js'
 import { locateHighlight, revealPanesFor, visibleRect } from '../useControlHighlight.js'
 
 describe('control highlight targets', () => {
@@ -44,6 +47,30 @@ describe('control highlight targets', () => {
     expect(keys.map((t) => t.id)).toEqual(expect.arrayContaining(['key::', 'key:(', 'key:)']))
     expect(keys.find((t) => t.id === 'key:(')).toMatchObject({ label: '(', revealKey: 'key' })
     expect(highlightTargetSelector('key:"')).toBe('[data-highlight-target~="key:\\""]')
+  })
+
+  it('names every key in words for a screen reader, never a bare symbol', () => {
+    const keys = listHighlightTargets('python').filter((t) => t.group === 'Keys')
+    expect(keys.map((t) => t.option)).toEqual(PYTHON_KEY_ROW.map((k) => k.symbol))
+    const text = (id) => highlightTargetText(resolveHighlightTarget('python', id))
+    expect(text('key:(')).toBe('open bracket key')
+    expect(text('key::')).toBe('colon key')
+    expect(text('key:"')).toBe('quote key')
+    expect(text('key:.')).toBe('full stop key')
+    for (const key of keys) {
+      expect(highlightTargetText(key)).toMatch(/^[a-z ]+ key$/)
+    }
+    expect(text('run')).toBe('Run button')
+    expect(highlightTargetText(resolveHighlightTarget('scratch', 'category:Motion'))).toBe(
+      'Motion (block category)'
+    )
+  })
+
+  it('groups the touch-only keys for the Builder', () => {
+    const groups = touchHighlightGroups('python')
+    expect(groups.map((g) => g.label)).toEqual(['Keys'])
+    expect(groups[0].targets.map((t) => t.option)).toEqual(PYTHON_KEY_ROW.map((k) => k.symbol))
+    expect(touchHighlightGroups('scratch')).toEqual([])
   })
 
   it.each([
@@ -91,6 +118,10 @@ describe('control highlight targets', () => {
   it('describes what an author can write', () => {
     expect(describeHighlightTargets('scratch')).toMatch(/^green_flag, stop, costumes_tab/)
     expect(describeHighlightTargets('scratch')).toContain('category:<Motion|')
+    // The key row is described, not listed, and says to quote it.
+    expect(describeHighlightTargets('python')).toBe(
+      'run, stop, "key:<symbol>" (in quotes, e.g. "key:(")'
+    )
   })
 })
 
@@ -104,10 +135,7 @@ describe('validateTaskHighlight', () => {
 
   it('accepts a known target', () => {
     expect(run({ highlight: 'run' }, { moduleType: 'python' }).errors).toEqual([])
-    expect(run({ highlight: 'key:(' }, { moduleType: 'python' })).toEqual({
-      errors: [],
-      warnings: [],
-    })
+    expect(run({ highlight: 'key:(' }, { moduleType: 'python' }).errors).toEqual([])
     expect(run({ highlight: { target: 'category:Looks' } }, { moduleType: 'scratch' })).toEqual({
       errors: [],
       warnings: [],
@@ -117,7 +145,25 @@ describe('validateTaskHighlight', () => {
   it('rejects an unknown target, naming the module and the choices', () => {
     const { errors } = run({ highlight: 'green_flag' }, { moduleType: 'python' })
     expect(errors[0]).toMatch(/Task 1 highlight "green_flag" is not a python control/)
-    expect(errors[0]).toContain('run, stop, key:<:|(|)|')
+    expect(errors[0]).toContain('run, stop, "key:<symbol>"')
+    expect(errors[0]).not.toContain('%')
+  })
+
+  it('tells the author to quote a key target', () => {
+    const unknown = run({ highlight: 'key:a' }, { moduleType: 'python' }).errors[0]
+    expect(unknown).toMatch(/"key:a" is not a key on the python key row/)
+    expect(unknown).toContain('highlight: "key:("')
+    // `highlight: key: (` (unquoted, with a space) is YAML for { key: "(" }.
+    expect(run({ highlight: { key: '(' } }, { moduleType: 'python' }).errors[0]).toBe(
+      'Task 1 highlight must be one target in quotes, e.g. highlight: "key:("'
+    )
+  })
+
+  it('warns that a key target only shows on touch screens', () => {
+    expect(run({ highlight: 'key:(' }, { moduleType: 'python' }).warnings).toEqual([
+      'Task 1 highlight key:( only shows on touch screens (iPad); keyboard screens have no key row',
+    ])
+    expect(run({ highlight: 'run' }, { moduleType: 'python' }).warnings).toEqual([])
   })
 
   it('rejects highlight where there are no controls', () => {

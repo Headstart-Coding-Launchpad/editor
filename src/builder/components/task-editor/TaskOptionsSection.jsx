@@ -12,6 +12,7 @@ import {
   listHighlightTargets,
   moduleHasHighlightTargets,
   resolveHighlightTarget,
+  touchHighlightGroups,
 } from '../../../shared/controlHighlight'
 import InspectorField from './InspectorField'
 import { getModuleDefinition } from '../../../modules/definitions'
@@ -215,16 +216,33 @@ export default function TaskOptionsSection({
                 onChange={(e) => set('highlight', e.target.value || undefined)}
               >
                 <option value="">None</option>
-                {listHighlightTargets(lesson.type).map((target) => (
-                  <option key={target.id} value={target.id}>
-                    {target.group ? `${target.group}: ${target.label}` : target.label}
-                  </option>
+                {listHighlightTargets(lesson.type)
+                  .filter((target) => !target.touchOnly)
+                  .map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.group ? `${target.group}: ${target.label}` : target.label}
+                    </option>
+                  ))}
+                {touchHighlightGroups(lesson.type).map(({ label, targets }) => (
+                  <optgroup key={label} label={`${label} (touch screens)`}>
+                    {targets.map((target) => (
+                      <option key={target.id} value={target.id}>
+                        {target.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               <p className="te-option-note">
                 Pulses this control once on each student&apos;s screen when they open the task,
                 until they use it (or 20 seconds). Tutors can also highlight controls live.
               </p>
+              {resolveHighlightTarget(lesson.type, task.highlight)?.touchOnly && (
+                <p className="te-option-note" data-testid="highlight-touch-note">
+                  Keys only show on touch screens (iPad). Students on a keyboard won&apos;t see a
+                  glow.
+                </p>
+              )}
             </Field>
           )}
 

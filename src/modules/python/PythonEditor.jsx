@@ -5,36 +5,10 @@ import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
 import { describeRunCount } from '../../shared/runCounts.js'
+import { PYTHON_KEY_SYMBOLS } from './keyRow.js'
 
-// Symbols that are fiddly to reach on an on-screen keyboard but come up
-// constantly in Python source — shown as a tap-to-insert row so touch/iPad
-// students aren't hunting through keyboard shift layers mid-task.
-// Most-used first (the colon leads), then the rarer ones.
-const SYMBOL_BUTTONS = [
-  ':',
-  '(',
-  ')',
-  '[',
-  ']',
-  '{',
-  '}',
-  '"',
-  "'",
-  ',',
-  '=',
-  '#',
-  '\\',
-  '%',
-  '+',
-  '-',
-  '*',
-  '/',
-  '<',
-  '>',
-  '!',
-  '.',
-  '_',
-]
+// The tap-to-insert symbol row on touch/iPad (and the keys a tutor's `key:(` highlight can make
+// glow) is one shared list in ./keyRow.js.
 // Touch keys are 44px square (Apple's minimum tap size).
 const TOUCH_KEY = 44
 
@@ -109,7 +83,7 @@ export default function PythonEditor({
             </button>
           )}
           {showSymbolButtons &&
-            SYMBOL_BUTTONS.map((symbol) => (
+            PYTHON_KEY_SYMBOLS.map((symbol) => (
               <button
                 key={symbol}
                 type="button"

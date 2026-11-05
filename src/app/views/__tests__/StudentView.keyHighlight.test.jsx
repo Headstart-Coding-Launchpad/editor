@@ -173,7 +173,7 @@ describe('tutor key highlight (request #126)', { timeout: 20000 }, () => {
     await waitFor(() => expect(editorText()).toContain('print'))
     await waitFor(() => expectRingOn(keyButton('(')))
     expect(ring().className).not.toContain('reveal')
-    expect(document.body.textContent).toContain('Your tutor is pointing at the ( (keys)')
+    expect(document.body.textContent).toContain('Your tutor is pointing at the open bracket key')
 
     await user.click(keyButton('('))
     await frames()

@@ -48,9 +48,7 @@ import {
   PYTHON_COPY_CODE_PLACEHOLDER,
 } from '../moduleAuthoring.js'
 import { printCodeStringTask } from '../printHelpers.js'
-
-// The keys a tutor (or a task's `highlight: key:(`) can make glow on the touch key row.
-export const PYTHON_HIGHLIGHT_KEYS = [...':()[]{}"\',=#\\%+-*/<>!._']
+import { PYTHON_KEY_SPOKEN, PYTHON_KEY_SYMBOLS } from './keyRow.js'
 
 export default defineModule({
   type: 'python',
@@ -72,9 +70,16 @@ export default defineModule({
     highlightTargets: [
       { id: 'run', label: 'Run button' },
       { id: 'stop', label: 'Stop button' },
-      // One key on the touch key row (PythonEditor), `key:(` (request #126). Keep in step with
-      // that row's keys; the row has no Keys toggle on touch, so there is nothing to reveal.
-      { id: 'key', label: 'Keys', options: PYTHON_HIGHLIGHT_KEYS },
+      // One key on the touch key row (PythonEditor), `key:(` (request #126). The keys and their
+      // spoken names come from ./keyRow.js, the same list the row draws; the row has no Keys
+      // toggle on touch, so there is nothing to reveal. Touch screens only.
+      {
+        id: 'key',
+        label: 'Keys',
+        options: PYTHON_KEY_SYMBOLS,
+        optionNames: PYTHON_KEY_SPOKEN,
+        touchOnly: true,
+      },
     ],
     stageReveal: 'progressive',
     teacherStageReveal: true,
