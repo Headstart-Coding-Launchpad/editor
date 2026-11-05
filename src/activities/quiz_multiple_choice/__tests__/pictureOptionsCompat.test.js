@@ -95,7 +95,13 @@ describe('switching quiz type in the Builder is pure (no hidden picture memory)'
 
   it('the same switch gives the same result every time (nothing kept between calls)', () => {
     const poll = switchQuizType(task, 'poll')
-    const other = { ...task, options: [{ id: 'a', text: 'Cat' }, { id: 'b', text: 'Dog' }] }
+    const other = {
+      ...task,
+      options: [
+        { id: 'a', text: 'Cat' },
+        { id: 'b', text: 'Dog' },
+      ],
+    }
     // Another task with the same id and title, switched in the same session, gets no pictures.
     const back = switchQuizType(switchQuizType(other, 'poll'), 'multiple_choice')
     expect(back.options.some((o) => o.image || o.emoji)).toBe(false)

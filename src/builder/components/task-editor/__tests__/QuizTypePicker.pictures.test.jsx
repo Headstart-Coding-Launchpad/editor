@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -54,9 +53,7 @@ describe('QuizTypePicker: leaving multiple choice with pictures', () => {
     const onSelect = vi.fn()
     const { container } = render(<QuizTypePicker task={pictureQuiz} onSelect={onSelect} />)
     await user.click(pollButton(container))
-    await user.click(
-      within(screen.getByRole('alert')).getByRole('button', { name: /^continue/i })
-    )
+    await user.click(within(screen.getByRole('alert')).getByRole('button', { name: /^continue/i }))
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(onSelect.mock.calls[0][0].id).toBe('quiz_poll')
     expect(screen.queryByRole('alert')).toBeNull()
