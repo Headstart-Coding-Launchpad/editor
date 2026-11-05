@@ -89,11 +89,16 @@ Entries written before 2026-09-29 are not tagged.
   `input()`, or `slowMo` where Run plays in slow-mo; never Turtle, Electronics or `code_arrange`.
   A scrub never ticks by itself (it is checked by its release checks, as a Run, as before); a
   typed change after it can. Code typed back to what was last redrawn is not run again.
+  **No verdict yet:** with `runOnOpen: false` (scrub or `#@lock-values` only) the task opens with
+  no redraw, so an answer typed whole before the first half-second pause does not tick until
+  the student presses Run (or a change that misses, then one that passes).
   Only the student's own typing ticks: a tutor's edit, a peer-help change, copied shared work,
   Reset, carried code or saved work loading redraws but doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
   themselves (a scrub's release checks and the tutor's remote Run don't lift it; it holds after a
   reload). See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
-  - Affects: python · Existing lessons: no changes needed · Resolves:
+  - Affects: python · Existing lessons: tasks with scrub, run-on-open or locked values and a
+    positive output/code check now tick while typing; to keep Run-to-pass, add a run_attempted
+    check · Resolves:
     authoring-requests/2026-11-05-stage-tasks-run-the-completion-check-on-live-redraw-tick-whe.md
 
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a

@@ -1103,21 +1103,29 @@ What students get:
   - **Only a change that makes it pass.** A typed redraw ticks only when the redraw before it
     (since the task opened) did not pass: a typed redraw, the run on open (`runOnOpen`) or a scrub
     preview of the code as it stands. A redraw that ends in an error counts as not passing. With
-    no earlier redraw it never ticks; the next one can. So code that already passes (carried
-    from an earlier task, a tutor's edit, restored work) never ticks by typing a space or a `#`
-    comment, and a whole answer pasted in one go ticks on Run or after a later redraw that
-    follows a miss. Reset, a tutor's edit, Mark Pass or Mark Fail, carried or restored code,
+    no earlier redraw it never ticks. So code that already passes (carried from an earlier task,
+    a tutor's edit, restored work) never ticks by typing a space or a `#` comment, and a whole
+    answer pasted in one go ticks on Run, or only after a later redraw that misses and then one
+    that passes. **No verdict yet:** a task with `scrub` or `#@lock-values` but `runOnOpen: false`
+    has no redraw when it opens, so if the student types the whole answer before the first
+    half-second pause, that first redraw passes but doesn't tick, and nothing ticks until the
+    student presses Run (or a change that misses, then one that passes). Keep `runOnOpen` on (the
+    default with `scrub`) so the opening redraw is the earlier verdict. Reset, a tutor's edit, Mark Pass or Mark Fail, carried or restored code,
     another task and an un-solve start the rule again. Code that is the starter code itself
     (spaces and blank lines aside) never ticks either. Code typed back to exactly what was last
     redrawn is not run again (nothing new to show), so it neither ticks nor counts. A slow redraw
-    that finishes after the student has typed on is skipped: it doesn't count, and the redraw
-    before it still does.
+    that finishes after the student has typed on is skipped: it doesn't count, the redraw before
+    it still does, and typing back to its code redraws it again.
   - **Never while typing.** A task never ticks while typing when it has `run_attempted` ("press
     Run and watch"), name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`),
     Python `tests`, `interactionMode: submit`, `copyCode` (its first Run measures how far the code
     is from the copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
     `setupCode`, or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal,
-    so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing.
+    so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing. A redraw
+    of a task already solved is not checked at all.
+  - **Existing lessons.** This is on with no switch: an existing Python Stage task with `scrub`,
+    `runOnOpen` or a `#@lock-values` line and a completion check that can tick (above) now ticks
+    while typing. To keep such a task Run-to-pass, add a `run_attempted` check.
   - **Only the student's own typing.** Typing, pasting or deleting in the editor can tick. A
     scrub never ticks by itself: its previews are not typing, and the edit when it ends is the
     code just previewed, so nothing new redraws; a scrub is checked only by the checks it runs
@@ -1136,8 +1144,10 @@ What students get:
     student's next Run. A new Mark Fail stops them again. A task without `scrub`, `runOnOpen` or
     a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage
     task `runOnOpen: true` to get both the redraw and the tick. Reset, a tutor's edit, Mark Pass
-    or Mark Fail (even on a task not yet solved) drops a redraw still waiting or queued, so old
-    code never paints over them, and the same code typed again afterwards redraws.
+    or Mark Fail (even on a task not yet solved) drops a typed redraw still waiting or queued, so
+    old code never paints over them, and the same code typed again afterwards redraws; a scrub
+    frame or the run on open still waiting is kept, and Reset of a solved task still redraws the
+    starter.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
   no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed
