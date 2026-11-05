@@ -925,7 +925,9 @@ export default function StudentView({
   )
   // A hosted activity with its own targets (the Keyboard's keys, request 133) counts too, outside
   // the sandbox (which shows the module's workspace): its scope is `activity:<id>`.
-  const highlightModuleType = lesson ? getEffectiveLessonForTask(lesson, highlightTaskId)?.type : null
+  const highlightModuleType = lesson
+    ? getEffectiveLessonForTask(lesson, highlightTaskId)?.type
+    : null
   const highlightActivityScope =
     phase !== 'sandbox' && highlightTask && !isCodeTask(highlightTask)
       ? highlightScopeForTask(highlightTask, null)

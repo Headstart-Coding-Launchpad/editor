@@ -1013,15 +1013,18 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             {session &&
               !!classHighlightTask &&
               (isCodeTask(classHighlightTask) || !!classHighlightActivity) && (
-              <ControlHighlightDropdown
-                label="Highlight Class"
-                lessonType={classHighlightType}
-                onHighlight={(target) =>
-                  pushClassControlHighlight(target, isInSandbox ? null : (currentTask?.id ?? null))
-                }
-                onClear={clearClassControlHighlight}
-              />
-            )}
+                <ControlHighlightDropdown
+                  label="Highlight Class"
+                  lessonType={classHighlightType}
+                  onHighlight={(target) =>
+                    pushClassControlHighlight(
+                      target,
+                      isInSandbox ? null : (currentTask?.id ?? null)
+                    )
+                  }
+                  onClear={clearClassControlHighlight}
+                />
+              )}
             {session && !isInSandbox && (
               <TeacherGoLiveControl
                 teacherLive={session.teacherLive}
