@@ -152,7 +152,7 @@ The `exampleOpenLog` node was added with explicit user approval ("example opens"
               "teacherAssisted": "true | null (the teacher edited this student's answer on this task via StudentModal 'Edit answers'; the report shows the pass as teacher assisted)",
               "error": "true | 'NameError' | null (the run produced a real console error: its name when readable, else true. Live badges; see Badge data)",
               "placements": "string | null (code_arrange only: the attempt's tile placements { blankId: tileId } as a JSON string; a retry keeps the first entry's)",
-              "source": "'scrub' | 'live' | null ('scrub': the checks a live scrub ran on release, scrub.checkOnRelease; 'live': a typed redraw whose own result passed, recorded as a Run, request 131, always passed: true; null: a Run. A retry keeps the first entry's. A live pass counts as a normal pass and attempt; the report keeps its source on distinctAttempts and the report modal labels it 'while typing, no Run')",
+              "source": "'scrub' | 'live' | null ('scrub': the checks a live scrub ran on release, scrub.checkOnRelease; 'live': a typed redraw whose own result passed, recorded as a Run, request 131, always passed: true; null: a Run. A retry keeps the first entry's, except that a Run of the same code after a live pass sets it to null, as a retry, and a live pass never changes a Run's. A live pass counts as a normal pass and attempt; the report keeps its source on distinctAttempts and the report modal labels it 'while typing, no Run')",
               "attemptNumber": 1,
               "retries": 0,
               "loggedAt": "ServerValue.TIMESTAMP",
