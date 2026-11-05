@@ -4,7 +4,6 @@ import {
   evaluateCheck,
   evaluateCheckWithFeedback,
   normalizeCheckShape,
-  normalizeChecks,
   normalizeFeedbackChecks,
 } from '../../modules/checks'
 import { explainPythonError } from '../../shared/pythonErrors.js'
@@ -73,11 +72,16 @@ export function judgeRun({
   // run_attempted-only check, which any run satisfies.
   const runFailureBlocksCompletion =
     (status === 'error' || status === 'stopped') && !completionToleratesRunError(checkTask?.check)
+  // With a completion check, the feedback evaluation below sets `passed` (same checks, same
+  // context), so this first evaluation is only made for a task without one.
+  const evaluatedBelow = !alreadySolved && !isFreePlay && !hasTests && !!checkTask?.check
   let passed = alreadySolved
     ? true
     : runFailureBlocksCompletion || hasTests || isFreePlay
       ? false
-      : evaluateCheckWithFeedback(checkTask, outputRaw, checkContext).passed
+      : evaluatedBelow
+        ? false
+        : evaluateCheckWithFeedback(checkTask, outputRaw, checkContext).passed
   // A scrub's own verdict, even on a solved task (where `passed` holds on): the tutor's card
   // and modal show it as "After scrub".
   const isScrubRun = source === 'scrub'
@@ -145,16 +149,27 @@ export const LIVE_TICK_CHECK_TYPES = Object.freeze([
   ...PYTHON_CHECK_TYPES,
 ])
 
-// Every check in a check (or list), with any check wrapped inside one (`check` / `checks`).
-function checksIn(check) {
-  return normalizeChecks(check).flatMap((c) => [c, ...checksIn(c.check), ...checksIn(c.checks)])
+// A check (or list) whose every entry is a plain check of a listed type. Strict, and flat: no
+// evaluator reads checks nested in a check (`check` / `checks` keys), so an entry carrying one,
+// an entry with no type, or any unlisted type means no live tick.
+function allLiveTickChecks(check) {
+  const entries = check == null ? [] : Array.isArray(check) ? check : [check]
+  return entries.every(
+    (c) =>
+      c != null &&
+      typeof c === 'object' &&
+      c.check === undefined &&
+      c.checks === undefined &&
+      LIVE_TICK_CHECK_TYPES.includes(normalizeCheckShape(c)?.type)
+  )
 }
 
 /**
  * Whether a finished typed redraw of `code` may tick `task` (request 131): a Python Stage task
- * ('runtime' module with the Stage), live or solo, whose every check (completion, feedback and
- * any wrapped inside one) is on LIVE_TICK_CHECK_TYPES. Typed code tasks only: never an activity
- * or a code_arrange task (its program comes from tiles, not typing). Never for submit mode, Python tests,
+ * ('runtime' module with the Stage), live or solo, whose every check (completion and feedback)
+ * is on LIVE_TICK_CHECK_TYPES. Typed code tasks only: never an activity or a code_arrange task
+ * (its program comes from tiles, not typing), nor a copyCode task (its first Run measures how far
+ * the code is from the copy, typingStats.noteRun). Never for submit mode, Python tests,
  * input() in the code or setupCode (a redraw replays old answers), the name-tag panel or run
  * counts, an on-idle feedback check, a run_attempted check ("press Run and watch"), a task whose
  * Run plays in slow-mo, predict mode's Run lock, the presentation window, the Builder preview or
@@ -175,6 +190,7 @@ export function liveTickEligible({
   if (teacherPresentation || previewMode || inPersonalSandbox || predictRunLocked) return false
   if (definition.capabilities?.run !== 'runtime' || !definition.runResult?.stage) return false
   if (getActivityId(task) !== null) return false
+  if (task.copyCode != null && task.copyCode !== '') return false
   if (task.interactionMode === 'submit' || task.tests?.length > 0) return false
   if (codeCallsInput(code) || codeCallsInput(task.setupCode)) return false
   if (getShowVariables(task) || getRunCounts(task) != null || taskCountsRuns(task)) return false
@@ -182,7 +198,5 @@ export function liveTickEligible({
   if (slowMoThroughRun(getPythonSlowMo(task))) return false
   const feedback = normalizeFeedbackChecks(task)
   if (feedback.some((c) => c.show !== FEEDBACK_TIMING.AFTER_ATTEMPT)) return false
-  return [...checksIn(task.check), ...checksIn(feedback)].every((c) =>
-    LIVE_TICK_CHECK_TYPES.includes(normalizeCheckShape(c)?.type)
-  )
+  return allLiveTickChecks(task.check) && allLiveTickChecks(feedback)
 }

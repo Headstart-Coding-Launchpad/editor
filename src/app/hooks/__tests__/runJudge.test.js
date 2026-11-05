@@ -179,7 +179,10 @@ describe('liveTickEligible (request 131: a typed redraw may tick the task)', () 
     ['variables_predicted', { check: { type: 'variables_predicted', names: ['x'] } }],
     ['runs_predicted feedback', { feedbackChecks: [{ type: 'runs_predicted' }] }],
     ['an unknown type', { check: { type: 'made_up' } }],
-    ['a wrapped check off the list', { check: { ...task.check, checks: [{ type: 'answer' }] } }],
+    ['nesting keys (checks), read by no evaluator', { check: { ...task.check, checks: [] } }],
+    ['nesting keys (check)', { check: [{ ...task.check, check: { ...task.check } }] }],
+    ['a typeless entry in a check list', { check: [task.check, { value: 'x' }] }],
+    ['a copyCode task', { copyCode: 'print("hi")' }],
     ['an on-idle feedback check', { feedbackChecks: [{ ...task.check, show: 'on_idle' }] }],
     ['Run defaults to slow-mo', { slowMo: { enabled: true } }],
   ])('not for %s', (_name, patch) => {
