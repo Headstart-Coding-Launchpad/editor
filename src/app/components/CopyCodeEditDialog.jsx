@@ -59,7 +59,12 @@ export default function CopyCodeEditDialog({
           What the Type this out box shows. Clear the text to hide the box. The lesson itself is not
           changed.
         </p>
-        <div style={s.editor} data-testid="copy-code-edit-text" role="group" aria-label="Type this out text">
+        <div
+          style={s.editor}
+          data-testid="copy-code-edit-text"
+          role="group"
+          aria-label="Type this out text"
+        >
           <CodeEditor
             ref={editorRef}
             value={text}
