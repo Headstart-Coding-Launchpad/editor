@@ -384,6 +384,49 @@ describe('meaningfulTextValue', () => {
     expect(meaningfulTextValue(value, operator)).toBe(true)
   })
 
+  // Round 6: group prefixes, \p{..} and class escapes are syntax, never literals; escaped
+  // literals are literals; a literal made optional or inside an alternation is not required.
+  it.each([
+    ['(?:.+)', ''],
+    ['(?<n>.+)', ''],
+    ['(?=.)', ''],
+    ['(?!x).', ''],
+    ['(?<!a).', ''],
+    ['\\p{L}+', 'u'],
+    ['\\p{L}+', ''],
+    ['\\P{Lu}', 'u'],
+    ['\\D\\W\\S', ''],
+    ['(.)\\1', ''],
+    ['(hi|.+)', ''],
+    ['hi|there', ''],
+    ['a?\\d', ''],
+    ['(abc)?\\d', ''],
+    ['x{0,3}\\d', ''],
+    ['[.]', ''],
+    ['[^a]+', ''],
+  ])('regex %j (flags %j) is trivially true', (value, flags) => {
+    expect(meaningfulTextValue(value, 'matches_regex', flags)).toBe(false)
+  })
+
+  it.each([
+    'Hello',
+    '^circle\\(',
+    'x\\s*=\\s*5',
+    '\\.',
+    '\\$\\d+',
+    '\\bcat\\b',
+    '(?:ab)+',
+    '(?<word>cat)s?',
+    'colou(r|rs)',
+    '(?=.*hi).+',
+    '(?<=a).',
+    'a{2}',
+    '\\x41',
+    '\\n\\d',
+  ])('regex %j needs a real answer', (value) => {
+    expect(meaningfulTextValue(value, 'matches_regex')).toBe(true)
+  })
+
   it('a regex that matches only with its flags is judged with them', () => {
     expect(meaningfulTextValue('HI', 'matches_regex', 'i')).toBe(true)
   })

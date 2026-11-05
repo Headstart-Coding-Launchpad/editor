@@ -153,9 +153,10 @@ export function judgeRun({
 //   counts' checks, input checks and every other module's checks.
 export const LIVE_TICK_TEXT_OPERATORS = STAGE_TEXT_OPERATORS
 
-// A regex that could match (almost) anything: it matches the empty text, has an alternation, or
-// has no literal letter, digit or symbol left once escapes, character classes, groups,
-// quantifiers and anchors are taken out ('.+', '\S+', '[a-z]+', '^.*$').
+// A regex that could match (almost) anything: it does not compile, matches the empty text, has a
+// top-level alternation, or has no REQUIRED literal (requiredLiteral): '.+', '\S+', '[a-z]+',
+// '^.*$', '(?:.+)', '(?<n>.+)', '(?=.)', '\p{L}+', '(hi|.+)'. Escaped literals count ('\.',
+// '\$\d+').
 function trivialRegex(pattern, flags) {
   let regex
   try {
@@ -163,13 +164,148 @@ function trivialRegex(pattern, flags) {
   } catch {
     return true
   }
-  if (regex.test('') || pattern.includes('|')) return true
-  const literal = pattern
-    .replace(/\\./g, '')
-    .replace(/\[[^\]]*\]/g, '')
-    .replace(/\{\d*,?\d*\}/g, '')
-    .replace(/[.^$*+?()[\]{}|\s]/g, '')
-  return literal === ''
+  if (regex.test('')) return true
+  const { required, branches } = requiredLiteral(pattern)
+  return branches > 1 || !required
+}
+
+// The class escapes (\d \w \s \b and their negations): not a literal.
+const CLASS_ESCAPES = 'dDwWsSbB'
+
+/**
+ * Whether every match of `pattern` (a regex that compiles) must contain at least one literal
+ * character: a plain character or an escaped literal ('\.', '\$', '\n', '\x41') that is outside
+ * any character class, not made optional by a quantifier (?, *, {0,n}), not in a group with an
+ * alternation, and not in a negative lookaround. Group prefixes ((?:, (?<name>, (?=, (?!, (?<=,
+ * (?<!), \p{..}, the class escapes, back-references, '.', '^' and '$' are syntax, never literals.
+ * `branches` is the number of top-level alternatives. Conservative: anything unsure is not a
+ * literal (some real answers then tick on Run only).
+ */
+function requiredLiteral(pattern) {
+  let i = 0
+  const at = (offset = 0) => pattern[i + offset]
+  const skipTo = (close) => {
+    const end = pattern.indexOf(close, i)
+    i = end === -1 ? pattern.length : end + 1
+  }
+
+  // An escape at i: consumes it, true when it stands for one literal character.
+  function escape() {
+    const c = at(1)
+    if (c === undefined) {
+      i += 1
+      return false
+    }
+    if (CLASS_ESCAPES.includes(c)) {
+      i += 2
+      return false
+    }
+    if ((c === 'p' || c === 'P') && at(2) === '{') {
+      skipTo('}')
+      return false
+    }
+    if (c === 'k' && at(2) === '<') {
+      skipTo('>')
+      return false
+    }
+    if (c >= '1' && c <= '9') {
+      i += 2
+      while (/\d/.test(at() ?? '')) i += 1
+      return false
+    }
+    if (c === 'u' && at(2) === '{') {
+      skipTo('}')
+      return true
+    }
+    if (c === 'u' && /^[0-9a-fA-F]{4}$/.test(pattern.slice(i + 2, i + 6))) {
+      i += 6
+      return true
+    }
+    if (c === 'x' && /^[0-9a-fA-F]{2}$/.test(pattern.slice(i + 2, i + 4))) {
+      i += 4
+      return true
+    }
+    if (c === 'c' && /[a-zA-Z]/.test(at(2) ?? '')) {
+      i += 3
+      return true
+    }
+    i += 2
+    return true
+  }
+
+  function skipClass() {
+    i += 1
+    while (i < pattern.length && at() !== ']') i += at() === '\\' ? 2 : 1
+    i += 1
+  }
+
+  // A group's prefix at i (just after '('): consumes it; true for a negative lookaround.
+  function groupPrefix() {
+    if (at() !== '?') return false
+    const c = at(1)
+    if (c === '=' || c === '!') {
+      i += 2
+      return c === '!'
+    }
+    if (c === '<' && (at(2) === '=' || at(2) === '!')) {
+      i += 3
+      return at(-1) === '!'
+    }
+    // (?<name> and modifier groups such as (?i:
+    skipTo(c === '<' ? '>' : ':')
+    return false
+  }
+
+  // A quantifier at i, if any: consumes it (and a lazy '?'); true when it allows zero.
+  function optionalQuantifier() {
+    let optional = false
+    if (at() === '*' || at() === '?') {
+      optional = true
+      i += 1
+    } else if (at() === '+') {
+      i += 1
+    } else if (at() === '{') {
+      const m = /^\{(\d+)(,\d*)?\}/.exec(pattern.slice(i))
+      if (!m) return false
+      optional = Number(m[1]) === 0
+      i += m[0].length
+    } else {
+      return false
+    }
+    if (at() === '?') i += 1
+    return optional
+  }
+
+  // A sequence of alternatives up to ')' or the end: whether every alternative has a required
+  // literal, and how many alternatives there are.
+  function sequence() {
+    const required = [false]
+    while (i < pattern.length && at() !== ')') {
+      const ch = at()
+      if (ch === '|') {
+        required.push(false)
+        i += 1
+        continue
+      }
+      let literal = false
+      if (ch === '\\') literal = escape()
+      else if (ch === '[') skipClass()
+      else if (ch === '(') {
+        i += 1
+        const negative = groupPrefix()
+        const inner = sequence()
+        if (at() === ')') i += 1
+        literal = !negative && inner.required
+      } else {
+        literal = !'.^$'.includes(ch)
+        i += 1
+      }
+      if (!optionalQuantifier() && literal) required[required.length - 1] = true
+    }
+    return { required: required.every(Boolean), branches: required.length }
+  }
+
+  return sequence()
 }
 
 // Text with something real in it once wildcards (`*`), quotes, commas and spaces are removed.
@@ -293,13 +429,22 @@ function sameCode(a, b) {
  * input() in the code or setupCode (a redraw replays old answers), the name-tag panel or run
  * counts, an on-idle feedback check, a run_attempted check ("press Run and watch"), a task whose
  * Run plays in slow-mo, predict mode's Run lock, the presentation window, the Builder preview or
- * either sandbox. Pure.
+ * either sandbox. Pure. The task-level part (everything but the code) is liveTickTaskEligible.
  */
-export function liveTickEligible({
+export function liveTickEligible({ code, starterCode, ...where }) {
+  if (!liveTickTaskEligible(where)) return false
+  if (sameCode(code, starterCode) || sameCode(code, where.task.starterCode)) return false
+  return !codeCallsInput(code)
+}
+
+/**
+ * Whether any typed redraw could ever tick `task` here, without looking at the code
+ * (liveTickEligible less the starter-code and input() tests on the code itself). Cheap: a
+ * preview of a task that fails it is never judged (useStudentCodeState commitLivePass). Pure.
+ */
+export function liveTickTaskEligible({
   task,
   definition,
-  code,
-  starterCode,
   phase,
   teacherPresentation,
   previewMode,
@@ -307,14 +452,13 @@ export function liveTickEligible({
   predictRunLocked,
 }) {
   if (!task?.check || !definition) return false
-  if (sameCode(code, starterCode) || sameCode(code, task.starterCode)) return false
   if (phase !== 'lesson' && phase !== 'solo') return false
   if (teacherPresentation || previewMode || inPersonalSandbox || predictRunLocked) return false
   if (definition.capabilities?.run !== 'runtime' || !definition.runResult?.stage) return false
   if (getActivityId(task) !== null) return false
   if (task.copyCode != null && task.copyCode !== '') return false
   if (task.interactionMode === 'submit' || task.tests?.length > 0) return false
-  if (codeCallsInput(code) || codeCallsInput(task.setupCode)) return false
+  if (codeCallsInput(task.setupCode)) return false
   if (getShowVariables(task) || getRunCounts(task) != null || taskCountsRuns(task)) return false
   if (completionToleratesRunError(task.check)) return false
   if (slowMoThroughRun(getPythonSlowMo(task))) return false
