@@ -274,9 +274,9 @@ Every lesson validation error and warning from the CLI and shared validators, wi
 **Load when:** `lessons validate`, `yaml-to-json`, `upsert` or `publish-yaml` reports errors or warnings.
 
 ### [authoring/feedback-cli.md](authoring/feedback-cli.md)
-Reading, adding and archiving teacher feedback (lesson and platform) with the CLI, and a suggested loop for revising a lesson from feedback.
+Reading, adding and archiving teacher feedback (lesson and platform) with the CLI, preview review notes (`lessons notes`: an admin's per-task notes from the lesson preview, and moving them to picked up or done), and a suggested loop for revising a lesson from feedback.
 
-**Load when:** acting on teacher feedback about a lesson.
+**Load when:** acting on teacher feedback or preview review notes about a lesson.
 
 ### [authoring/timing-runs.md](authoring/timing-runs.md)
 Tutor timing runs: the admin-preview stopwatch that records seconds per task, the saved `timingRuns` document shape, and `lessons timing` in the CLI.

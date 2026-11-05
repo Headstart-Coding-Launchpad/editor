@@ -45,6 +45,17 @@ Entries written before 2026-09-29 are not tagged.
   - Affects: python · Existing lessons: no changes needed · Resolves: none (Hub request #125,
     Tab/indent key)
 
+- **Preview review notes: `lessons notes <id>`.** An admin previewing a lesson
+  (`?preview=true`) can leave a one-line note on any task with the **Feedback** button on the
+  blue strip (optional tag: wrong, confusing, too long, love it). Each note keeps the task id and
+  the lesson `version`. Read them with `lessons notes <id> [--since <iso>] [--status
+  new|picked_up|done]` (JSON, oldest first) and move one on with `lessons notes <id> --set
+  <noteId> --status picked_up|done` (never backwards). The lesson schema is unaffected: notes
+  live in `lessons/{id}/reviewNotes`, not in the lesson, and are deleted with the lesson. Works
+  only once the new Firestore rules are deployed. See [feedback-cli.md](feedback-cli.md#preview-review-notes).
+  - Affects: cli, all (preview) · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-11-05-preview-review-leave-a-note-on-any-task-while-previewing-a-l.md
+
 - **Python: `highlight: "key:("` makes one key glow.** A new `key:<symbol>` target for the task's
   `highlight` field (and the tutor's live Highlight menus, as a "Keys" chip group): one key on the
   Python touch key row glows when the task opens, until the student taps it (which types it at the

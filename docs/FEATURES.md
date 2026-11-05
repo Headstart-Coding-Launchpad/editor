@@ -399,11 +399,15 @@ Lesson/task cards link to the lesson in the builder.
 
 ### Viewing feedback in the builder
 
-The builder's **Task Feedback Panel** shows submitted lesson and task feedback for the currently selected task, so authors can review comments without leaving the builder.
+The builder's **Task Feedback Panel** shows submitted lesson and task feedback for the currently selected task, so authors can review comments without leaving the builder. For admins it also lists the task's **preview notes** (read-only, newest first, with status).
+
+### Preview review notes
+
+In the lesson preview (`/lesson/<id>?preview=true`), an admin gets a **Feedback** button at the right of the blue strip above each task. It opens a small box: one line of text, an optional tag (Wrong, Confusing, Too long, Love it), Save and Close, and the task's earlier notes. The button shows the task's note count and a chip with the newest note's status: New, Picked up or Done. The writer can edit or delete a note while it is New; after that it is read-only. Notes are stored per task with the lesson version (`lessons/{lessonId}/reviewNotes`) for Lesson Gen to read with `lessons notes`, which also moves them to picked up and done. Tutors, students and the Builder's preview pane see nothing new. Deleting a lesson or re-creating a fork deletes its notes. See `docs/authoring/feedback-cli.md`.
 
 ### CLI management
 
-The CLI can list, add, archive, and bulk-archive feedback items in both collections; archiving never deletes. Deleting a lesson (Admin or `lessons delete`) does delete its lesson feedback, along with its session reports, and so does re-creating a class fork with `lessons fork`. See `docs/authoring/feedback-cli.md`.
+The CLI can list, add, archive, and bulk-archive feedback items in both collections; archiving never deletes. Deleting a lesson (Admin or `lessons delete`) does delete its lesson feedback, along with its session reports and preview review notes, and so does re-creating a class fork with `lessons fork`. See `docs/authoring/feedback-cli.md`.
 
 ---
 

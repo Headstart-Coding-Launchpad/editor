@@ -10,6 +10,7 @@ once it's dealt with. All commands need CLI credentials (see "CLI credentials" i
 |---|---|---|---|
 | Lesson feedback | `lessons/{lessonId}/feedback` | The tutor's per-task notes in the after-class feedback step (from 2026-10-17, tagged with `reportId`); before that, the Feedback button during a lesson (whole lesson or one task) | Builder task feedback panel, Admin > Lessons |
 | Platform feedback | `platformFeedback` | Bug reports and feature ideas | Admin > Feedback |
+| Preview review notes | `lessons/{lessonId}/reviewNotes` | An admin's **Feedback** button on the blue strip in the lesson preview (`?preview=true`) | The preview strip, Builder task feedback panel ("Preview notes"); see [below](#preview-review-notes) |
 
 This is not the feedback inside a session report. A report carries its own rated
 `teacherFeedback` (per session run, given in the same after-class step) and per-task
@@ -75,3 +76,39 @@ what you're about to archive.
 3. Edit and republish the lesson (`lessons get <id> --format yaml`, edit, `lessons publish-yaml`).
 4. Archive the items you addressed, one by one with `archive-lesson`, or with `clear-lesson --task-id`.
 5. Leave anything you didn't act on unarchived, so a person still sees it.
+
+## Preview review notes
+
+An admin previewing a lesson (`/lesson/<id>?preview=true`) taps **Feedback** on the blue strip
+above a task, types one line, optionally tags it, and saves. The note is pinned to that task and
+the lesson version, so nobody has to map "task 4" from a chat message by hand. The strip shows
+the task's note count and the newest note's status (New grey, Picked up blue, Done green). Only
+admins see the button (not tutors, never students), and not in the Builder's preview pane. The
+Builder's task feedback panel lists the selected task's notes read-only, newest first.
+
+Each note: `noteId`, `lessonId`, `taskId` (the task's id, a number for normal tasks),
+`lessonVersion` (the lesson's `version` when the note was made), `text` (1-500 characters),
+`tag` (`null`, `wrong`, `confusing`, `too_long` or `love_it`), `status` (`new`, `picked_up`,
+`done`), `createdAt` and `statusChangedAt` (ISO times), `createdBy` (the admin's uid).
+
+```bash
+node cli/cli.mjs lessons notes python-3-2                          # every note, oldest first
+node cli/cli.mjs lessons notes python-3-2 --status new             # only notes nobody has taken
+node cli/cli.mjs lessons notes python-3-2 --since 2026-11-05       # made on or after this ISO date
+node cli/cli.mjs lessons notes python-3-2 --set <noteId> --status picked_up
+node cli/cli.mjs lessons notes python-3-2 --set <noteId> --status done
+```
+
+- `--set` prints the updated note and stamps `statusChangedAt`. Status only moves forward
+  (`new` to `picked_up` to `done`, or `new` straight to `done`); going back is an error, and so
+  is an unknown note id. Setting the status a note already has changes nothing.
+- Only the CLI moves a status on. In the preview the writer may edit or delete their own note
+  while it is New; once it is picked up it is read-only there, so mark it `picked_up` as soon as
+  it is in your revision basket.
+- Deleting a lesson (Admin or `lessons delete`) deletes its notes, and re-creating a class fork
+  with `lessons fork` clears that fork's notes, the same as feedback.
+
+Suggested loop: `lessons notes <id> --status new`, put each note in the revision basket and
+`--set` it `picked_up`; once the revised lesson is published, `--set` each one `done`. Compare
+`lessonVersion` with the lesson's current `version`: an older version means the task may already
+have changed.
