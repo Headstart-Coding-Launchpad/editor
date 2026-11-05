@@ -87,14 +87,8 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
-import {
-  judgeRun,
-  liveTickEligible,
-  liveTickNeedsStarterStage,
-  liveTickStageAllows,
-} from './runJudge'
+import { judgeRun, liveTickEligible } from './runJudge'
 import { missingRecordRunFields, recordRun } from './runRecord'
-import { stageCommandsOf } from '../../shared/stage/commands.js'
 import { useVariablesPanel } from './useVariablesPanel'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
@@ -322,16 +316,14 @@ export function useStudentCodeState({
   const runCallsRef = useRef(0)
   const typedEditRef = useRef(null)
   const answeredMarkFailRef = useRef(null)
-  // Round 4: the code before the student's first typed edit since the task opened or the work was
-  // last replaced from outside (`{ moduleType, code }`); the quiet reference runs of it and of the
-  // starter (key [moduleType, taskId, code]); the task a live pass ticked (a Run of it hands the
-  // attempt over, recordContext); the latest render's live-pass steps (commitLivePass awaits);
-  // and useScrubPreview's cancelTypedEdit, for restoreWork (declared before the hook).
-  const baselineRef = useRef(null)
-  const referenceRunsRef = useRef(new Map())
+  // The transition rule (round 5): the judge's verdict on the last finished preview of this task
+  // opening (`{ moduleType, taskId, passed }`, null when there is none yet), so a typed redraw
+  // ticks only when the one before it did not pass. Forgotten whenever the work is replaced from
+  // outside, the task changes, is un-solved or the tutor overrides it (forgetRedraw). The task a
+  // live pass ticked (a Run of it hands the attempt over, recordContext); and useScrubPreview's
+  // cancelTypedEdit, for restoreWork (declared before the hook).
+  const lastRedrawRef = useRef(null)
   const livePassTaskRef = useRef(null)
-  const livePassCheckRef = useRef(null)
-  const livePassFinishRef = useRef(null)
   const cancelTypedEditRef = useRef(null)
   const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
@@ -502,13 +494,11 @@ export function useStudentCodeState({
     const { workSlot } = getModuleDefinition(moduleType)
     const restored = workSlot.normalise(value)
     // Work replaced from outside is not the student's typing: a typed redraw still to come may
-    // not tick on it, nor paint over it (request 131, commitLivePass; cancelTypedEdit), and it is
-    // the new baseline (the code the student's typing starts from).
+    // not tick on it, nor paint over it, and no earlier redraw counts for the transition rule
+    // (request 131, commitLivePass; cancelTypedEdit).
     typedEditRef.current = null
+    lastRedrawRef.current = null
     cancelTypedEditRef.current?.()
-    const restoredCode = getModuleDefinition(moduleType).workSlot.stored(restored)?.work
-    baselineRef.current =
-      typeof restoredCode === 'string' ? { moduleType, code: restoredCode } : null
     if (workSlot.workspaceOwned) {
       setPushedWork(restored)
       if (stageIndex !== undefined) setPushedStageIndex(stageIndex)
@@ -1032,8 +1022,17 @@ export function useStudentCodeState({
       if (turtle !== undefined) writeStudentTurtleResult(id, turtle)
       if (stage !== undefined) writeStudentStageResult?.(id, stage)
     },
-    // A finished typed redraw may tick the task (request 131): commitLivePass, true when it did.
-    onTypedResult: (typed) => commitLivePass(typed),
+    // Every finished preview is judged, and a typed redraw may tick the task (request 131):
+    // commitLivePass, true when it did. Synchronous: it runs nothing.
+    onPreviewResult: (preview) => commitLivePass(preview),
+    // Only a typed redraw that could tick redraws unchanged code again (useScrubPreview isSame).
+    canLiveTick: (code) => {
+      try {
+        return liveTickTask(code) != null
+      } catch {
+        return false
+      }
+    },
     // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
     // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
     runtimeReady:
@@ -1043,16 +1042,29 @@ export function useStudentCodeState({
   })
 
   // Request 131: a task un-solved (Reset, the tutor's Mark Fail, any other way) forgets the last
-  // preview, so the identical passing code typed again redraws and may tick again.
-  // A typed redraw still waiting (or running) is dropped too: it never paints over the un-solved
-  // state (round 4).
+  // preview, so the identical passing code typed again redraws, and the last redraw's verdict
+  // (the transition rule starts again). A typed redraw still waiting (or running) is dropped too:
+  // it never paints over the un-solved state.
   useEffect(() => {
     if (!checkPassed) {
       scrubPreview.forgetLastPreview()
       scrubPreview.cancelTypedEdit()
+      lastRedrawRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkPassed])
+  // Any tutor override (Mark Pass or Mark Fail, even on a task that was not solved) drops a typed
+  // redraw still waiting or running and the last redraw's verdict: nothing typed before it ticks.
+  useEffect(() => {
+    if (!myStudentData?.checkOverridePushedAt) return
+    scrubPreview.cancelTypedEdit()
+    lastRedrawRef.current = null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.checkOverridePushedAt])
+  // A new task opening starts with no redraw judged.
+  useEffect(() => {
+    lastRedrawRef.current = null
+  }, [currentTaskId, lesson?.type])
   cancelTypedEditRef.current = scrubPreview.cancelTypedEdit
 
   // A scrub that ended as an edit (the code editor's onScrubCommit): counted for the session
@@ -2182,54 +2194,78 @@ export function useStudentCodeState({
     }
   }
 
-  // Request 131: a finished typed redraw (useScrubPreview onTypedResult) whose own result passes
-  // the task's checks ticks the task, without Run and without running the program again. It is
-  // judged by the Run's own judgeRun and, on a pass, recorded by the Run's own recordRun (the
-  // attempt marked source 'live'), so the tutor's card, Go Live, the report, the share link and
-  // the save see a Run of that code. A Run's extras stay out: no typing stats, badge signals,
-  // name tags, output reset or solo log. A miss does nothing at all (nothing shown, written or
-  // counted). It bails, before judging, on any Run started since the edit (a Run always wins), an
-  // edit that was not the student's own typing, a solved task, another task or module, code
-  // changed since the redraw, a tutor's "not yet" the student has not answered with a Run, or a
-  // task liveTickEligible leaves out. Round 4: nor when the code before the student's typing (the
-  // baseline: the code when the task opened, or when it was last replaced from outside) already
-  // passes, or, for stage_pixel / stage_matches_target, on a blank Stage or the starter's own
-  // drawing (liveReferencesAllow; each reference runs once, quietly, through the redraw's probe).
-  // A failed write never un-ticks (as after a Run); it, and any throw, is logged. Resolves true
-  // only when it ticked and recorded the pass (useScrubPreview then remembers that redraw as
-  // delivered; one that bailed or missed may run again for the same code).
-  async function commitLivePass(typed) {
+  // Request 131: a finished typed redraw (useScrubPreview onPreviewResult) whose own result
+  // passes the task's checks ticks the task, without Run and without running anything: only the
+  // redraw's own result is judged, by the Run's own judgeRun, and on a pass recorded by the Run's
+  // own recordRun (the attempt marked source 'live'), so the tutor's card, Go Live, the report,
+  // the share link and the save see a Run of that code. A Run's extras stay out: no typing stats,
+  // badge signals, name tags, output reset or solo log. A miss does nothing at all (nothing shown,
+  // written or counted).
+  // The transition rule: every finished preview of the task (scrub, run on open, typed redraw)
+  // that is still the work is judged and remembered (lastRedrawRef), even one that then bails (one
+  // of code already replaced forgets the verdict); a typed redraw ticks only
+  // when the preview judged before it, in this task opening, did not pass (an error is not a
+  // pass). With no earlier judged preview it never ticks (the next redraw can), so code that
+  // already passed (carried, the tutor's, pasted in one go) never ticks by typing a space.
+  // It also bails on any Run started since the edit (a Run always wins), an edit that was not the
+  // student's own typing, a solved task, another task or module, code changed since the redraw,
+  // a tutor's "not yet" the student has not answered with a Run, or a task liveTickEligible leaves
+  // out. A failed write never un-ticks (as after a Run); it, and any throw, is logged. Returns
+  // true only when it ticked (useScrubPreview then remembers that redraw as delivered).
+  function commitLivePass({ typed, code, taskId, moduleType, status, outputRaw, result }) {
     try {
-      const first = livePassCheckRef.current(typed)
-      if (!first) return false
-      if (!(await liveReferencesAllow(typed, first))) return false
-      // Anything may have changed while a reference ran: checked again, on the latest render.
-      return livePassFinishRef.current(typed, first) === true
+      const previous = lastRedrawRef.current
+      // A preview of code that is no longer the work (the tutor's or another edit replaced it
+      // while it ran) says nothing about the code now: its verdict is forgotten, not kept.
+      const onWork =
+        lessonRef.current?.type === moduleType &&
+        String(currentTaskIdRef.current) === String(taskId) &&
+        storedWork(moduleType).work === code
+      if (!onWork) {
+        lastRedrawRef.current = null
+        return false
+      }
+      const task = findTaskById(lessonRef.current?.tasks, taskId)
+      const definition = moduleType ? getModuleDefinition(moduleType) : null
+      const judgement =
+        task?.check && definition
+          ? judgeLive({ task, definition, code, status, outputRaw, result })
+          : null
+      lastRedrawRef.current = judgement
+        ? { moduleType, taskId: String(taskId), passed: judgement.passed === true }
+        : null
+      if (!typed || status !== 'success' || judgement?.passed !== true) return false
+      const earlierMissed =
+        previous?.passed === false &&
+        previous.moduleType === moduleType &&
+        previous.taskId === String(taskId)
+      if (!earlierMissed || !livePassAllowed({ code, taskId, moduleType })) return false
+      return tickLivePass({
+        task,
+        definition,
+        judgement,
+        code,
+        taskId,
+        moduleType,
+        outputRaw,
+        result,
+      })
     } catch (err) {
+      lastRedrawRef.current = null
       console.warn('Failed to check a live pass:', err)
       return false
     }
   }
 
-  // Everything a live pass needs before its references, with no side effects: `{ actor, task,
-  // definition, starterCode, judgement, baseline }` when the typed redraw's own result passes and
-  // nothing bails, else null.
-  function livePassCheck({ code, taskId, moduleType, outputRaw, result }) {
-    const actor = effectiveIdentity
-    const typed = typedEditRef.current
-    const baseline = baselineRef.current
-    if (!actor || running || runIntentRef.current > 0) return null
-    if (!typed || typed.code !== code || typed.runCalls !== runCallsRef.current) return null
-    if (typed.epoch !== runEpochRef.current || isAlreadySolved()) return null
-    if (String(currentTaskIdRef.current) !== String(taskId)) return null
-    if (lessonRef.current?.type !== moduleType || storedWork(moduleType).work !== code) return null
-    if (!baseline || baseline.moduleType !== moduleType) return null
-    if (tutorHoldsLiveTick(taskId)) return null
-    const task = findTaskById(lessonRef.current?.tasks, taskId)
-    const definition = getModuleDefinition(moduleType)
+  // The task and definition of a typed redraw of `code` on the current task when liveTickEligible
+  // lets it tick at all (nothing judged or run), else null.
+  function liveTickTask(code) {
+    const moduleType = lessonRef.current?.type
+    const task = findTaskById(lessonRef.current?.tasks, currentTaskIdRef.current)
+    const definition = moduleType ? getModuleDefinition(moduleType) : null
+    if (!task || !definition) return null
     // The task's starter work as code (its starter stage's, else starterCode).
-    const starterCode =
-      task && definition ? storedWork(moduleType, definition.workSlot.starter(task)).work : null
+    const starterCode = storedWork(moduleType, definition.workSlot.starter(task)).work
     const eligible = liveTickEligible({
       task,
       definition,
@@ -2241,12 +2277,20 @@ export function useStudentCodeState({
       inPersonalSandbox: inPersonalSandboxRef.current,
       predictRunLocked: !!predictRunLock,
     })
-    if (!eligible) return null
-    const judgement = judgeLive({ task, definition, code, status: 'success', outputRaw, result })
-    if (!judgement.passed) return null
-    return { actor, task, definition, starterCode, judgement, baseline }
+    return eligible ? { task, definition } : null
   }
-  livePassCheckRef.current = livePassCheck
+
+  // Everything but the judge a live pass needs, read now (no side effects).
+  function livePassAllowed({ code, taskId, moduleType }) {
+    const typed = typedEditRef.current
+    if (!effectiveIdentity || running || runIntentRef.current > 0) return false
+    if (!typed || typed.code !== code || typed.runCalls !== runCallsRef.current) return false
+    if (typed.epoch !== runEpochRef.current || isAlreadySolved()) return false
+    if (String(currentTaskIdRef.current) !== String(taskId)) return false
+    if (lessonRef.current?.type !== moduleType || storedWork(moduleType).work !== code) return false
+    if (tutorHoldsLiveTick(taskId)) return false
+    return liveTickTask(code) != null
+  }
 
   // judgeRun as for a Run of `code` that is not solved yet and not free play.
   function judgeLive({ task, definition, code, status, outputRaw, result }) {
@@ -2264,47 +2308,20 @@ export function useStudentCodeState({
     })
   }
 
-  // Round 4: the code before the typing must not pass already (a key added to carried, pushed or
-  // starter code that passes is not the student's answer), and a stage_pixel or
-  // stage_matches_target task needs a drawn Stage other than the starter's
-  // (liveTickStageAllows). Each reference runs once per task and code through the redraw's
-  // `probe` (quiet: nothing shown or sent); one that cannot run (stopped, input()) never ticks.
-  async function liveReferencesAllow(
-    { taskId, moduleType, result, probe },
-    { task, definition, starterCode, baseline }
-  ) {
-    const reference = async (code) => {
-      const key = JSON.stringify([moduleType, String(taskId), code])
-      const cache = referenceRunsRef.current
-      if (cache.has(key)) return cache.get(key)
-      const ran = typeof probe === 'function' ? await probe(code) : null
-      if (ran) {
-        if (cache.size >= 32) cache.clear()
-        cache.set(key, ran)
-      }
-      return ran
-    }
-    const before = await reference(baseline.code)
-    if (!before) return false
-    if (judgeLive({ task, definition, code: baseline.code, ...before }).passed) return false
-    if (!liveTickNeedsStarterStage(task)) return true
-    const starter = typeof starterCode === 'string' ? await reference(starterCode) : null
-    return liveTickStageAllows({
-      task,
-      commands: stageCommandsOf(result?.stage),
-      starterCommands: starter ? stageCommandsOf(starter.result?.stage) : null,
-    })
-  }
-
-  // The tick and records of a live pass, once its references allow it (`first`, livePassCheck's
-  // answer before they ran): everything is checked again, and the baseline must be the same.
-  // recordRun's ctx comes from the Run's own builder (recordContext) and must have every field it
-  // requires (missingRecordRunFields) before anything shows.
-  function livePassFinish(typed, first) {
-    const again = livePassCheck(typed)
-    if (!again || again.baseline !== first.baseline) return false
-    const { actor, task, definition, judgement } = again
-    const { code, taskId, moduleType, outputRaw, result } = typed
+  // The tick and records of a live pass. recordRun's ctx comes from the Run's own builder
+  // (recordContext) and must have every field it requires (missingRecordRunFields) before
+  // anything shows.
+  function tickLivePass({
+    task,
+    definition,
+    judgement,
+    code,
+    taskId,
+    moduleType,
+    outputRaw,
+    result,
+  }) {
+    const actor = effectiveIdentity
     const status = 'success'
     const ctx = recordContext({
       actor,
@@ -2343,7 +2360,6 @@ export function useStudentCodeState({
     )
     return true
   }
-  livePassFinishRef.current = livePassFinish
 
   // A tutor's "not yet" (Mark Fail) on the class's task holds live ticks there until the student
   // runs it themselves (answeredMarkFailRef, set in runTask). Read from the stored override at
@@ -2531,13 +2547,9 @@ export function useStudentCodeState({
     if (errorLine != null) setErrorLine(null)
     const moduleType = lesson?.type
     if (!isCodeStringWork(workSlotDefinition(moduleType))) return
-    // The baseline (round 4): the code before the student's first typed edit since the work was
-    // last set from outside; any other edit replaces it with its own code.
-    if (origin !== 'editor') {
-      baselineRef.current = { moduleType, code: newCode }
-    } else if (baselineRef.current?.moduleType !== moduleType) {
-      baselineRef.current = { moduleType, code: storedWork(moduleType).work }
-    }
+    // Any other edit is not the student's typing: no earlier redraw counts for the transition
+    // rule (request 131, commitLivePass).
+    if (origin !== 'editor') lastRedrawRef.current = null
     handleWorkChange(withCode(moduleType, newCode), { moduleType })
     // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview); a
     // typed edit, with the Runs started so far, is what a live pass must still match.

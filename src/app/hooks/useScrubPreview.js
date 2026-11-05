@@ -71,15 +71,17 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * so typing a new value redraws as a scrub does. A preview that ends in an error (half-typed
  * code) leaves the last picture and output as they were. Never in free play.
  *
- * A typed redraw that finished cleanly is handed, once it is on screen, to `onTypedResult({ code,
- * taskId, moduleType, outputRaw, result, probe })` (request 131: useStudentCodeState
- * commitLivePass may tick the task from it, and resolves true when it did). `probe(code)` runs
- * other code (the starter, the code before the student's typing) the same way but quietly:
- * nothing shown or sent, inside the same preview slot (so a Run still waits for it), resolving to
- * `{ status, outputRaw, result }`, or null when it was stopped, timed out or asked for input, or
- * a Run, a task change or cancelTypedEdit came first. This hook never judges or writes anything.
- * `cancelTypedEdit()` (Reset, a tutor's edit, any replacement of the work, an un-solve) drops a
- * typed redraw still waiting and keeps one already running from painting or being checked.
+ * Every runtime preview that finished on its task (a scrub, the run on open or a typed redraw;
+ * not one stopped, timed out or short of input answers, nor a typed redraw dropped by
+ * cancelTypedEdit) is handed, after it paints (when it does), to `onPreviewResult({ typed, code, taskId,
+ * moduleType, status, outputRaw, result })` (request 131: useStudentCodeState commitLivePass
+ * judges it and may tick the task from a typed one, returning true when it did). It is called
+ * synchronously and runs nothing: a preview never runs any program but its own. `canLiveTick(code)`
+ * says whether a typed redraw of `code` could tick (only those redraw the same code again after
+ * a preview of it that did not tick; every other preview of unchanged code is skipped). This hook
+ * never judges or writes anything. `cancelTypedEdit()` (Reset, a tutor's edit or override, any
+ * replacement of the work, an un-solve) drops a typed redraw still waiting and keeps one already
+ * running from painting or being reported.
  */
 export function useScrubPreview({
   moduleType,
@@ -96,7 +98,8 @@ export function useScrubPreview({
   publishPreview = null,
   runtimeReady = false,
   freePlay = false,
-  onTypedResult = null,
+  onPreviewResult = null,
+  canLiveTick = null,
 }) {
   const contextRef = useRef(null)
   contextRef.current = {
@@ -112,7 +115,8 @@ export function useScrubPreview({
     runChecks,
     isRunLocked,
     publishPreview,
-    onTypedResult,
+    onPreviewResult,
+    canLiveTick,
   }
   // The answers of the student's last Run, per task: `{ taskId, answers }`, or null.
   const runAnswersRef = useRef(null)
@@ -129,15 +133,15 @@ export function useScrubPreview({
   if (!schedulerRef.current) {
     schedulerRef.current = createPreviewScheduler({
       run: (job) => runPreview(job),
-      // A typed redraw (request 131) repeats the last preview of the same code unless that one
-      // ticked the task through onTypedResult: an earlier scrub or run-on-open preview, one that
-      // bailed (a Run started, a hold, another edit), missed or ended in an error never did.
-      // forgetLastPreview (a task un-solved) forgets even one that ticked.
+      // A typed redraw that could tick (request 131, `liveTick`) repeats the last preview of the
+      // same code unless that one ticked the task through onPreviewResult; every other preview of
+      // unchanged code is skipped, as before. forgetLastPreview (a task un-solved) forgets even
+      // one that ticked.
       isSame: (a, b) =>
         a.code === b.code &&
         a.fileName === b.fileName &&
         a.taskId === b.taskId &&
-        (!a.typed || b.typedDelivered === true),
+        (!a.liveTick || b.typedDelivered === true),
     })
   }
 
@@ -176,23 +180,6 @@ export function useScrubPreview({
   const typedGenRef = useRef(0)
   const staleTyped = (job) => job.typed === true && job.typedGen !== typedGenRef.current
 
-  // A quiet run of other code for a typed redraw's checks (onTypedResult's `probe`): nothing shown
-  // or sent; null when it did not finish (stopped, timed out, input()) or a Run, a task change or
-  // cancelTypedEdit came first.
-  async function probe(mod, code, job) {
-    const current = (ctx) =>
-      !!ctx &&
-      !ctx.running &&
-      ctx.moduleType === job.moduleType &&
-      sameTask(ctx.task?.id, job.taskId)
-    const before = contextRef.current
-    if (!current(before) || staleTyped(job) || typeof code !== 'string') return null
-    const { result, output, short } = await runProgram(mod, code, before.task, [])
-    if (short || !result || result.status === 'stopped') return null
-    if (!current(contextRef.current) || staleTyped(job)) return null
-    return { status: result.status, outputRaw: output.raw, result }
-  }
-
   async function runPreview(job) {
     const ctx = contextRef.current
     // A real Run started meanwhile, or the student moved to another module's task.
@@ -226,34 +213,34 @@ export function useScrubPreview({
       job.notify?.('press-run-answers')
       return
     }
-    if (!result || result.status === 'stopped' || after.running) return
-    if (job.quietErrors && result.status === 'error') return
+    if (!result || result.status === 'stopped') return
     if (after.moduleType !== job.moduleType || after.task?.id !== job.taskId) return
-    setReplayAnswers(used > 0 ? answers.slice(0, used) : null)
-    after.setOutput(output.display)
-    if (definition.runResult?.turtle) after.setTurtleResult(result.turtle ?? null)
-    if (definition.runResult?.stage) after.setStageResult(result.stage ?? null)
-    // A watching tutor's mirror redraws with it (the callback writes only while they watch).
-    after.publishPreview?.({
-      output: output.raw,
-      turtle: definition.runResult?.turtle ? (result.turtle ?? null) : undefined,
-      stage: definition.runResult?.stage ? (result.stage ?? null) : undefined,
-    })
-    // A finished typed redraw (request 131): its result, for the checks on typing.
-    if (job.typed && result.status === 'success') {
-      // Awaited inside this preview's slot: a Run waits for it (settleScrubPreview).
-      const ticked = await after.onTypedResult?.({
-        code: job.code,
-        taskId: job.taskId,
-        moduleType: job.moduleType,
-        outputRaw: output.raw,
-        result,
-        probe: (code) => probe(mod, code, job),
+    const paints = !after.running && !(job.quietErrors && result.status === 'error')
+    if (paints) {
+      setReplayAnswers(used > 0 ? answers.slice(0, used) : null)
+      after.setOutput(output.display)
+      if (definition.runResult?.turtle) after.setTurtleResult(result.turtle ?? null)
+      if (definition.runResult?.stage) after.setStageResult(result.stage ?? null)
+      // A watching tutor's mirror redraws with it (the callback writes only while they watch).
+      after.publishPreview?.({
+        output: output.raw,
+        turtle: definition.runResult?.turtle ? (result.turtle ?? null) : undefined,
+        stage: definition.runResult?.stage ? (result.stage ?? null) : undefined,
       })
-      // Marked on the job the scheduler remembers as the last run (its isSame above), only when
-      // it ticked.
-      if (ticked === true) job.typedDelivered = true
     }
+    // Request 131: every finished preview's own result, judged (and a typed one maybe ticked)
+    // at once; nothing else runs. Marked on the job the scheduler remembers as the last run
+    // (its isSame above) only when it ticked.
+    const ticked = after.onPreviewResult?.({
+      typed: job.typed === true,
+      code: job.code,
+      taskId: job.taskId,
+      moduleType: job.moduleType,
+      status: result.status,
+      outputRaw: output.raw,
+      result,
+    })
+    if (ticked === true) job.typedDelivered = true
   }
 
   // A task change drops any waiting preview, the replay note and a waiting check on release.
@@ -306,6 +293,7 @@ export function useScrubPreview({
         quietErrors: true,
         typed: true,
         typedGen: typedGenRef.current,
+        liveTick: now.canLiveTick?.(code) === true,
       })
     }, TYPED_PREVIEW_DELAY_MS)
   }

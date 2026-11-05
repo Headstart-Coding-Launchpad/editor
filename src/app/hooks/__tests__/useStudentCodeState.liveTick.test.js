@@ -110,6 +110,13 @@ async function typeAndPause(h, code) {
   await act(async () => {})
 }
 
+// The transition rule (round 5): a typed redraw ticks only when the redraw judged before it did
+// not pass. Wrong code typed and redrawn first, then `code`.
+async function typeAfterMiss(h, code) {
+  await typeAndPause(h, ALSO_WRONG)
+  await typeAndPause(h, code)
+}
+
 // Every record a Run makes (and so a live pass must make, or a miss must not).
 const RECORD_WRITERS = [
   'writeStudentRun',
@@ -128,16 +135,15 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
     const run = runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     const running = []
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     running.push(h.result.current.running)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.result.current.checkAttempted).toBe(true)
     expect(h.result.current.checkSuggestion).toBe('')
     expect(h.result.current.runStatus).toBe('success')
     expect(running).toEqual([false])
-    // The redraw's run is the only run of the student's code: it never runs a second time. (The
-    // code before their typing, here the starter, runs once quietly: it must not already pass.)
-    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, WRONG])
+    // The redraws' own runs are the only runs: nothing is ever run a second time or quietly.
+    expect(run.mock.calls.map(([code]) => code)).toEqual([ALSO_WRONG, RIGHT])
     expect(h.result.current.output).toContain('hi')
     expect(h.result.current.stageResult).toEqual(STAGE)
   })
@@ -145,7 +151,7 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
   it('records the pass once, as the Run of that code would, with the attempt marked live', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentRun).toHaveBeenCalledWith(ANON, {
       code: RIGHT,
@@ -170,7 +176,7 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
   it('makes the same records as a pressed Run of the same code, except the source', async () => {
     runsTheCode()
     const live = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(live, RIGHT)
+    await typeAfterMiss(live, RIGHT)
     const liveSaved = readStored(taskKey('t1'))
     live.unmount()
 
@@ -224,7 +230,7 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
       Object.fromEntries(FEEDBACK_FIELDS.map((name) => [name, h.result.current[name]]))
     runsTheCode()
     const live = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(live, RIGHT)
+    await typeAfterMiss(live, RIGHT)
     const liveState = pick(live)
     live.unmount()
     localStorage.clear()
@@ -243,7 +249,7 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
       session: makeSession({ teacherLive: studentSourcedTeacherLive({ taskId: 't1' }) }),
     })
     h.writers.updateTeacherLive.mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.writers.updateTeacherLive).toHaveBeenCalledWith(
       expect.objectContaining({ checkPassed: true, runStatus: 'success' })
     )
@@ -253,7 +259,7 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
     runsTheCode()
     const emoji = 'from stage import *\nprint("hi 😀")'
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, emoji)
+    await typeAfterMiss(h, emoji)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.recordEmojiRunSignal).not.toHaveBeenCalled()
     // A pressed Run of the same code does report it.
@@ -318,7 +324,7 @@ describe('races: a pressed Run always wins', () => {
   it('a Run right after a live pass sees the task solved and only hands the attempt to the Run', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     await actAsync(() => h.result.current.handleRun())
     expect(h.result.current.checkPassed).toBe(true)
     // useSession logAttempt turns the live attempt of the same code into the Run's (source null)
@@ -382,7 +388,7 @@ describe('races: a pressed Run always wins', () => {
     })
     const h = renderStudentCodeState({ lesson, currentTaskId: 't1' })
     armed = true
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     armed = false
     expect(warn).toHaveBeenCalledWith('Failed to check a live pass:', expect.any(Error))
     expect(h.result.current.checkPassed).toBe(false)
@@ -394,7 +400,7 @@ describe('races: a pressed Run always wins', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     h.writers.writeStudentRun.mockRejectedValueOnce(new Error('PERMISSION_DENIED'))
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     await act(async () => {})
     expect(h.result.current.checkPassed).toBe(true)
     expect(warn).toHaveBeenCalled()
@@ -405,9 +411,9 @@ describe('writes are bounded', () => {
   it('many passing redraws make one set of records', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
-    await typeAndPause(h, RIGHT_TOO)
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
+    await typeAfterMiss(h, RIGHT_TOO)
+    await typeAfterMiss(h, RIGHT)
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(h.writers.logAttempt).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentTaskRun).toHaveBeenCalledTimes(1)
@@ -416,14 +422,15 @@ describe('writes are bounded', () => {
   it('no write per keystroke: typing then pausing makes one redraw and one set of records', async () => {
     const run = runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, ALSO_WRONG)
     for (let i = 1; i <= RIGHT.length; i += 1) {
       actSync(() => h.result.current.handleCodeChange(RIGHT.slice(0, i), EDITOR))
     }
     expectNoRecords(h)
     await wait(700)
     await act(async () => {})
-    // One redraw of the typed code (and one quiet run of the starter, the code before it).
-    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, WRONG])
+    // One redraw of the typed code (after the miss's own), nothing else.
+    expect(run.mock.calls.map(([code]) => code)).toEqual([ALSO_WRONG, RIGHT])
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentCode).not.toHaveBeenCalled()
   })
@@ -435,7 +442,7 @@ describe('writes are bounded', () => {
     await actAsync(() => h.result.current.handleRun())
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT_TOO)
+    await typeAfterMiss(h, RIGHT_TOO)
     expectNoRecords(h)
   })
 })
@@ -445,11 +452,11 @@ describe('re-arming', () => {
     runsTheCode()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     actSync(() => h.result.current.handleResetCode())
     expect(h.result.current.checkPassed).toBe(false)
-    await typeAndPause(h, RIGHT_TOO)
+    await typeAfterMiss(h, RIGHT_TOO)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(2)
   })
@@ -458,11 +465,11 @@ describe('re-arming', () => {
     runsTheCode()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     actSync(() => h.result.current.handleResetCode())
     expect(h.result.current.checkPassed).toBe(false)
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(2)
   })
@@ -470,7 +477,7 @@ describe('re-arming', () => {
   it("a tutor's pass taken back, then the identical passing code typed again, ticks", async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     // The tutor's Mark Fail un-solves it; the student's own Run of other code answers it.
     h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 3 })
@@ -478,7 +485,7 @@ describe('re-arming', () => {
     actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
     await actAsync(() => h.result.current.handleRun())
     h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
   })
 
@@ -486,11 +493,11 @@ describe('re-arming', () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     // The tutor clears the "not yet"; the same code typed again (say, a key and an undo).
     h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
   })
 
@@ -498,7 +505,7 @@ describe('re-arming', () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
     // A pressed Run (of wrong code, so it fails) lifts the block...
@@ -509,7 +516,7 @@ describe('re-arming', () => {
     h.writers.writeStudentRun.mockClear()
     h.writers.logAttempt.mockClear()
     // ...and the next passing redraw ticks again.
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.logAttempt).toHaveBeenCalledWith(
       ANON,
@@ -522,7 +529,7 @@ describe('re-arming', () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     h.updateStudent({ checkOverridePassed: true, checkOverridePushedAt: 1 })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     expectNoRecords(h)
   })
@@ -530,12 +537,12 @@ describe('re-arming', () => {
   it('a task change re-arms: the next task ticks on its own redraw', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     actSync(() => h.result.current.resetForTaskChange())
     h.update({ currentTaskId: 't2' })
     expect(h.result.current.checkPassed).toBe(false)
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.writeStudentTaskRun).toHaveBeenLastCalledWith(ANON, 't2', RIGHT)
   })
@@ -555,7 +562,7 @@ describe('composed lessons (the effective module type, never lesson.type)', () =
   it('a Python Stage task in a composed lesson ticks', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: composed(), currentTaskId: 'c2' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
     expect(h.writers.logAttempt).toHaveBeenCalledWith(
       ANON,
@@ -615,7 +622,7 @@ describe('tasks and places that never tick while typing', () => {
   it.each(cases)('%s', async (_name, extra) => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(extra), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -626,10 +633,10 @@ describe('tasks and places that never tick while typing', () => {
       lesson: liveLesson({ starterCode: RIGHT }),
       currentTaskId: 't1',
     })
-    await typeAndPause(h, `${RIGHT}  \n`)
+    await typeAfterMiss(h, `${RIGHT}  \n`)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
-    // Nor a small change on top of it (round 4): the starter already passed before the typing.
+    // Nor a small change on top of it: the redraw before it passed.
     await typeAndPause(h, RIGHT_TOO)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
@@ -643,7 +650,7 @@ describe('tasks and places that never tick while typing', () => {
   ])('a completion check that passes on trivial code: %s', async (_name, check) => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson({ check }), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -654,7 +661,7 @@ describe('tasks and places that never tick while typing', () => {
     // A Run first, so the redraw has answers to replay and does run.
     await actAsync(() => h.result.current.handleRun())
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, `${RIGHT}\nname = input("?")`)
+    await typeAfterMiss(h, `${RIGHT}\nname = input("?")`)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -666,7 +673,7 @@ describe('tasks and places that never tick while typing', () => {
   ])('%s', async (_name, options) => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1', ...options })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expect(h.writers.writeStudentRun).not.toHaveBeenCalled()
     expect(h.writers.logAttempt).not.toHaveBeenCalled()
@@ -679,7 +686,7 @@ describe('tasks and places that never tick while typing', () => {
     })
     const lesson = turtleLesson({ tasks: [stageTask('t1')] })
     const h = renderStudentCodeState({ lesson, currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -691,13 +698,13 @@ describe('tasks and places that never tick while typing', () => {
       currentTaskId: 't1',
       phase: 'solo',
     })
-    await typeAndPause(solo, RIGHT)
+    await typeAfterMiss(solo, RIGHT)
     expect(solo.result.current.checkPassed).toBe(true)
     const separate = renderStudentCodeState({
       lesson: liveLesson({ slowMo: { enabled: true, separateButton: true } }),
       currentTaskId: 't1',
     })
-    await typeAndPause(separate, RIGHT)
+    await typeAfterMiss(separate, RIGHT)
     expect(separate.result.current.checkPassed).toBe(true)
   })
 })
@@ -713,7 +720,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     await actAsync(() => h.result.current.handleRun({ source: 'scrub' }))
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -737,7 +744,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     })
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -753,7 +760,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     await actAsync(() => h.result.current.handleRun())
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
   })
 
@@ -771,7 +778,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     await actAsync(() => h.result.current.handleRun({ slowMo: true, onResult: () => {}, ...extra }))
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(ticks)
   })
 
@@ -782,7 +789,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
       currentTaskId: 't1',
       session: makeSession({ currentTaskId: 't1', student: MARK_FAIL }),
     })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -796,7 +803,7 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 2 })
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
@@ -903,40 +910,153 @@ describe("only the student's own typing ticks", () => {
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
     await wait(700)
-    await typeAndPause(h, RIGHT_TOO)
+    await typeAfterMiss(h, RIGHT_TOO)
     expect(h.result.current.checkPassed).toBe(true)
   })
 })
 
-describe('a typed redraw of code already previewed still ticks', () => {
-  it('after a scrub preview of the same code (not a typed one)', async () => {
+// Round 5: no program runs but the redraw's own. A typed redraw ticks only on a TRANSITION: the
+// preview judged before it in this task opening (a typed redraw, the run on open, a scrub) did
+// not pass. With none yet it never ticks (the next redraw can); Reset, a tutor's edit or
+// override, carried or restored code, a task change and an un-solve forget the last verdict.
+describe('the transition rule', () => {
+  function carriedLesson() {
+    const lesson = liveLesson()
+    lesson.tasks[1] = { ...lesson.tasks[1], carryCodeFrom: 't1' }
+    return lesson
+  }
+
+  it('empty starter, a typed partial that fails, then the typed answer ticks', async () => {
     const run = runsTheCode()
-    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    act(() => {
-      h.result.current.scrubPreview(RIGHT)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ starterCode: '' }),
+      currentTaskId: 't1',
     })
-    await wait(300)
-    await act(async () => {})
-    expect(run).toHaveBeenCalledTimes(1)
+    const partial = 'from stage import *\nprint("h'
+    await typeAndPause(h, partial)
     expect(h.result.current.checkPassed).toBe(false)
-    // The scrub's end saves the code as an edit in the editor.
     await typeAndPause(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
+    // Exactly the two redraws ran: nothing else, ever.
+    expect(run.mock.calls.map(([code]) => code)).toEqual([partial, RIGHT])
   })
 
-  it('after an earlier typed redraw of the same code that did not finish cleanly', async () => {
-    let calls = 0
+  it('a redraw that ends in an error counts as not passing', async () => {
     mockModuleRun('python', (callbacks, code) => {
-      calls += 1
-      if (calls === 1) return { status: 'error' }
+      if (code.includes('oops')) return { status: 'error' }
       callbacks.onOutput(output(code), 'stdout')
       return { status: 'success', stage: STAGE }
     })
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
-    expect(h.result.current.checkPassed).toBe(false)
+    await typeAndPause(h, 'from stage import *\noops(')
     await typeAndPause(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('the first judged redraw passing never ticks; the next one can only after a miss', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // A complete answer pasted in one go.
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // Another passing edit: the redraw before it passed, so still no tick.
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // A miss, then the answer again: that is a transition.
+    await typeAndPause(h, ALSO_WRONG)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(run).toHaveBeenCalledTimes(4)
+    // Run still ticks a pasted answer at once.
+    const pasted = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(pasted, RIGHT)
+    await actAsync(() => pasted.result.current.handleRun())
+    expect(pasted.result.current.checkPassed).toBe(true)
+  })
+
+  it.each([
+    ['a # comment', RIGHT_TOO],
+    ['a space', `${RIGHT} `],
+  ])('carried passing code, plus %s, never ticks', async (_name, typed) => {
+    runsTheCode()
+    writeStored(taskKey('t1'), { code: RIGHT })
+    const h = renderStudentCodeState({ lesson: carriedLesson(), currentTaskId: 't2' })
+    expect(h.result.current.code).toBe(RIGHT)
+    await typeAndPause(h, typed)
+    await typeAndPause(h, `${typed}\n`)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // Run still ticks it.
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it("the tutor's pushed passing code, plus a comment, never ticks", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // The student's miss came first; the tutor's edit forgets it.
+    await typeAndPause(h, ALSO_WRONG)
+    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: RIGHT })
+    expect(h.result.current.code).toBe(RIGHT)
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it("a miss still running when the tutor's edit lands is not remembered", async () => {
+    const { release } = firstRunWaits()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await wait(600)
+    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: RIGHT })
+    // The tutor's code reaches the editor's onChange too (no origin), then the student types.
+    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT_TOO, EDITOR))
+    release()
+    await wait(700)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('Reset forgets the last verdict: the typed answer then needs a miss first', async () => {
+    runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, ALSO_WRONG)
+    actSync(() => h.result.current.handleResetCode())
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    await typeAfterMiss(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('a scrub preview of other code than the work is not remembered', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    act(() => {
+      h.result.current.scrubPreview(ALSO_WRONG)
+    })
+    await wait(300)
+    await act(async () => {})
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+  })
+})
+
+describe('redraws of unchanged code', () => {
+  it('a task that can never tick does not redraw the same code again', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ interactionMode: 'submit' }),
+      currentTaskId: 't1',
+    })
+    await typeAndPause(h, RIGHT)
+    actSync(() => h.result.current.handleCodeChange(`${RIGHT} `, EDITOR))
+    await typeAndPause(h, RIGHT)
+    expect(run).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -957,6 +1077,7 @@ describe('only a Run that starts invalidates a pending typed pass', () => {
       await runPromise
     })
     expect(h.result.current.checkPassed).toBe(false)
+    await typeAndPause(h, ALSO_WRONG)
     actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     // A stray press through the stale handler: it returns without running.
     await actAsync(() => staleRun())
@@ -969,123 +1090,73 @@ describe('only a Run that starts invalidates a pending typed pass', () => {
       expect.objectContaining({ passed: true, source: 'live' })
     )
   })
-})
 
-// Round 4: code that already passed before the student's first typed edit (the baseline: the code
-// when the task opened, or when it was last replaced from outside) never ticks on a small edit on
-// top of it. Pressing Run still works.
-describe('code that already passed before the typing never ticks', () => {
-  function carriedLesson() {
-    const lesson = liveLesson()
-    lesson.tasks[1] = { ...lesson.tasks[1], carryCodeFrom: 't1' }
-    return lesson
-  }
-
-  it.each([
-    ['a # comment', RIGHT_TOO],
-    ['a space', `${RIGHT} `],
-  ])('carried passing code, plus %s', async (_name, typed) => {
-    runsTheCode()
-    writeStored(taskKey('t1'), { code: RIGHT })
-    const h = renderStudentCodeState({ lesson: carriedLesson(), currentTaskId: 't2' })
-    expect(h.result.current.code).toBe(RIGHT)
-    await typeAndPause(h, typed)
-    expect(h.result.current.checkPassed).toBe(false)
-    expectNoRecords(h)
-    // Run still ticks it.
-    await actAsync(() => h.result.current.handleRun())
-    expect(h.result.current.checkPassed).toBe(true)
-  })
-
-  it("the tutor's pushed passing code, plus a comment", async () => {
-    runsTheCode()
-    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: RIGHT })
-    expect(h.result.current.code).toBe(RIGHT)
-    await typeAndPause(h, RIGHT_TOO)
-    expect(h.result.current.checkPassed).toBe(false)
-    expectNoRecords(h)
-    // Even typed away and back: the baseline is still the tutor's passing code.
-    await typeAndPause(h, ALSO_WRONG)
-    await typeAndPause(h, RIGHT)
-    expect(h.result.current.checkPassed).toBe(false)
-    expectNoRecords(h)
-  })
-
-  it('Reset to a starter that does not pass lets typing tick again', async () => {
-    runsTheCode()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    writeStored(taskKey('t1'), { code: RIGHT })
-    const h = renderStudentCodeState({ lesson: carriedLesson(), currentTaskId: 't2' })
-    await typeAndPause(h, RIGHT_TOO)
-    expect(h.result.current.checkPassed).toBe(false)
-    actSync(() => h.result.current.handleResetCode())
-    expect(h.result.current.code).toBe(WRONG)
-    await typeAndPause(h, RIGHT)
-    expect(h.result.current.checkPassed).toBe(true)
-  })
-
-  it('the code before the typing runs once quietly, and is remembered', async () => {
+  it('a Run pressed right after a passing redraw starts at once (nothing to wait for)', async () => {
     const run = runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    // A different correct answer typed after a held one: the starter is not run again.
-    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 })
-    await typeAndPause(h, RIGHT)
-    expect(h.result.current.checkPassed).toBe(false)
-    h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
-    await typeAndPause(h, RIGHT_TOO)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
-    // RIGHT, RIGHT_TOO and one quiet run of the starter (WRONG), shown nowhere.
-    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, RIGHT_TOO, WRONG])
-    expect(h.result.current.output).toContain('hi')
+    const before = run.mock.calls.length
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+    })
+    // Only microtasks, no timers: the Run's program has already started.
+    await act(async () => {})
+    expect(run.mock.calls.length).toBe(before + 1)
+    await act(async () => {
+      await runPromise
+    })
   })
 })
 
-// Round 4: stage_pixel and stage_matches_target can pass on a blank Stage (the background colour)
-// or the starter's own drawing: they tick only on a drawn Stage that differs from the starter's.
-describe('stage_pixel / stage_matches_target need a new drawing', () => {
+// Round 5: stage_pixel and stage_matches_target can pass on a blank Stage (the background colour)
+// or the starter's own drawing: they tick on Run only.
+describe('stage_pixel / stage_matches_target tick on Run only', () => {
   const DOT = { type: 'circle', x: 200, y: 200, r: 50, colour: '#ff0000' }
-  const BOX = { type: 'rect', x: 0, y: 0, w: 20, h: 20, colour: '#0000ff' }
-  // The starter draws the dot, then errors (so it never passes itself).
-  const STARTER = 'from stage import *\ndot()\nbroken()'
   function drawsByCode() {
-    return mockModuleRun('python', (_callbacks, code) => {
-      const commands = [
-        ...(code.includes('dot()') ? [DOT] : []),
-        ...(code.includes('box()') ? [BOX] : []),
-      ]
-      return { status: code.includes('broken') ? 'error' : 'success', stage: { commands } }
-    })
+    return mockModuleRun('python', (_callbacks, code) => ({
+      status: 'success',
+      stage: { commands: code.includes('dot()') ? [DOT] : [] },
+    }))
   }
-  const lessonWith = (check) => liveLesson({ starterCode: STARTER, check })
 
-  it('a blank Stage (only a comment typed) never ticks a background stage_pixel', async () => {
-    drawsByCode()
-    const check = { type: 'stage_pixel', x: 390, y: 390, colour: '#ffffff' }
-    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
-    await typeAndPause(h, 'from stage import *\n# my picture')
-    expect(h.result.current.checkPassed).toBe(false)
-    expectNoRecords(h)
-  })
-
-  it("the starter's own drawing never ticks; a new one does", async () => {
-    drawsByCode()
+  it('a typed redraw never ticks a stage_pixel check; a Run of the same code does', async () => {
+    const run = drawsByCode()
     const check = { type: 'stage_pixel', x: 200, y: 200, colour: '#ff0000' }
-    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
+    const h = renderStudentCodeState({ lesson: liveLesson({ check }), currentTaskId: 't1' })
+    await typeAndPause(h, 'from stage import *\n# nothing yet')
     await typeAndPause(h, 'from stage import *\ndot()')
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
-    await typeAndPause(h, 'from stage import *\ndot()\nbox()')
+    expect(run).toHaveBeenCalledTimes(2)
+    await actAsync(() => h.result.current.handleRun())
     expect(h.result.current.checkPassed).toBe(true)
   })
 
-  it('a Run of the same blank-Stage code still passes as before', async () => {
+  it('a stage_matches_target check never ticks on a typed redraw', async () => {
     drawsByCode()
-    const check = { type: 'stage_pixel', x: 390, y: 390, colour: '#ffffff' }
-    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange('from stage import *\n# my picture'))
-    await actAsync(() => h.result.current.handleRun())
-    expect(h.result.current.checkPassed).toBe(true)
+    const check = { type: 'stage_matches_target' }
+    const h = renderStudentCodeState({ lesson: liveLesson({ check }), currentTaskId: 't1' })
+    await typeAndPause(h, 'from stage import *\n# nothing yet')
+    await typeAndPause(h, 'from stage import *\ndot()')
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+})
+
+describe('trivially true check values never tick', () => {
+  it.each([
+    ['an empty value', { type: 'output_contains', value: '' }],
+    ['a wildcard', { type: 'output_contains', value: '*' }],
+    ['a match-anything regex', { type: 'output', operator: 'matches_regex', value: '.+' }],
+    ['an empty stage text', { type: 'stage_text_shown', text: '  ' }],
+  ])('%s', async (_name, check) => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson({ check }), currentTaskId: 't1' })
+    await typeAfterMiss(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
   })
 })
 
@@ -1130,17 +1201,37 @@ describe('a waiting typed redraw is dropped by Reset, a tutor edit and an un-sol
     expect(run.mock.calls.map(([code]) => code)).not.toContain(ALSO_WRONG)
   })
 
+  it("the tutor's Mark Fail on a task never solved, before the pause: the old code never runs", async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, ALSO_WRONG)
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 2 })
+    await wait(700)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).toEqual([ALSO_WRONG])
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
   it("the tutor's Mark Fail (an un-solve) before the pause: the old code never runs", async () => {
     const run = runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(true)
-    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    const before = run.mock.calls.length
+    actSync(() =>
+      h.result.current.handleCodeChange(
+        `${ALSO_WRONG}
+`,
+        EDITOR
+      )
+    )
     h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 2 })
     expect(h.result.current.checkPassed).toBe(false)
     await wait(700)
     await act(async () => {})
-    expect(run.mock.calls.map(([code]) => code)).not.toContain(ALSO_WRONG)
+    expect(run).toHaveBeenCalledTimes(before)
   })
 })
 
@@ -1150,7 +1241,7 @@ describe("a live pass's records", () => {
   it("gives recordRun every field it requires, as a Run's ctx does", async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     expect(recordRun).toHaveBeenCalledTimes(1)
     const [liveCtx, liveRun] = recordRun.mock.calls[0]
     expect(liveRun.source).toBe('live')
@@ -1182,7 +1273,7 @@ describe("a live pass's records", () => {
       throw new Error('sync boom')
     })
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     await act(async () => {})
     expect(h.result.current.checkPassed).toBe(true)
     expect(warn).toHaveBeenCalledWith(
@@ -1196,7 +1287,7 @@ describe("a live pass's records", () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     recordRun.mockImplementationOnce(() => Promise.reject(new Error('late boom')))
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    await typeAndPause(h, RIGHT)
+    await typeAfterMiss(h, RIGHT)
     await act(async () => {})
     expect(h.result.current.checkPassed).toBe(true)
     expect(warn).toHaveBeenCalledWith(
