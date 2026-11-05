@@ -1,19 +1,16 @@
-import {
-  completionToleratesRunError,
-  evaluateCheck,
-  evaluateCheckWithFeedback,
-} from '../../modules/checks'
+import { completionToleratesRunError } from '../../modules/checks'
 import { createThrottledMirrorWriter } from '../throttledMirrorWriter'
 import { appendStudentOutput, createStudentOutputBuffer } from './studentOutputBuffer'
-import { runErrorFor } from '../../badges/signals'
-import { lastErrorLine } from '../studentHints.js'
-import { explainPythonError } from '../../shared/pythonErrors.js'
+import { judgeRun } from './runJudge'
+import { recordRun } from './runRecord'
 
 /**
  * Runs the student's code through a `capabilities.run === 'runtime'` module's runtime (Pyodide
  * for python/turtle, MicroPython for electronics) and reports the result: output streamed to
  * the screen and, throttled, to a watching teacher and a Go Live broadcast; input() prompts;
  * the task check with feedback and stage offers; the save; the run record and attempt log.
+ * The verdict is judgeRun (runJudge.js, pure) and the records are recordRun (runRecord.js);
+ * this function keeps the execution, the streaming, input(), the stop and the screen.
  *
  * Extracted from useStudentCodeState's handleRun (plan step 4.4) with its behaviour unchanged;
  * handleRun has already reset the run state and set `running`. What differs per module comes
@@ -72,7 +69,6 @@ export async function runWithRuntime(ctx) {
     isWatched,
     isWatchedNow,
     alreadySolved,
-    teacherPresentation,
     readCode,
     setCode,
     refs,
@@ -81,17 +77,11 @@ export async function runWithRuntime(ctx) {
     live,
     feedback,
     saveRunRecord,
-    signals = null,
   } = ctx
-  const { runResult, checking } = definition
+  const { runResult } = definition
   const { setOutput, setInputPrompt, setErrorLine, setRunStatus, setTurtleResult, setRunning } =
     setters
-  const {
-    canPublishTeacherLive,
-    updateTeacherLive,
-    currentTeacherLivePayload,
-    publishTeacherLive,
-  } = live
+  const { canPublishTeacherLive, updateTeacherLive, currentTeacherLivePayload } = live
 
   // Whether the student is still on the task this run belongs to. The task id alone is not
   // enough: a task change stops the run and resets the output before the new id reaches
@@ -337,69 +327,27 @@ export async function runWithRuntime(ctx) {
       result,
       code: startCode,
     }) ?? {}
-  // `ran` tells run_attempted checks this context comes from a real run (see checks.js).
-  const checkContext = checking.buildContext(nextCode, {
-    status,
-    variables: result.variables ?? {},
-    turtle: result.turtle ?? null,
-    // The Python Stage checks read the drawing and the task's target drawing (stageTarget).
-    stage: runResult.stage
-      ? { commands: result.stage?.commands ?? [], target: result.stageTarget ?? null }
-      : null,
-    ran: true,
-    ...panelContext,
-  })
   // A teacher-started or personal sandbox is free play: the session still points at a
   // lesson task, but sandbox code has nothing to do with that task's check, so scoring
   // it reported a "failed" run to the teacher on every sandbox Run.
   const isFreePlay = refs.phaseRef.current === 'sandbox' || refs.inPersonalSandboxRef.current
-  // A real console error, named when the output shows it ('NameError'), for the badge data.
-  const runError = runErrorFor(status, outputBuffer.raw)
-  const checkTask = isFreePlay ? null : task
-  const hasTests = checkTask?.tests?.length > 0
-  // An errored (or, see stoppedRunCounts, stopped) run fails the completion check — except a
-  // run_attempted-only check, which any run satisfies.
-  const runFailureBlocksCompletion =
-    (status === 'error' || status === 'stopped') && !completionToleratesRunError(checkTask?.check)
-  let passed = alreadySolved
-    ? true
-    : runFailureBlocksCompletion || hasTests || isFreePlay
-      ? false
-      : evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext).passed
-  // A scrub's own verdict, even on a solved task (where `passed` holds on): the tutor's card
-  // and modal show it as "After scrub".
-  const isScrubRun = ctx.runOptions?.source === 'scrub'
-  const scrubPassed =
-    isScrubRun && !isFreePlay && !hasTests && checkTask?.check
-      ? !runFailureBlocksCompletion &&
-        evaluateCheck(checkTask.check, outputBuffer.raw, checkContext)
-      : null
-  let suggestion = ''
+  const source = ctx.runOptions?.source
+  // The verdict (runJudge.js, pure), then its feedback on screen, then the records (runRecord.js).
+  const judgement = judgeRun({
+    task,
+    definition,
+    code: nextCode,
+    status,
+    outputRaw: outputBuffer.raw,
+    result,
+    panelContext,
+    alreadySolved,
+    isFreePlay,
+    source,
+  })
+  const { passed, suggestion, evaluation, isScrubRun, hasTests, checkTask } = judgement
   if (!alreadySolved && !isFreePlay) {
-    // Feedback checks can diagnose code even when Python could not run (for
-    // example, `print(hello)` raises NameError). Keep completion failed on a
-    // runtime error, but still evaluate the feedback checks and their stage
-    // offers against the submitted code/output.
-    const evaluation =
-      !hasTests && checkTask?.check
-        ? evaluateCheckWithFeedback(checkTask, outputBuffer.raw, checkContext, {
-            completionPassed:
-              !runFailureBlocksCompletion &&
-              evaluateCheck(checkTask.check, outputBuffer.raw, checkContext),
-            // An errored Run: no Stage hint (the error help shows instead).
-            runErrored: status === 'error',
-            // The error help (ErrorHelp) explains this crash: no completion-check hint too.
-            errorExplained:
-              status === 'error' &&
-              definition?.capabilities?.errorHelp === true &&
-              explainPythonError(outputBuffer.raw) != null,
-          })
-        : null
-    if (evaluation) {
-      passed = evaluation.passed
-      suggestion = evaluation.suggestion
-      feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
-    }
+    if (evaluation) feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
     if (!hasTests && checkTask?.check)
       feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
     // A failed scrub release is not a failed attempt, so it does not step the support offers.
@@ -408,65 +356,13 @@ export async function runWithRuntime(ctx) {
     }
   }
 
-  if (canPublishTeacherLive()) {
-    publishTeacherLive({
-      code: nextCode,
-      output: outputBuffer.raw,
-      runStatus: status,
-      checkPassed: passed,
-      checkAttempted: !alreadySolved && !hasTests && !!checkTask?.check,
-      checkSuggestion: suggestion,
-    })
-  }
-  saveRunRecord(currentTaskId, nextCode, { output: outputBuffer.raw, runStatus: status })
-  if (
-    !teacherPresentation &&
-    (refs.phaseRef.current === 'lesson' ||
-      refs.phaseRef.current === 'sandbox' ||
-      refs.inPersonalSandboxRef.current ||
-      isWatched)
-  ) {
-    await writers.writeStudentRun(actor.anonymousId, {
-      code: nextCode,
-      output: outputBuffer.raw,
-      status,
-      checkPassed: hasTests || isFreePlay ? undefined : passed,
-      ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
-      errorText: status === 'error' ? lastErrorLine(outputBuffer.raw) : undefined,
-    })
-    // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
-    // Arcade's design — so it's synced here alongside writeStudentRun, not only on
-    // explicit edits. Lets a teacher open StudentModal and see the student's actual
-    // drawing, not just their code.
-    if (runResult.turtle) writers.writeStudentTurtleResult(actor.anonymousId, result.turtle ?? null)
-    // The Python Stage drawing is a run result too: the tutor's card and StudentModal draw it.
-    if (runResult.stage) writers.writeStudentStageResult?.(actor.anonymousId, result.stage ?? null)
-  }
-  // A Turtle course run (task.course) for the session report.
-  if (!isFreePlay && result.turtle?.course) ctx.recordCourseRun?.(result.turtle.course)
-  if (isFreePlay && !teacherPresentation) {
-    signals?.reportSandboxRun({ error: runError, submission: nextCode })
-  }
-  // Every lesson Run keeps its code per task, checked or not, solved or not (lastRuns): what the
-  // End Session share link and the session report use for a task's final code.
-  if (!teacherPresentation && !isFreePlay && refs.phaseRef.current === 'lesson') {
-    writers.writeStudentTaskRun?.(actor.anonymousId, currentTaskId, nextCode)
-  }
-  if (
-    !teacherPresentation &&
-    refs.phaseRef.current === 'lesson' &&
-    !alreadySolved &&
-    !hasTests &&
-    checkTask?.check
-  ) {
-    writers.logAttempt(actor.anonymousId, currentTaskId, {
-      submission: nextCode,
-      passed,
-      suggestion,
-      teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
-      error: runError,
-      ...(ctx.runOptions?.source === 'scrub' ? { source: 'scrub' } : {}),
-    })
-  }
+  await recordRun(ctx, {
+    code: nextCode,
+    outputRaw: outputBuffer.raw,
+    status,
+    result,
+    judgement,
+    source,
+  })
   setRunning(false)
 }
