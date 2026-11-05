@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   LIVE_TICK_COMPLETION_CHECKS,
   LIVE_TICK_FEEDBACK_CHECK_TYPES,
+  LIVE_TICK_TEXT_OPERATORS,
   buildRunCheckContext,
   judgeRun,
   liveTickCompletionCheck,
   liveTickEligible,
+  liveTickNeedsStarterStage,
+  liveTickStageAllows,
 } from '../runJudge'
 import { checkRegistry } from '../../../modules/checks'
+import { DEFAULT_TEXT_OPERATOR } from '../../../shared/checkHelpers'
+import { STAGE_TEXT_OPERATORS } from '../../../shared/stage/checks'
 import { getModuleDefinition } from '../../../modules/definitions'
 
 const python = getModuleDefinition('python')
@@ -310,5 +315,65 @@ describe('live tick completion checks: each registry type and its decision (requ
     expect(liveTickCompletionCheck({ type: 'output_contains', value: 'a' })).toBe(true)
     expect(liveTickCompletionCheck({ type: 'code_does_not_contain', value: 'a' })).toBe(false)
     expect(liveTickCompletionCheck({ type: 'output_line_count_at_least', value: 1 })).toBe(false)
+  })
+
+  // A Run compares an operator-less text check with the evaluator's default (compareText,
+  // evaluateCodeCheck): the live tick reads it the same way.
+  it.each(['output', 'code', 'stage_text_shown'])(
+    'a missing operator is the default (%s), as on Run',
+    (type) => {
+      expect(DEFAULT_TEXT_OPERATOR).toBe('contains')
+      expect(liveTickCompletionCheck({ type, value: 'a', text: 'a' })).toBe(true)
+      expect(liveTickCompletionCheck({ type, value: 'a', text: 'a', operator: null })).toBe(true)
+    }
+  )
+
+  it("the text operators are the Stage's own list, not a copy", () => {
+    expect(LIVE_TICK_TEXT_OPERATORS).toBe(STAGE_TEXT_OPERATORS)
+  })
+})
+
+// Request 131 round 4: a stage_pixel or stage_matches_target check can pass on a blank Stage (the
+// default background) or on the starter's own drawing, so it ticks only on a drawn Stage that
+// differs from the starter's.
+describe('liveTickStageAllows', () => {
+  const DOT = { type: 'circle', x: 10, y: 10, r: 5, colour: 'red' }
+  const BOX = { type: 'rect', x: 0, y: 0, w: 5, h: 5, colour: 'blue' }
+  const pixel = { check: { type: 'stage_pixel', x: 1, y: 1, colour: 'white' } }
+
+  it('needs the starter Stage only for stage_pixel and stage_matches_target', () => {
+    expect(liveTickNeedsStarterStage(pixel)).toBe(true)
+    expect(
+      liveTickNeedsStarterStage({ check: [task.check, { type: 'stage_matches_target' }] })
+    ).toBe(true)
+    expect(liveTickNeedsStarterStage(task)).toBe(false)
+    expect(liveTickNeedsStarterStage({ check: { type: 'stage_colour_used', colour: 'red' } })).toBe(
+      false
+    )
+  })
+
+  it('a blank Stage never ticks those checks', () => {
+    expect(liveTickStageAllows({ task: pixel, commands: [], starterCommands: [DOT] })).toBe(false)
+    expect(
+      liveTickStageAllows({ task: pixel, commands: [{ type: 'clear' }], starterCommands: [DOT] })
+    ).toBe(false)
+  })
+
+  it("the starter's own Stage never ticks them; an unknown starter Stage neither", () => {
+    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: [DOT] })).toBe(
+      false
+    )
+    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: null })).toBe(false)
+  })
+
+  it('a drawn Stage that differs from the starter ticks', () => {
+    expect(liveTickStageAllows({ task: pixel, commands: [DOT, BOX], starterCommands: [DOT] })).toBe(
+      true
+    )
+    expect(liveTickStageAllows({ task: pixel, commands: [DOT], starterCommands: [] })).toBe(true)
+  })
+
+  it('other checks are not held by the Stage', () => {
+    expect(liveTickStageAllows({ task, commands: [], starterCommands: null })).toBe(true)
   })
 })

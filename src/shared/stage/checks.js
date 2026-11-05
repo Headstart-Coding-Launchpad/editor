@@ -39,7 +39,8 @@ function stageOf(context = {}) {
   }
 }
 
-function finite(value) {
+// A number from an authored field (null when blank or not a number). Shared with runJudge.js.
+export function finite(value) {
   if (value === null || value === undefined || value === '') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null

@@ -11,7 +11,9 @@ import { codeCallsInput } from '../../shared/scrub/runOnOpen.js'
 import { getShowVariables } from '../../shared/variablesPanel/variablesPanel.js'
 import { getRunCounts, taskCountsRuns } from '../../shared/runCounts.js'
 import { PYTHON_CHECK_TYPES } from '../../modules/python/checks.js'
-import { STAGE_CHECK_TYPES } from '../../shared/stage/checks.js'
+import { STAGE_CHECK_TYPES, STAGE_TEXT_OPERATORS, finite } from '../../shared/stage/checks.js'
+import { visibleCommands } from '../../shared/stage/commands.js'
+import { DEFAULT_TEXT_OPERATOR } from '../../shared/checkHelpers.js'
 import { getPythonSlowMo, slowMoThroughRun } from '../../modules/python/slowMo/config.js'
 import { getActivityId } from '../../activities/resolve.js'
 
@@ -135,10 +137,12 @@ export function judgeRun({
 // as output_contains / code_does_not_contain are normalised first); every type not listed here,
 // including any added later, ticks on Run only (runJudge.test.js lists each registry type and its
 // decision):
-// - output, code: only the positive operators (contains, equals, matches_regex); never not_*.
+// - output, code, stage_text_shown: only the positive operators (STAGE_TEXT_OPERATORS: contains,
+//   equals, matches_regex; no operator is contains, as on Run); never not_*.
 // - code_structure: nested_in, directly_nested_in; never not_nested_in.
-// - stage_matches_target, stage_colour_used, stage_pixel: yes (something specific is drawn).
-// - stage_text_shown: its positive operators (all of them; contains by default).
+// - stage_colour_used: yes (something specific is drawn).
+// - stage_matches_target, stage_pixel: yes, but only on a drawn Stage that differs from the
+//   starter's (liveTickStageAllows): either can pass on a blank Stage or the starter's drawing.
 // - stage_shape_count: at least min (min >= 1, or neither min nor max: at least 1) or exactly
 //   min (min === max >= 1); never an upper bound alone, a min of 0 or a range.
 // - variable_equals, variable_dict_contains, variable_dict_equals, variable_dict_key_value,
@@ -147,25 +151,25 @@ export function judgeRun({
 //   any or trivial code), variable_exists, variable_type (pass on half-typed code),
 //   variable_not_equals (negative), run_attempted, answer, the name-tag panel's and run counts'
 //   checks, input checks and every other module's checks.
-const POSITIVE_TEXT_OPERATORS = ['contains', 'equals', 'matches_regex']
-const positiveText = (check) => POSITIVE_TEXT_OPERATORS.includes(check.operator)
+// The positive text operators are the Stage's own list (contains, equals, matches_regex); a check
+// with no operator is compared with the evaluator's default (DEFAULT_TEXT_OPERATOR, contains) on
+// Run, so it is read the same way here.
+export const LIVE_TICK_TEXT_OPERATORS = STAGE_TEXT_OPERATORS
+const positiveText = (check) =>
+  LIVE_TICK_TEXT_OPERATORS.includes(check.operator ?? DEFAULT_TEXT_OPERATOR)
 const always = () => true
-function finiteOrNull(value) {
-  if (value === null || value === undefined || value === '') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
 export const LIVE_TICK_COMPLETION_CHECKS = Object.freeze({
   output: positiveText,
   code: positiveText,
   code_structure: (check) => ['nested_in', 'directly_nested_in'].includes(check.operator),
+  // Only on a drawn Stage that differs from the starter's (liveTickStageAllows).
   stage_matches_target: always,
   stage_colour_used: always,
   stage_pixel: always,
-  stage_text_shown: (check) => POSITIVE_TEXT_OPERATORS.includes(check.operator ?? 'contains'),
+  stage_text_shown: positiveText,
   stage_shape_count: (check) => {
-    const min = finiteOrNull(check.min)
-    const max = finiteOrNull(check.max)
+    const min = finite(check.min)
+    const max = finite(check.max)
     if (max === null) return min === null || min >= 1
     return min !== null && min >= 1 && min === max
   },
@@ -220,6 +224,31 @@ export function liveTickCompletionCheck(check) {
     ? LIVE_TICK_COMPLETION_CHECKS[plain[0].type]
     : null
   return rule?.(plain[0]) === true
+}
+
+// Completion checks that can pass on a blank Stage (stage_pixel on the background colour) or on
+// the starter's own drawing (stage_matches_target with a loose tolerance): they tick only on a
+// drawn Stage that differs from the starter's (liveTickStageAllows).
+export const LIVE_TICK_DRAWN_STAGE_CHECKS = Object.freeze(['stage_pixel', 'stage_matches_target'])
+
+/** Whether `task`'s completion checks need the starter's Stage to tick (liveTickStageAllows). */
+export function liveTickNeedsStarterStage(task) {
+  const plain = plainChecks(task?.check)
+  return !!plain && plain.some((c) => LIVE_TICK_DRAWN_STAGE_CHECKS.includes(c.type))
+}
+
+/**
+ * Whether a typed redraw's Stage (`commands`) may tick `task` (request 131): always, unless a
+ * completion check is in LIVE_TICK_DRAWN_STAGE_CHECKS; then only when something is drawn (after
+ * the last clear) and the drawing is not the starter's (`starterCommands`, from a run of the
+ * starter code; null when unknown, which never ticks). Pure.
+ */
+export function liveTickStageAllows({ task, commands, starterCommands }) {
+  if (!liveTickNeedsStarterStage(task)) return true
+  const drawn = Array.isArray(commands) ? commands : []
+  if (visibleCommands(drawn).length === 0) return false
+  if (!Array.isArray(starterCommands)) return false
+  return JSON.stringify(drawn) !== JSON.stringify(starterCommands)
 }
 
 function allCompletionChecksTick(check) {
