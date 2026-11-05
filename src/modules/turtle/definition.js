@@ -47,6 +47,17 @@ import { printCodeStringTask } from '../printHelpers.js'
 const DEFAULT_STARTER_CODE =
   'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
 
+const PLAYGROUND_STARTER_CODE = `import turtle
+
+turtle.color("purple", "gold")
+turtle.pensize(4)
+turtle.begin_fill()
+for side in range(4):
+    turtle.forward(100)
+    turtle.left(90)
+turtle.end_fill()
+`
+
 export default defineModule({
   type: 'turtle',
   meta: {
@@ -57,7 +68,7 @@ export default defineModule({
     icon: '🐢',
     pickerHint: 'Workspace',
     language: 'python',
-    playground: false,
+    playground: true,
     surfaceLabels: { stageReference: 'Python' },
   },
   capabilities: {
@@ -221,6 +232,13 @@ export default defineModule({
   },
 
   lifecycle: {
+    // The Turtle playground (/playground/turtle, reached from the Python playground's kit chooser):
+    // a filled square drawn in a loop, so the first Run already makes a picture.
+    playgroundTask: () => ({
+      id: 1,
+      title: 'Turtle playground',
+      starterCode: PLAYGROUND_STARTER_CODE,
+    }),
     hasPersonalSandbox: alwaysPersonalSandbox,
     resetTarget: codeResetTarget,
     hasComplete: codeHasComplete,

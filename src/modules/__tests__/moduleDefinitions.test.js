@@ -522,6 +522,9 @@ describe('core-surface capabilities (plan step 4.8)', () => {
       title: 'Python playground',
       starterCode: '',
     })
+    expect(getModuleDefinition('turtle').lifecycle.playgroundTask().starterCode).toMatch(
+      /^import turtle\n[\s\S]*for side in range\(4\):/
+    )
   })
 
   it('workSlot.teacherStarter defaults to starter (electronics overrides it)', () => {

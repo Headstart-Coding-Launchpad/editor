@@ -36,7 +36,7 @@ const sorted = (list) => builtInOnly([...list]).sort()
 describe('derived module-type lists', () => {
   it('PLAYGROUND_LESSON_TYPES comes from meta.playground', () => {
     expect(sorted(PLAYGROUND_LESSON_TYPES)).toEqual(
-      sorted(['python', 'arcade', 'electronics', 'scratch'])
+      sorted(['python', 'turtle', 'arcade', 'electronics', 'scratch'])
     )
   })
 

@@ -51,6 +51,17 @@ describe('LandingPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/playground/python')
   })
 
+  it('lists Python, Scratch and Electronics; Turtle and Arcade are kits inside Python', async () => {
+    const user = userEvent.setup()
+    render(<LandingPage />)
+
+    await user.click(screen.getByRole('button', { name: /Open playgrounds/i }))
+    const dialog = screen.getByRole('dialog', { name: /Choose a playground/i })
+    const names = Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent)
+
+    expect(names).toEqual(['Python', 'Scratch', 'Electronics', 'Cancel'])
+  })
+
   it('opens the Scratch playground from the playground chooser', async () => {
     const user = userEvent.setup()
     render(<LandingPage />)

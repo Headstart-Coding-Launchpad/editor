@@ -24,7 +24,7 @@ describe('PlaygroundView', () => {
     playgroundType = 'python'
   })
 
-  it.each(['python', 'arcade', 'electronics', 'scratch'])(
+  it.each(['python', 'turtle', 'arcade', 'electronics', 'scratch'])(
     'does not seed an explainer for the %s playground',
     (type) => {
       const lesson = renderPlayground(type)
@@ -32,6 +32,14 @@ describe('PlaygroundView', () => {
       expect(lesson.tasks[0]).not.toHaveProperty('explainer')
     }
   )
+
+  it('opens a Turtle playground whose first Run draws a filled square', () => {
+    const lesson = renderPlayground('turtle')
+
+    expect(lesson).toMatchObject({ id: '__playground__turtle', isPlayground: true, type: 'turtle' })
+    expect(lesson.tasks[0].starterCode).toMatch(/^import turtle\n/)
+    expect(lesson.tasks[0].starterCode).toContain('turtle.begin_fill()')
+  })
 
   it('enables sprite and tilemap editing in the Arcade playground', () => {
     const lesson = renderPlayground('arcade')

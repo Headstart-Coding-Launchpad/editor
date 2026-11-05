@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { createLaunchpadCodeFile, parseLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import EntryScreenCard from '../components/EntryScreenCard'
+import { LANDING_PLAYGROUND_TYPES } from '../playgroundKits'
+import { getModuleLabel } from '../../modules/definitions'
 
 export default function LandingPage() {
   const [searchParams] = useSearchParams()
@@ -113,34 +115,18 @@ export default function LandingPage() {
               Choose a playground
             </h2>
             <p style={s.dialogText}>Pick the type of code you want to work on.</p>
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={() => handleOpenPlayground('python')}
-            >
-              Python
-            </button>
-            <button
-              className="btn-ghost-outline"
-              type="button"
-              onClick={() => handleOpenPlayground('arcade')}
-            >
-              Arcade Kit
-            </button>
-            <button
-              className="btn-ghost-outline"
-              type="button"
-              onClick={() => handleOpenPlayground('electronics')}
-            >
-              Electronics
-            </button>
-            <button
-              className="btn-ghost-outline"
-              type="button"
-              onClick={() => handleOpenPlayground('scratch')}
-            >
-              Scratch
-            </button>
+            {/* Derived from the playground-capable modules; Turtle and Arcade sit inside the
+                Python playground's kit chooser (src/app/playgroundKits.js). */}
+            {LANDING_PLAYGROUND_TYPES.map((type, index) => (
+              <button
+                key={type}
+                className={index === 0 ? 'btn-primary' : 'btn-ghost-outline'}
+                type="button"
+                onClick={() => handleOpenPlayground(type)}
+              >
+                {getModuleLabel(type)}
+              </button>
+            ))}
             <button
               className="btn-ghost-outline"
               type="button"

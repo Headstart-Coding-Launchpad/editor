@@ -47,9 +47,6 @@ const MODULES = getLessonModules()
 // "stale gap" assertion below fails for any entry that is no longer a gap, so this object
 // can only shrink.
 const KNOWN_GAPS = {
-  turtle: {
-    PLAYGROUND_LESSON_TYPES: 'Intentional: no /playground/turtle route exists yet.',
-  },
   html: {
     PLAYGROUND_LESSON_TYPES: 'Intentional: HTML has no playground (see composedLesson.js).',
   },
