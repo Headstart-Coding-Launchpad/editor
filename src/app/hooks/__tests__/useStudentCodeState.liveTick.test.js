@@ -396,6 +396,46 @@ describe('re-arming', () => {
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(2)
   })
 
+  it('Reset, then the identical passing code typed again, ticks again', async () => {
+    runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    actSync(() => h.result.current.handleResetCode())
+    expect(h.result.current.checkPassed).toBe(false)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(2)
+  })
+
+  it("a tutor's pass taken back, then the identical passing code typed again, ticks", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    // The tutor's Mark Fail un-solves it; the student's own Run of other code answers it.
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 3 })
+    expect(h.result.current.checkPassed).toBe(false)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
+    await actAsync(() => h.result.current.handleRun())
+    h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('a redraw that did not tick (held) is not remembered as delivered', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    // The tutor clears the "not yet"; the same code typed again (say, a key and an undo).
+    h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
   it("a tutor's 'not yet' blocks live ticks on that task until the student presses Run", async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })

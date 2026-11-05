@@ -1010,7 +1010,7 @@ export function useStudentCodeState({
       if (turtle !== undefined) writeStudentTurtleResult(id, turtle)
       if (stage !== undefined) writeStudentStageResult?.(id, stage)
     },
-    // A finished typed redraw may tick the task (request 131): commitLivePass.
+    // A finished typed redraw may tick the task (request 131): commitLivePass, true when it did.
     onTypedResult: (typed) => commitLivePass(typed),
     // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
     // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
@@ -1019,6 +1019,13 @@ export function useStudentCodeState({
       (pyodideStatus === 'idle' && !!getLessonModule(lesson?.type)?.runtime?.isReady?.()),
     freePlay: phase === 'sandbox' || inPersonalSandbox,
   })
+
+  // Request 131: a task un-solved (Reset, the tutor's Mark Fail, any other way) forgets the last
+  // preview, so the identical passing code typed again redraws and may tick again.
+  useEffect(() => {
+    if (!checkPassed) scrubPreview.forgetLastPreview()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkPassed])
 
   // A scrub that ended as an edit (the code editor's onScrubCommit): counted for the session
   // report (useScrubLog) and, with scrub.checkOnRelease, checked once as a Run (useScrubPreview).
@@ -2127,11 +2134,14 @@ export function useStudentCodeState({
   // edit that was not the student's own typing, a solved task, another task or module, code
   // changed since the redraw, a tutor's "not yet" the student has not answered with a Run, or a
   // task liveTickEligible leaves out. A failed write never un-ticks; a throw is only logged.
+  // Returns true only when it ticked and recorded the pass (useScrubPreview then remembers that
+  // redraw as delivered; one that bailed or missed may run again for the same code).
   function commitLivePass(typed) {
     try {
-      commitLivePassNow(typed)
+      return commitLivePassNow(typed) === true
     } catch (err) {
       console.warn('Failed to check a live pass:', err)
+      return false
     }
   }
 
@@ -2196,6 +2206,7 @@ export function useStudentCodeState({
     recordRun(ctx, { code, outputRaw, status, result, judgement, source: 'live' }).catch((err) =>
       console.warn('Failed to record a live pass:', err)
     )
+    return true
   }
 
   // A tutor's "not yet" (Mark Fail) on the class's task holds live ticks there until the student

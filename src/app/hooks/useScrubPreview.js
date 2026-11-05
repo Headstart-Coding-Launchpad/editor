@@ -73,7 +73,8 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  *
  * A typed redraw that finished cleanly is handed, once it is on screen, to `onTypedResult({ code,
  * taskId, moduleType, outputRaw, result })` (request 131: useStudentCodeState commitLivePass may
- * tick the task from it). This hook still never judges or writes anything itself.
+ * tick the task from it, and returns true when it did). This hook still never judges or writes
+ * anything itself.
  */
 export function useScrubPreview({
   moduleType,
@@ -124,8 +125,9 @@ export function useScrubPreview({
     schedulerRef.current = createPreviewScheduler({
       run: (job) => runPreview(job),
       // A typed redraw (request 131) repeats the last preview of the same code unless that one
-      // already handed its result to onTypedResult: an earlier scrub or run-on-open preview, one
-      // that bailed (a Run started) or one that ended in an error never did.
+      // ticked the task through onTypedResult: an earlier scrub or run-on-open preview, one that
+      // bailed (a Run started, a hold, another edit), missed or ended in an error never did.
+      // forgetLastPreview (a task un-solved) forgets even one that ticked.
       isSame: (a, b) =>
         a.code === b.code &&
         a.fileName === b.fileName &&
@@ -204,15 +206,16 @@ export function useScrubPreview({
     })
     // A finished typed redraw (request 131): its result, for the checks on typing.
     if (job.typed && result.status === 'success') {
-      // Marked on the job the scheduler remembers as the last run (its isSame above).
-      job.typedDelivered = true
-      after.onTypedResult?.({
+      const ticked = after.onTypedResult?.({
         code: job.code,
         taskId: job.taskId,
         moduleType: job.moduleType,
         outputRaw: output.raw,
         result,
       })
+      // Marked on the job the scheduler remembers as the last run (its isSame above), only when
+      // it ticked.
+      if (ticked === true) job.typedDelivered = true
     }
   }
 
@@ -351,6 +354,8 @@ export function useScrubPreview({
   return {
     scrubPreview,
     settleScrubPreview: () => schedulerRef.current.settle(),
+    // Forgets the last preview run, so the same code previews (and may tick) again.
+    forgetLastPreview: () => schedulerRef.current.reset(),
     scrubReplayAnswers: replayAnswers,
     clearScrubReplay: () => setReplayAnswers(null),
     rememberRunAnswers,
