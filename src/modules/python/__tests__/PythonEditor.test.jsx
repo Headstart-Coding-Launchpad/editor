@@ -55,6 +55,14 @@ describe('PythonEditor — touch symbol bar', () => {
     expect(screen.getByRole('toolbar', { name: /python editor tools/i })).toBeInTheDocument()
   })
 
+  it('shows every Python symbol on a touch device with no Keys tap', () => {
+    touchDevice = true
+    render(<PythonEditor code="" onChange={vi.fn()} />)
+    for (const sym of [...'()[]{}"\',:=#+-*/<>!._']) {
+      expect(screen.getByRole('button', { name: sym })).toBeInTheDocument()
+    }
+  })
+
   it('hides the symbol buttons on a touch device when read-only', () => {
     touchDevice = true
     render(<PythonEditor code="" onChange={vi.fn()} readOnly />)
@@ -66,7 +74,6 @@ describe('PythonEditor — touch symbol bar', () => {
     const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Keys' }))
     await user.click(screen.getByRole('button', { name: ':' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith(':')
@@ -93,11 +100,11 @@ describe('PythonEditor — emoji button', () => {
     insertAtCursor.mockClear()
   })
 
-  it('keeps the symbol keys and the emoji key folded until Keys is pressed', async () => {
+  it('keeps the emoji key folded until Keys is pressed, symbols stay visible', async () => {
     touchDevice = true
     const user = userEvent.setup()
     render(<PythonEditor code="" onChange={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: ':' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: ':' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'emoji-picker' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Keys' }))
     expect(screen.getByRole('button', { name: ':' })).toBeInTheDocument()

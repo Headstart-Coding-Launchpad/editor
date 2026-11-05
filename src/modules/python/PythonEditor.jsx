@@ -9,7 +9,7 @@ import { describeRunCount } from '../../shared/runCounts.js'
 // Symbols that are fiddly to reach on an on-screen keyboard but come up
 // constantly in Python source — shown as a tap-to-insert row so touch/iPad
 // students aren't hunting through keyboard shift layers mid-task.
-const SYMBOL_BUTTONS = [':', '(', ')', '[', ']', '{', '}', '"', "'", '_', '=', '#']
+const SYMBOL_BUTTONS = [...'()[]{}"\',:=#+-*/<>!._']
 
 export default function PythonEditor({
   code,
@@ -55,10 +55,9 @@ export default function PythonEditor({
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
   const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
-  // The symbol row and the emoji key sit behind one "Keys" button, closed to start with, so the
-  // bar is Keys, Blocks and Run rather than a dozen small keys (child-facing rules, Hub #315).
+  // On touch the symbol row is always showing (request #125); only the emoji key sits behind "Keys".
   const [keysOpen, setKeysOpen] = useState(false)
-  const hasKeys = showSymbolButtons || showEmojiButton
+  const hasKeys = showEmojiButton
 
   return (
     <div style={s.wrap} data-testid="editor-panel">
@@ -75,14 +74,13 @@ export default function PythonEditor({
               type="button"
               style={{ ...s.blocksBtn, ...(keysOpen ? s.blocksBtnOn : null) }}
               aria-pressed={keysOpen}
-              title="Show keys for symbols and emoji"
+              title="Show the emoji key"
               onClick={() => setKeysOpen((v) => !v)}
             >
               Keys
             </button>
           )}
-          {keysOpen &&
-            showSymbolButtons &&
+          {showSymbolButtons &&
             SYMBOL_BUTTONS.map((symbol) => (
               <button
                 key={symbol}
