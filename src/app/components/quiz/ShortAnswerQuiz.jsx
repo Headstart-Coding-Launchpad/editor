@@ -57,6 +57,8 @@ export default function ShortAnswerQuiz({
       <ShownResponsesWall responses={getShownResponses(classView.session, task.id)} />
     ) : null
 
+  // A task with a check has a right answer: no "Got it" while it is wrong. Open ones always get it.
+  const markedWrong = !!task?.check && !checkPassed
   const submittedAnswer = localAnswer || (typeof selectedAnswer === 'string' ? selectedAnswer : '')
 
   return (
@@ -87,7 +89,7 @@ export default function ShortAnswerQuiz({
           // A clear "it went" after Submit (the plain grey strip was easy to miss). Worded to fit
           // a solo lesson too, where nobody is sent anything.
           <div style={sm.submittedAnswer} role="status">
-            <span style={sm.submittedTick}>✅ Got it!</span> Your answer:{' '}
+            {!markedWrong && <span style={sm.submittedTick}>✅ Got it! </span>}Your answer:{' '}
             <strong style={sm.submittedAnswerText}>{submittedAnswer}</strong>
           </div>
         )}

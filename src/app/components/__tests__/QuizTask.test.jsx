@@ -613,6 +613,24 @@ describe('characterisation: QuizTask onSelectAnswer per legacy fixture', () => {
 })
 
 describe('QuizTask student-facing clarity (HSC Audit)', () => {
+  it('a wrong checked short answer shows no tick or "Got it!"', () => {
+    render(
+      <QuizTask
+        task={legacy.SHORT_ANSWER_TASK}
+        selectedAnswer="banana"
+        submitted
+        checkPassed={false}
+      />
+    )
+    expect(screen.queryByText(/Got it!/)).toBeNull()
+    expect(screen.queryByText(/✅/)).toBeNull()
+  })
+
+  it('a correct checked short answer still shows the tick', () => {
+    render(<QuizTask task={legacy.SHORT_ANSWER_TASK} selectedAnswer="text" submitted checkPassed />)
+    expect(screen.getByText(/Got it!/)).toBeTruthy()
+  })
+
   it('short answer shows a clear confirmation once submitted', () => {
     render(<QuizTask task={SHORT_ANSWER_TASK} selectedAnswer="I made a game" submitted />)
     const status = screen.getAllByRole('status').find((el) => el.textContent.includes('Got it!'))
