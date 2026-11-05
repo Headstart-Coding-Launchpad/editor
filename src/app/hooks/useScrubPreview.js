@@ -70,6 +70,10 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * handleCodeChange) re-runs the same preview once the student pauses for TYPED_PREVIEW_DELAY_MS,
  * so typing a new value redraws as a scrub does. A preview that ends in an error (half-typed
  * code) leaves the last picture and output as they were. Never in free play.
+ *
+ * A typed redraw that finished cleanly is handed, once it is on screen, to `onTypedResult({ code,
+ * taskId, moduleType, outputRaw, result })` (request 131: useStudentCodeState commitLivePass may
+ * tick the task from it). This hook still never judges or writes anything itself.
  */
 export function useScrubPreview({
   moduleType,
@@ -86,6 +90,7 @@ export function useScrubPreview({
   publishPreview = null,
   runtimeReady = false,
   freePlay = false,
+  onTypedResult = null,
 }) {
   const contextRef = useRef(null)
   contextRef.current = {
@@ -101,6 +106,7 @@ export function useScrubPreview({
     runChecks,
     isRunLocked,
     publishPreview,
+    onTypedResult,
   }
   // The answers of the student's last Run, per task: `{ taskId, answers }`, or null.
   const runAnswersRef = useRef(null)
@@ -189,6 +195,16 @@ export function useScrubPreview({
       turtle: definition.runResult?.turtle ? (result.turtle ?? null) : undefined,
       stage: definition.runResult?.stage ? (result.stage ?? null) : undefined,
     })
+    // A finished typed redraw (request 131): its result, for the checks on typing.
+    if (job.typed && result.status === 'success') {
+      after.onTypedResult?.({
+        code: job.code,
+        taskId: job.taskId,
+        moduleType: job.moduleType,
+        outputRaw: output.raw,
+        result,
+      })
+    }
   }
 
   // A task change drops any waiting preview, the replay note and a waiting check on release.
@@ -231,6 +247,7 @@ export function useScrubPreview({
         answers,
         notify: null,
         quietErrors: true,
+        typed: true,
       })
     }, TYPED_PREVIEW_DELAY_MS)
   }

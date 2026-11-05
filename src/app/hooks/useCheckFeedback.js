@@ -51,6 +51,8 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     if (!skipLog && !scrubMiss) onCheckResultRef.current?.(passed)
     const nextSuggestion = String(suggestion ?? '').trim()
     setTeacherHint(null)
+    // At once, not on the next render: a Run starting in the same moment must see it solved.
+    checkPassedRef.current = passed
     setCheckPassed(passed)
     setCheckAttempted(true)
     setCheckSuggestion(nextSuggestion)

@@ -1719,7 +1719,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   // string (authored ids needn't be valid RTDB keys); a retry keeps the first entry's.
   //
   // `source: 'scrub'` marks an attempt the checks on a live scrub's release made (P6-20) rather
-  // than a press of Run; a retry keeps the first entry's.
+  // than a press of Run, and `source: 'live'` a pass a typed redraw ticked (request 131); a retry
+  // keeps the first entry's.
   async function logAttempt(
     anonymousId,
     taskId,
@@ -1797,7 +1798,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       error: storedError(error),
       placements: storedPlacements(placements),
       // 'scrub': the checks a live scrub ran when it ended (scrub.checkOnRelease), not a Run.
-      source: source === 'scrub' ? 'scrub' : null,
+      // 'live': a typed redraw whose own result passed (request 131), recorded as a Run.
+      source: source === 'scrub' || source === 'live' ? source : null,
       attemptNumber,
       retries: 0,
       loggedAt: serverTimestamp(),

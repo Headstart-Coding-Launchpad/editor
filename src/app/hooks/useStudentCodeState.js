@@ -87,6 +87,8 @@ import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition } from '../../modules/definitions.js'
 import { cloneArcadeDesign } from '../../modules/arcade/design'
 import { runWithRuntime } from './runWithRuntime'
+import { judgeRun, liveTickEligible } from './runJudge'
+import { recordRun } from './runRecord'
 import { useVariablesPanel } from './useVariablesPanel'
 import { useStudentBadgeSignals } from './useStudentBadgeSignals'
 import { useStudentTypingStats } from './useStudentTypingStats'
@@ -306,6 +308,13 @@ export function useStudentCodeState({
   const runAnswersRef = useRef(null)
   // The latest handleRun, for the checks a scrub runs when it ends (useScrubPreview runChecks).
   const handleRunRef = useRef(null)
+  // Request 131, a typed redraw's pass (commitLivePass): a pressed Run always wins. Runs called and
+  // not yet finished, and every Run ever called; the latest typed edit with the count it saw; the
+  // task a tutor's "not yet" blocked live ticks on until the student's next Run.
+  const runIntentRef = useRef(0)
+  const runCallsRef = useRef(0)
+  const typedEditRef = useRef(null)
+  const liveTickBlockedTaskRef = useRef(null)
   const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
@@ -997,6 +1006,8 @@ export function useStudentCodeState({
       if (turtle !== undefined) writeStudentTurtleResult(id, turtle)
       if (stage !== undefined) writeStudentStageResult?.(id, stage)
     },
+    // A finished typed redraw may tick the task (request 131): commitLivePass.
+    onTypedResult: (typed) => commitLivePass(typed),
     // Run on open (runOnOpen): a preview once the runtime is ready; never in free play.
     // (A runtime already warm from an earlier task never reports 'ready': it stays 'idle'.)
     runtimeReady:
@@ -1814,6 +1825,18 @@ export function useStudentCodeState({
   // answers and the attempt is logged with `source: 'scrub'`); anything else (a click event) is
   // a normal Run.
   async function handleRun(runOptions = null) {
+    // Any Run (pressed, scrub, slow-mo, the tutor's) wins over a typed redraw's pass: from now
+    // until it ends, and for any redraw of an edit typed before it (commitLivePass).
+    runIntentRef.current += 1
+    runCallsRef.current += 1
+    try {
+      return await runTask(runOptions)
+    } finally {
+      runIntentRef.current -= 1
+    }
+  }
+
+  async function runTask(runOptions) {
     const slowMoRun = runOptions?.slowMo === true ? runOptions : null
     const scrubRun = !slowMoRun && runOptions?.source === 'scrub' ? runOptions : null
     const actor = effectiveIdentity
@@ -1836,6 +1859,8 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
+    // A tutor's "not yet" holds live ticks only until the student runs the task again.
+    liveTickBlockedTaskRef.current = null
     // A scrub preview re-run (useScrubPreview) finishes first, so the two never overlap.
     await scrubPreview.settleScrubPreview()
     syncCodeArrangeSlotBeforeRun(task)
@@ -1909,25 +1934,10 @@ export function useStudentCodeState({
           setStageResult,
           setRunning,
         },
-        writers: {
-          writeStudentInputState,
-          writeStudentOutput,
-          writeStudentCode,
-          writeStudentRun,
-          writeStudentTurtleResult,
-          writeStudentStageResult,
-          writeStudentTaskRun,
-          logAttempt,
-        },
-        live: {
-          canPublishTeacherLive,
-          updateTeacherLive,
-          currentTeacherLivePayload,
-          publishTeacherLive,
-        },
+        writers: runWriters(),
+        live: runLive(),
         feedback: { applyCheckFeedback, updateTargetedStageOffer, updateSupportStageForAttempt },
-        saveRunRecord: (taskId, runCode, fields) =>
-          persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields),
+        saveRunRecord: runSaveRecord(moduleType, actor),
         signals: badgeSignals,
         variablesPanel,
         runOptions: slowMoRun ?? scrubRun,
@@ -2063,6 +2073,109 @@ export function useStudentCodeState({
   }
 
   handleRunRef.current = handleRun
+
+  // The writers, Go Live functions and run record a runtime Run's records use (runWithRuntime,
+  // recordRun): one list, for a Run and for a typed redraw's pass alike.
+  function runWriters() {
+    return {
+      writeStudentInputState,
+      writeStudentOutput,
+      writeStudentCode,
+      writeStudentRun,
+      writeStudentTurtleResult,
+      writeStudentStageResult,
+      writeStudentTaskRun,
+      logAttempt,
+    }
+  }
+  function runLive() {
+    return {
+      canPublishTeacherLive,
+      updateTeacherLive,
+      currentTeacherLivePayload,
+      publishTeacherLive,
+    }
+  }
+  function runSaveRecord(moduleType, actor) {
+    return (taskId, runCode, fields) =>
+      persistence.saveRunRecord(moduleType, actor.anonymousId, taskId, runCode, fields)
+  }
+
+  // Request 131: a finished typed redraw (useScrubPreview onTypedResult) whose own result passes
+  // the task's checks ticks the task, without Run and without running the program again. It is
+  // judged by the Run's own judgeRun and, on a pass, recorded by the Run's own recordRun (the
+  // attempt marked source 'live'), so the tutor's card, Go Live, the report, the share link and
+  // the save see a Run of that code. A Run's extras stay out: no typing stats, badge signals,
+  // name tags, output reset or solo log. A miss does nothing at all (nothing shown, written or
+  // counted). It bails, before judging, on any Run called since the edit (a Run always wins), a
+  // solved task, another task or module, code changed since the redraw, a tutor's "not yet" on
+  // this task, or a task liveTickEligible leaves out. A failed write never un-ticks.
+  function commitLivePass({ code, taskId, moduleType, outputRaw, result }) {
+    const actor = effectiveIdentity
+    const typed = typedEditRef.current
+    if (!actor || running || runIntentRef.current > 0) return
+    if (!typed || typed.code !== code || typed.runCalls !== runCallsRef.current) return
+    if (typed.epoch !== runEpochRef.current || isAlreadySolved()) return
+    if (String(currentTaskIdRef.current) !== String(taskId)) return
+    if (lessonRef.current?.type !== moduleType || storedWork(moduleType).work !== code) return
+    if (String(liveTickBlockedTaskRef.current) === String(taskId)) return
+    const task = findTaskById(lessonRef.current?.tasks, taskId)
+    const definition = getModuleDefinition(moduleType)
+    const eligible = liveTickEligible({
+      task,
+      definition,
+      code,
+      phase: phaseRef.current,
+      teacherPresentation,
+      previewMode,
+      inPersonalSandbox: inPersonalSandboxRef.current,
+      predictRunLocked: !!predictRunLock,
+    })
+    if (!eligible) return
+    const status = 'success'
+    const judgement = judgeRun({
+      task,
+      definition,
+      code,
+      status,
+      outputRaw,
+      result,
+      panelContext: {},
+      alreadySolved: false,
+      isFreePlay: false,
+      source: 'live',
+    })
+    if (!judgement.passed) return
+    // On screen as for a passing Run (the redraw already shows its output and drawing).
+    if (judgement.evaluation) updateTargetedStageOffer(task, judgement.evaluation, true)
+    applyCheckFeedback(true, judgement.suggestion, { skipLog: true })
+    updateSupportStageForAttempt(true)
+    setRunStatus(status)
+    setErrorLine(null)
+    const ctx = {
+      actor,
+      definition,
+      currentTaskId: currentTaskIdRef.current,
+      isWatched: sessionRef.current?.activeStudentView === actor.anonymousId,
+      alreadySolved: false,
+      teacherPresentation,
+      refs: { phaseRef, inPersonalSandboxRef, teacherAssistedTaskIdsRef },
+      writers: runWriters(),
+      live: runLive(),
+      saveRunRecord: runSaveRecord(moduleType, actor),
+    }
+    recordRun(ctx, { code, outputRaw, status, result, judgement, source: 'live' }).catch((err) =>
+      console.warn('Failed to record a live pass:', err)
+    )
+  }
+
+  // A tutor's "not yet" (Mark Fail) on this task: no live ticks until the student's next Run.
+  useEffect(() => {
+    if (!myStudentData?.checkOverridePushedAt) return
+    liveTickBlockedTaskRef.current =
+      myStudentData.checkOverridePassed === false ? currentTaskIdRef.current : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myStudentData?.checkOverridePushedAt])
 
   function handleStop() {
     getLessonModule(lesson?.type)?.runtime?.stop()
@@ -2233,7 +2346,13 @@ export function useStudentCodeState({
     const moduleType = lesson?.type
     if (!isCodeStringWork(workSlotDefinition(moduleType))) return
     handleWorkChange(withCode(moduleType, newCode), { moduleType })
-    // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview).
+    // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview); the
+    // edit, with the Runs called so far, is what a live pass must still match (commitLivePass).
+    typedEditRef.current = {
+      code: newCode,
+      runCalls: runCallsRef.current,
+      epoch: runEpochRef.current,
+    }
     scrubPreview.typedEdit(newCode)
   }
 

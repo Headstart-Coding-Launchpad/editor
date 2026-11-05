@@ -17,7 +17,7 @@ import { lastErrorLine } from '../studentHints.js'
  * A rejected or throwing writer propagates out of recordRun unchanged (later records skipped).
  * `run` is `{ code, outputRaw, status, result, judgement, source }`: the code that ran (after any
  * runtime update), its raw output, status and runtime result, judgeRun's judgement, and the Run's
- * source (`'scrub'` is logged on the attempt).
+ * source (`'scrub'`, or `'live'` for a typed redraw's pass, request 131, is logged on the attempt).
  */
 export async function recordRun(ctx, { code, outputRaw, status, result, judgement, source }) {
   const {
@@ -98,7 +98,7 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
       suggestion,
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
-      ...(source === 'scrub' ? { source: 'scrub' } : {}),
+      ...(source === 'scrub' || source === 'live' ? { source } : {}),
     })
   }
 }

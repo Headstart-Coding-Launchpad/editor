@@ -1,9 +1,19 @@
 import {
+  FEEDBACK_TIMING,
   completionToleratesRunError,
   evaluateCheck,
   evaluateCheckWithFeedback,
+  normalizeCheckShape,
+  normalizeChecks,
+  normalizeFeedbackChecks,
 } from '../../modules/checks'
 import { explainPythonError } from '../../shared/pythonErrors.js'
+import { codeCallsInput } from '../../shared/scrub/runOnOpen.js'
+import { getShowVariables } from '../../shared/variablesPanel/variablesPanel.js'
+import { getRunCounts, taskCountsRuns } from '../../shared/runCounts.js'
+import { PYTHON_CHECK_TYPES } from '../../modules/python/checks.js'
+import { STAGE_CHECK_TYPES } from '../../shared/stage/checks.js'
+import { getPythonSlowMo, slowMoThroughRun } from '../../modules/python/slowMo/config.js'
 
 /**
  * The judge of a finished runtime Run (request 131 design: the "judge" part of runWithRuntime,
@@ -112,4 +122,64 @@ export function judgeRun({
     checkTask,
     isFreePlay,
   }
+}
+
+/**
+ * The check types a typed redraw may tick on (request 131): an ALLOW-list. Each reads only what
+ * the redraw's own run gives exactly as a Run of the same code does (the same runtime.run with
+ * the task: output, status, code, captured variables, the Stage drawing and its target). Anything
+ * else (run_attempted's `ran`, the name-tag panel's predictions, run counts, answers, input
+ * checks, any type added later) ticks on Run only until it is listed here.
+ */
+export const LIVE_TICK_CHECK_TYPES = Object.freeze([
+  'output',
+  'output_line_count',
+  'output_not_empty',
+  'output_empty',
+  'code_no_error',
+  'code',
+  'code_structure',
+  'max_lines',
+  ...STAGE_CHECK_TYPES,
+  ...PYTHON_CHECK_TYPES,
+])
+
+// Every check in a check (or list), with any check wrapped inside one (`check` / `checks`).
+function checksIn(check) {
+  return normalizeChecks(check).flatMap((c) => [c, ...checksIn(c.check), ...checksIn(c.checks)])
+}
+
+/**
+ * Whether a finished typed redraw of `code` may tick `task` (request 131): a Python Stage task
+ * ('runtime' module with the Stage), live or solo, whose every check (completion, feedback and
+ * any wrapped inside one) is on LIVE_TICK_CHECK_TYPES. Never for submit mode, Python tests,
+ * input() in the code or setupCode (a redraw replays old answers), the name-tag panel or run
+ * counts, an on-idle feedback check, a run_attempted check ("press Run and watch"), a task whose
+ * Run plays in slow-mo, predict mode's Run lock, the presentation window, the Builder preview or
+ * either sandbox. Pure.
+ */
+export function liveTickEligible({
+  task,
+  definition,
+  code,
+  phase,
+  teacherPresentation,
+  previewMode,
+  inPersonalSandbox,
+  predictRunLocked,
+}) {
+  if (!task?.check || !definition) return false
+  if (phase !== 'lesson' && phase !== 'solo') return false
+  if (teacherPresentation || previewMode || inPersonalSandbox || predictRunLocked) return false
+  if (definition.capabilities?.run !== 'runtime' || !definition.runResult?.stage) return false
+  if (task.interactionMode === 'submit' || task.tests?.length > 0) return false
+  if (codeCallsInput(code) || codeCallsInput(task.setupCode)) return false
+  if (getShowVariables(task) || getRunCounts(task) != null || taskCountsRuns(task)) return false
+  if (completionToleratesRunError(task.check)) return false
+  if (slowMoThroughRun(getPythonSlowMo(task))) return false
+  const feedback = normalizeFeedbackChecks(task)
+  if (feedback.some((c) => c.show !== FEEDBACK_TIMING.AFTER_ATTEMPT)) return false
+  return [...checksIn(task.check), ...checksIn(feedback)].every((c) =>
+    LIVE_TICK_CHECK_TYPES.includes(normalizeCheckShape(c)?.type)
+  )
 }
