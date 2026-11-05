@@ -1471,11 +1471,10 @@ select {
 }
 
 /* Picture answer options (MultipleChoiceQuiz, request 128): 2 or 3 equal cards side by side,
-   4 as a 2x2 grid, and one column when the quiz pane is under 480px wide. */
-.quiz-picture-frame {
-  container-type: inline-size;
-}
-
+   4 as a 2x2 grid, and one column when the options frame is under 480px wide. The quiz measures
+   the frame (a ResizeObserver sets data-picture-narrow) instead of a container query: a size
+   container has no width of its own, so it collapsed inside shrink-to-fit parents (the tutor's
+   inline-flex student window). */
 .quiz-picture-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1484,11 +1483,8 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-@container (max-width: 480px) {
-  .quiz-picture-grid,
-  .quiz-picture-grid[data-picture-columns='3'] {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.quiz-picture-grid[data-picture-narrow] {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* The tutor's information task sits in a centre column that can be much narrower than the

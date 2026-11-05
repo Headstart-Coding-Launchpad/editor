@@ -21,6 +21,9 @@ import {
   shrinkToFit,
 } from './quizUtils'
 
+// Under this options-frame width, picture cards stack in one column.
+const PICTURE_NARROW_WIDTH = 480
+
 export default function MultipleChoiceQuiz({
   task,
   selectedAnswer,
@@ -54,7 +57,7 @@ export default function MultipleChoiceQuiz({
   const displayedOptions = options
 
   // Picture answer options (request 128): equal cards in a grid (2 or 3 side by side, 4 as
-  // 2x2, one column in a narrow pane via .quiz-picture-grid in index.css). Never on a poll. An
+  // 2x2, one column in a frame under 480px, see run() below and index.css). Never on a poll. An
   // option with no picture is drawn as a normal word card in the same grid; more than 4 options
   // (a validation error) still all show, in more rows.
   const pictureMode = !multiple && task?.quizType !== 'poll' && quizHasPictureOptions(task)
@@ -69,6 +72,14 @@ export default function MultipleChoiceQuiz({
     // as overflow; measure with the options at rest so the entrance never shrinks them. An
     // !important declaration outranks the animation without restarting it.
     const run = () => {
+      // Picture cards go to one column when the frame is narrow (index.css). Set on the DOM
+      // before measuring, so the fit below sees the final layout and nothing re-renders.
+      if (pictureMode)
+        content.toggleAttribute(
+          'data-picture-narrow',
+          container.clientWidth > 0 && container.clientWidth < PICTURE_NARROW_WIDTH
+        )
+      else content.removeAttribute('data-picture-narrow')
       const options = Array.from(content.children)
       options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))
       try {
@@ -99,16 +110,12 @@ export default function MultipleChoiceQuiz({
     const observer = new ResizeObserver(run)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [displayedOptions])
+  }, [displayedOptions, pictureMode])
 
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
-      <div
-        ref={optionsFrameRef}
-        style={s.optionsFrame}
-        className={pictureMode ? 'quiz-picture-frame' : undefined}
-      >
+      <div ref={optionsFrameRef} style={s.optionsFrame}>
         <div
           ref={optionsGridRef}
           style={pictureMode ? { ...s.options, ...s.pictureOptions } : s.options}

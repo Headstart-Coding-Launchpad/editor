@@ -217,9 +217,13 @@ export const baseStyles = {
     fontSize: '1.15rem',
     fontWeight: 700,
   },
+  // The picture itself is absolutely placed (so it never sets the card's size). The 200px width
+  // (a flex basis of auto, so it counts in intrinsic sizing) gives the card a real width in a
+  // shrink-to-fit parent; it still shrinks in a narrow one and grows in a wide one.
   pictureBox: {
     position: 'relative',
-    flex: '1 1 0',
+    flex: '1 1 auto',
+    width: 200,
     minWidth: 0,
   },
   pictureCaption: {
