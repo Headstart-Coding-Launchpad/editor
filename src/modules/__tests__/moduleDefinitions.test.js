@@ -343,7 +343,7 @@ describe('student / teacher-monitoring UI capabilities (plan step 4.7)', () => {
       TYPES.map((type) => [type, targets[type].map((target) => target.id)])
     )
     expect(ids).toEqual({
-      python: ['run', 'stop'],
+      python: ['run', 'stop', 'key'],
       arcade: ['run', 'stop'],
       turtle: ['run', 'stop'],
       scratch: ['green_flag', 'stop', 'costumes_tab', 'sounds_tab', 'category'],

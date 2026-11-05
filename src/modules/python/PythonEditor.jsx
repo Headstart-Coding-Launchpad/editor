@@ -114,6 +114,8 @@ export default function PythonEditor({
                 key={symbol}
                 type="button"
                 style={{ ...s.symbolBtn, ...s.touchKey }}
+                // A tutor's `key:(` highlight finds its key by this (src/shared/controlHighlight.js).
+                data-highlight-target={`key:${symbol}`}
                 onClick={() => editorRef.current?.insertAtCursor(symbol)}
               >
                 {symbol}

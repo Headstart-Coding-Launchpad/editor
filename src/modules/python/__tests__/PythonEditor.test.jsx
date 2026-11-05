@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PythonEditor from '../PythonEditor'
+import { PYTHON_HIGHLIGHT_KEYS } from '../definition.js'
 
 // CodeMirror's EditorView is not unit-tested (see docs/TESTING.md "What NOT
 // to Test") — mocked here as a forwardRef stub exposing the same
@@ -77,6 +78,19 @@ describe('PythonEditor — touch symbol bar', () => {
     await user.click(screen.getByRole('button', { name: ':' }))
 
     expect(insertAtCursor).toHaveBeenCalledWith(':')
+  })
+})
+
+describe('PythonEditor — tutor key highlight targets (request #126)', () => {
+  it('marks each touch key so a key:<symbol> highlight can find it', () => {
+    touchDevice = true
+    const { container } = render(<PythonEditor code="" onChange={vi.fn()} />)
+    for (const key of PYTHON_HIGHLIGHT_KEYS) {
+      const button = [...container.querySelectorAll('[data-highlight-target]')].find(
+        (el) => el.getAttribute('data-highlight-target') === `key:${key}`
+      )
+      expect(button?.textContent).toBe(key)
+    }
   })
 })
 

@@ -16,7 +16,8 @@ import { locateHighlight, revealPanesFor, visibleRect } from '../useControlHighl
 
 describe('control highlight targets', () => {
   it('lists Run/Stop for code modules and nothing for filesystem/desktop', () => {
-    expect(listHighlightTargets('python').map((t) => t.id)).toEqual(['run', 'stop'])
+    expect(listHighlightTargets('python').map((t) => t.id).slice(0, 2)).toEqual(['run', 'stop'])
+    expect(listHighlightTargets('turtle').map((t) => t.id)).toEqual(['run', 'stop'])
     expect(listHighlightTargets('html').map((t) => t.id)).toEqual(['run'])
     expect(moduleHasHighlightTargets('filesystem')).toBe(false)
     expect(moduleHasHighlightTargets('desktop')).toBe(false)
@@ -33,7 +34,18 @@ describe('control highlight targets', () => {
     expect(motion.revealKey).toBe('category')
   })
 
+  it('expands the Python key row into one target per key (request #126)', () => {
+    const keys = listHighlightTargets('python').filter((t) => t.group === 'Keys')
+    expect(keys.map((t) => t.id)).toEqual(expect.arrayContaining(['key::', 'key:(', 'key:)']))
+    expect(keys.find((t) => t.id === 'key:(')).toMatchObject({ label: '(', revealKey: 'key' })
+    expect(highlightTargetSelector('key:"')).toBe('[data-highlight-target~="key:\\""]')
+  })
+
   it.each([
+    ['python', 'key:(', 'key:('],
+    ['python', 'KEY:(', 'key:('],
+    ['python', 'key::', 'key::'],
+    ['python', { target: 'key: #' }, 'key:#'],
     ['scratch', 'green_flag', 'green_flag'],
     ['scratch', 'GREEN_FLAG', 'green_flag'],
     ['scratch', 'run', 'green_flag'],
@@ -53,6 +65,9 @@ describe('control highlight targets', () => {
     ['scratch', 'category:Pen'],
     ['scratch', 'green_flag:Motion'],
     ['python', 'green_flag'],
+    ['python', 'key'],
+    ['python', 'key:a'],
+    ['turtle', 'key:('],
     ['html', 'stop'],
     ['filesystem', 'run'],
     ['python', ''],
@@ -84,6 +99,10 @@ describe('validateTaskHighlight', () => {
 
   it('accepts a known target', () => {
     expect(run({ highlight: 'run' }, { moduleType: 'python' }).errors).toEqual([])
+    expect(run({ highlight: 'key:(' }, { moduleType: 'python' })).toEqual({
+      errors: [],
+      warnings: [],
+    })
     expect(run({ highlight: { target: 'category:Looks' } }, { moduleType: 'scratch' })).toEqual({
       errors: [],
       warnings: [],
@@ -93,7 +112,7 @@ describe('validateTaskHighlight', () => {
   it('rejects an unknown target, naming the module and the choices', () => {
     const { errors } = run({ highlight: 'green_flag' }, { moduleType: 'python' })
     expect(errors[0]).toMatch(/Task 1 highlight "green_flag" is not a python control/)
-    expect(errors[0]).toContain('run, stop')
+    expect(errors[0]).toContain('run, stop, key:<:|(|)|')
   })
 
   it('rejects highlight where there are no controls', () => {
