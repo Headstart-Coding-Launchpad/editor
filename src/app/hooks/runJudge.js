@@ -14,6 +14,7 @@ import { getRunCounts, taskCountsRuns } from '../../shared/runCounts.js'
 import { PYTHON_CHECK_TYPES } from '../../modules/python/checks.js'
 import { STAGE_CHECK_TYPES } from '../../shared/stage/checks.js'
 import { getPythonSlowMo, slowMoThroughRun } from '../../modules/python/slowMo/config.js'
+import { getActivityId } from '../../activities/resolve.js'
 
 /**
  * The judge of a finished runtime Run (request 131 design: the "judge" part of runWithRuntime,
@@ -152,7 +153,8 @@ function checksIn(check) {
 /**
  * Whether a finished typed redraw of `code` may tick `task` (request 131): a Python Stage task
  * ('runtime' module with the Stage), live or solo, whose every check (completion, feedback and
- * any wrapped inside one) is on LIVE_TICK_CHECK_TYPES. Never for submit mode, Python tests,
+ * any wrapped inside one) is on LIVE_TICK_CHECK_TYPES. Typed code tasks only: never an activity
+ * or a code_arrange task (its program comes from tiles, not typing). Never for submit mode, Python tests,
  * input() in the code or setupCode (a redraw replays old answers), the name-tag panel or run
  * counts, an on-idle feedback check, a run_attempted check ("press Run and watch"), a task whose
  * Run plays in slow-mo, predict mode's Run lock, the presentation window, the Builder preview or
@@ -172,6 +174,7 @@ export function liveTickEligible({
   if (phase !== 'lesson' && phase !== 'solo') return false
   if (teacherPresentation || previewMode || inPersonalSandbox || predictRunLocked) return false
   if (definition.capabilities?.run !== 'runtime' || !definition.runResult?.stage) return false
+  if (getActivityId(task) !== null) return false
   if (task.interactionMode === 'submit' || task.tests?.length > 0) return false
   if (codeCallsInput(code) || codeCallsInput(task.setupCode)) return false
   if (getShowVariables(task) || getRunCounts(task) != null || taskCountsRuns(task)) return false

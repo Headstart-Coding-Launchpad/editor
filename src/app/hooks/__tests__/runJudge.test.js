@@ -168,6 +168,8 @@ describe('liveTickEligible (request 131: a typed redraw may tick the task)', () 
   it.each([
     ['no check', { check: undefined }],
     ['submit mode', { interactionMode: 'submit' }],
+    ['code_arrange tiles', { taskType: 'code_arrange' }],
+    ['an activity', { taskType: 'activity', activityType: 'quiz_multiple_choice' }],
     ['Python tests', { tests: [{ id: 'a', check: task.check }] }],
     ['input() in setupCode', { setupCode: 'x = input()' }],
     ['name tags', { showVariables: { mode: 'view' } }],
