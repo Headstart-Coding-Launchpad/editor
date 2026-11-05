@@ -2150,6 +2150,9 @@ export function useStudentCodeState({
       task,
       definition,
       code,
+      // The task's starter work as code (its starter stage's, else starterCode).
+      starterCode:
+        task && definition ? storedWork(moduleType, definition.workSlot.starter(task)).work : null,
       phase: phaseRef.current,
       teacherPresentation,
       previewMode,

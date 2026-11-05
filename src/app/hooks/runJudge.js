@@ -129,14 +129,60 @@ export function judgeRun({
   }
 }
 
-/**
- * The check types a typed redraw may tick on (request 131): an ALLOW-list. Each reads only what
- * the redraw's own run gives exactly as a Run of the same code does (the same runtime.run with
- * the task: output, status, code, captured variables, the Stage drawing and its target). Anything
- * else (run_attempted's `ran`, the name-tag panel's predictions, run counts, answers, input
- * checks, any type added later) ticks on Run only until it is listed here.
- */
-export const LIVE_TICK_CHECK_TYPES = Object.freeze([
+// Request 131: which checks a typed redraw may tick on. A redraw runs half-typed code as the
+// student types, so a COMPLETION check must need positive evidence of the right answer: it may
+// not pass on trivial, unchanged or half-typed code. Classified per canonical type (aliases such
+// as output_contains / code_does_not_contain are normalised first); every type not listed here,
+// including any added later, ticks on Run only (runJudge.test.js lists each registry type and its
+// decision):
+// - output, code: only the positive operators (contains, equals, matches_regex); never not_*.
+// - code_structure: nested_in, directly_nested_in; never not_nested_in.
+// - stage_matches_target, stage_colour_used, stage_pixel: yes (something specific is drawn).
+// - stage_text_shown: its positive operators (all of them; contains by default).
+// - stage_shape_count: at least min (min >= 1, or neither min nor max: at least 1) or exactly
+//   min (min === max >= 1); never an upper bound alone, a min of 0 or a range.
+// - variable_equals, variable_dict_contains, variable_dict_equals, variable_dict_key_value,
+//   variable_array_contains, variable_array_equals, variable_array_nth_item: yes (a value).
+// - no: code_no_error, output_not_empty, output_empty, output_line_count, max_lines (pass on
+//   any or trivial code), variable_exists, variable_type (pass on half-typed code),
+//   variable_not_equals (negative), run_attempted, answer, the name-tag panel's and run counts'
+//   checks, input checks and every other module's checks.
+const POSITIVE_TEXT_OPERATORS = ['contains', 'equals', 'matches_regex']
+const positiveText = (check) => POSITIVE_TEXT_OPERATORS.includes(check.operator)
+const always = () => true
+function finiteOrNull(value) {
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+export const LIVE_TICK_COMPLETION_CHECKS = Object.freeze({
+  output: positiveText,
+  code: positiveText,
+  code_structure: (check) => ['nested_in', 'directly_nested_in'].includes(check.operator),
+  stage_matches_target: always,
+  stage_colour_used: always,
+  stage_pixel: always,
+  stage_text_shown: (check) => POSITIVE_TEXT_OPERATORS.includes(check.operator ?? 'contains'),
+  stage_shape_count: (check) => {
+    const min = finiteOrNull(check.min)
+    const max = finiteOrNull(check.max)
+    if (max === null) return min === null || min >= 1
+    return min !== null && min >= 1 && min === max
+  },
+  variable_equals: always,
+  variable_dict_contains: always,
+  variable_dict_equals: always,
+  variable_dict_key_value: always,
+  variable_array_contains: always,
+  variable_array_equals: always,
+  variable_array_nth_item: always,
+})
+
+// A FEEDBACK check never makes a pass (it can only hold one back with its hint), so it only has
+// to read what the redraw's own run gives exactly as a Run of the same code does: output,
+// status, code, captured variables, the Stage drawing and its target. run_attempted's `ran`, the
+// name-tag panel's predictions, run counts, answers, input checks and any type added later: no.
+export const LIVE_TICK_FEEDBACK_CHECK_TYPES = Object.freeze([
   'output',
   'output_line_count',
   'output_not_empty',
@@ -149,25 +195,59 @@ export const LIVE_TICK_CHECK_TYPES = Object.freeze([
   ...PYTHON_CHECK_TYPES,
 ])
 
-// A check (or list) whose every entry is a plain check of a listed type. Strict, and flat: no
-// evaluator reads checks nested in a check (`check` / `checks` keys), so an entry carrying one,
-// an entry with no type, or any unlisted type means no live tick.
-function allLiveTickChecks(check) {
+// The entries of a check (or list), each normalised; null when any entry is not a plain check.
+// Strict, and flat: no evaluator reads checks nested in a check (`check` / `checks` keys), so an
+// entry carrying one, or an entry with no type, means no live tick.
+function plainChecks(check) {
   const entries = check == null ? [] : Array.isArray(check) ? check : [check]
-  return entries.every(
-    (c) =>
-      c != null &&
-      typeof c === 'object' &&
-      c.check === undefined &&
-      c.checks === undefined &&
-      LIVE_TICK_CHECK_TYPES.includes(normalizeCheckShape(c)?.type)
-  )
+  const plain = []
+  for (const c of entries) {
+    if (c == null || typeof c !== 'object' || c.check !== undefined || c.checks !== undefined) {
+      return null
+    }
+    const normalized = normalizeCheckShape(c)
+    if (typeof normalized?.type !== 'string') return null
+    plain.push(normalized)
+  }
+  return plain
+}
+
+/** Whether one completion check may tick a typed redraw (LIVE_TICK_COMPLETION_CHECKS). */
+export function liveTickCompletionCheck(check) {
+  const plain = plainChecks(check)
+  if (!plain || plain.length !== 1) return false
+  const rule = Object.prototype.hasOwnProperty.call(LIVE_TICK_COMPLETION_CHECKS, plain[0].type)
+    ? LIVE_TICK_COMPLETION_CHECKS[plain[0].type]
+    : null
+  return rule?.(plain[0]) === true
+}
+
+function allCompletionChecksTick(check) {
+  const plain = plainChecks(check)
+  return !!plain && plain.length > 0 && plain.every((c) => liveTickCompletionCheck(c))
+}
+
+function allFeedbackChecksReadable(checks) {
+  const plain = plainChecks(checks)
+  return !!plain && plain.every((c) => LIVE_TICK_FEEDBACK_CHECK_TYPES.includes(c.type))
+}
+
+// Code the same as the starter, but for trailing spaces and blank lines at either end.
+function sameCode(a, b) {
+  const plain = (text) =>
+    String(text ?? '')
+      .replace(/[ \t]+$/gm, '')
+      .trim()
+  return plain(a) === plain(b)
 }
 
 /**
  * Whether a finished typed redraw of `code` may tick `task` (request 131): a Python Stage task
- * ('runtime' module with the Stage), live or solo, whose every check (completion and feedback)
- * is on LIVE_TICK_CHECK_TYPES. Typed code tasks only: never an activity or a code_arrange task
+ * ('runtime' module with the Stage), live or solo, whose every completion check needs positive
+ * evidence (LIVE_TICK_COMPLETION_CHECKS) and every feedback check reads only the redraw's own run
+ * (LIVE_TICK_FEEDBACK_CHECK_TYPES), with code that is not the task's starter (`starterCode`, the
+ * starter work's code: a pass on unchanged starter code is not the student's work). Typed code
+ * tasks only: never an activity or a code_arrange task
  * (its program comes from tiles, not typing), nor a copyCode task (its first Run measures how far
  * the code is from the copy, typingStats.noteRun). Never for submit mode, Python tests,
  * input() in the code or setupCode (a redraw replays old answers), the name-tag panel or run
@@ -179,6 +259,7 @@ export function liveTickEligible({
   task,
   definition,
   code,
+  starterCode,
   phase,
   teacherPresentation,
   previewMode,
@@ -186,6 +267,7 @@ export function liveTickEligible({
   predictRunLocked,
 }) {
   if (!task?.check || !definition) return false
+  if (sameCode(code, starterCode) || sameCode(code, task.starterCode)) return false
   if (phase !== 'lesson' && phase !== 'solo') return false
   if (teacherPresentation || previewMode || inPersonalSandbox || predictRunLocked) return false
   if (definition.capabilities?.run !== 'runtime' || !definition.runResult?.stage) return false
@@ -198,5 +280,5 @@ export function liveTickEligible({
   if (slowMoThroughRun(getPythonSlowMo(task))) return false
   const feedback = normalizeFeedbackChecks(task)
   if (feedback.some((c) => c.show !== FEEDBACK_TIMING.AFTER_ATTEMPT)) return false
-  return allLiveTickChecks(task.check) && allLiveTickChecks(feedback)
+  return allCompletionChecksTick(task.check) && allFeedbackChecksReadable(feedback)
 }

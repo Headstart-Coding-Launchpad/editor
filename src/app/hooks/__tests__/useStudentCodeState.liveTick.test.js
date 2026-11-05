@@ -522,6 +522,33 @@ describe('tasks and places that never tick while typing', () => {
     expectNoRecords(h)
   })
 
+  it('code typed back to a starter that already passes (not the student’s work)', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ starterCode: RIGHT }),
+      currentTaskId: 't1',
+    })
+    await typeAndPause(h, `${RIGHT}  \n`)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // Their own change to it does tick.
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it.each([
+    ['code_no_error', { type: 'code_no_error' }],
+    ['output_not_empty', { type: 'output_not_empty' }],
+    ['a negative code check', { type: 'code_does_not_contain', value: 'while' }],
+    ['an upper-bound stage count', { type: 'stage_shape_count', max: 3 }],
+  ])('a completion check that passes on trivial code: %s', async (_name, check) => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson({ check }), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
   it('input() in the code', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
