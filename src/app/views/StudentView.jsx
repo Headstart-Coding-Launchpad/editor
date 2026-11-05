@@ -123,6 +123,9 @@ export default function StudentView({
   showPreviewBanner = true,
   initialTaskId = null,
   onTaskChange = null,
+  // A playground's own top-bar buttons (Switch kit, Help topics; PlaygroundView). Shown only when
+  // the lesson is a playground.
+  playgroundControls = null,
 }) {
   const lessonId = lessonIdProp ?? lessonProp?.id ?? 'preview'
   const sessionKey = sessionKeyProp ?? lessonId
@@ -1637,6 +1640,7 @@ export default function StudentView({
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
+      {isPlayground && playgroundControls}
       <ClassCountdownPill
         countdown={classCountdown}
         serverTimeOffset={serverTimeOffset}

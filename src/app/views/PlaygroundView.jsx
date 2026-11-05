@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import StudentView from './StudentView'
 import LoadingScreen from '../components/LoadingScreen'
+import PlaygroundHelpTopics from '../components/PlaygroundHelpTopics'
 import { PLAYGROUND_LESSON_TYPES } from '../../shared/composedLesson'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 
@@ -30,6 +31,16 @@ export default function PlaygroundView() {
   const lesson = useMemo(() => (PLAYGROUND_TYPES.has(type) ? makeLesson(type) : null), [type])
   if (!lesson) return <LoadingScreen error="That playground is not available." />
   return (
-    <StudentView lessonId={lesson.id} lesson={lesson} forceSolo allowUnrestrictedTaskNavigation />
+    <StudentView
+      lessonId={lesson.id}
+      lesson={lesson}
+      forceSolo
+      allowUnrestrictedTaskNavigation
+      playgroundControls={<PlaygroundHelpTopics type={type} style={s.topBarBtn} />}
+    />
   )
+}
+
+const s = {
+  topBarBtn: { fontSize: 13, padding: '5px 10px', whiteSpace: 'nowrap', flexShrink: 0 },
 }
