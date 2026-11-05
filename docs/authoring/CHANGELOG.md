@@ -41,14 +41,19 @@ Entries written before 2026-09-29 are not tagged.
 
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
   picture instead of words: `image` (an `https://` URL, normally a lesson asset from `assets
-  upload`) or `emoji`, with required `alt` text and an optional `text` caption. Students see 2-4
-  equal picture cards (side by side, 2x2 for four, one column on a narrow screen) and one tap
-  chooses and submits, as before; the stored answer is still the option id. The tutor card shows
-  a thumbnail of the chosen picture. Validation: `alt` required, `https` only, 2 to 4 options,
-  a warning when only some options have pictures, and no pictures on polls. Pictures are authored
-  in YAML for now (the Builder keeps them and shows them read-only). A picture in the question
-  (`explainer` Markdown) with word or code options already worked and is now documented. See
-  [quiz-tasks.md](quiz-tasks.md#picture-options).
+  upload`) or `emoji` (one emoji), with required `alt` text and an optional `text` caption.
+  Students see 2-4 equal picture cards (side by side, 2x2 for four, one column when the options
+  area is under 480px) and one tap chooses and submits, as before; the stored answer is still the
+  option id. A word option in a picture quiz is drawn as a normal word card. `https` is enforced
+  again when the card is drawn: any other image, or one that fails to load, shows the emoji, else
+  the alt text. Screen readers hear "caption: alt". The tutor card shows a thumbnail of the chosen
+  picture. Validation: `alt` required (200 characters at most), `https` only, `image` or `emoji`
+  but not both, one emoji, text values only, 2 to 4 options, a warning when only some options have
+  pictures, and no pictures on any other quiz type. Pictures are added in YAML for now; the
+  Builder edits the alt text and caption, removes a picture, stops a picture quiz at 4 options,
+  and turns pictures into words when the quiz is switched to another type. A picture in the
+  question (`explainer` Markdown) with word or code options already worked and is now
+  documented. See [quiz-tasks.md](quiz-tasks.md#picture-options).
   - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves:
     authoring-requests/2026-11-05-picture-answer-options-in-multiple-choice-quizzes.md
 
