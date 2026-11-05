@@ -216,11 +216,12 @@ async function clearLessonChildCollection(lessonId, collectionName) {
 }
 
 async function clearLessonRunData(lessonId) {
-  const [reportsDeleted, feedbackDeleted] = await Promise.all([
+  const [reportsDeleted, feedbackDeleted, reviewNotesDeleted] = await Promise.all([
     clearLessonChildCollection(lessonId, 'sessionReports'),
     clearLessonChildCollection(lessonId, 'feedback'),
+    clearLessonChildCollection(lessonId, 'reviewNotes'),
   ])
-  return { reportsDeleted, feedbackDeleted }
+  return { reportsDeleted, feedbackDeleted, reviewNotesDeleted }
 }
 
 // Lesson list rows, in the shared LaunchPad order (src/shared/lessonOrder.js): by level, then
@@ -390,7 +391,7 @@ export async function upsertLesson(lesson) {
 export async function deleteLesson(id) {
   const snap = await db.collection('lessons').doc(id).get()
   if (!snap.exists) throw new Error(`Lesson '${id}' not found`)
-  // Match the web app's deletePublishedLesson: session reports and feedback live in
+  // Match the web app's deletePublishedLesson: session reports, feedback and review notes live in
   // subcollections that Firestore does not remove with the parent document.
   const cleared = await clearLessonRunData(id)
   await db.collection('lessons').doc(id).delete()

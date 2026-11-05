@@ -206,21 +206,23 @@ describe('CLI lesson Firestore encoding', () => {
     expect(resealed.version).toBe(stored.version)
   })
 
-  it('clears session reports and feedback when deleting a lesson, like the web app', async () => {
+  it('clears session reports, feedback and review notes when deleting a lesson, like the web app', async () => {
     await upsertLesson(scratchLesson)
     state.records.set('lessons/deep-scratch/sessionReports/r1', { id: 'r1' })
     state.records.set('lessons/deep-scratch/feedback/f1', { id: 'f1' })
+    state.records.set('lessons/deep-scratch/reviewNotes/n1', { status: 'done' })
 
     const result = await deleteLesson('deep-scratch')
 
     expect(result).toMatchObject({
       success: true,
-      cleared: { reportsDeleted: 1, feedbackDeleted: 1 },
+      cleared: { reportsDeleted: 1, feedbackDeleted: 1, reviewNotesDeleted: 1 },
     })
     expect(state.deleted).toEqual(
       expect.arrayContaining([
         'lessons/deep-scratch/sessionReports/r1',
         'lessons/deep-scratch/feedback/f1',
+        'lessons/deep-scratch/reviewNotes/n1',
         'lessons/deep-scratch',
       ])
     )

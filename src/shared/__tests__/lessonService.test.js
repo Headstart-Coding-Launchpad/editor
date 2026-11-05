@@ -231,16 +231,36 @@ describe('deletePublishedLesson', () => {
     // reliably corresponds to sessionReports first, feedback second.
     const reportRef = { id: 'report-1' }
     const feedbackRef = { id: 'feedback-1' }
+    const noteRef = { id: 'note-1' }
     mockGetDocs
       .mockResolvedValueOnce({ docs: [{ ref: reportRef }] })
       .mockResolvedValueOnce({ docs: [{ ref: feedbackRef }] })
+      .mockResolvedValueOnce({ docs: [{ ref: noteRef }] })
     mockDeleteDoc.mockResolvedValue(undefined)
 
     await deletePublishedLesson('python-1-1')
 
     expect(mockBatchDelete).toHaveBeenCalledWith(reportRef)
     expect(mockBatchDelete).toHaveBeenCalledWith(feedbackRef)
+    expect(mockBatchDelete).toHaveBeenCalledWith(noteRef)
     expect(mockBatchCommit).toHaveBeenCalled()
+    expect(mockDeleteDoc).toHaveBeenCalledWith({
+      firestore: {},
+      collectionName: 'lessons',
+      id: 'python-1-1',
+    })
+  })
+
+  it('still deletes the lesson when review notes are refused (their rules not yet deployed)', async () => {
+    mockGetDocs
+      .mockResolvedValueOnce({ docs: [] })
+      .mockResolvedValueOnce({ docs: [] })
+      .mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    mockDeleteDoc.mockClear()
+    mockDeleteDoc.mockResolvedValue(undefined)
+
+    await deletePublishedLesson('python-1-1')
+
     expect(mockDeleteDoc).toHaveBeenCalledWith({
       firestore: {},
       collectionName: 'lessons',

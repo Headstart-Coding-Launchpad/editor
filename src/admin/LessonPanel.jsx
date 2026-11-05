@@ -388,7 +388,7 @@ export default function LessonPanel({ view = 'lessons' }) {
     const forkId = makeForkLessonId(lesson.id, cls.id)
     const exists = lessons.some((item) => item.id === forkId)
     const message = exists
-      ? `Overwrite fork "${forkId}" with a fresh copy of "${lesson.title || lesson.id}" for ${cls.name}? Existing fork edits, reports, and feedback will be cleared.`
+      ? `Overwrite fork "${forkId}" with a fresh copy of "${lesson.title || lesson.id}" for ${cls.name}? Existing fork edits, reports, feedback and preview notes will be cleared.`
       : `Create fork "${forkId}" from "${lesson.title || lesson.id}" for ${cls.name}?`
     if (!window.confirm(message)) return
 

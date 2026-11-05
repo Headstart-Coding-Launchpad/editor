@@ -81,7 +81,7 @@ export async function publishLessonTasks(lessonId, tasks) {
 
 // Deletes a published lesson document. Firestore does not cascade-delete
 // subcollections, so this also purges the lesson's sessionReports/feedback
-// subcollections first — otherwise a deleted lesson silently leaves orphaned
+// (and reviewNotes) subcollections first — otherwise a deleted lesson silently leaves orphaned
 // run data behind despite the admin UI describing the delete as unrecoverable.
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
@@ -108,12 +108,25 @@ async function clearLessonChildCollection(lessonId, collectionName) {
   return snap.size
 }
 
+// Preview review notes (lessons/{id}/reviewNotes) go with the lesson too. Until their rules are
+// deployed the read is refused, and then no note can exist, so a refusal counts as none
+// rather than blocking the delete.
+async function clearLessonReviewNotes(lessonId) {
+  try {
+    return await clearLessonChildCollection(lessonId, 'reviewNotes')
+  } catch (err) {
+    if (err?.code === 'permission-denied') return 0
+    throw err
+  }
+}
+
 export async function clearLessonRunData(lessonId) {
-  const [reportsDeleted, feedbackDeleted] = await Promise.all([
+  const [reportsDeleted, feedbackDeleted, reviewNotesDeleted] = await Promise.all([
     clearLessonChildCollection(lessonId, 'sessionReports'),
     clearLessonChildCollection(lessonId, 'feedback'),
+    clearLessonReviewNotes(lessonId),
   ])
-  return { reportsDeleted, feedbackDeleted }
+  return { reportsDeleted, feedbackDeleted, reviewNotesDeleted }
 }
 
 export async function publishLessonFork(sourceLesson, classRecord) {
