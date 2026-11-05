@@ -9,6 +9,8 @@ import {
 } from '../../shared/confidenceScale.js'
 import { parsePollChoice } from '../../shared/classPolls.js'
 import { getTaskActivity } from '../registry.pure.js'
+import { optionHasPicture } from '../../shared/quizPictureOptions.js'
+import { QuizOptionPicture } from '../../app/components/quiz/QuizOptionPicture.jsx'
 
 // Shared UI for the legacy quiz activities: each quiz_<type>/ui.jsx hosts the existing quiz
 // components (QuizTask dispatches to src/app/components/quiz/* by quizType) through
@@ -167,8 +169,16 @@ export function ChoiceCardSummary({ task, raw }) {
     )
   }
   const text = getQuizOptionText(task, raw)
+  const option = task?.quizType === 'poll' ? null : task?.options?.find((o) => o.id === raw)
   return (
     <>
+      {optionHasPicture(option) && (
+        <QuizOptionPicture
+          option={option}
+          size={40}
+          style={{ borderRadius: 6, background: '#fff', border: '1px solid #e5e7eb' }}
+        />
+      )}
       <span style={cardStyles.answerId}>{raw}</span>
       <span style={cardStyles.answerText}>
         {text ? <InlineMarkdown content={text} /> : 'Selected answer'}

@@ -3,13 +3,26 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import QuizTask from '../QuizTask'
-import { ChoiceCardSummary, QuizActivityStudentView } from '../../../activities/quiz/QuizActivityViews'
+import {
+  ChoiceCardSummary,
+  QuizActivityStudentView,
+} from '../../../activities/quiz/QuizActivityViews'
+import { QuizOptionsBuilder } from '../../../activities/quiz_multiple_choice/ui.jsx'
+
+vi.mock('../../../shared/useLessonStorageAssets', () => ({
+  useLessonStorageAssets: () => ({ storageAssets: [], loading: false, error: null }),
+}))
+
+vi.mock('../../../shared/useTypeAssets', () => ({
+  useTypeAssets: () => ({ typeStorageAssets: [], loading: false, error: null }),
+}))
 
 // Platform request 128: picture answer options in a multiple-choice quiz. The Fun moment: the
 // child looks at four pictures, taps the one their prediction says the code will draw, and it
 // is chosen (and submitted) exactly as a word answer is today.
 
-const png = (name) => `https://firebasestorage.googleapis.com/v0/b/x/o/lessons%2Fl1%2Fassets%2F${name}.png`
+const png = (name) =>
+  `https://firebasestorage.googleapis.com/v0/b/x/o/lessons%2Fl1%2Fassets%2F${name}.png`
 
 const PICTURE_TASK = {
   id: 17,
@@ -136,7 +149,8 @@ describe('picture answer options (Fun moment)', () => {
       title: 'Which code drew this?',
       taskType: 'quiz',
       quizType: 'multiple_choice',
-      explainer: 'Which code drew this?\n\n![Red circle in the middle](https://example.com/stage.png)',
+      explainer:
+        'Which code drew this?\n\n![Red circle in the middle](https://example.com/stage.png)',
       options: [
         { id: 'a', text: '`circle(50, "red")`' },
         { id: 'b', text: '`write("hi")`' },
@@ -148,6 +162,27 @@ describe('picture answer options (Fun moment)', () => {
     expect(picture.style.maxHeight).toBe('min(240px, 32vh)')
     expect(screen.getAllByRole('radio')).toHaveLength(2)
     expect(screen.getByRole('radiogroup')).not.toHaveAttribute('data-picture-columns')
+  })
+})
+
+describe('picture options: the Builder editor (pictures are authored in YAML for now)', () => {
+  it('shows each picture read-only and keeps image and alt when the options change', async () => {
+    const user = userEvent.setup()
+    const onUpdate = vi.fn()
+    render(<QuizOptionsBuilder task={PICTURE_TASK} onUpdate={onUpdate} />)
+    expect(
+      within(screen.getByTestId('quiz-option-picture-a')).getByRole('img', {
+        name: 'Red circle above a blue background',
+      })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getAllByTitle('Remove option')[1])
+    const next = onUpdate.mock.calls.at(-1)[0]
+    expect(next.options).toEqual([
+      PICTURE_TASK.options[0],
+      { ...PICTURE_TASK.options[2], id: 'b' },
+      { ...PICTURE_TASK.options[3], id: 'c' },
+    ])
   })
 })
 

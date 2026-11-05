@@ -1470,6 +1470,27 @@ select {
   word-break: normal;
 }
 
+/* Picture answer options (MultipleChoiceQuiz, request 128): 2 or 3 equal cards side by side,
+   4 as a 2x2 grid, and one column when the quiz pane is under 480px wide. */
+.quiz-picture-frame {
+  container-type: inline-size;
+}
+
+.quiz-picture-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.quiz-picture-grid[data-picture-columns='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@container (max-width: 480px) {
+  .quiz-picture-grid,
+  .quiz-picture-grid[data-picture-columns='3'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* The tutor's information task sits in a centre column that can be much narrower than the
    window (a tablet with the students panel open), so it lays out by the column's width:
    the recap stacks and floated images drop under their text, instead of squashing the text
@@ -2420,6 +2441,14 @@ select {
 }
 .te-quiz-option-editor {
   min-width: 0;
+}
+.te-quiz-option-picture {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--colour-muted);
 }
 .te-quiz-answer-stack {
   display: flex;

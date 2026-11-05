@@ -16,6 +16,12 @@ import {
 } from '../shared/codeArrangeIndent.js'
 import { evaluateSingleCheck, isCodeCheck, normalizeChecks } from '../modules/checks.js'
 import { joinFileContents } from '../modules/moduleContract.js'
+import {
+  PICTURE_QUIZ_MAX_OPTIONS,
+  isHttpsUrl,
+  optionHasPicture,
+  quizHasPictureOptions,
+} from '../shared/quizPictureOptions.js'
 
 // Module types a code-arrange task can run in. Python first: the Builder's default.
 export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html', 'turtle'])
@@ -23,13 +29,40 @@ export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html', 'turtl
 // The code-arrange host modules whose code is Python (indent mode, the solution's indent check).
 export const CODE_ARRANGE_PYTHON_MODULE_TYPES = Object.freeze(['python', 'turtle'])
 
+// Picture answer options (docs/authoring/quiz-tasks.md "Picture options"): 2 to 4 options,
+// alt text on every picture, https images, and every option should have a picture.
+function validatePictureOptions(task, { n, errors, warnings }) {
+  for (const option of task.options) {
+    if (!optionHasPicture(option)) {
+      warnings.push(
+        `Task ${n} is a quiz with picture options but option ${option?.id} has no picture (all options should have a picture)`
+      )
+      continue
+    }
+    if (typeof option.alt !== 'string' || !option.alt.trim())
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has a picture with no alt text (say what the picture shows in alt)`
+      )
+    if (option.image != null && !isHttpsUrl(option.image))
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has an image that is not an https URL (upload it with lessons assets upload and use the URL it gives)`
+      )
+  }
+  if (task.options.length > PICTURE_QUIZ_MAX_OPTIONS)
+    errors.push(
+      `Task ${n} is a quiz with picture options but has more than ${PICTURE_QUIZ_MAX_OPTIONS} options (picture quizzes take 2 to ${PICTURE_QUIZ_MAX_OPTIONS})`
+    )
+}
+
 export function validateQuizTask(task, { n, errors, warnings = [] }) {
   const quizType = task.quizType ?? 'multiple_choice'
   if (quizType === 'multiple_choice') {
     if (!task.options || task.options.length < 2)
       errors.push(`Task ${n} is a quiz but has fewer than 2 options`)
-    if (task.options?.some((option) => !option.text?.trim()))
+    // A picture option may leave its caption (`text`) empty.
+    if (task.options?.some((option) => !optionHasPicture(option) && !option.text?.trim()))
       errors.push(`Task ${n} is a quiz but has an empty option text`)
+    if (quizHasPictureOptions(task)) validatePictureOptions(task, { n, errors, warnings })
     if (task.check?.type !== 'answer_equals' || !task.check.value)
       errors.push(`Task ${n} is a quiz but no correct answer has been selected`)
     else if (
@@ -58,6 +91,10 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
     if (task.options?.length > 6) errors.push(`Task ${n} is a poll but has more than 6 options`)
     if (task.options?.some((option) => !option.text?.trim()))
       errors.push(`Task ${n} is a poll but has an empty option text`)
+    for (const option of (task.options ?? []).filter(optionHasPicture))
+      errors.push(
+        `Task ${n} is a poll but option ${option.id} has a picture (picture options work in multiple-choice quizzes only)`
+      )
     const ids = (task.options ?? []).map((option) => option?.id)
     if (ids.some((id) => typeof id !== 'string' || !id.trim()))
       errors.push(`Task ${n} is a poll but has an option with no id`)
@@ -340,7 +377,8 @@ function solutionHtmlSource(task, code) {
 
 export function quizHasStarter(task) {
   const quizType = task.quizType ?? 'multiple_choice'
-  if (quizType === 'multiple_choice') return task.options?.some((option) => option.text?.trim())
+  if (quizType === 'multiple_choice')
+    return task.options?.some((option) => option.text?.trim() || optionHasPicture(option))
   if (quizType === 'match')
     return task.pairs?.some((pair) => pair.prompt?.trim() || pair.answer?.trim())
   if (quizType === 'fill_blank')

@@ -4,6 +4,12 @@ import CheckFeedbackBanner from '../CheckFeedbackBanner'
 import { encodePollChoice, parsePollChoice } from '../../../shared/classPolls'
 import { useChoiceEntrance } from '../../../activities/ui/choiceEntrance.jsx'
 import {
+  optionHasPicture,
+  quizHasPictureOptions,
+  quizOptionLabel,
+} from '../../../shared/quizPictureOptions'
+import { QuizOptionPicture } from './QuizOptionPicture'
+import {
   baseStyles as s,
   fitScratchQuizScale,
   normalizeQuizAnswerText,
@@ -32,6 +38,7 @@ export default function MultipleChoiceQuiz({
   const ticked = multiple ? parsePollChoice(selectedAnswer) : []
   const correctId = task?.check?.type === 'answer_equals' ? task.check.value : null
   const revealAnswers = showCorrectAnswer && submitted && disabled && correctId
+  const correctOption = options.find((o) => o.id === correctId)
   const locked = disabled || (submitted && checkPassed)
   const optionsFrameRef = React.useRef(null)
   const optionsGridRef = React.useRef(null)
@@ -43,6 +50,11 @@ export default function MultipleChoiceQuiz({
   // student in the room a different order, which is why neither the colour nor the letter
   // could be used to refer to an answer out loud.
   const displayedOptions = options
+
+  // Picture answer options (request 128): equal cards in a grid (2 or 3 side by side, 4 as
+  // 2x2, one column in a narrow pane via .quiz-picture-frame in index.css). Never on a poll.
+  const pictureMode = !multiple && task?.quizType !== 'poll' && quizHasPictureOptions(task)
+  const pictureColumns = options.length === 3 ? 3 : 2
 
   React.useLayoutEffect(() => {
     const container = optionsFrameRef.current
@@ -88,10 +100,16 @@ export default function MultipleChoiceQuiz({
   return (
     <div style={s.wrap}>
       {showQuestion && <QuestionPanel task={task} />}
-      <div ref={optionsFrameRef} style={s.optionsFrame}>
+      <div
+        ref={optionsFrameRef}
+        style={s.optionsFrame}
+        className={pictureMode ? 'quiz-picture-frame' : undefined}
+      >
         <div
           ref={optionsGridRef}
-          style={s.options}
+          style={pictureMode ? { ...s.options, ...s.pictureOptions } : s.options}
+          className={pictureMode ? 'quiz-picture-grid' : undefined}
+          data-picture-columns={pictureMode ? pictureColumns : undefined}
           role={multiple ? 'group' : 'radiogroup'}
           aria-label={task?.title ?? 'Quiz options'}
         >
@@ -127,6 +145,66 @@ export default function MultipleChoiceQuiz({
             }
 
             const optionEntrance = entrance(index)
+            const onKeyDown = (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                chooseOption()
+              }
+            }
+
+            if (pictureMode) {
+              const caption = optionText.trim()
+              // The tick badge: ✓ on the chosen card (or the revealed right answer), ✗ on a
+              // chosen wrong answer once a tutor's view reveals the verdict.
+              const badge = isWrong ? '✗' : active || isCorrect ? '✓' : null
+              const ring = verdict ? verdict.border : colour.active
+              return (
+                <div
+                  key={option.id}
+                  role="radio"
+                  aria-checked={active}
+                  aria-disabled={locked || undefined}
+                  aria-label={caption || quizOptionLabel(option)}
+                  tabIndex={locked ? -1 : 0}
+                  className={optionEntrance.className}
+                  style={{
+                    ...s.pictureOption,
+                    borderColor: verdict ? verdict.border : colour.border,
+                    background: active && !verdict ? colour.background : '#fff',
+                    ...(active || isCorrect || isWrong
+                      ? {
+                          boxShadow: `inset 0 0 0 4px ${ring}, 0 6px 18px rgba(17, 24, 39, 0.18)`,
+                          zIndex: 2,
+                        }
+                      : {}),
+                    ...optionEntrance.style,
+                  }}
+                  onClick={chooseOption}
+                  onKeyDown={onKeyDown}
+                >
+                  <span style={{ ...s.pictureOptionId, background: colour.active }}>
+                    {option.id}
+                  </span>
+                  {badge && (
+                    <span
+                      data-testid="quiz-picture-tick"
+                      aria-hidden="true"
+                      style={{ ...s.pictureTick, background: ring }}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                  <div style={s.pictureBox}>
+                    <QuizOptionPicture option={option} />
+                  </div>
+                  {caption && (
+                    <div className="quiz-option-text" style={s.pictureCaption}>
+                      <InlineMarkdown content={caption} />
+                    </div>
+                  )}
+                </div>
+              )
+            }
 
             return (
               <div
@@ -145,12 +223,7 @@ export default function MultipleChoiceQuiz({
                   ...optionEntrance.style,
                 }}
                 onClick={chooseOption}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    chooseOption()
-                  }
-                }}
+                onKeyDown={onKeyDown}
               >
                 <span
                   style={{
@@ -200,11 +273,20 @@ export default function MultipleChoiceQuiz({
       {revealAnswers && !checkPassed && (
         <div style={s.correctAnswerNote}>
           Correct answer:{' '}
+          {optionHasPicture(correctOption) && (
+            <QuizOptionPicture
+              option={correctOption}
+              size={40}
+              style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}
+            />
+          )}
           <span style={s.correctAnswerText}>
             <InlineMarkdown
-              content={normalizeQuizAnswerText(
-                options.find((o) => o.id === correctId)?.text ?? correctId
-              )}
+              content={
+                optionHasPicture(correctOption)
+                  ? quizOptionLabel(correctOption)
+                  : normalizeQuizAnswerText(correctOption?.text ?? correctId)
+              }
             />
           </span>
         </div>

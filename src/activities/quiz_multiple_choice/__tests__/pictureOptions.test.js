@@ -35,17 +35,22 @@ describe('picture options: validation (one wording for the Builder and the CLI)'
   })
 
   it('an image or emoji with no alt text is an error', () => {
-    const { errors } = validate(picTask([{ ...A, alt: '' }, { id: 'b', emoji: '🦊' }]))
+    const { errors } = validate(
+      picTask([
+        { ...A, alt: '' },
+        { id: 'b', emoji: '🦊' },
+      ])
+    )
     expect(errors).toEqual([
-      'Task 1 is a quiz but option a has a picture with no alt text (say what the picture shows in `alt`)',
-      'Task 1 is a quiz but option b has a picture with no alt text (say what the picture shows in `alt`)',
+      'Task 1 is a quiz but option a has a picture with no alt text (say what the picture shows in alt)',
+      'Task 1 is a quiz but option b has a picture with no alt text (say what the picture shows in alt)',
     ])
   })
 
   it('an image that is not an https URL is an error', () => {
     const { errors } = validate(picTask([{ ...A, image: 'http://x.test/a.png' }, B]))
     expect(errors).toEqual([
-      'Task 1 is a quiz but option a has an image that is not an https URL (upload it with `lessons assets upload` and use the URL it gives)',
+      'Task 1 is a quiz but option a has an image that is not an https URL (upload it with lessons assets upload and use the URL it gives)',
     ])
   })
 
@@ -65,9 +70,14 @@ describe('picture options: validation (one wording for the Builder and the CLI)'
   })
 
   it('a plain option with no text is still an error', () => {
-    expect(validate(picTask([{ id: 'a', text: '' }, { id: 'b', text: 'x' }])).errors).toEqual([
-      'Task 1 is a quiz but has an empty option text',
-    ])
+    expect(
+      validate(
+        picTask([
+          { id: 'a', text: '' },
+          { id: 'b', text: 'x' },
+        ])
+      ).errors
+    ).toEqual(['Task 1 is a quiz but has an empty option text'])
   })
 
   it('a picture on a poll is an error (no picture polls yet)', () => {
@@ -85,7 +95,7 @@ describe('picture options: validation (one wording for the Builder and the CLI)'
     const result = definition.validateTask(picTask([{ ...A, alt: '' }, B]), { n: 1 })
     const errors = Array.isArray(result) ? result : result.errors
     expect(errors).toContain(
-      'Task 1 is a quiz but option a has a picture with no alt text (say what the picture shows in `alt`)'
+      'Task 1 is a quiz but option a has a picture with no alt text (say what the picture shows in alt)'
     )
   })
 })

@@ -150,7 +150,11 @@ isn't listed here, so add a row whenever you add a message.
 |---|---|---|
 | `Task … is an information task but has no explainer` | Information tasks are just their explainer (except `informationType: introduction` and `badges`). | Add `explainer:` Markdown. |
 | `Task … is a quiz but has fewer than 2 options` | Multiple-choice needs at least two options. | Add options. |
-| `Task … is a quiz but has an empty option text` | An option has no text. | Fill in or remove it. |
+| `Task … is a quiz but has an empty option text` | An option has no text. (A picture option, with `image` or `emoji`, may leave `text` empty: it is only a caption.) | Fill in or remove it. |
+| `Task … is a quiz but option … has a picture with no alt text (say what the picture shows in alt)` | A [picture option](quiz-tasks.md#picture-options) has `image` or `emoji` but no `alt`. Screen readers name the card by its caption or alt text, and the tutor card and reports use it. | Add `alt:` saying what the picture shows, e.g. `alt: Red circle above a blue background`. |
+| `Task … is a quiz but option … has an image that is not an https URL (upload it with lessons assets upload and use the URL it gives)` | A picture option's `image` is not an `https://` URL (a file name, `http://`, or a data URL). | Upload the PNG with `node cli/cli.mjs assets upload <lessonId> <file>` and paste the URL it prints. |
+| `Task … is a quiz with picture options but has more than … options (picture quizzes take 2 to …)` | A multiple-choice quiz with pictures has more than 4 options; they would not fit as big tap targets on an iPad. | Keep 2 to 4 options. |
+| `Task … is a quiz with picture options but option … has no picture (all options should have a picture)` (warning) | Some options have a picture and some are only words. It works, but the cards look uneven. | Give every option an `image` or `emoji` (with `alt`), or none. |
 | `Task … is a quiz but its answer "…" is not one of the option ids — set answer to the correct option's id (e.g. a)` | The multiple-choice answer matches no option `id`, so no choice could ever be marked right. In YAML, an `answer:` that matches exactly one option's text (or an id in different capitals) is turned into that option's id for you. | Set `answer:` (or `check.value`) to the correct option's `id`, e.g. `answer: b`. |
 | `Task … is a quiz but no correct answer has been selected` | No option is marked correct, or the check isn't a single `answer_equals`. | Set `answer:` to the correct option's **id** (e.g. `answer: b`), or write `check: { type: answer_equals, value: b }`. In YAML, option text is mapped to its id for you. |
 | `Task … is a match quiz but has fewer than 2 pairs` | Match quizzes need two or more pairs. | Add pairs. |
@@ -162,6 +166,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a poll but has fewer than 2 options` | A poll (`quizType: poll`) needs at least two options. | Add options. |
 | `Task … is a poll but has more than 6 options` | Polls take 2 to 6 options. | Remove options, or split the question. |
 | `Task … is a poll but has an empty option text` | A poll option has no text. | Fill in or remove it. |
+| `Task … is a poll but option … has a picture (picture options work in multiple-choice quizzes only)` | A poll option has `image` or `emoji`. Picture options are multiple-choice only for now. | Remove `image` / `emoji` (and `alt`) from the poll's options, or use a multiple-choice quiz. |
 | `Task … is a poll but has an option with no id` | A poll option has no `id`. | Give each option an id (`a`, `b`, …), as for multiple choice. |
 | `Task … is a poll but has duplicate option ids` | Two poll options share an `id`. | Give each option its own id. |
 | `Task … is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored` (warning) | A confidence task sets `scale`. Every confidence check is 1 to 10. | Remove `scale`. |

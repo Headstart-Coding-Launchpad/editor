@@ -4,6 +4,8 @@ import { Field } from '../ui/BuilderField.jsx'
 import { QuizTypeIcon } from '../quiz/QuizTypeIcon.jsx'
 import { switchQuizType } from '../quiz/quizBuilder.js'
 import { ChoiceCardSummary, QuizActivityStudentView } from '../quiz/QuizActivityViews.jsx'
+import { QuizOptionPicture } from '../../app/components/quiz/QuizOptionPicture.jsx'
+import { optionHasPicture } from '../../shared/quizPictureOptions.js'
 
 // Builder editor (moved from src/builder/components/task-editor/QuizEditors.jsx, unchanged).
 export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
@@ -70,15 +72,32 @@ export function QuizOptionsBuilder({ task, onUpdate, lessonType = null }) {
               </span>
             </label>
             <div className="te-quiz-option-editor">
+              {/* Picture options are authored in YAML / the CLI for now (request 128); the
+                  Builder shows the picture read-only and keeps image, emoji and alt on edit. */}
+              {optionHasPicture(option) && (
+                <div
+                  className="te-quiz-option-picture"
+                  data-testid={`quiz-option-picture-${option.id}`}
+                >
+                  <QuizOptionPicture option={option} size={56} />
+                  <span>
+                    <strong>Picture</strong> (set in the lesson YAML): {option.alt || 'no alt text'}
+                  </span>
+                </div>
+              )}
               <MarkdownFieldEditor
                 height={132}
                 minHeight={118}
                 ariaLabel={`Option ${option.id.toUpperCase()} Markdown editor views`}
-                value={option.text}
+                value={option.text ?? ''}
                 onChange={(value) =>
                   updateOptions(options.map((o, i) => (i === index ? { ...o, text: value } : o)))
                 }
-                placeholder={`Option ${option.id.toUpperCase()} in Markdown`}
+                placeholder={
+                  optionHasPicture(option)
+                    ? `Option ${option.id.toUpperCase()} caption (optional)`
+                    : `Option ${option.id.toUpperCase()} in Markdown`
+                }
                 lessonType={lessonType}
               />
               <MarkdownFieldEditor
