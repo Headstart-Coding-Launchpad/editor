@@ -3,6 +3,7 @@ import {
   buildControlHighlightCommand,
   claimTaskHighlight,
   describeHighlightTargets,
+  glowingKeyOnCard,
   highlightTargetName,
   highlightTargetSelector,
   listHighlightTargets,
@@ -16,7 +17,11 @@ import { locateHighlight, revealPanesFor, visibleRect } from '../useControlHighl
 
 describe('control highlight targets', () => {
   it('lists Run/Stop for code modules and nothing for filesystem/desktop', () => {
-    expect(listHighlightTargets('python').map((t) => t.id).slice(0, 2)).toEqual(['run', 'stop'])
+    expect(
+      listHighlightTargets('python')
+        .map((t) => t.id)
+        .slice(0, 2)
+    ).toEqual(['run', 'stop'])
     expect(listHighlightTargets('turtle').map((t) => t.id)).toEqual(['run', 'stop'])
     expect(listHighlightTargets('html').map((t) => t.id)).toEqual(['run'])
     expect(moduleHasHighlightTargets('filesystem')).toBe(false)
@@ -157,6 +162,20 @@ describe('live commands', () => {
     expect(pickLiveControlHighlight(null, klass)).toBe(klass)
     expect(pickLiveControlHighlight(student, { target: 'stop' })).toBe(student)
     expect(pickLiveControlHighlight(null, null)).toBeNull()
+  })
+  it("gives the tutor card the key that is glowing, for the highlight's 20 s only", () => {
+    const cmd = (target, pushedAt, taskId = 2) => ({ target, taskId, pushedAt })
+    expect(glowingKeyOnCard(cmd('key:(', 1000), null, { taskId: 2, now: 5000 })).toEqual({
+      key: '(',
+      endsAt: 21000,
+    })
+    expect(glowingKeyOnCard(null, cmd('key::', 1000), { taskId: 2, now: 5000 }).key).toBe(':')
+    expect(glowingKeyOnCard(cmd('key:(', 1000), null, { now: 21000 })).toBeNull()
+    expect(glowingKeyOnCard(cmd('run', 1000), null, { now: 5000 })).toBeNull()
+    expect(glowingKeyOnCard(cmd('key:(', 1000), null, { taskId: 3, now: 5000 })).toBeNull()
+    // A newer class Run highlight replaces the student's key.
+    expect(glowingKeyOnCard(cmd('key:(', 1000), cmd('run', 2000), { now: 5000 })).toBeNull()
+    expect(glowingKeyOnCard(null, null)).toBeNull()
   })
 })
 

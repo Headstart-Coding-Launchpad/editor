@@ -78,7 +78,11 @@ function makeSession(lessonId, extra = {}) {
     get(target, prop) {
       if (prop in target) return target[prop]
       if (typeof prop !== 'string' || prop === 'then') return undefined
-      if (!writers.has(prop)) writers.set(prop, vi.fn(() => Promise.resolve()))
+      if (!writers.has(prop))
+        writers.set(
+          prop,
+          vi.fn(() => Promise.resolve())
+        )
       return writers.get(prop)
     },
   })

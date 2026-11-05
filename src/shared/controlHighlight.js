@@ -175,6 +175,26 @@ export function pickLiveControlHighlight(studentCommand, classCommand) {
   return klass.pushedAt >= student.pushedAt ? klass : student
 }
 
+/**
+ * The tutor card's read-only "glowing: (" label (request #126): the key a live `key:` command
+ * is making glow on this student's screen, or null. Read from the existing commands only, so it
+ * shows for the highlight's 20 s lifetime (the student's tap is not written back).
+ * Returns { key, endsAt } so the card can drop the label on time.
+ */
+export function glowingKeyOnCard(
+  studentCommand,
+  classCommand,
+  { taskId = null, now = Date.now() } = {}
+) {
+  const live = pickLiveControlHighlight(studentCommand, classCommand)
+  if (!live || !live.target.startsWith('key:')) return null
+  const endsAt = live.pushedAt + CONTROL_HIGHLIGHT_TIMEOUT_MS
+  if (now >= endsAt) return null
+  if (live.taskId != null && taskId != null && String(live.taskId) !== String(taskId)) return null
+  const key = live.target.slice('key:'.length).trim()
+  return key ? { key, endsAt } : null
+}
+
 // The CSS selector for a plain target's control.
 export function highlightTargetSelector(id) {
   return `[${CONTROL_HIGHLIGHT_ATTR}~="${String(id).replace(/["\\]/g, '\\$&')}"]`

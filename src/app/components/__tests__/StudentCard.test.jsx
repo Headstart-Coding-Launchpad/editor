@@ -68,6 +68,40 @@ describe('StudentCard', () => {
     expect(screen.getByText('Jamie')).toBeInTheDocument()
   })
 
+  it('shows a read-only "glowing: (" label while a key highlight is on (request #126)', () => {
+    const command = { target: 'key:(', taskId: 1, pushedAt: Date.now() }
+    const { unmount } = render(
+      <StudentCard {...mkProps({}, { teacherControlHighlight: command })} />
+    )
+    expect(screen.getByTestId('glowing-key').textContent).toBe('glowing: (')
+    unmount()
+    render(
+      <StudentCard
+        {...mkProps({ session: { ...ACTIVE_SESSION, teacherClassControlHighlight: command } })}
+      />
+    )
+    expect(screen.getByTestId('glowing-key').textContent).toBe('glowing: (')
+  })
+
+  it('shows no glowing label for a Run highlight or an old key highlight', () => {
+    const { unmount } = render(
+      <StudentCard
+        {...mkProps({}, { teacherControlHighlight: { target: 'run', pushedAt: Date.now() } })}
+      />
+    )
+    expect(screen.queryByTestId('glowing-key')).not.toBeInTheDocument()
+    unmount()
+    render(
+      <StudentCard
+        {...mkProps(
+          {},
+          { teacherControlHighlight: { target: 'key:(', pushedAt: Date.now() - 30000 } }
+        )}
+      />
+    )
+    expect(screen.queryByTestId('glowing-key')).not.toBeInTheDocument()
+  })
+
   it('flags a large paste on the current task only', () => {
     const { unmount } = render(
       <StudentCard {...mkProps({}, { pasteLog: { 1: { count: 2, chars: 120 } } })} />

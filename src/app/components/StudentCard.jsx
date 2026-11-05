@@ -6,6 +6,7 @@ import { getLessonModule } from '../../modules/registry'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 import { deriveStudentCheckStatus } from './studentCheckStatus'
 import { exampleOpenCount } from '../../shared/exampleOpens'
+import { glowingKeyOnCard } from '../../shared/controlHighlight'
 import {
   currentTypingScore,
   formatTypingHistoryChip,
@@ -220,6 +221,19 @@ export default function StudentCard({
   }
 
   const currentTask = findTaskById(lesson?.tasks, session?.currentTaskId)
+  // The key a tutor's `key:(` highlight is making glow on their screen (request #126), read
+  // from the existing commands; the label goes when the 20 s highlight would end.
+  const glowing = glowingKeyOnCard(
+    student.teacherControlHighlight,
+    session?.teacherClassControlHighlight,
+    { taskId: session?.currentTaskId ?? null }
+  )
+  const glowingEndsAt = glowing?.endsAt ?? null
+  useEffect(() => {
+    if (!glowingEndsAt) return undefined
+    const t = setTimeout(() => setTick((n) => n + 1), Math.max(0, glowingEndsAt - Date.now()) + 50)
+    return () => clearTimeout(t)
+  }, [glowingEndsAt])
   // The name-tag panel (showVariables) on a predict / target task: predictions or targets hit.
   const variablesSummary = variablesCardSummary(currentTask, student.currentVariables)
   const isSubmitMode = currentTask?.interactionMode === 'submit'
@@ -492,6 +506,16 @@ export default function StudentCard({
               }}
             >
               ⏳
+            </span>
+          )}
+          {/* Teacher-only, read-only: the key glowing on their screen (request #126). */}
+          {glowing && (
+            <span
+              style={s.glowingKey}
+              title="The key you made glow on their screen"
+              data-testid="glowing-key"
+            >
+              glowing: {glowing.key}
             </span>
           )}
           {/* Teacher-only: StudentCard is only ever rendered in the teacher's grid. */}
@@ -1085,6 +1109,17 @@ const s = {
     fontSize: '0.68rem',
     fontWeight: 600,
     color: 'var(--colour-muted)',
+    whiteSpace: 'nowrap',
+  },
+  glowingKey: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    color: 'var(--colour-primary-dark)',
+    background: 'rgba(98,34,204,0.08)',
+    borderRadius: 999,
+    padding: '0 6px',
+    flexShrink: 0,
     whiteSpace: 'nowrap',
   },
   rosterUnmatched: {
