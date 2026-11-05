@@ -652,24 +652,62 @@ describe('handleRun on runtime-less modules', () => {
   })
 })
 
-// A rejected run write (permission denied: the session ended, the tutor removed the student)
-// used to reject handleRun before setRunning(false), leaving Run stuck on Stop for good.
-describe('handleRun — a rejected writeStudentRun', () => {
-  it('ends the Run, keeps the tick and the rest of the record, and warns', async () => {
+// A throw in the Run's tail (a rejected run write: permission denied when the session ended or
+// the tutor removed the student; a throwing writer; a throwing check) rejects handleRun as on
+// main, skipping the records after it, but used to skip setRunning(false) too, leaving Run stuck
+// on Stop for good.
+describe('handleRun — a throw in the Run tail', () => {
+  it('a rejected writeStudentRun rejects handleRun, skips the later records, ends the Run', async () => {
     mockModuleRun('python', printing('hi\n'))
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
     h.writers.writeStudentRun.mockImplementationOnce(() =>
       Promise.reject(new Error('PERMISSION_DENIED'))
     )
     await act(async () => {
-      await expect(h.result.current.handleRun()).resolves.toBeUndefined()
+      await expect(h.result.current.handleRun()).rejects.toThrow('PERMISSION_DENIED')
     })
     expect(h.result.current.running).toBe(false)
-    expect(h.result.current.checkPassed).toBe(true)
-    expect(h.writers.writeStudentStageResult).toHaveBeenCalledTimes(1)
-    expect(h.writers.writeStudentTaskRun).toHaveBeenCalledWith(ANON, 't1', 'print("start")')
-    expect(h.writers.logAttempt).toHaveBeenCalledTimes(1)
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('writeStudentRun'), expect.any(Error))
+    expect(h.writers.writeStudentStageResult).not.toHaveBeenCalled()
+    expect(h.writers.writeStudentTaskRun).not.toHaveBeenCalled()
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
+  })
+
+  it('a writeStudentStageResult that throws rejects handleRun and ends the Run', async () => {
+    mockModuleRun('python', printing('hi\n'))
+    const h = renderStudentCodeState({ lesson: pythonLesson(), currentTaskId: 't1' })
+    h.writers.writeStudentStageResult.mockImplementationOnce(() => {
+      throw new Error('stage write broke')
+    })
+    await act(async () => {
+      await expect(h.result.current.handleRun()).rejects.toThrow('stage write broke')
+    })
+    expect(h.result.current.running).toBe(false)
+    expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
+    expect(h.writers.writeStudentTaskRun).not.toHaveBeenCalled()
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
+  })
+
+  it('a check that throws rejects handleRun before any record and ends the Run', async () => {
+    mockModuleRun('python', printing('hi\n'))
+    // The check's value throws only once armed, so loading the lesson is untouched.
+    let armed = false
+    const lesson = pythonLesson()
+    lesson.tasks[0].check = {
+      type: 'output_contains',
+      hint: 'Print hi',
+      get value() {
+        if (armed) throw new Error('check broke')
+        return 'hi'
+      },
+    }
+    const h = renderStudentCodeState({ lesson, currentTaskId: 't1' })
+    armed = true
+    await act(async () => {
+      await expect(h.result.current.handleRun()).rejects.toThrow('check broke')
+    })
+    armed = false
+    expect(h.result.current.running).toBe(false)
+    expect(h.writers.writeStudentRun).not.toHaveBeenCalled()
+    expect(h.writers.logAttempt).not.toHaveBeenCalled()
   })
 })

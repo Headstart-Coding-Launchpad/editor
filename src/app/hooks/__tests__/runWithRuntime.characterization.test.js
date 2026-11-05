@@ -920,13 +920,11 @@ describe('runWithRuntime characterization: stopped', () => {
 })
 
 describe('runWithRuntime characterization: a rejected writeStudentRun', () => {
-  it('warns, keeps the rest of the record and still ends the Run', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('rejects the Run before the rest of the record and before setRunning(false)', async () => {
     const { log, error } = await run({
       writeStudentRun: () => Promise.reject(new Error('PERMISSION_DENIED')),
     })
-    expect(error).toBe(null)
-    expect(warn).toHaveBeenCalledTimes(1)
+    expect(error?.message).toBe('PERMISSION_DENIED')
     expect(log).toMatchInlineSnapshot(`
       "runtime.run ["print(\\"hi\\")","t1",{}]
       setInputPrompt [null]
@@ -940,11 +938,7 @@ describe('runWithRuntime characterization: a rejected writeStudentRun', () => {
       applyCheckFeedback [true,"",{"scrub":false}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
-      writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
-      writeStudentStageResult ["stu-1",null]
-      writeStudentTaskRun ["stu-1","t1","print(\\"hi\\")"]
-      logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":true,"suggestion":"","teacherAssisted":false,"error":false}]
-      setRunning [false]"
+      writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]"
     `)
   })
 })

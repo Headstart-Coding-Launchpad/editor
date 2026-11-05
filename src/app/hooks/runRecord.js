@@ -7,8 +7,14 @@ import { lastErrorLine } from '../studentHints.js'
  * Turtle or Stage drawing), the Turtle course run, the free-play badge signal, the per-task last
  * run, and the attempt log. Each keeps its own phase, presentation and free-play conditions.
  *
- * `ctx` is runWithRuntime's ctx (actor, currentTaskId, isWatched, alreadySolved,
- * teacherPresentation, definition, refs, writers, live, saveRunRecord, signals, recordCourseRun).
+ * `ctx` is runWithRuntime's ctx. recordRun reads only these fields:
+ *   actor.anonymousId; currentTaskId; isWatched; alreadySolved; teacherPresentation;
+ *   definition.runResult (.turtle, .stage); refs.phaseRef, refs.inPersonalSandboxRef,
+ *   refs.teacherAssistedTaskIdsRef; live.canPublishTeacherLive, live.publishTeacherLive;
+ *   saveRunRecord; writers.writeStudentRun, writers.writeStudentTurtleResult (required when
+ *   runResult.turtle), writers.writeStudentStageResult / writeStudentTaskRun (optional),
+ *   writers.logAttempt; signals (optional, .reportSandboxRun); recordCourseRun (optional).
+ * A rejected or throwing writer propagates out of recordRun unchanged (later records skipped).
  * `run` is `{ code, outputRaw, status, result, judgement, source }`: the code that ran (after any
  * runtime update), its raw output, status and runtime result, judgeRun's judgement, and the Run's
  * source (`'scrub'` is logged on the attempt).
@@ -51,21 +57,16 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
       refs.inPersonalSandboxRef.current ||
       isWatched)
   ) {
-    // A rejected write (permission denied: the session ended or the student was removed) must
-    // not end the Run here: it skipped the records below and setRunning(false), so Run stayed
-    // stuck on Stop. Warn and carry on.
-    try {
-      await writers.writeStudentRun(actor.anonymousId, {
-        code,
-        output: outputRaw,
-        status,
-        checkPassed: hasTests || isFreePlay ? undefined : passed,
-        ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
-        errorText: status === 'error' ? lastErrorLine(outputRaw) : undefined,
-      })
-    } catch (err) {
-      console.warn('[run] writeStudentRun failed', err)
-    }
+    // A rejected write rejects recordRun here (as on main): the records below are skipped and
+    // the error reaches handleRun. runWithRuntime's finally still ends the Run.
+    await writers.writeStudentRun(actor.anonymousId, {
+      code,
+      output: outputRaw,
+      status,
+      checkPassed: hasTests || isFreePlay ? undefined : passed,
+      ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
+      errorText: status === 'error' ? lastErrorLine(outputRaw) : undefined,
+    })
     // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
     // Arcade's design — so it's synced here alongside writeStudentRun, not only on
     // explicit edits. Lets a teacher open StudentModal and see the student's actual
