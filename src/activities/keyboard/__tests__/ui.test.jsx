@@ -104,6 +104,84 @@ describe('Keyboard UI: find_key and symbols', () => {
   })
 })
 
+describe('Keyboard UI: showKey (request 133)', () => {
+  const SYMBOLS = {
+    ...TYPE,
+    mode: 'symbols',
+    showKey: true,
+    items: [{ id: 'a', char: '(' }],
+  }
+  const lit = (picture) =>
+    [...picture.querySelectorAll('.act-osk__key--highlight')].map((key) => key.dataset.code)
+
+  it('Fun moment: the symbol is big and its key and both Shift keys glow before any press', () => {
+    const { state } = renderKeyboard(SYMBOLS)
+    expect(screen.getByTestId('keyboard-target-symbol')).toHaveTextContent('(')
+    expect(screen.getByTestId('keyboard-target-keys')).toHaveTextContent('Shift + 9')
+    const picture = screen.getByTestId('keyboard-picture')
+    expect(lit(picture).sort()).toEqual(['Digit9', 'ShiftLeft', 'ShiftRight'])
+    press(screen.getByTestId('keyboard-practice'), '(', { code: 'Digit9', shiftKey: true })
+    expect(screen.getByText('Got it!')).toBeInTheDocument()
+    expect(state().items.a).toMatchObject({ typedChar: '(', shift: true, tries: 1 })
+  })
+
+  it('without showKey nothing is lit until two misses (old lessons do not change)', () => {
+    const { showKey: _omit, ...task } = SYMBOLS
+    renderKeyboard(task)
+    expect(screen.queryByTestId('keyboard-target-symbol')).toBeNull()
+    const picture = screen.getByTestId('keyboard-picture')
+    const area = screen.getByTestId('keyboard-practice')
+    expect(lit(picture)).toEqual([])
+    press(area, '8', { code: 'Digit8' })
+    expect(screen.getByText('You typed 8.')).toBeInTheDocument()
+    expect(lit(picture)).toEqual([])
+    press(area, '7', { code: 'Digit7' })
+    expect(lit(picture).sort()).toEqual(['Digit9', 'ShiftLeft', 'ShiftRight'])
+  })
+
+  it('says calmly to hold Shift when the right key is pressed without it', () => {
+    renderKeyboard(SYMBOLS)
+    const area = screen.getByTestId('keyboard-practice')
+    press(area, '9', { code: 'Digit9' })
+    expect(screen.getByText('Hold Shift, then press 9')).toBeInTheDocument()
+    press(area, '8', { code: 'Digit8' })
+    expect(screen.getByText('That was 8. Press the glowing keys.')).toBeInTheDocument()
+    expect(screen.queryByText(/wrong|error|mistake/i)).toBeNull()
+    // The glow stays on after a miss.
+    const picture = screen.getByTestId('keyboard-picture')
+    expect(lit(picture).sort()).toEqual(['Digit9', 'ShiftLeft', 'ShiftRight'])
+  })
+
+  it('saves the tries an item took once, when it finishes', () => {
+    const { state } = renderKeyboard(SYMBOLS)
+    const area = screen.getByTestId('keyboard-practice')
+    press(area, '9', { code: 'Digit9' })
+    press(area, '8', { code: 'Digit8' })
+    expect(state().items.a).toEqual({})
+    press(area, '(', { code: 'Digit9', shiftKey: true })
+    expect(state().items.a).toEqual({ typedChar: '(', shift: true, source: 'hardware', tries: 3 })
+    expect(keyboard.summarize(SYMBOLS, state()).text).toMatch(/\( took 3 tries/)
+  })
+
+  it('find_key lights the key from the start and shows its name big', () => {
+    renderKeyboard({ ...TYPE, mode: 'find_key', showKey: true, items: [{ id: 'a', key: 'q' }] })
+    expect(screen.getByTestId('keyboard-target-symbol')).toHaveTextContent('Q')
+    expect(lit(screen.getByTestId('keyboard-picture'))).toEqual(['KeyQ'])
+    press(screen.getByTestId('keyboard-practice'), 'w', { code: 'KeyW' })
+    expect(screen.getByText('That was w. Press the glowing key.')).toBeInTheDocument()
+  })
+
+  it('the tutor read-only view shows the same big symbol and lit keys', () => {
+    renderKeyboard(SYMBOLS, { readOnly: true })
+    expect(screen.getByTestId('keyboard-target-symbol')).toHaveTextContent('(')
+    expect(lit(screen.getByTestId('keyboard-picture')).sort()).toEqual([
+      'Digit9',
+      'ShiftLeft',
+      'ShiftRight',
+    ])
+  })
+})
+
 describe('Keyboard UI: shortcuts', () => {
   const SHORTCUT = {
     ...TYPE,
