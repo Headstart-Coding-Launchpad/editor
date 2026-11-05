@@ -17,7 +17,10 @@ import {
 import { evaluateSingleCheck, isCodeCheck, normalizeChecks } from '../modules/checks.js'
 import { joinFileContents } from '../modules/moduleContract.js'
 import {
+  PICTURE_ALT_MAX_LENGTH,
+  PICTURE_FIELDS,
   PICTURE_QUIZ_MAX_OPTIONS,
+  countGraphemes,
   isHttpsUrl,
   optionHasPicture,
   quizHasPictureOptions,
@@ -30,7 +33,19 @@ export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html', 'turtl
 export const CODE_ARRANGE_PYTHON_MODULE_TYPES = Object.freeze(['python', 'turtle'])
 
 // Picture answer options (docs/authoring/quiz-tasks.md "Picture options"): 2 to 4 options,
-// alt text on every picture, https images, and every option should have a picture.
+// alt text on every picture, https images, one emoji, and every option should have a picture.
+// The quiz also guards at render time (QuizOptionPicture), for data that skipped this.
+function validatePictureFieldTypes(task, { n, errors }) {
+  for (const option of task.options ?? []) {
+    for (const field of PICTURE_FIELDS) {
+      if (option?.[field] != null && typeof option[field] !== 'string')
+        errors.push(
+          `Task ${n} is a quiz but option ${option.id} has ${field} that is not text (write it as a quoted string)`
+        )
+    }
+  }
+}
+
 function validatePictureOptions(task, { n, errors, warnings }) {
   for (const option of task.options) {
     if (!optionHasPicture(option)) {
@@ -43,9 +58,23 @@ function validatePictureOptions(task, { n, errors, warnings }) {
       errors.push(
         `Task ${n} is a quiz but option ${option.id} has a picture with no alt text (say what the picture shows in alt)`
       )
-    if (option.image != null && !isHttpsUrl(option.image))
+    else if (option.alt.trim().length > PICTURE_ALT_MAX_LENGTH)
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has alt text over ${PICTURE_ALT_MAX_LENGTH} characters (keep it to one short sentence)`
+      )
+    const hasImage = typeof option.image === 'string' && option.image.trim() !== ''
+    const hasEmoji = typeof option.emoji === 'string' && option.emoji.trim() !== ''
+    if (hasImage && hasEmoji)
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has both an image and an emoji (pick one)`
+      )
+    else if (hasImage && !isHttpsUrl(option.image))
       errors.push(
         `Task ${n} is a quiz but option ${option.id} has an image that is not an https URL (upload it with lessons assets upload and use the URL it gives)`
+      )
+    else if (hasEmoji && countGraphemes(option.emoji) > 1)
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has more than one emoji (use one emoji, or an image)`
       )
   }
   if (task.options.length > PICTURE_QUIZ_MAX_OPTIONS)
@@ -62,6 +91,7 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
     // A picture option may leave its caption (`text`) empty.
     if (task.options?.some((option) => !optionHasPicture(option) && !option.text?.trim()))
       errors.push(`Task ${n} is a quiz but has an empty option text`)
+    validatePictureFieldTypes(task, { n, errors })
     if (quizHasPictureOptions(task)) validatePictureOptions(task, { n, errors, warnings })
     if (task.check?.type !== 'answer_equals' || !task.check.value)
       errors.push(`Task ${n} is a quiz but no correct answer has been selected`)
@@ -130,6 +160,16 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
       warnings.push(
         `Task ${n} is a confidence check with a scale field; confidence checks always use 1 to 10, so scale is ignored`
       )
+  }
+  // Pictures are multiple-choice only (the poll has its own message above). A quiz switched to
+  // another type in the Builder loses them (switchQuizType), so this catches YAML and imports.
+  if (quizType !== 'multiple_choice' && quizType !== 'poll') {
+    for (const option of Array.isArray(task.options) ? task.options : []) {
+      if (option?.image != null || option?.emoji != null)
+        errors.push(
+          `Task ${n} is not a multiple-choice quiz but option ${option.id} has a picture (picture options work in multiple-choice quizzes only)`
+        )
+    }
   }
 }
 

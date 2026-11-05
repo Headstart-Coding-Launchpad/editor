@@ -185,7 +185,8 @@ describe('picture options: the label used by cards, reports and print', () => {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
     const html = definition.printHtml(picTask([A, { ...B, text: 'Fox' }]), { esc })
-    expect(html).toContain(`<img src="${A.image}" alt="Red circle on top"`)
+    // Decorative in print: the Alt text column beside it says what it shows.
+    expect(html).toContain(`<img src="${A.image}" alt=""`)
     expect(html).toContain('🦊')
     expect(html).toContain('<td>Fox</td>')
     expect(html).toContain('<td>Red circle on top</td>')
@@ -271,9 +272,9 @@ describe('picture options: other places that name an option', () => {
   })
 
   it('the screen-reader name joins a caption and the alt text, as plain text', () => {
-    expect(quizOptionAriaLabel({ id: 'a', emoji: '🦊', alt: 'A fox in snow', text: '**Fox**' })).toBe(
-      'Fox: A fox in snow'
-    )
+    expect(
+      quizOptionAriaLabel({ id: 'a', emoji: '🦊', alt: 'A fox in snow', text: '**Fox**' })
+    ).toBe('Fox: A fox in snow')
     expect(quizOptionAriaLabel({ id: 'a', emoji: '🦊', alt: 'A fox' })).toBe('A fox')
     expect(quizOptionAriaLabel({ id: 'a', text: '`while` loop' })).toBe('while loop')
     expect(quizOptionAriaLabel({ id: 'a', emoji: '🦊', alt: 'Fox', text: 'Fox' })).toBe('Fox')

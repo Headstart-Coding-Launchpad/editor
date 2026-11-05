@@ -3,8 +3,11 @@
 // `emoji`, with required `alt` text and an optional `text` caption. The stored answer is still
 // the option id. Pure and Node-safe: used by the quiz component, the tutor card, validation,
 // reports and print.
+import { hintPlainText } from '../app/studentHints.js'
 
 export const PICTURE_QUIZ_MAX_OPTIONS = 4
+export const PICTURE_ALT_MAX_LENGTH = 200
+export const PICTURE_FIELDS = Object.freeze(['image', 'emoji', 'alt'])
 
 const nonEmpty = (value) => typeof value === 'string' && value.trim() !== ''
 
@@ -14,6 +17,27 @@ export function optionHasPicture(option) {
 
 export function quizHasPictureOptions(task) {
   return Array.isArray(task?.options) && task.options.some(optionHasPicture)
+}
+
+export function isHttpsUrl(value) {
+  return typeof value === 'string' && /^https:\/\/\S+$/i.test(value.trim())
+}
+
+// The picture an option can safely show, whatever was stored (the Builder, a direct Firestore
+// write or an import may skip validation): an https image, else the emoji, else null.
+export function optionPictureSource(option) {
+  if (isHttpsUrl(option?.image)) return { kind: 'image', src: option.image.trim() }
+  if (nonEmpty(option?.emoji)) return { kind: 'emoji', emoji: option.emoji.trim() }
+  return null
+}
+
+// How many emoji (grapheme clusters) a string holds; a family or flag emoji counts as one.
+export function countGraphemes(value) {
+  const text = String(value ?? '').trim()
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function')
+    return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].length
+  // No Segmenter: allow up to 8 code points (a ZWJ sequence), as one emoji.
+  return [...text].length <= 8 ? 1 : [...text].length
 }
 
 // What the option says in words: the caption, else the picture's alt text ('' if neither).
@@ -28,6 +52,21 @@ export function quizOptionLabel(option) {
   return quizOptionDescription(option) || String(option?.id ?? '')
 }
 
-export function isHttpsUrl(value) {
-  return typeof value === 'string' && /^https:\/\/\S+$/i.test(value.trim())
+// A screen reader's name for a card, in plain text: "Caption: alt" when both exist (and
+// differ), else whichever there is, else the id. Markdown in the caption is flattened.
+export function quizOptionAriaLabel(option) {
+  const caption = hintPlainText(option?.text)
+  const alt = optionHasPicture(option) && nonEmpty(option?.alt) ? option.alt.trim() : ''
+  if (caption && alt && caption.toLowerCase() !== alt.toLowerCase()) return `${caption}: ${alt}`
+  return caption || alt || String(option?.id ?? '')
+}
+
+// An option with its picture fields removed (switching a quiz to a type with no pictures). A
+// picture with no caption keeps its alt text as words, so the option never goes blank.
+export function stripOptionPicture(option) {
+  if (!option || typeof option !== 'object') return option
+  const { image: _image, emoji: _emoji, alt: _alt, ...rest } = option
+  if (!nonEmpty(rest.text) && optionHasPicture(option) && nonEmpty(option.alt))
+    rest.text = option.alt.trim()
+  return rest
 }
