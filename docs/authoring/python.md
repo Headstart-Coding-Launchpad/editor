@@ -1082,8 +1082,12 @@ What students get:
       `variable_dict_contains`, `variable_dict_equals`, `variable_dict_key_value`,
       `variable_array_contains`, `variable_array_equals` and `variable_array_nth_item`. A text
       check (`output`, `code`, `stage_text_shown`) ticks only when its value says something: not
-      empty, not only `*`, no empty `"a",""` option, and no regex that matches anything (`.*`,
-      `.+`, `^$`, `\S+`, `[a-z]+`, anything with `|`). Those still pass on Run as before.
+      empty, not only `*`, no empty `"a",""` option, and a regex only when every match must
+      contain a real character: character classes, `\d` `\w` `\s` `` (and their capitals),
+      `\p{..}`, group syntax such as `(?:`, `(?<name>` or `(?=`, and anything made optional by `?`,
+      `*` or `{0,..}` don't count, and it may not match empty text or have a `|` outside brackets
+      (so `.*`, `.+`, `(?:.+)`, `\p{L}+`, `[a-z]+` and `hi|.+` don't tick). Escaped characters
+      such as `\.` or `\$` do count. Those still pass on Run as before.
     - **Completion checks that tick on Run only** (they pass on almost any code, or on a blank or
       starter Stage): `stage_pixel`, `stage_matches_target`, `code_no_error`, `output_not_empty`,
       `output_empty`, `output_line_count`, `max_lines`, `variable_exists`, `variable_type` and
@@ -1104,15 +1108,22 @@ What students get:
     comment, and a whole answer pasted in one go ticks on Run or after a later redraw that
     follows a miss. Reset, a tutor's edit, Mark Pass or Mark Fail, carried or restored code,
     another task and an un-solve start the rule again. Code that is the starter code itself
-    (spaces and blank lines aside) never ticks either.
+    (spaces and blank lines aside) never ticks either. Code typed back to exactly what was last
+    redrawn is not run again (nothing new to show), so it neither ticks nor counts. A slow redraw
+    that finishes after the student has typed on is skipped: it doesn't count, and the redraw
+    before it still does.
   - **Never while typing.** A task never ticks while typing when it has `run_attempted` ("press
     Run and watch"), name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`),
     Python `tests`, `interactionMode: submit`, `copyCode` (its first Run measures how far the code
     is from the copy, so it needs a real Run), an on-idle feedback check, `input()` in the code or
     `setupCode`, or `slowMo` where Run plays in slow-mo (`separateButton: true` keeps Run normal,
     so it ticks). Turtle, Electronics and `code_arrange` tasks never tick while typing.
-  - **Only the student's own typing.** Typing, pasting, deleting or scrubbing in the editor can
-    tick. Code put there any other way still redraws but never ticks: a tutor's edit, a
+  - **Only the student's own typing.** Typing, pasting or deleting in the editor can tick. A
+    scrub never ticks by itself: its previews are not typing, and the edit when it ends is the
+    code just previewed, so nothing new redraws; a scrub is checked only by the checks it runs
+    when it ends (`checkOnRelease`, as a Run, as before). Its preview of the code as it stands
+    does count as "the redraw before" for the student's next typed change. Code put there any
+    other way still redraws but never ticks: a tutor's edit, a
     classmate's accepted peer-help change, copied shared work, Reset to starter, code carried
     from an earlier task and saved work loaded on opening. The student presses Run for those (or
     types a change of their own).
@@ -1125,8 +1136,8 @@ What students get:
     student's next Run. A new Mark Fail stops them again. A task without `scrub`, `runOnOpen` or
     a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage
     task `runOnOpen: true` to get both the redraw and the tick. Reset, a tutor's edit, Mark Pass
-    or Mark Fail (even on a task not yet solved) drops a redraw still waiting, so old code never
-    paints over them.
+    or Mark Fail (even on a task not yet solved) drops a redraw still waiting or queued, so old
+    code never paints over them, and the same code typed again afterwards redraws.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
   no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed

@@ -76,8 +76,8 @@ Entries written before 2026-09-29 are not tagged.
   counts it as an attempt). A redraw that doesn't pass shows nothing, so wrong-code feedback still
   comes only from Run. Only completion checks that need real evidence of the right answer tick
   (output/code `contains`, `equals`, `matches_regex`, with no operator meaning `contains` as on
-  Run, and only with a value that says something: not empty, not only `*`, no match-anything
-  regex; nesting; Stage colour and text; an at-least or exact Stage shape count; value checks);
+  Run, and only with a value that says something: not empty, not only `*`, no regex that
+  can match without a real character (`.+`, `(?:.+)`, `\p{L}+`, `[a-z]+`; `\.` counts); nesting; Stage colour and text; an at-least or exact Stage shape count; value checks);
   `stage_pixel`, `stage_matches_target`, `code_no_error`, output empty/not empty, line counts,
   `max_lines`, `not_` operators, `variable_exists`/`_type`/`_not_equals` and an at-most Stage
   count tick on Run only. Nothing extra is run: a typed redraw ticks only when the redraw before
@@ -87,6 +87,8 @@ Entries written before 2026-09-29 are not tagged.
   tasks with `run_attempted`, name tags, run counts,
   `tests`, submit mode, `copyCode` (its first Run measures the copy), an on-idle feedback check,
   `input()`, or `slowMo` where Run plays in slow-mo; never Turtle, Electronics or `code_arrange`.
+  A scrub never ticks by itself (it is checked by its release checks, as a Run, as before); a
+  typed change after it can. Code typed back to what was last redrawn is not run again.
   Only the student's own typing ticks: a tutor's edit, a peer-help change, copied shared work,
   Reset, carried code or saved work loading redraws but doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
   themselves (a scrub's release checks and the tutor's remote Run don't lift it; it holds after a

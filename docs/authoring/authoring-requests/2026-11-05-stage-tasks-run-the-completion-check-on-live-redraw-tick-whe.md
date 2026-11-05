@@ -32,7 +32,10 @@ task and is recorded by the Run's own `recordRun` with the attempt marked `sourc
 dropped the baseline and starter probes): a typed redraw ticks only when the preview judged before
 it in this task opening did not pass (the transition rule), so carried, tutor-supplied or pasted
 passing code ticks on Run, not by typing a space. `stage_pixel` and `stage_matches_target` tick on
-Run only, and a text check with a trivially true value (empty, `*`, `.*`) never ticks. A Run
+Run only, and a text check with a trivially true value (empty, `*`, `.*`, a regex with no
+required literal) never ticks. Round 6: unchanged code is never rerun, a slow redraw of code the
+student has since changed keeps the verdict before it, a task that can never tick is never judged
+(`liveTickTaskEligible`), and a scrub ticks only through its release checks. A Run
 called since the edit always wins, a tutor's Mark Fail blocks it until the next Run, and only
 Python Stage tasks whose checks are all allow-listed (`liveTickEligible`) take part. Docs:
 python.md (Typing redraws too), CHANGELOG 2026-11-05, runtime-model.md (attemptLog `source`).
