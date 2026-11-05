@@ -34,6 +34,46 @@ import { printCodeStringTask } from '../printHelpers.js'
 // The work-slot value: the code plus the sprite/sound design that rides alongside it.
 const EMPTY_ARCADE_WORK = Object.freeze({ code: '', arcadeDesign: null })
 
+// The Arcade playground (the Game kit): a sprite the arrow keys already move.
+const PLAYGROUND_STARTER_CODE = `from headstart_arcade import game, Sprite, keys
+
+player = Sprite("player.png", x=72, y=52)
+
+def update():
+    player.x += keys.horizontal * 2
+    player.y += keys.vertical * 2
+
+def draw():
+    game.clear("dark_blue")
+    player.draw()
+
+game.run()
+`
+
+// An 8x8 smiling face for the Game kit's player.png ("." is see-through).
+const PLAYGROUND_PLAYER_ROWS = [
+  '..yyyy..',
+  '.yyyyyy.',
+  'yykyykyy',
+  'yykyykyy',
+  'yyyyyyyy',
+  'ykyyyyky',
+  '.ykkkky.',
+  '..yyyy..',
+]
+const PLAYGROUND_PLAYER_COLOURS = { y: 'yellow', k: 'black', '.': null }
+
+function playgroundDesign() {
+  const pixels = PLAYGROUND_PLAYER_ROWS.join('')
+    .split('')
+    .map((cell) => PLAYGROUND_PLAYER_COLOURS[cell])
+  return {
+    version: 1,
+    sprites: [{ id: 'sprite-player', name: 'player.png', width: 8, height: 8, frames: [pixels] }],
+    maps: [],
+  }
+}
+
 export default defineModule({
   type: 'arcade',
   meta: {
@@ -178,11 +218,13 @@ export default defineModule({
   },
 
   lifecycle: {
+    // The Game kit (Python playground chooser): a player sprite already moves with the arrow keys,
+    // and its picture is in the Design Studio to redraw.
     playgroundTask: () => ({
       id: 1,
       title: 'Arcade playground',
-      starterCode:
-        'from headstart_arcade import game, Sprite, keys\n\n# Write your game here.\n\ngame.run()\n',
+      starterCode: PLAYGROUND_STARTER_CODE,
+      arcadeDesign: playgroundDesign(),
       arcadeTools: 'both',
     }),
     hasPersonalSandbox: alwaysPersonalSandbox,

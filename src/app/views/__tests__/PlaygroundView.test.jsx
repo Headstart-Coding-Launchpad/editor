@@ -4,17 +4,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PlaygroundView from '../PlaygroundView'
 
 let playgroundType = 'python'
+let playgroundSearch = ''
 
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ type: playgroundType }),
+  useSearchParams: () => [new URLSearchParams(playgroundSearch)],
+  useNavigate: () => vi.fn(),
 }))
 
 vi.mock('../StudentView', () => ({
   default: ({ lesson }) => <output data-testid="lesson">{JSON.stringify(lesson)}</output>,
 }))
 
-function renderPlayground(type) {
+function renderPlayground(type, search = type === 'python' ? 'kit=blank' : '') {
   playgroundType = type
+  playgroundSearch = search
   render(<PlaygroundView />)
   return JSON.parse(screen.getByTestId('lesson').textContent)
 }
@@ -39,6 +43,34 @@ describe('PlaygroundView', () => {
     expect(lesson).toMatchObject({ id: '__playground__turtle', isPlayground: true, type: 'turtle' })
     expect(lesson.tasks[0].starterCode).toMatch(/^import turtle\n/)
     expect(lesson.tasks[0].starterCode).toContain('turtle.begin_fill()')
+  })
+
+  it('starts the Arcade playground (Game kit) with a player the arrow keys move', () => {
+    const task = renderPlayground('arcade').tasks[0]
+
+    expect(task.starterCode).toContain('Sprite("player.png"')
+    expect(task.starterCode).toContain('keys.horizontal')
+    expect(task.arcadeDesign.sprites[0]).toMatchObject({ name: 'player.png', width: 8, height: 8 })
+    expect(task.arcadeDesign.sprites[0].frames[0]).toHaveLength(64)
+  })
+
+  it.each([
+    ['picture', 'load_image("pixel_fox")'],
+    ['beats', 'from beats import *'],
+    ['charts', 'plt.show()'],
+  ])('opens the %s kit with its own starter and lesson id', (kit, snippet) => {
+    const lesson = renderPlayground('python', `kit=${kit}`)
+
+    expect(lesson.id).toBe(`__playground__python:${kit}`)
+    expect(lesson.type).toBe('python')
+    expect(lesson.tasks[0].starterCode).toContain(snippet)
+  })
+
+  it('keeps the Blank page kit on the original playground id, so earlier work still opens', () => {
+    const lesson = renderPlayground('python', 'kit=blank')
+
+    expect(lesson.id).toBe('__playground__python')
+    expect(lesson.tasks[0].starterCode).toBe('')
   })
 
   it('enables sprite and tilemap editing in the Arcade playground', () => {
