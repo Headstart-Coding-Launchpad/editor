@@ -2208,6 +2208,7 @@ export default function StudentView({
               transitionOrder={transitionOrder}
               previewMode={previewMode}
               showPreviewBanner={showPreviewBanner}
+              showReviewNotes={previewMode && !lessonProp}
               isSandbox={isSandbox}
               isViewingPrev={isViewingPrev}
               isForcedTeacherLive={isForcedTeacherLive}

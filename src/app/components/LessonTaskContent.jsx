@@ -14,6 +14,8 @@ import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
 import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
+import ReviewNotesControl from './ReviewNotesControl'
+import { useAuth } from '../../auth/useAuth'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
@@ -137,6 +139,8 @@ export default function LessonTaskContent({
   transitionOrder,
   previewMode,
   showPreviewBanner = true,
+  // Classroom preview only (not the Builder pane): the admin's Feedback button on the strip.
+  showReviewNotes = false,
   isSandbox,
   isViewingPrev,
   isForcedTeacherLive,
@@ -244,6 +248,9 @@ export default function LessonTaskContent({
   // The activity sits inside the module's own StudentWorkspace (a Turtle or Stage arrangement),
   // which lays out and scrolls its own panes like a code task.
   const activityUsesHostWorkspace = !!moduleHostedActivity?.usesHostWorkspace?.(task)
+  // Review notes are for admins only; tutors in preview keep the plain strip.
+  const { role: authRole } = useAuth() ?? {}
+  const reviewNotesOn = showReviewNotes && authRole === 'admin'
   const lessonMod = getLessonModule(lesson.type)
   const StudentWorkspace = lessonMod?.StudentWorkspace
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
@@ -866,13 +873,19 @@ export default function LessonTaskContent({
         <Banner
           accent="#0ea5e9"
           color="#0369a1"
-          style={{ padding: '5px 16px', fontSize: 12, fontWeight: 600 }}
+          style={{
+            padding: '5px 16px',
+            fontSize: 12,
+            fontWeight: 600,
+            ...(reviewNotesOn ? { padding: '0 16px', minHeight: 44, gap: 12 } : null),
+          }}
         >
           {getEffectiveTaskMode(task) === 'live'
             ? 'Live sessions only'
             : getEffectiveTaskMode(task) === 'solo'
               ? 'Solo mode only'
               : 'Live + Solo'}
+          {reviewNotesOn && <ReviewNotesControl lessonId={lessonId} lesson={lesson} task={task} />}
         </Banner>
       )}
 
