@@ -26,9 +26,13 @@ Ryan 5 Nov 13:48-13:49. Behaviour wanted: while the student is typing, no failin
 Built on branch `feature/stage-live-tick` (not merged yet; Status becomes shipped once it is on
 main). Design: HSC Hub Research "LaunchPad request 131 tick without Run design 2026-11-05", on
 the Run split already on main (runJudge.js judgeRun, runRecord.js recordRun). A finished typed
-redraw (useScrubPreview `onTypedResult`) is judged by the Run's own `judgeRun`; a pass ticks the
+redraw (useScrubPreview `onPreviewResult`) is judged by the Run's own `judgeRun`; a pass ticks the
 task and is recorded by the Run's own `recordRun` with the attempt marked `source: 'live'`
-(useStudentCodeState `commitLivePass`); a miss does nothing. The program is not run again, a Run
+(useStudentCodeState `commitLivePass`); a miss does nothing. Nothing else is ever run (round 5
+dropped the baseline and starter probes): a typed redraw ticks only when the preview judged before
+it in this task opening did not pass (the transition rule), so carried, tutor-supplied or pasted
+passing code ticks on Run, not by typing a space. `stage_pixel` and `stage_matches_target` tick on
+Run only, and a text check with a trivially true value (empty, `*`, `.*`) never ticks. A Run
 called since the edit always wins, a tutor's Mark Fail blocks it until the next Run, and only
 Python Stage tasks whose checks are all allow-listed (`liveTickEligible`) take part. Docs:
 python.md (Typing redraws too), CHANGELOG 2026-11-05, runtime-model.md (attemptLog `source`).

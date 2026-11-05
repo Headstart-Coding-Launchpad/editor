@@ -1070,7 +1070,7 @@ What students get:
     with no Run pressed. It is recorded exactly as a Run of that code (the tutor's card, Go Live,
     the report and share link see a passing Run), and its attempt is marked `source: live`. A
     redraw that does not pass shows and records nothing: wrong-code feedback only ever comes from
-    Run. The program is not run a second time.
+    Run. Only the redraw's own result is checked: nothing else is ever run for it.
   - **Which checks.** Typing runs half-typed code, so every completion check must need real
     evidence of the right answer. Each must be a plain check with its own `type` (a check list
     is read flat; any type not listed here means no tick).
@@ -1078,16 +1078,17 @@ What students get:
       `matches_regex` (no `operator` means `contains`, as on Run); `code_structure` with
       `nested_in` or `directly_nested_in`; `stage_colour_used`; `stage_text_shown` with
       `contains` (the default), `equals` or `matches_regex`; `stage_shape_count` with no bounds, a
-      `min` of 1 or more, or `min` equal to `max`; `stage_pixel` and `stage_matches_target` only
-      when the Stage has something drawn and the drawing is not the starter code's own (either
-      can pass on a blank Stage or on what the starter draws); and the value checks
-      `variable_equals`, `variable_dict_contains`, `variable_dict_equals`,
-      `variable_dict_key_value`, `variable_array_contains`, `variable_array_equals` and
-      `variable_array_nth_item`.
-    - **Completion checks that tick on Run only** (they pass on almost any code):
-      `code_no_error`, `output_not_empty`, `output_empty`, `output_line_count`, `max_lines`,
-      `variable_exists`, `variable_type` and `variable_not_equals`; any `not_` operator; a
-      `stage_shape_count` with only a `max`, a `min` of 0 or a range; and every other type.
+      `min` of 1 or more, or `min` equal to `max`; and the value checks `variable_equals`,
+      `variable_dict_contains`, `variable_dict_equals`, `variable_dict_key_value`,
+      `variable_array_contains`, `variable_array_equals` and `variable_array_nth_item`. A text
+      check (`output`, `code`, `stage_text_shown`) ticks only when its value says something: not
+      empty, not only `*`, no empty `"a",""` option, and no regex that matches anything (`.*`,
+      `.+`, `^$`, `\S+`, `[a-z]+`, anything with `|`). Those still pass on Run as before.
+    - **Completion checks that tick on Run only** (they pass on almost any code, or on a blank or
+      starter Stage): `stage_pixel`, `stage_matches_target`, `code_no_error`, `output_not_empty`,
+      `output_empty`, `output_line_count`, `max_lines`, `variable_exists`, `variable_type` and
+      `variable_not_equals`; any `not_` operator; a `stage_shape_count` with only a `max`, a
+      `min` of 0 or a range; and every other type.
     - **Feedback checks** (they can only hold a tick back) must each be one of: `output`,
       `output_line_count`, `output_not_empty`, `output_empty`, `code_no_error`, `code`,
       `code_structure`, `max_lines`, `stage_matches_target`, `stage_shape_count`,
@@ -1095,12 +1096,15 @@ What students get:
       `variable_type`, `variable_equals`, `variable_not_equals`, `variable_dict_contains`,
       `variable_dict_equals`, `variable_dict_key_value`, `variable_array_contains`,
       `variable_array_equals` or `variable_array_nth_item`, shown after an attempt.
-  - **Only a change that makes it pass.** Code that already passed before the student started
-    typing never ticks, however small the change on top of it (a space, a `#` comment): the
-    starter code, code carried from an earlier task, a tutor's edit, a Complete or support stage,
-    Reset, restored work. That code runs once, quietly, to find out (nothing shown or sent). The
-    student presses Run for those; after a Reset to a starter that doesn't pass, typing ticks
-    again. Code that is the starter code itself (spaces and blank lines aside) never ticks either.
+  - **Only a change that makes it pass.** A typed redraw ticks only when the redraw before it
+    (since the task opened) did not pass: a typed redraw, the run on open (`runOnOpen`) or a scrub
+    preview of the code as it stands. A redraw that ends in an error counts as not passing. With
+    no earlier redraw it never ticks; the next one can. So code that already passes (carried
+    from an earlier task, a tutor's edit, restored work) never ticks by typing a space or a `#`
+    comment, and a whole answer pasted in one go ticks on Run or after a later redraw that
+    follows a miss. Reset, a tutor's edit, Mark Pass or Mark Fail, carried or restored code,
+    another task and an un-solve start the rule again. Code that is the starter code itself
+    (spaces and blank lines aside) never ticks either.
   - **Never while typing.** A task never ticks while typing when it has `run_attempted` ("press
     Run and watch"), name tags (`showVariables`) or run counts (`runCounts`, `line_run_count`),
     Python `tests`, `interactionMode: submit`, `copyCode` (its first Run measures how far the code
@@ -1120,8 +1124,9 @@ What students get:
     the tutor's own remote Run don't lift it, and it holds after a page reload until the
     student's next Run. A new Mark Fail stops them again. A task without `scrub`, `runOnOpen` or
     a `#@lock-values` line has no typed redraw, so it still ticks only on Run: give a typed Stage
-    task `runOnOpen: true` to get both the redraw and the tick. Reset, a tutor's edit or Mark
-    Fail drops a redraw still waiting, so old code never paints over them.
+    task `runOnOpen: true` to get both the redraw and the tick. Reset, a tutor's edit, Mark Pass
+    or Mark Fail (even on a task not yet solved) drops a redraw still waiting, so old code never
+    paints over them.
 - **Make it yours after the pass** (`afterPass: true`, off by default). The scrub boxes **and the
   values on every `#@lock-values` line** stay shut until the task's first pass: no dashed boxes,
   no flips, and a `#@lock-values` line is locked like a `#@lock` line (its values can't be typed

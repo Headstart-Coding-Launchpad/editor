@@ -76,12 +76,13 @@ Entries written before 2026-09-29 are not tagged.
   counts it as an attempt). A redraw that doesn't pass shows nothing, so wrong-code feedback still
   comes only from Run. Only completion checks that need real evidence of the right answer tick
   (output/code `contains`, `equals`, `matches_regex`, with no operator meaning `contains` as on
-  Run; nesting; Stage colour and text; an at-least or exact Stage shape count; value checks;
-  Stage pixel and target only on a drawn Stage that isn't the starter's own drawing);
-  `code_no_error`, output empty/not empty, line counts, `max_lines`, `not_` operators,
-  `variable_exists`/`_type`/`_not_equals` and an at-most Stage count tick on Run only. Code that
-  already passed before the student typed (the starter, carried code, a tutor's edit, a Complete
-  or support stage) never ticks on a small change on top of it: it runs once, quietly, to check.
+  Run, and only with a value that says something: not empty, not only `*`, no match-anything
+  regex; nesting; Stage colour and text; an at-least or exact Stage shape count; value checks);
+  `stage_pixel`, `stage_matches_target`, `code_no_error`, output empty/not empty, line counts,
+  `max_lines`, `not_` operators, `variable_exists`/`_type`/`_not_equals` and an at-most Stage
+  count tick on Run only. Nothing extra is run: a typed redraw ticks only when the redraw before
+  it (typed, the run on open or a scrub) did not pass, so code that already passes (carried, a
+  tutor's edit, restored, pasted in one go) never ticks by typing a space; Run still ticks it.
   A Run of the same code after a live tick turns the attempt into a Run's. Never on
   tasks with `run_attempted`, name tags, run counts,
   `tests`, submit mode, `copyCode` (its first Run measures the copy), an on-idle feedback check,
