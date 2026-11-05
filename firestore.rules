@@ -110,6 +110,44 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Preview review notes (platform request #127, Ryan 2026-11-05): an admin's one-line note
+    // on a task while previewing a lesson (?preview=true). Admins only, never students or
+    // tutors. Create as yourself with status 'new' and server times; edit the text and tag of
+    // your own note only while it is New. The status moves on (picked_up, done) only from the
+    // CLI (Admin SDK). Delete is any admin, so deleting a lesson or remaking a class fork clears
+    // its notes like feedback; the preview box offers Delete only on your own New note.
+    match /lessons/{lessonId}/reviewNotes/{noteId} {
+      function isAdmin() {
+        return request.auth != null && request.auth.token.role == 'admin';
+      }
+      function validTextAndTag(d) {
+        return d.text is string && d.text.size() >= 1 && d.text.size() <= 500
+               && (d.tag == null || d.tag in ['wrong', 'confusing', 'too_long', 'love_it']);
+      }
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+                    && request.resource.data.keys().hasOnly(
+                         ['lessonId', 'taskId', 'lessonVersion', 'text', 'tag', 'createdAt',
+                          'status', 'statusChangedAt', 'createdBy'])
+                    && request.resource.data.keys().hasAll(
+                         ['lessonId', 'taskId', 'lessonVersion', 'text', 'tag', 'createdAt',
+                          'status', 'statusChangedAt', 'createdBy'])
+                    && request.resource.data.lessonId == lessonId
+                    && (request.resource.data.taskId is int || request.resource.data.taskId is string)
+                    && request.resource.data.lessonVersion is number
+                    && request.resource.data.status == 'new'
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.statusChangedAt == request.time
+                    && request.resource.data.createdBy == request.auth.uid
+                    && validTextAndTag(request.resource.data);
+      allow update: if isAdmin()
+                    && resource.data.status == 'new'
+                    && resource.data.createdBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'tag'])
+                    && validTextAndTag(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     // Lesson-type-wide shared assets and default sprites.
     // Public read so the builder can fetch them without auth.
     match /lessonTypeAssets/{lessonType} {
