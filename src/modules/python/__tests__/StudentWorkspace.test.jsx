@@ -623,3 +623,53 @@ describe('Python StudentWorkspace marks only real typing as a typed edit', () =>
     expect(handleCodeChange).toHaveBeenLastCalledWith('print(3)', undefined)
   })
 })
+
+// Request 131: the tutor's remote Run says so (handleRun's startedBy 'remote'), so it never
+// answers a Mark Fail the way the student's own Run does; the student's Run says nothing.
+describe('Python StudentWorkspace tells handleRun who started the Run', () => {
+  const renderRemote = (task, extra = {}) => {
+    const handleRun = vi.fn(async () => {})
+    const acknowledgeRemoteRun = vi.fn()
+    render(
+      <StudentWorkspace
+        task={task}
+        cs={{ ...cs, handleRun, acknowledgeRemoteRun, ...extra }}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+    return { handleRun, acknowledgeRemoteRun }
+  }
+
+  it("the tutor's remote Run is marked remote", () => {
+    const { handleRun, acknowledgeRemoteRun } = renderRemote({ id: 't1' }, { remoteRunToken: 5 })
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    expect(handleRun).toHaveBeenCalledWith({ startedBy: 'remote' })
+    expect(acknowledgeRemoteRun).toHaveBeenCalledWith(5)
+  })
+
+  it("the tutor's remote Run of a slow-mo task is a remote slow-mo Run", () => {
+    const { handleRun } = renderRemote(
+      { id: 't1', slowMo: { enabled: true } },
+      { remoteRunToken: 6 }
+    )
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    expect(handleRun.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ slowMo: true, startedBy: 'remote' })
+    )
+  })
+
+  it("the student's Run button is not marked", () => {
+    const { handleRun } = renderRemote({ id: 't1' })
+    fireEvent.click(screen.getByRole('button', { name: /Run/ }))
+    expect(handleRun).toHaveBeenCalledTimes(1)
+    expect(handleRun.mock.calls[0][0]?.startedBy).toBeUndefined()
+  })
+})

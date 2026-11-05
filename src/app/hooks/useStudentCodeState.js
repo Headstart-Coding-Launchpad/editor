@@ -1834,7 +1834,8 @@ export function useStudentCodeState({
   // `runOptions` is a slow-mo Run's `{ slowMo: true, onResult }` or the checks a scrub runs when
   // it ends, `{ source: 'scrub', inputAnswers? }` (useScrubPreview; runWithRuntime replays the
   // answers and the attempt is logged with `source: 'scrub'`); anything else (a click event) is
-  // a normal Run.
+  // a normal Run. `startedBy: 'remote'` (a normal or slow-mo Run) marks the tutor's remote Run
+  // (useRemoteRunTrigger in the Python workspace), which never answers a Mark Fail (request 131).
   async function handleRun(runOptions = null) {
     // Any Run that starts (pressed, scrub, slow-mo, the tutor's) wins over a typed redraw's pass:
     // from then until it ends, and for any redraw of an edit typed before it (commitLivePass). A
@@ -1880,8 +1881,8 @@ export function useStudentCodeState({
     startRun()
     // The student's own Run (Run, or slow-mo, pressed by them) answers a tutor's "not yet": live
     // ticks may resume. Never the checks a scrub runs when it ends, nor the tutor's remote Run
-    // (handed to the workspace while remoteRunToken is set; see useRemoteRunTrigger).
-    if (!scrubRun && remoteRunToken == null) {
+    // (the workspace's useRemoteRunTrigger says so: `startedBy: 'remote'`, slow-mo too).
+    if (!scrubRun && runOptions?.startedBy !== 'remote') {
       answeredMarkFailRef.current = myStudentData?.checkOverridePushedAt ?? null
     }
     // A scrub preview re-run (useScrubPreview) finishes first, so the two never overlap.

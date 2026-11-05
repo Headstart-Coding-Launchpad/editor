@@ -73,8 +73,9 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
     dispatch({ type: 'clear' })
   }, [])
 
+  // `startedBy` 'remote': the tutor's remote Run (handed on to cs.handleRun; request 131).
   const record = useCallback(
-    async (start) => {
+    async (start, { startedBy } = {}) => {
       if (!enabled || pendingRef.current || cs.running || cs.runningTests) return
       if (cs.pyodideStatus === 'loading') return
       pendingRef.current = true
@@ -89,6 +90,7 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
           onResult: (value) => {
             result = value
           },
+          ...(startedBy ? { startedBy } : {}),
         })
       } finally {
         pendingRef.current = false
@@ -224,7 +226,8 @@ export function usePythonSlowMo({ task, cs, code, readOnly = false, live = undef
     view,
     // Actions (the student's own workspace only).
     // Run on a slow-mo task: always a fresh recording (input() asked again), played from the start.
-    run: () => record('play'),
+    // `who`: `{ startedBy: 'remote' }` for the tutor's remote Run.
+    run: (who) => record('play', who ?? {}),
     slowMo: () => (own ? dispatch({ type: 'play' }) : record('play')),
     pause: () => dispatch({ type: 'pause' }),
     step: () => (own ? dispatch({ type: 'step' }) : record('step')),

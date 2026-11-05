@@ -666,10 +666,11 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
     h.updateStudent({ remoteRunPushedAt: 5 })
     expect(h.result.current.remoteRunToken).toBe(5)
-    // As useRemoteRunTrigger does: the workspace's Run, then the acknowledgement.
+    // As useRemoteRunTrigger does: the workspace's Run, marked as the tutor's, then the
+    // acknowledgement.
     let runPromise
     act(() => {
-      runPromise = h.result.current.handleRun()
+      runPromise = h.result.current.handleRun({ startedBy: 'remote' })
       h.result.current.acknowledgeRemoteRun(5)
     })
     await act(async () => {
@@ -680,6 +681,39 @@ describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", ()
     await typeAndPause(h, RIGHT)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
+  })
+
+  it("the student's own Run lifts it even while a tutor's remote Run is still pending", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent(MARK_FAIL)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    h.updateStudent({ remoteRunPushedAt: 5 })
+    expect(h.result.current.remoteRunToken).toBe(5)
+    // Not yet acknowledged: who started the Run is what counts, not the token.
+    await actAsync(() => h.result.current.handleRun())
+    await wait(700)
+    for (const name of RECORD_WRITERS) h.writers[name].mockClear()
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it.each([
+    ['a slow-mo Run the student starts lifts it', {}, true],
+    ["the tutor's remote slow-mo Run does not", { startedBy: 'remote' }, false],
+  ])('%s', async (_name, extra, ticks) => {
+    runsTheCode()
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ slowMo: { enabled: true, separateButton: true } }),
+      currentTaskId: 't1',
+    })
+    h.updateStudent(MARK_FAIL)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await actAsync(() => h.result.current.handleRun({ slowMo: true, onResult: () => {}, ...extra }))
+    await wait(700)
+    for (const name of RECORD_WRITERS) h.writers[name].mockClear()
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(ticks)
   })
 
   it('holds on a fresh mount (a reload) with the Mark Fail already stored', async () => {

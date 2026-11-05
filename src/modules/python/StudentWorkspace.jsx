@@ -338,13 +338,21 @@ export default function StudentWorkspace({
   const runIsSlowMo = slowMoShown && slowMo.throughRun
 
   function handleRunClick() {
+    startRun(null)
+  }
+
+  // `startedBy` 'remote': the tutor's remote Run (request 131: it never answers the tutor's own
+  // Mark Fail as the student's Run does, useStudentCodeState runTask). The student's: null.
+  function startRun(startedBy) {
     if (cs.running || cs.runningTests) {
       cs.handleStop()
       return
     }
     if (runLock) return
     setOutputCollapsed(false)
-    if (runIsSlowMo) slowMo.run()
+    const who = startedBy ? { startedBy } : undefined
+    if (runIsSlowMo) slowMo.run(who)
+    else if (who) cs.handleRun(who)
     else cs.handleRun()
   }
 
@@ -352,7 +360,7 @@ export default function StudentWorkspace({
   useRemoteRunTrigger(
     arrangeBoard ? null : cs.remoteRunToken,
     () => {
-      if (!cs.running && !cs.runningTests) handleRunClick()
+      if (!cs.running && !cs.runningTests) startRun('remote')
     },
     { enabled: !readOnly, onHandled: cs.acknowledgeRemoteRun }
   )
