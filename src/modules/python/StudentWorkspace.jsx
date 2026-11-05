@@ -46,6 +46,8 @@ import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 
 // The editor's share of the width when side by side (percent).
 const PYTHON_SPLIT = 58
+// An edit from the student's own typing in the editor (cs.handleCodeChange's origin, request 131).
+const EDITOR_EDIT = { origin: 'editor' }
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -471,7 +473,8 @@ export default function StudentWorkspace({
       <PythonEditor
         code={code}
         readOnly={readOnly}
-        onChange={readOnly ? undefined : cs.handleCodeChange}
+        // The student's own typing (and scrubbing): the edits a typed redraw may tick on.
+        onChange={readOnly ? undefined : (next) => cs.handleCodeChange(next, EDITOR_EDIT)}
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
         // scrub.afterPass: none until the task's first pass (cs.scrubHeld).
         scrub={

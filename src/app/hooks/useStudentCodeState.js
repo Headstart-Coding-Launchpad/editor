@@ -308,13 +308,14 @@ export function useStudentCodeState({
   const runAnswersRef = useRef(null)
   // The latest handleRun, for the checks a scrub runs when it ends (useScrubPreview runChecks).
   const handleRunRef = useRef(null)
-  // Request 131, a typed redraw's pass (commitLivePass): a pressed Run always wins. Runs called and
-  // not yet finished, and every Run ever called; the latest typed edit with the count it saw; the
-  // task a tutor's "not yet" blocked live ticks on until the student's next Run.
+  // Request 131, a typed redraw's pass (commitLivePass): a Run always wins. Runs started and not
+  // yet finished, and every Run ever started; the student's latest edit typed in the editor, with
+  // the count it saw (null after any other edit); and the tutor's Mark Fail (its pushedAt) that
+  // the student's own Run has answered (tutorHoldsLiveTick).
   const runIntentRef = useRef(0)
   const runCallsRef = useRef(0)
   const typedEditRef = useRef(null)
-  const liveTickBlockedTaskRef = useRef(null)
+  const answeredMarkFailRef = useRef(null)
   const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
@@ -1825,18 +1826,24 @@ export function useStudentCodeState({
   // answers and the attempt is logged with `source: 'scrub'`); anything else (a click event) is
   // a normal Run.
   async function handleRun(runOptions = null) {
-    // Any Run (pressed, scrub, slow-mo, the tutor's) wins over a typed redraw's pass: from now
-    // until it ends, and for any redraw of an edit typed before it (commitLivePass).
-    runIntentRef.current += 1
-    runCallsRef.current += 1
+    // Any Run that starts (pressed, scrub, slow-mo, the tutor's) wins over a typed redraw's pass:
+    // from then until it ends, and for any redraw of an edit typed before it (commitLivePass). A
+    // call that returns at once (no student, already running, nothing to run here) counts for
+    // nothing, so a stray press never cancels a pending pass.
+    let started = false
+    const startRun = () => {
+      started = true
+      runIntentRef.current += 1
+      runCallsRef.current += 1
+    }
     try {
-      return await runTask(runOptions)
+      return await runTask(runOptions, startRun)
     } finally {
-      runIntentRef.current -= 1
+      if (started) runIntentRef.current -= 1
     }
   }
 
-  async function runTask(runOptions) {
+  async function runTask(runOptions, startRun) {
     const slowMoRun = runOptions?.slowMo === true ? runOptions : null
     const scrubRun = !slowMoRun && runOptions?.source === 'scrub' ? runOptions : null
     const actor = effectiveIdentity
@@ -1859,8 +1866,14 @@ export function useStudentCodeState({
       runKind === 'runtime' ||
       (runKind === 'preview' && typeof mod?.runtime?.buildPreviewSrc === 'function')
     if (!runsHere) return
-    // A tutor's "not yet" holds live ticks only until the student runs the task again.
-    liveTickBlockedTaskRef.current = null
+    // From here the Run starts: before it waits for a redraw to settle (handleRun).
+    startRun()
+    // The student's own Run (Run, or slow-mo, pressed by them) answers a tutor's "not yet": live
+    // ticks may resume. Never the checks a scrub runs when it ends, nor the tutor's remote Run
+    // (handed to the workspace while remoteRunToken is set; see useRemoteRunTrigger).
+    if (!scrubRun && remoteRunToken == null) {
+      answeredMarkFailRef.current = myStudentData?.checkOverridePushedAt ?? null
+    }
     // A scrub preview re-run (useScrubPreview) finishes first, so the two never overlap.
     await scrubPreview.settleScrubPreview()
     syncCodeArrangeSlotBeforeRun(task)
@@ -2107,10 +2120,19 @@ export function useStudentCodeState({
   // attempt marked source 'live'), so the tutor's card, Go Live, the report, the share link and
   // the save see a Run of that code. A Run's extras stay out: no typing stats, badge signals,
   // name tags, output reset or solo log. A miss does nothing at all (nothing shown, written or
-  // counted). It bails, before judging, on any Run called since the edit (a Run always wins), a
-  // solved task, another task or module, code changed since the redraw, a tutor's "not yet" on
-  // this task, or a task liveTickEligible leaves out. A failed write never un-ticks.
-  function commitLivePass({ code, taskId, moduleType, outputRaw, result }) {
+  // counted). It bails, before judging, on any Run started since the edit (a Run always wins), an
+  // edit that was not the student's own typing, a solved task, another task or module, code
+  // changed since the redraw, a tutor's "not yet" the student has not answered with a Run, or a
+  // task liveTickEligible leaves out. A failed write never un-ticks; a throw is only logged.
+  function commitLivePass(typed) {
+    try {
+      commitLivePassNow(typed)
+    } catch (err) {
+      console.warn('Failed to check a live pass:', err)
+    }
+  }
+
+  function commitLivePassNow({ code, taskId, moduleType, outputRaw, result }) {
     const actor = effectiveIdentity
     const typed = typedEditRef.current
     if (!actor || running || runIntentRef.current > 0) return
@@ -2118,7 +2140,7 @@ export function useStudentCodeState({
     if (typed.epoch !== runEpochRef.current || isAlreadySolved()) return
     if (String(currentTaskIdRef.current) !== String(taskId)) return
     if (lessonRef.current?.type !== moduleType || storedWork(moduleType).work !== code) return
-    if (String(liveTickBlockedTaskRef.current) === String(taskId)) return
+    if (tutorHoldsLiveTick(taskId)) return
     const task = findTaskById(lessonRef.current?.tasks, taskId)
     const definition = getModuleDefinition(moduleType)
     const eligible = liveTickEligible({
@@ -2146,10 +2168,11 @@ export function useStudentCodeState({
       source: 'live',
     })
     if (!judgement.passed) return
-    // On screen as for a passing Run (the redraw already shows its output and drawing).
+    // On screen as for a passing Run (the redraw already shows its output and drawing), with the
+    // Run's own support-stage outcome.
     if (judgement.evaluation) updateTargetedStageOffer(task, judgement.evaluation, true)
     applyCheckFeedback(true, judgement.suggestion, { skipLog: true })
-    updateSupportStageForAttempt(true)
+    updateSupportStageForAttempt(status !== 'error' && (!task?.check || judgement.passed))
     setRunStatus(status)
     setErrorLine(null)
     const ctx = {
@@ -2169,13 +2192,17 @@ export function useStudentCodeState({
     )
   }
 
-  // A tutor's "not yet" (Mark Fail) on this task: no live ticks until the student's next Run.
-  useEffect(() => {
-    if (!myStudentData?.checkOverridePushedAt) return
-    liveTickBlockedTaskRef.current =
-      myStudentData.checkOverridePassed === false ? currentTaskIdRef.current : null
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myStudentData?.checkOverridePushedAt])
+  // A tutor's "not yet" (Mark Fail) on the class's task holds live ticks there until the student
+  // runs it themselves (answeredMarkFailRef, set in runTask). Read from the stored override at
+  // the moment of the pass, so it holds on a fresh mount or reload too (there until the next Run:
+  // nothing local remembers an earlier one). A new Mark Fail holds again.
+  function tutorHoldsLiveTick(taskId) {
+    const pushedAt = myStudentData?.checkOverridePushedAt
+    if (!pushedAt || myStudentData?.checkOverridePassed !== false) return false
+    const classTaskId = sessionRef.current?.currentTaskId
+    if (classTaskId != null && String(classTaskId) !== String(taskId)) return false
+    return answeredMarkFailRef.current !== pushedAt
+  }
 
   function handleStop() {
     getLessonModule(lesson?.type)?.runtime?.stop()
@@ -2341,18 +2368,21 @@ export function useStudentCodeState({
   // The code editor's change handler (python, turtle, arcade, electronics — the latter sends
   // its serialised circuit): the new code replaces the code module's code, keeping the rest of
   // its work (Arcade's design), through the work-slot pipeline.
-  function handleCodeChange(newCode) {
+  // `origin: 'editor'` marks the student's own typing or dragging in the code editor (the Python
+  // editor's onChange): only such an edit may tick a task as it redraws (request 131,
+  // commitLivePass). Any other edit (a peer's accepted change, copied shared work, Code Arrange
+  // tiles; the default) still redraws but never ticks.
+  function handleCodeChange(newCode, { origin = null } = {}) {
     if (errorLine != null) setErrorLine(null)
     const moduleType = lesson?.type
     if (!isCodeStringWork(workSlotDefinition(moduleType))) return
     handleWorkChange(withCode(moduleType, newCode), { moduleType })
-    // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview); the
-    // edit, with the Runs called so far, is what a live pass must still match (commitLivePass).
-    typedEditRef.current = {
-      code: newCode,
-      runCalls: runCallsRef.current,
-      epoch: runEpochRef.current,
-    }
+    // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview); a
+    // typed edit, with the Runs started so far, is what a live pass must still match.
+    typedEditRef.current =
+      origin === 'editor'
+        ? { code: newCode, runCalls: runCallsRef.current, epoch: runEpochRef.current }
+        : null
     scrubPreview.typedEdit(newCode)
   }
 

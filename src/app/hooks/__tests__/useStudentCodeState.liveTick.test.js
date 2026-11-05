@@ -309,6 +309,28 @@ describe('races: a pressed Run always wins', () => {
     expectNoRecords(h)
   })
 
+  it('a throw while judging the pass is caught and warned, and nothing is recorded', async () => {
+    runsTheCode()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const lesson = liveLesson()
+    let armed = false
+    Object.defineProperty(lesson.tasks[0], 'setupCode', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        if (armed) throw new Error('boom')
+        return undefined
+      },
+    })
+    const h = renderStudentCodeState({ lesson, currentTaskId: 't1' })
+    armed = true
+    await typeAndPause(h, RIGHT)
+    armed = false
+    expect(warn).toHaveBeenCalledWith('Failed to check a live pass:', expect.any(Error))
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
   it('a failed write leaves the tick and warns, with no unhandled rejection', async () => {
     runsTheCode()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -649,9 +671,7 @@ describe("only the student's own typing ticks", () => {
   it('copied shared work does not tick', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() =>
-      applySharedWorkspaceCopy({ code: RIGHT, moduleType: 'python' }, h.result.current)
-    )
+    actSync(() => applySharedWorkspaceCopy({ code: RIGHT, moduleType: 'python' }, h.result.current))
     await wait(700)
     await act(async () => {})
     expect(h.result.current.checkPassed).toBe(false)
