@@ -583,3 +583,43 @@ describe('Python StudentWorkspace line hints', () => {
     expect(pythonEditorSpy.mock.lastCall[0].lineHints).toBeNull()
   })
 })
+
+// Request 131: only the editor's own user edits (CodeEditor onChange's userEdit) may tick a
+// typed Stage task. A value the editor syncs from outside (a tutor's edit, a peer's change,
+// copied shared work, Reset, carried or restored code) is passed on with no origin.
+describe('Python StudentWorkspace marks only real typing as a typed edit', () => {
+  function editorOnChange() {
+    const handleCodeChange = vi.fn()
+    pythonEditorSpy.mockClear()
+    render(
+      <StudentWorkspace
+        task={{ id: 't1', scrub: { enabled: true } }}
+        cs={{ ...cs, handleCodeChange }}
+        lessonId="lesson-1"
+        identityId="student-1"
+        viewingTaskId={null}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isTeacherEditing={false}
+        teacherLiveCode=""
+      />
+    )
+    return { onChange: pythonEditorSpy.mock.lastCall[0].onChange, handleCodeChange }
+  }
+
+  it('a user edit is passed on as the editor origin', () => {
+    const { onChange, handleCodeChange } = editorOnChange()
+    onChange('print(1)', { userEdit: true })
+    expect(handleCodeChange).toHaveBeenLastCalledWith('print(1)', { origin: 'editor' })
+  })
+
+  it('an outside value sync (or a change with no flag) has no origin', () => {
+    const { onChange, handleCodeChange } = editorOnChange()
+    onChange('print(2)', { userEdit: false })
+    expect(handleCodeChange).toHaveBeenLastCalledWith('print(2)', undefined)
+    onChange('print(3)')
+    expect(handleCodeChange).toHaveBeenLastCalledWith('print(3)', undefined)
+  })
+})

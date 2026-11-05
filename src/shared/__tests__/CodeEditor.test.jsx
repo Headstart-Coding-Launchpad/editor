@@ -424,8 +424,24 @@ describe('CodeEditor onUserEdit', () => {
       <CodeEditor value="print(1)" onChange={onChange} onUserEdit={onUserEdit} />
     )
     rerender(<CodeEditor value="print(2)" onChange={onChange} onUserEdit={onUserEdit} />)
-    expect(onChange).toHaveBeenCalledWith('print(2)')
+    expect(onChange).toHaveBeenCalledWith('print(2)', { userEdit: false })
     expect(onUserEdit).not.toHaveBeenCalled()
+  })
+})
+
+// Request 131: onChange says whether the change was the user's own edit (isUserEditUpdate), so a
+// value replaced from outside (a tutor's edit, Reset, carried or restored code) can never pass as
+// typing.
+describe('CodeEditor onChange userEdit', () => {
+  it('is false for a value replaced from outside and true for typing', async () => {
+    const { render, act } = await import('@testing-library/react')
+    const onChange = vi.fn()
+    const ref = React.createRef()
+    const { rerender } = render(<CodeEditor ref={ref} value="print(1)" onChange={onChange} />)
+    rerender(<CodeEditor ref={ref} value="print(2)" onChange={onChange} />)
+    expect(onChange).toHaveBeenLastCalledWith('print(2)', { userEdit: false })
+    act(() => ref.current.insertAtCursor('#'))
+    expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('#'), { userEdit: true })
   })
 })
 

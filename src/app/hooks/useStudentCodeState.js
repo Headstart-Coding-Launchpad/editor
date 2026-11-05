@@ -484,6 +484,9 @@ export function useStudentCodeState({
   function restoreWork(moduleType, value, { stageIndex } = {}) {
     const { workSlot } = getModuleDefinition(moduleType)
     const restored = workSlot.normalise(value)
+    // Work replaced from outside is not the student's typing: a typed redraw still to come may
+    // not tick on it (request 131, commitLivePass).
+    typedEditRef.current = null
     if (workSlot.workspaceOwned) {
       setPushedWork(restored)
       if (stageIndex !== undefined) setPushedStageIndex(stageIndex)
@@ -2368,10 +2371,12 @@ export function useStudentCodeState({
   // The code editor's change handler (python, turtle, arcade, electronics — the latter sends
   // its serialised circuit): the new code replaces the code module's code, keeping the rest of
   // its work (Arcade's design), through the work-slot pipeline.
-  // `origin: 'editor'` marks the student's own typing or dragging in the code editor (the Python
-  // editor's onChange): only such an edit may tick a task as it redraws (request 131,
-  // commitLivePass). Any other edit (a peer's accepted change, copied shared work, Code Arrange
-  // tiles; the default) still redraws but never ticks.
+  // `origin: 'editor'` marks the student's own edit in the code editor (the Python workspace
+  // passes it only when CodeEditor's onChange says `userEdit`, isUserEditUpdate): only such an
+  // edit may tick a task as it redraws (request 131, commitLivePass). Any other edit (the
+  // editor's sync of a tutor's edit, Reset, carried or restored code; a peer's accepted change,
+  // copied shared work, Code Arrange tiles; the default) still redraws but never ticks, and
+  // restoreWork forgets a typed edit still waiting for its redraw.
   function handleCodeChange(newCode, { origin = null } = {}) {
     if (errorLine != null) setErrorLine(null)
     const moduleType = lesson?.type

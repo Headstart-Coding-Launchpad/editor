@@ -1,6 +1,9 @@
 /**
  * Shared CodeMirror React wrapper — used by both the classroom app and lesson builder.
  * Accepts the language type, current value, an onChange callback, and a readOnly flag.
+ * onChange(text, { userEdit }) is called for every document change; `userEdit` is true only for
+ * the user's own edit (typing, pasting, deleting, dragging, undo/redo, a scrub's commit, an
+ * on-screen key), false for a value synced in from the `value` prop.
  * Creates a single EditorView and updates it imperatively to avoid full re-mounts.
  */
 import React, { useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
@@ -510,8 +513,11 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             // A value still being scrubbed is a preview, not an edit (./scrub/scrubExtension.js).
             if (isScrubPreviewUpdate(update)) return
             if (update.docChanged) {
-              onChangeRef.current?.(update.state.doc.toString())
-              if (isUserEditUpdate(update)) onUserEditRef.current?.('editor')
+              // `userEdit`: the user's own edit (isUserEditUpdate), never a value synced from
+              // outside (a tutor's edit, Reset, carried or restored code).
+              const userEdit = isUserEditUpdate(update)
+              onChangeRef.current?.(update.state.doc.toString(), { userEdit })
+              if (userEdit) onUserEditRef.current?.('editor')
               if (isAutocompletePick(update)) {
                 onAutocompleteRef.current?.()
                 onTypingRef.current?.({ kind: 'autocomplete' })

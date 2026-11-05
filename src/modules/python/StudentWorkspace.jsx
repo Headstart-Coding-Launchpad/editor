@@ -473,8 +473,14 @@ export default function StudentWorkspace({
       <PythonEditor
         code={code}
         readOnly={readOnly}
-        // The student's own typing (and scrubbing): the edits a typed redraw may tick on.
-        onChange={readOnly ? undefined : (next) => cs.handleCodeChange(next, EDITOR_EDIT)}
+        // Only the editor's own user edits (typing, scrubbing; CodeEditor's userEdit) may tick a
+        // typed redraw. A value synced in from outside (a tutor's or peer's edit, shared work,
+        // Reset, carried or restored code) reaches the editor's onChange too: no origin.
+        onChange={
+          readOnly
+            ? undefined
+            : (next, edit) => cs.handleCodeChange(next, edit?.userEdit ? EDITOR_EDIT : undefined)
+        }
         // Live number / colour scrubbing (task `scrub`, src/shared/scrub/); not in a sandbox.
         // scrub.afterPass: none until the task's first pass (cs.scrubHeld).
         scrub={

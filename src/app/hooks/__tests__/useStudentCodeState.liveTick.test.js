@@ -14,6 +14,7 @@ import {
   renderStudentCodeState,
   studentSourcedTeacherLive,
   taskKey,
+  writeStored,
 } from '../../../test/studentCodeStateHarness'
 import { fsWith, pythonLesson, turtleLesson } from '../../../test/fixtures/studentCodeStateLessons'
 import { applySharedWorkspaceCopy } from '../../sharedWorkspacePayload'
@@ -674,6 +675,63 @@ describe("only the student's own typing ticks", () => {
     actSync(() => applySharedWorkspaceCopy({ code: RIGHT, moduleType: 'python' }, h.result.current))
     await wait(700)
     await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  // Each outside replacement reaches the editor's onChange too (its value sync), which the
+  // workspace passes on with no origin (CodeEditor userEdit false; StudentWorkspace tests).
+  async function echoAndPause(h) {
+    actSync(() => h.result.current.handleCodeChange(h.result.current.code))
+    await wait(700)
+    await act(async () => {})
+  }
+
+  it("a tutor's applied edit does not tick, even landing on the code just typed", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // The student types the answer; before the redraw, the tutor's edit applies the same code.
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: RIGHT })
+    await wait(700)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    h.updateStudent({ teacherEditAppliedAt: 2, teacherEditApplyCode: RIGHT_TOO })
+    await echoAndPause(h)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('Reset to starter does not tick', async () => {
+    runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    actSync(() => h.result.current.handleResetCode())
+    await echoAndPause(h)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('carried code does not tick', async () => {
+    runsTheCode()
+    writeStored(taskKey('t1'), { code: RIGHT })
+    const lesson = liveLesson()
+    lesson.tasks[1] = { ...lesson.tasks[1], carryCodeFrom: 't1' }
+    const h = renderStudentCodeState({ lesson, currentTaskId: 't2' })
+    expect(h.result.current.code).toBe(RIGHT)
+    await echoAndPause(h)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('saved work restored after mount (solo) does not tick', async () => {
+    runsTheCode()
+    writeStored(taskKey('t1'), { code: RIGHT })
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1', phase: 'solo' })
+    expect(h.result.current.code).toBe(RIGHT)
+    await echoAndPause(h)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
   })
