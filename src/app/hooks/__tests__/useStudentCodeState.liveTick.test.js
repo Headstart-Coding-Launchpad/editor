@@ -16,6 +16,8 @@ import {
   taskKey,
 } from '../../../test/studentCodeStateHarness'
 import { fsWith, pythonLesson, turtleLesson } from '../../../test/fixtures/studentCodeStateLessons'
+import { applySharedWorkspaceCopy } from '../../sharedWorkspacePayload'
+import { applyPeerEdit } from '../../../shared/peerHelp'
 
 vi.mock('../../../modules/python/pyodide', async () =>
   (await import('../../../test/studentCodeStateMocks')).pyodideMock()
@@ -91,8 +93,11 @@ function firstRunWaits() {
 
 const wait = (ms) => act(() => new Promise((resolve) => setTimeout(resolve, ms)))
 
+// The student's own typing in the editor (PythonEditor's onChange): the only edits that may tick.
+const EDITOR = { origin: 'editor' }
+
 async function typeAndPause(h, code) {
-  actSync(() => h.result.current.handleCodeChange(code))
+  actSync(() => h.result.current.handleCodeChange(code, EDITOR))
   await wait(700)
   await act(async () => {})
 }
@@ -249,7 +254,7 @@ describe('races: a pressed Run always wins', () => {
   it('a Run pressed while the redraw is in flight records once, as a Run', async () => {
     const { run, release } = firstRunWaits()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     await wait(600)
     expect(run).toHaveBeenCalledTimes(1)
     let runPromise
@@ -280,9 +285,9 @@ describe('races: a pressed Run always wins', () => {
   it('code edited after the redraw judged it does not tick', async () => {
     const { release } = firstRunWaits()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     await wait(600)
-    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
     release()
     await wait(800)
     await act(async () => {})
@@ -293,7 +298,7 @@ describe('races: a pressed Run always wins', () => {
   it('a task change while the redraw runs ticks neither task', async () => {
     const { release } = firstRunWaits()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     await wait(600)
     actSync(() => h.result.current.resetForTaskChange())
     h.update({ currentTaskId: 't2' })
@@ -332,7 +337,7 @@ describe('writes are bounded', () => {
     const run = runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     for (let i = 1; i <= RIGHT.length; i += 1) {
-      actSync(() => h.result.current.handleCodeChange(RIGHT.slice(0, i)))
+      actSync(() => h.result.current.handleCodeChange(RIGHT.slice(0, i), EDITOR))
     }
     expectNoRecords(h)
     await wait(700)
@@ -345,7 +350,7 @@ describe('writes are bounded', () => {
   it('an already solved task records nothing more', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     await actAsync(() => h.result.current.handleRun())
     await wait(700)
     for (const name of RECORD_WRITERS) h.writers[name].mockClear()
@@ -376,7 +381,7 @@ describe('re-arming', () => {
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
     // A pressed Run (of wrong code, so it fails) lifts the block...
-    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
     await actAsync(() => h.result.current.handleRun())
     expect(h.result.current.checkPassed).toBe(false)
     await wait(700)
@@ -441,7 +446,7 @@ describe('composed lessons (the effective module type, never lesson.type)', () =
   it('a switch to another module while the redraw runs ticks nothing', async () => {
     const { release } = firstRunWaits()
     const h = renderStudentCodeState({ lesson: composed(), currentTaskId: 'c2' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
     await wait(600)
     actSync(() => h.result.current.resetForTaskChange())
     h.update({ currentTaskId: 'c1' })
@@ -475,9 +480,10 @@ describe('tasks and places that never tick while typing', () => {
       { feedbackChecks: [{ type: 'runs_predicted', hint: 'Count again' }] },
     ],
     [
-      'a wrapped check off the allow-list',
-      { check: [{ ...CHECK, check: { type: 'variables_predicted', names: ['x'] } }] },
+      'a check carrying nesting keys (check / checks), which no evaluator reads',
+      { check: [{ ...CHECK, check: { type: 'output_contains', value: 'hi' } }] },
     ],
+    ['a copyCode task (its first Run measures the copy)', { copyCode: RIGHT }],
     [
       'an on-idle (timing) feedback check',
       { feedbackChecks: [{ type: 'output_contains', value: 'zz', show: 'on_idle', hint: 'x' }] },
@@ -544,5 +550,183 @@ describe('tasks and places that never tick while typing', () => {
     })
     await typeAndPause(separate, RIGHT)
     expect(separate.result.current.checkPassed).toBe(true)
+  })
+})
+
+describe("a tutor's 'not yet' (Mark Fail) holds until the student's own Run", () => {
+  const MARK_FAIL = { checkOverridePassed: false, checkOverridePushedAt: 1 }
+
+  it('the checks a scrub runs when it ends do not lift it', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent(MARK_FAIL)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await actAsync(() => h.result.current.handleRun({ source: 'scrub' }))
+    await wait(700)
+    for (const name of RECORD_WRITERS) h.writers[name].mockClear()
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it("the tutor's remote Run does not lift it", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent(MARK_FAIL)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    h.updateStudent({ remoteRunPushedAt: 5 })
+    expect(h.result.current.remoteRunToken).toBe(5)
+    // As useRemoteRunTrigger does: the workspace's Run, then the acknowledgement.
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+      h.result.current.acknowledgeRemoteRun(5)
+    })
+    await act(async () => {
+      await runPromise
+    })
+    await wait(700)
+    for (const name of RECORD_WRITERS) h.writers[name].mockClear()
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('holds on a fresh mount (a reload) with the Mark Fail already stored', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({
+      lesson: liveLesson(),
+      currentTaskId: 't1',
+      session: makeSession({ currentTaskId: 't1', student: MARK_FAIL }),
+    })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('a new Mark Fail after the student ran holds again', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent(MARK_FAIL)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await actAsync(() => h.result.current.handleRun())
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 2 })
+    await wait(700)
+    for (const name of RECORD_WRITERS) h.writers[name].mockClear()
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+})
+
+describe("only the student's own typing ticks", () => {
+  it('an edit with no origin (the default) redraws but never ticks', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    await wait(700)
+    await act(async () => {})
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it("a peer's accepted edit does not tick", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // As StudentView handleAcceptPeerEdit applies it.
+    const next = applyPeerEdit(h.result.current.code, [
+      { op: 'replace', line: 2, before: 'print("ho")', text: 'print("hi")' },
+    ])
+    expect(next).toBe(RIGHT)
+    actSync(() => h.result.current.handleCodeChange(next))
+    await wait(700)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('copied shared work does not tick', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() =>
+      applySharedWorkspaceCopy({ code: RIGHT, moduleType: 'python' }, h.result.current)
+    )
+    await wait(700)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('typing after a no-tick edit still ticks', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    await wait(700)
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+})
+
+describe('a typed redraw of code already previewed still ticks', () => {
+  it('after a scrub preview of the same code (not a typed one)', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    act(() => {
+      h.result.current.scrubPreview(RIGHT)
+    })
+    await wait(300)
+    await act(async () => {})
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(h.result.current.checkPassed).toBe(false)
+    // The scrub's end saves the code as an edit in the editor.
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('after an earlier typed redraw of the same code that did not finish cleanly', async () => {
+    let calls = 0
+    mockModuleRun('python', (callbacks, code) => {
+      calls += 1
+      if (calls === 1) return { status: 'error' }
+      callbacks.onOutput(output(code), 'stdout')
+      return { status: 'success', stage: STAGE }
+    })
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+})
+
+describe('only a Run that starts invalidates a pending typed pass', () => {
+  it('a Run that returns at once (already running, a stale handler) does not', async () => {
+    const { release } = firstRunWaits()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // A real Run of wrong code, held open: this render's handleRun sees running.
+    let runPromise
+    act(() => {
+      runPromise = h.result.current.handleRun()
+    })
+    await act(async () => {})
+    expect(h.result.current.running).toBe(true)
+    const staleRun = h.result.current.handleRun
+    release()
+    await act(async () => {
+      await runPromise
+    })
+    expect(h.result.current.checkPassed).toBe(false)
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    // A stray press through the stale handler: it returns without running.
+    await actAsync(() => staleRun())
+    await wait(700)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(h.writers.logAttempt).toHaveBeenLastCalledWith(
+      ANON,
+      't1',
+      expect.objectContaining({ passed: true, source: 'live' })
+    )
   })
 })
