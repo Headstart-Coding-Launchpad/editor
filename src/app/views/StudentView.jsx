@@ -72,6 +72,7 @@ import { PollTaskClassContext } from '../components/quiz/PollTaskClassContext'
 import { getActivePoll, getStudentPollChoice, tallyPoll } from '../../shared/classPolls'
 import LessonTaskContent from '../components/LessonTaskContent'
 import ControlHighlightRing from '../../shared/ControlHighlightRing'
+import { highlightScopeForTask, moduleHasHighlightTargets } from '../../shared/controlHighlight'
 import {
   mergeHighlightedPanes,
   useStudentControlHighlight,
@@ -922,16 +923,25 @@ export default function StudentView({
     () => flattenTasks(lesson?.tasks ?? []).find((item) => item.id === highlightTaskId) ?? null,
     [lesson, highlightTaskId]
   )
+  // A hosted activity with its own targets (the Keyboard's keys, request 133) counts too, outside
+  // the sandbox (which shows the module's workspace): its scope is `activity:<id>`.
+  const highlightModuleType = lesson ? getEffectiveLessonForTask(lesson, highlightTaskId)?.type : null
+  const highlightActivityScope =
+    phase !== 'sandbox' && highlightTask && !isCodeTask(highlightTask)
+      ? highlightScopeForTask(highlightTask, null)
+      : null
+  const highlightOnActivity =
+    !!highlightActivityScope && moduleHasHighlightTargets(highlightActivityScope)
   const controlHighlight = useStudentControlHighlight({
     enabled:
       !teacherPresentation &&
       (phase === 'lesson' || phase === 'solo' || phase === 'sandbox') &&
       !!highlightTask &&
-      isCodeTask(highlightTask),
+      (isCodeTask(highlightTask) || highlightOnActivity),
     lessonId,
     identityId: effectiveIdentity?.anonymousId,
     task: highlightTask,
-    moduleType: lesson ? getEffectiveLessonForTask(lesson, highlightTaskId)?.type : null,
+    moduleType: highlightOnActivity ? highlightActivityScope : highlightModuleType,
     studentCommand:
       session?.students?.[effectiveIdentity?.anonymousId]?.teacherControlHighlight ?? null,
     classCommand: session?.teacherClassControlHighlight ?? null,
@@ -2268,7 +2278,8 @@ export default function StudentView({
               onVisiblePanesChange={handleVisiblePanesChange}
               highlightedPanes={mergeHighlightedPanes(
                 highlightedPanes,
-                controlHighlight.revealPanes
+                // An activity has no panes to point at.
+                highlightOnActivity ? null : controlHighlight.revealPanes
               )}
               forcedPaneCommand={forcedPaneCommand}
             />

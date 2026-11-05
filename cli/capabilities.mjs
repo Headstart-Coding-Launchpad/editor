@@ -71,6 +71,9 @@ function describeActivity(def) {
     requires: def.requires,
     teacherEditable: def.teacherEditable,
     checkTypes: (def.checks ?? []).map((check) => check.type),
+    // What a task's `highlight` field can name (the Keyboard's `key:<key>`, request 133); left
+    // out when the activity has none (`highlight` is then an error).
+    ...(def.highlightTargets?.length ? { highlightTargets: def.highlightTargets } : {}),
     ...describeActivityFields(def.fields),
   }
 }

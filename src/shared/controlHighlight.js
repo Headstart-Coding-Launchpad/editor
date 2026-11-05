@@ -14,7 +14,12 @@
 // button is several targets, e.g. "run stop"), and a control that reveals a hidden one (a
 // collapsed stage rail, a hidden palette toggle) with `data-highlight-reveal="<id>"`.
 // `category:<name>` targets are found by their Blockly flyout label text instead.
+//
+// Hosted activities can declare targets too (defineActivity `highlightTargets`; the Keyboard's
+// `key:<key>`, request 133). Every function below that takes a `moduleType` also takes an
+// activity scope, `activity:<id>` (highlightScopeForTask), so one string picks the target list.
 import { getModuleDefinition } from '../modules/definitions.js'
+import { getActivityDefinition, getTaskActivity } from '../activities/registry.pure.js'
 
 // How long a highlight pulses before it gives up on its own.
 export const CONTROL_HIGHLIGHT_TIMEOUT_MS = 20000
@@ -25,9 +30,31 @@ export const CONTROL_HIGHLIGHT_ATTR = 'data-highlight-target'
 export const CONTROL_HIGHLIGHT_REVEAL_ATTR = 'data-highlight-reveal'
 
 const OPTION_SEPARATOR = ':'
+const ACTIVITY_SCOPE = 'activity:'
 
-// The module's declared targets (frozen specs), or [] for a module without any.
+/**
+ * The scope a task's highlight targets come from: `activity:<id>` for a hosted activity task
+ * (Keyboard, Binary…; not code_arrange, which runs in its module), else the task's effective
+ * module type (composed lessons: the per-task type, never lesson.type).
+ */
+export function highlightScopeForTask(task, moduleType) {
+  const activity = getTaskActivity(task)
+  if (activity && !activity.hostModules && activity.id !== 'unknown') {
+    return `${ACTIVITY_SCOPE}${activity.id}`
+  }
+  return moduleType ?? null
+}
+
+function activityOfScope(scope) {
+  return typeof scope === 'string' && scope.startsWith(ACTIVITY_SCOPE)
+    ? getActivityDefinition(scope.slice(ACTIVITY_SCOPE.length))
+    : null
+}
+
+// The declared targets (frozen specs) of a module or an `activity:<id>` scope, or [].
 export function getModuleHighlightTargets(moduleType) {
+  const activity = activityOfScope(moduleType)
+  if (activity) return activity.highlightTargets ?? []
   return getModuleDefinition(moduleType)?.capabilities.highlightTargets ?? []
 }
 
@@ -168,12 +195,21 @@ export function validateTaskHighlight(task, { n, moduleType, isModuleTask }, err
   if (value == null) return
   const name = highlightTargetName(value)
   if (!name) {
-    const family = symbolFamilyNamed(moduleType, value)
+    const family = symbolFamilyNamed(
+      isModuleTask ? moduleType : (highlightScopeForTask(task, null) ?? moduleType),
+      value
+    )
     errors.push(
       family
         ? `Task ${n} highlight must be one target in quotes, e.g. highlight: "${family}:("`
         : `Task ${n} highlight must be a target name, e.g. highlight: run`
     )
+    return
+  }
+  // A hosted activity (Keyboard…) has its own targets, or none.
+  const activityScope = isModuleTask ? null : highlightScopeForTask(task, null)
+  if (activityScope) {
+    validateActivityHighlight(task, n, name, activityScope, errors)
     return
   }
   if (!isModuleTask) {
@@ -205,6 +241,22 @@ export function validateTaskHighlight(task, { n, moduleType, isModuleTask }, err
   if (entry.id === 'sounds_tab' && task.showSoundsTab !== true) {
     warnings?.push(`Task ${n} highlight sounds_tab has no effect without showSoundsTab`)
   }
+}
+
+function validateActivityHighlight(task, n, name, scope, errors) {
+  const activity = activityOfScope(scope)
+  const word = activity?.yaml?.type ?? scope.slice(ACTIVITY_SCOPE.length)
+  if (!moduleHasHighlightTargets(scope)) {
+    errors.push(`Task ${n} highlight: the ${word} activity has no highlight targets`)
+    return
+  }
+  if (resolveHighlightTarget(scope, task.highlight)) return
+  const family = symbolFamilyNamed(scope, name)
+  errors.push(
+    family
+      ? `Task ${n} highlight "${name}" is not a key the ${word} activity can light. Write one key in quotes, e.g. highlight: "${family}:(" or "${family}:Enter"`
+      : `Task ${n} highlight "${name}" is not a ${word} target. Use one of: ${describeHighlightTargets(scope)}`
+  )
 }
 
 // The tutor command written to RTDB.

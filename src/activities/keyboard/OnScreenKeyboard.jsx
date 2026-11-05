@@ -1,5 +1,6 @@
 import React from 'react'
 import { DEFAULT_LAYOUT, LAYOUTS, keyLabel } from '../../shared/input/index.js'
+import { keyHighlightIds } from './keyTargets.js'
 
 // UK on-screen keyboard. Two jobs:
 //  - input fallback on devices without a physical keyboard (interactive): each key emits a
@@ -205,9 +206,17 @@ export default function OnScreenKeyboard({
                   <span>{keyLabel(code)}</span>
                 </>
               )
+              // A task's `highlight: "key:("` or the tutor's Highlight menu finds the key by this
+              // (src/shared/controlHighlight.js, ./keyTargets.js).
+              const highlightIds = keyHighlightIds(code, entry)
               if (!interactive) {
                 return (
-                  <span key={code} className={className} data-code={code}>
+                  <span
+                    key={code}
+                    className={className}
+                    data-code={code}
+                    data-highlight-target={highlightIds}
+                  >
                     {content}
                   </span>
                 )
@@ -219,6 +228,7 @@ export default function OnScreenKeyboard({
                   type="button"
                   className={className}
                   data-code={code}
+                  data-highlight-target={highlightIds}
                   aria-label={typed === ' ' ? 'Space' : typed}
                   aria-pressed={
                     code.startsWith('Shift') || code === 'ControlLeft' ? toggled : undefined

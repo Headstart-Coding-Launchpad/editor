@@ -39,6 +39,7 @@ import {
   ControlHighlightControls,
   hasControlHighlightTargets,
 } from './student-modal/ControlHighlightMenu'
+import { highlightScopeForTask } from '../../shared/controlHighlight'
 import StudentWorkspaceBody from './student-modal/StudentWorkspaceBody'
 import StudentHintPanel from './student-modal/StudentHintPanel'
 import ShareRequestPanel from './student-modal/ShareRequestPanel'
@@ -469,6 +470,9 @@ export default function StudentModal({
   // of a workspace; quiz-like everywhere else in the header (no reveal, pane focus or share).
   const isActivity = isActivityTask && !isSessionSandbox
   const isQuizLike = isQuiz || isActivity
+  // Where the Highlight menu's targets come from: `activity:<id>` on a hosted activity (request
+  // 133: the Keyboard's keys), else the task's effective module type.
+  const highlightScope = isActivity ? highlightScopeForTask(task, null) : taskLesson?.type
   const activityState = isActivity ? readActivityAnswer(task, student.currentAnswer) : null
   const itemProgress = isSessionSandbox ? null : getTaskItemProgress(task, student)
   // Match / Fill in the Gaps / Code Arrange: the teacher can edit the
@@ -1260,11 +1264,12 @@ export default function StudentModal({
               const hasGoLiveForAll =
                 !!onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task)
               const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
+              // A hosted activity with its own targets (the Keyboard's keys) is offered too.
               const hasControlHighlight =
                 !!onPushTeacherControlHighlight &&
                 !isInformation &&
-                !isQuizLike &&
-                hasControlHighlightTargets(taskLesson?.type)
+                (!isQuizLike || isActivity) &&
+                hasControlHighlightTargets(highlightScope)
               if (
                 !hasSupport &&
                 !hasRunOnStudent &&
@@ -1512,7 +1517,7 @@ export default function StudentModal({
                       {hasControlHighlight && (
                         <section aria-label="Highlight" style={s.menuSection}>
                           <ControlHighlightControls
-                            lessonType={taskLesson?.type}
+                            lessonType={highlightScope}
                             onHighlight={(target) =>
                               onPushTeacherControlHighlight(
                                 student.anonymousId,

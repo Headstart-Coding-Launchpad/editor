@@ -57,9 +57,11 @@ export function ControlHighlightControls({ lessonType, onHighlight, onClear, onD
                 style={s.chip}
                 onClick={() => pick(target.id)}
                 title={
-                  target.revealKey === 'key'
-                    ? `Makes the ${target.label} key glow on the student's key row (touch screens)`
-                    : `Pulses the ${target.label} heading in the block palette`
+                  target.revealKey !== 'key'
+                    ? `Pulses the ${target.label} heading in the block palette`
+                    : target.touchOnly
+                      ? `Makes the ${target.label} key glow on the student's key row (touch screens)`
+                      : `Makes the ${target.label} key glow on the student's keyboard picture`
                 }
               >
                 {target.label}

@@ -122,6 +122,13 @@ export function validateKeyboardTask(task, n) {
       )
     }
   }
+  // highlight: "key:…" (request 133 part B) glows on the keyboard picture, which laptops only
+  // show in find_key and symbols; tablets' on-screen keyboard shows it in every mode.
+  if (task.highlight != null && !['find_key', 'symbols'].includes(task.mode)) {
+    warnings.push(
+      `${where}: highlight only shows on the on-screen keyboard (tablets) in ${task.mode} mode; laptops have no keyboard picture here.`
+    )
+  }
   if (task.mode === 'falling_words') {
     if (task.coreItems != null) {
       warnings.push(

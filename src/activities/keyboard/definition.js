@@ -10,6 +10,7 @@ import {
   KEYBOARD_MODES,
 } from './keyboard.js'
 import { roundSummaryText } from '../round.js'
+import { keyboardHighlightTargets } from './keyTargets.js'
 import { EDIT_REQUIRE_KEYS, editSolution } from './editText.js'
 import {
   MAX_CODE_LENGTH,
@@ -144,6 +145,9 @@ export default defineActivity({
   // still need a real one, and so do edit_text, type_code and falling_words (the student view
   // shows a "needs a real keyboard" note for those).
   touchFallback: 'virtual_keyboard',
+  // `highlight: "key:("` and the tutor's Highlight menu make one key glow on the keyboard
+  // picture or on-screen keyboard (request 133 part B; OnScreenKeyboard marks the keys).
+  highlightTargets: keyboardHighlightTargets(),
 
   fields: {
     modeField: 'mode',

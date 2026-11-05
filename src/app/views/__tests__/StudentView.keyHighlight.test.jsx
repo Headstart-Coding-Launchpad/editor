@@ -134,7 +134,7 @@ function classCommand(target) {
   return { teacherClassControlHighlight: { target, taskId: 1, pushedAt: Date.now() } }
 }
 
-function renderAs(studentId, extra) {
+function renderAs(studentId, extra, lesson = LESSON) {
   mocks.identity = {
     identity: { anonymousId: studentId, displayName: 'Sam', lastSessionTimestamp: 456 },
     loaded: true,
@@ -142,9 +142,9 @@ function renderAs(studentId, extra) {
     updateTimestamp: vi.fn(),
     updateDisplayName: vi.fn(),
   }
-  mocks.session = makeSession(LESSON.id, extra)
+  mocks.session = makeSession(lesson.id, extra)
   const user = userEvent.setup()
-  render(<StudentView lessonId={LESSON.id} lesson={LESSON} />)
+  render(<StudentView lessonId={lesson.id} lesson={lesson} />)
   return { user }
 }
 
@@ -214,5 +214,50 @@ describe('tutor key highlight (request #126)', { timeout: 20000 }, () => {
     await frames()
     await frames()
     expect(ring()).toBeNull()
+  })
+})
+
+// Request 133 part B: a Keyboard activity task takes `key:` highlights too, on its picture.
+const KEYBOARD_LESSON = {
+  id: 'keyboard-highlight',
+  title: 'Keys',
+  type: 'python',
+  tasks: [
+    {
+      id: 1,
+      title: 'Find the Brackets',
+      taskType: 'activity',
+      activityType: 'keyboard',
+      mode: 'symbols',
+      items: [{ id: 'a', char: '(' }],
+    },
+  ],
+}
+
+describe('Keyboard activity key highlight (request 133)', { timeout: 20000 }, () => {
+  beforeEach(() => {
+    mocks.touch = false
+  })
+
+  const pictureKey = (code) =>
+    document.querySelector(`[data-testid="keyboard-picture"] [data-code="${code}"]`)
+
+  it('a tutor class command key:( rings the ( key on the keyboard picture', async () => {
+    renderAs('student-1', classCommand('key:('), KEYBOARD_LESSON)
+    await waitFor(() => expect(pictureKey('Digit9')).not.toBeNull())
+    await waitFor(() => expect(ring()).not.toBeNull())
+    expect(pictureKey('Digit9').getAttribute('data-highlight-target')).toContain('key:(')
+    expect(document.body.textContent).toContain('Your tutor is pointing at the open bracket key')
+  })
+
+  it("the task's own highlight field glows its key when the task opens", async () => {
+    const lesson = {
+      ...KEYBOARD_LESSON,
+      id: 'keyboard-highlight-field',
+      tasks: [{ ...KEYBOARD_LESSON.tasks[0], highlight: 'key:Enter' }],
+    }
+    renderAs('student-1', {}, lesson)
+    await waitFor(() => expect(ring()).not.toBeNull())
+    expect(document.body.textContent).toContain('Your tutor is pointing at the Enter key')
   })
 })

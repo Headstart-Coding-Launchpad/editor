@@ -529,9 +529,11 @@ function validateUiGates(type, def, workSlot) {
 // control in a compact layout, `aliases` other ids authors may write, `options` makes it a family
 // (`category:<option>`), `optionNames` maps an option to the words a screen reader says ("open
 // bracket key" for `(`), and `touchOnly` marks controls that exist on touch screens only.
-// The workspace marks each control with `data-highlight-target="<id>"`.
+// The workspace marks each control with `data-highlight-target="<id>"`. Activities declare the
+// same shape (defineActivity `highlightTargets`, no panes) and pass their own `failWith`.
 const HIGHLIGHT_TARGET_ID = /^[a-z][a-z0-9_]*$/
-function validateHighlightTargets(type, targets, panes) {
+export function validateHighlightTargets(type, targets, panes, failWith = fail) {
+  const fail = failWith
   if (!Array.isArray(targets)) fail(type, '"capabilities.highlightTargets" must be an array')
   const paneIds = new Set(panes.map((pane) => pane.id))
   const seen = new Set()

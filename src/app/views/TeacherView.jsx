@@ -73,6 +73,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import { sandboxModuleLabel } from './teacher/sandboxModuleLabel'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
 import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
+import { highlightScopeForTask } from '../../shared/controlHighlight'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import { describeShareError } from '../sharedWorkspacePayload'
 import { useSandboxArchiveSnapshots } from '../hooks/useSandboxArchiveSnapshots'
@@ -810,9 +811,15 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // The class highlight menu lists the controls of the task the students are on (in the
   // sandbox, the sandbox's task), by its effective module type.
   const classHighlightTask = isInSandbox ? task : currentTask
+  // A hosted activity with its own targets (the Keyboard's keys, request 133) uses its
+  // `activity:<id>` scope.
+  const classHighlightActivity =
+    !isInSandbox && !!currentTask && !isCodeTask(currentTask)
+      ? highlightScopeForTask(currentTask, null)
+      : null
   const classHighlightType = isInSandbox
     ? editorLesson?.type
-    : getEffectiveLessonForTask(lesson, currentTask?.id)?.type
+    : (classHighlightActivity ?? getEffectiveLessonForTask(lesson, currentTask?.id)?.type)
   const displayIndex = flatTasks.findIndex((t) => t.id === displayTaskId)
   // Next / Back in the teacher's navigator find the neighbouring tasks' images already loaded.
   usePreloadNeighbourImages(lesson, flatTasks, displayIndex)
@@ -1003,7 +1010,9 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             )}
             {/* Pulse one control (Run, the green flag, a block category…) on every student's
                 screen, for the task the class is on (its effective module type). */}
-            {session && !!classHighlightTask && isCodeTask(classHighlightTask) && (
+            {session &&
+              !!classHighlightTask &&
+              (isCodeTask(classHighlightTask) || !!classHighlightActivity) && (
               <ControlHighlightDropdown
                 label="Highlight Class"
                 lessonType={classHighlightType}

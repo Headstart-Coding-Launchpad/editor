@@ -6,6 +6,7 @@
 // Pure: no JSX, React or DOM.
 
 import { normaliseFieldSpecs } from '../shared/fieldSpec.js'
+import { validateHighlightTargets } from '../modules/defineModule.js'
 
 export const ACTIVITY_CATEGORIES = ['quiz', 'code', 'computing', 'digital_skills']
 export const COMPLETION_MODES = ['on_submit', 'auto', 'none']
@@ -184,6 +185,11 @@ export function defineActivity(def) {
     fields: normaliseFields(id, def.fields),
     // Carry between lessons (see normaliseCarrySlot): null, or { id, extract, apply }.
     carrySlot: normaliseCarrySlot(id, def.carrySlot),
+    // What a task's `highlight` field or the tutor's Highlight menu can make glow on this
+    // activity's screen (src/shared/controlHighlight.js), the same { id, label, options?,
+    // optionNames? } specs as a module's capabilities.highlightTargets (no panes). The UI marks
+    // each control with data-highlight-target. [] (the default): `highlight` is an error.
+    highlightTargets: validateHighlightTargets(id, def.highlightTargets ?? [], [], fail),
     completion,
     deserialize,
     // What is written to Firebase / teacherLive (default: the same as `serialize`, which is what
