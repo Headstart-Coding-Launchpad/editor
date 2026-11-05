@@ -29,6 +29,12 @@ vi.mock('../../../shared/useTypeAssets', async () =>
 vi.mock('../../../shared/useLessonStorageAssets', async () =>
   (await import('../../../test/studentCodeStateMocks')).lessonStorageAssetsMock()
 )
+// recordRun, spied (still the real one): the ctx a live pass gives it is checked below.
+vi.mock('../runRecord', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, recordRun: vi.fn(actual.recordRun) }
+})
+import { missingRecordRunFields, recordRun } from '../runRecord'
 
 beforeEach(() => {
   localStorage.clear()
@@ -36,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  recordRun.mockClear()
 })
 
 const WRONG = 'from stage import *\nprint("ho")'
@@ -128,8 +135,9 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
     expect(h.result.current.checkSuggestion).toBe('')
     expect(h.result.current.runStatus).toBe('success')
     expect(running).toEqual([false])
-    // The redraw's run is the only run: the program never runs a second time.
-    expect(run).toHaveBeenCalledTimes(1)
+    // The redraw's run is the only run of the student's code: it never runs a second time. (The
+    // code before their typing, here the starter, runs once quietly: it must not already pass.)
+    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, WRONG])
     expect(h.result.current.output).toContain('hi')
     expect(h.result.current.stageResult).toEqual(STAGE)
   })
@@ -307,12 +315,28 @@ describe('races: a pressed Run always wins', () => {
     expect(h.writers.logAttempt.mock.calls[0][2].source).toBeUndefined()
   })
 
-  it('a Run right after a live pass sees the task solved and logs no second attempt', async () => {
+  it('a Run right after a live pass sees the task solved and only hands the attempt to the Run', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
     await typeAndPause(h, RIGHT)
     await actAsync(() => h.result.current.handleRun())
     expect(h.result.current.checkPassed).toBe(true)
+    // useSession logAttempt turns the live attempt of the same code into the Run's (source null)
+    // and logs nothing for other code (useSession.test.js).
+    expect(h.writers.logAttempt).toHaveBeenCalledTimes(2)
+    expect(h.writers.logAttempt).toHaveBeenLastCalledWith(ANON, 't1', {
+      submission: RIGHT,
+      passed: true,
+      onSolvedTask: true,
+    })
+  })
+
+  it('a Run of a task the student solved by Run hands nothing over', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    await actAsync(() => h.result.current.handleRun())
+    await actAsync(() => h.result.current.handleRun())
     expect(h.writers.logAttempt).toHaveBeenCalledTimes(1)
   })
 
@@ -398,7 +422,8 @@ describe('writes are bounded', () => {
     expectNoRecords(h)
     await wait(700)
     await act(async () => {})
-    expect(run).toHaveBeenCalledTimes(1)
+    // One redraw of the typed code (and one quiet run of the starter, the code before it).
+    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, WRONG])
     expect(h.writers.writeStudentRun).toHaveBeenCalledTimes(1)
     expect(h.writers.writeStudentCode).not.toHaveBeenCalled()
   })
@@ -604,9 +629,10 @@ describe('tasks and places that never tick while typing', () => {
     await typeAndPause(h, `${RIGHT}  \n`)
     expect(h.result.current.checkPassed).toBe(false)
     expectNoRecords(h)
-    // Their own change to it does tick.
+    // Nor a small change on top of it (round 4): the starter already passed before the typing.
     await typeAndPause(h, RIGHT_TOO)
-    expect(h.result.current.checkPassed).toBe(true)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
   })
 
   it.each([
@@ -870,10 +896,12 @@ describe("only the student's own typing ticks", () => {
     expectNoRecords(h)
   })
 
+  // (A no-tick edit of code that passes is the new baseline, so typing on it never ticks: see
+  // "code that already passed before the typing never ticks".)
   it('typing after a no-tick edit still ticks', async () => {
     runsTheCode()
     const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
-    actSync(() => h.result.current.handleCodeChange(RIGHT))
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG))
     await wait(700)
     await typeAndPause(h, RIGHT_TOO)
     expect(h.result.current.checkPassed).toBe(true)
@@ -939,6 +967,241 @@ describe('only a Run that starts invalidates a pending typed pass', () => {
       ANON,
       't1',
       expect.objectContaining({ passed: true, source: 'live' })
+    )
+  })
+})
+
+// Round 4: code that already passed before the student's first typed edit (the baseline: the code
+// when the task opened, or when it was last replaced from outside) never ticks on a small edit on
+// top of it. Pressing Run still works.
+describe('code that already passed before the typing never ticks', () => {
+  function carriedLesson() {
+    const lesson = liveLesson()
+    lesson.tasks[1] = { ...lesson.tasks[1], carryCodeFrom: 't1' }
+    return lesson
+  }
+
+  it.each([
+    ['a # comment', RIGHT_TOO],
+    ['a space', `${RIGHT} `],
+  ])('carried passing code, plus %s', async (_name, typed) => {
+    runsTheCode()
+    writeStored(taskKey('t1'), { code: RIGHT })
+    const h = renderStudentCodeState({ lesson: carriedLesson(), currentTaskId: 't2' })
+    expect(h.result.current.code).toBe(RIGHT)
+    await typeAndPause(h, typed)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // Run still ticks it.
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it("the tutor's pushed passing code, plus a comment", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: RIGHT })
+    expect(h.result.current.code).toBe(RIGHT)
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    // Even typed away and back: the baseline is still the tutor's passing code.
+    await typeAndPause(h, ALSO_WRONG)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it('Reset to a starter that does not pass lets typing tick again', async () => {
+    runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    writeStored(taskKey('t1'), { code: RIGHT })
+    const h = renderStudentCodeState({ lesson: carriedLesson(), currentTaskId: 't2' })
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(false)
+    actSync(() => h.result.current.handleResetCode())
+    expect(h.result.current.code).toBe(WRONG)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('the code before the typing runs once quietly, and is remembered', async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    // A different correct answer typed after a held one: the starter is not run again.
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(false)
+    h.updateStudent({ checkOverridePassed: null, checkOverridePushedAt: null })
+    await typeAndPause(h, RIGHT_TOO)
+    expect(h.result.current.checkPassed).toBe(true)
+    // RIGHT, RIGHT_TOO and one quiet run of the starter (WRONG), shown nowhere.
+    expect(run.mock.calls.map(([code]) => code)).toEqual([RIGHT, RIGHT_TOO, WRONG])
+    expect(h.result.current.output).toContain('hi')
+  })
+})
+
+// Round 4: stage_pixel and stage_matches_target can pass on a blank Stage (the background colour)
+// or the starter's own drawing: they tick only on a drawn Stage that differs from the starter's.
+describe('stage_pixel / stage_matches_target need a new drawing', () => {
+  const DOT = { type: 'circle', x: 200, y: 200, r: 50, colour: '#ff0000' }
+  const BOX = { type: 'rect', x: 0, y: 0, w: 20, h: 20, colour: '#0000ff' }
+  // The starter draws the dot, then errors (so it never passes itself).
+  const STARTER = 'from stage import *\ndot()\nbroken()'
+  function drawsByCode() {
+    return mockModuleRun('python', (_callbacks, code) => {
+      const commands = [
+        ...(code.includes('dot()') ? [DOT] : []),
+        ...(code.includes('box()') ? [BOX] : []),
+      ]
+      return { status: code.includes('broken') ? 'error' : 'success', stage: { commands } }
+    })
+  }
+  const lessonWith = (check) => liveLesson({ starterCode: STARTER, check })
+
+  it('a blank Stage (only a comment typed) never ticks a background stage_pixel', async () => {
+    drawsByCode()
+    const check = { type: 'stage_pixel', x: 390, y: 390, colour: '#ffffff' }
+    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
+    await typeAndPause(h, 'from stage import *\n# my picture')
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it("the starter's own drawing never ticks; a new one does", async () => {
+    drawsByCode()
+    const check = { type: 'stage_pixel', x: 200, y: 200, colour: '#ff0000' }
+    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
+    await typeAndPause(h, 'from stage import *\ndot()')
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+    await typeAndPause(h, 'from stage import *\ndot()\nbox()')
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('a Run of the same blank-Stage code still passes as before', async () => {
+    drawsByCode()
+    const check = { type: 'stage_pixel', x: 390, y: 390, colour: '#ffffff' }
+    const h = renderStudentCodeState({ lesson: lessonWith(check), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange('from stage import *\n# my picture'))
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+})
+
+// Round 4: Reset, a tutor's edit or Mark Fail, or any un-solve drops a typed redraw still waiting
+// (or running), so old code never paints over the reset Stage and output.
+describe('a waiting typed redraw is dropped by Reset, a tutor edit and an un-solve', () => {
+  it('Reset before the pause: the old code never runs', async () => {
+    const run = runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    actSync(() => h.result.current.handleResetCode())
+    await wait(700)
+    await act(async () => {})
+    expect(run).not.toHaveBeenCalled()
+    expect(h.result.current.output).not.toContain('hm')
+  })
+
+  it('Reset while the redraw runs: its result never paints', async () => {
+    const { release } = firstRunWaits()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    await wait(600)
+    actSync(() => h.result.current.handleResetCode())
+    release()
+    await wait(50)
+    await act(async () => {})
+    expect(h.result.current.output).not.toContain('hi')
+    expect(h.result.current.stageResult).toBeNull()
+    expect(h.result.current.checkPassed).toBe(false)
+    expectNoRecords(h)
+  })
+
+  it("a tutor's applied edit before the pause: the old code never runs", async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    h.updateStudent({ teacherEditAppliedAt: 1, teacherEditApplyCode: WRONG })
+    await wait(700)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).not.toContain(ALSO_WRONG)
+  })
+
+  it("the tutor's Mark Fail (an un-solve) before the pause: the old code never runs", async () => {
+    const run = runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 2 })
+    expect(h.result.current.checkPassed).toBe(false)
+    await wait(700)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).not.toContain(ALSO_WRONG)
+  })
+})
+
+// Round 4: the live pass builds recordRun's ctx with the Run's own builder, and a record that
+// fails after the tick is shown leaves the tick (as a Run's does) and says so.
+describe("a live pass's records", () => {
+  it("gives recordRun every field it requires, as a Run's ctx does", async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    expect(recordRun).toHaveBeenCalledTimes(1)
+    const [liveCtx, liveRun] = recordRun.mock.calls[0]
+    expect(liveRun.source).toBe('live')
+    expect(missingRecordRunFields(liveCtx)).toEqual([])
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    await actAsync(() => h.result.current.handleRun())
+    const [runCtx] = recordRun.mock.calls.at(-1)
+    expect(missingRecordRunFields(runCtx)).toEqual([])
+    // The same builder: the same writers and Go Live functions, the same refs.
+    for (const key of ['writers', 'live']) {
+      expect(Object.keys(liveCtx[key]).sort(), key).toEqual(Object.keys(runCtx[key]).sort())
+    }
+    for (const key of ['phaseRef', 'inPersonalSandboxRef', 'teacherAssistedTaskIdsRef']) {
+      expect(liveCtx.refs[key], key).toBe(runCtx.refs[key])
+    }
+  })
+
+  it('missingRecordRunFields names a field the ctx leaves out', () => {
+    expect(missingRecordRunFields({})).toContain('writers.logAttempt')
+    expect(missingRecordRunFields({ definition: { runResult: { turtle: true } } })).toContain(
+      'writers.writeStudentTurtleResult'
+    )
+  })
+
+  it('a recordRun that throws at once leaves the tick, warns, and rejects nothing unhandled', async () => {
+    runsTheCode()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    recordRun.mockImplementationOnce(() => {
+      throw new Error('sync boom')
+    })
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('live pass is ticked but its records failed'),
+      expect.objectContaining({ message: 'sync boom' })
+    )
+  })
+
+  it('a recordRun that rejects later leaves the tick and warns the same way', async () => {
+    runsTheCode()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    recordRun.mockImplementationOnce(() => Promise.reject(new Error('late boom')))
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(h, RIGHT)
+    await act(async () => {})
+    expect(h.result.current.checkPassed).toBe(true)
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('live pass is ticked but its records failed'),
+      expect.objectContaining({ message: 'late boom' })
     )
   })
 })

@@ -13,12 +13,41 @@ import { lastErrorLine } from '../studentHints.js'
  *   refs.teacherAssistedTaskIdsRef; live.canPublishTeacherLive, live.publishTeacherLive;
  *   saveRunRecord; writers.writeStudentRun, writers.writeStudentTurtleResult (required when
  *   runResult.turtle), writers.writeStudentStageResult / writeStudentTaskRun (optional),
- *   writers.logAttempt; signals (optional, .reportSandboxRun); recordCourseRun (optional).
+ *   writers.logAttempt; signals (optional, .reportSandboxRun); recordCourseRun (optional);
+ *   confirmsLivePass (optional: the task was ticked by a typed redraw, request 131).
+ * RECORD_RUN_CTX_FIELDS lists the required ones; missingRecordRunFields(ctx) names any missing.
  * A rejected or throwing writer propagates out of recordRun unchanged (later records skipped).
  * `run` is `{ code, outputRaw, status, result, judgement, source }`: the code that ran (after any
  * runtime update), its raw output, status and runtime result, judgeRun's judgement, and the Run's
  * source (`'scrub'`, or `'live'` for a typed redraw's pass, request 131, is logged on the attempt).
  */
+// The ctx fields recordRun needs, as paths (writeStudentTurtleResult only when runResult.turtle).
+export const RECORD_RUN_CTX_FIELDS = Object.freeze([
+  'actor.anonymousId',
+  'definition.runResult',
+  'currentTaskId',
+  'isWatched',
+  'alreadySolved',
+  'teacherPresentation',
+  'refs.phaseRef',
+  'refs.inPersonalSandboxRef',
+  'refs.teacherAssistedTaskIdsRef',
+  'live.canPublishTeacherLive',
+  'live.publishTeacherLive',
+  'saveRunRecord',
+  'writers.writeStudentRun',
+  'writers.logAttempt',
+])
+
+/** The RECORD_RUN_CTX_FIELDS paths `ctx` leaves undefined (an empty list when it has them all). */
+export function missingRecordRunFields(ctx) {
+  const fields = [...RECORD_RUN_CTX_FIELDS]
+  if (ctx?.definition?.runResult?.turtle) fields.push('writers.writeStudentTurtleResult')
+  return fields.filter(
+    (path) => path.split('.').reduce((value, key) => value?.[key], ctx) === undefined
+  )
+}
+
 export async function recordRun(ctx, { code, outputRaw, status, result, judgement, source }) {
   const {
     actor,
@@ -99,6 +128,24 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
       ...(source === 'scrub' || source === 'live' ? { source } : {}),
+    })
+  } else if (
+    ctx.confirmsLivePass === true &&
+    alreadySolved &&
+    status === 'success' &&
+    source !== 'scrub' &&
+    source !== 'live' &&
+    !teacherPresentation &&
+    refs.phaseRef.current === 'lesson' &&
+    !hasTests &&
+    checkTask?.check
+  ) {
+    // A pressed Run of a task a typed redraw ticked (request 131): logAttempt gives that attempt
+    // the Run's source when the code is the same, and logs nothing otherwise.
+    writers.logAttempt(actor.anonymousId, currentTaskId, {
+      submission: code,
+      passed: true,
+      onSolvedTask: true,
     })
   }
 }

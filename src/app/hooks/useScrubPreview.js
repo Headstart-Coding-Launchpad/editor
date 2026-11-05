@@ -72,9 +72,14 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * code) leaves the last picture and output as they were. Never in free play.
  *
  * A typed redraw that finished cleanly is handed, once it is on screen, to `onTypedResult({ code,
- * taskId, moduleType, outputRaw, result })` (request 131: useStudentCodeState commitLivePass may
- * tick the task from it, and returns true when it did). This hook still never judges or writes
- * anything itself.
+ * taskId, moduleType, outputRaw, result, probe })` (request 131: useStudentCodeState
+ * commitLivePass may tick the task from it, and resolves true when it did). `probe(code)` runs
+ * other code (the starter, the code before the student's typing) the same way but quietly:
+ * nothing shown or sent, inside the same preview slot (so a Run still waits for it), resolving to
+ * `{ status, outputRaw, result }`, or null when it was stopped, timed out or asked for input, or
+ * a Run, a task change or cancelTypedEdit came first. This hook never judges or writes anything.
+ * `cancelTypedEdit()` (Reset, a tutor's edit, any replacement of the work, an un-solve) drops a
+ * typed redraw still waiting and keeps one already running from painting or being checked.
  */
 export function useScrubPreview({
   moduleType,
@@ -136,36 +141,16 @@ export function useScrubPreview({
     })
   }
 
-  async function runPreview(job) {
-    const ctx = contextRef.current
-    // A real Run started meanwhile, or the student moved to another module's task.
-    if (!ctx || ctx.running || ctx.moduleType !== job.moduleType) return
-    const mod = getLessonModule(job.moduleType)
-    const definition = getModuleDefinition(job.moduleType)
-    const runKind = definition?.capabilities.run ?? 'none'
-    if (runKind === 'preview') {
-      if (typeof mod?.runtime?.buildPreviewSrc !== 'function') return
-      const files = (ctx.readWork() ?? []).map((file) =>
-        file.name === job.fileName ? { ...file, content: job.code } : file
-      )
-      const src = mod.runtime.buildPreviewSrc(
-        { files, entryFile: ctx.task?.entryFile ?? 'index.html' },
-        ctx.task,
-        ctx.previewOptions()
-      )
-      ctx.setIframeSrc(src)
-      return
-    }
-    if (runKind !== 'runtime' || typeof mod?.runtime?.run !== 'function') return
+  // Runs `code` through the module's runtime as a preview does: the output collected, stopped
+  // after PREVIEW_TIMEOUT_MS, input() answered from `answers` in order (one too many stops it).
+  async function runProgram(mod, code, task, answers) {
     let output = createStudentOutputBuffer()
     const timer = setTimeout(() => mod.runtime.stop?.(), PREVIEW_TIMEOUT_MS)
-    // input() answers are replayed from the last Run, in order; one too many stops the preview.
-    const answers = Array.isArray(job.answers) ? job.answers : []
     let used = 0
     let short = false
     let result
     try {
-      result = await mod.runtime.run(job.code, ctx.task, {
+      result = await mod.runtime.run(code, task, {
         onOutput: (text) => {
           output = appendStudentOutput(output, text)
         },
@@ -184,7 +169,57 @@ export function useScrubPreview({
     } finally {
       clearTimeout(timer)
     }
+    return { result, output, used, short }
+  }
+
+  // A typed redraw dropped by cancelTypedEdit (its generation is old).
+  const typedGenRef = useRef(0)
+  const staleTyped = (job) => job.typed === true && job.typedGen !== typedGenRef.current
+
+  // A quiet run of other code for a typed redraw's checks (onTypedResult's `probe`): nothing shown
+  // or sent; null when it did not finish (stopped, timed out, input()) or a Run, a task change or
+  // cancelTypedEdit came first.
+  async function probe(mod, code, job) {
+    const current = (ctx) =>
+      !!ctx &&
+      !ctx.running &&
+      ctx.moduleType === job.moduleType &&
+      sameTask(ctx.task?.id, job.taskId)
+    const before = contextRef.current
+    if (!current(before) || staleTyped(job) || typeof code !== 'string') return null
+    const { result, output, short } = await runProgram(mod, code, before.task, [])
+    if (short || !result || result.status === 'stopped') return null
+    if (!current(contextRef.current) || staleTyped(job)) return null
+    return { status: result.status, outputRaw: output.raw, result }
+  }
+
+  async function runPreview(job) {
+    const ctx = contextRef.current
+    // A real Run started meanwhile, or the student moved to another module's task.
+    if (!ctx || ctx.running || ctx.moduleType !== job.moduleType || staleTyped(job)) return
+    const mod = getLessonModule(job.moduleType)
+    const definition = getModuleDefinition(job.moduleType)
+    const runKind = definition?.capabilities.run ?? 'none'
+    if (runKind === 'preview') {
+      if (typeof mod?.runtime?.buildPreviewSrc !== 'function') return
+      const files = (ctx.readWork() ?? []).map((file) =>
+        file.name === job.fileName ? { ...file, content: job.code } : file
+      )
+      const src = mod.runtime.buildPreviewSrc(
+        { files, entryFile: ctx.task?.entryFile ?? 'index.html' },
+        ctx.task,
+        ctx.previewOptions()
+      )
+      ctx.setIframeSrc(src)
+      return
+    }
+    if (runKind !== 'runtime' || typeof mod?.runtime?.run !== 'function') return
+    // input() answers are replayed from the last Run, in order; one too many stops the preview.
+    const answers = Array.isArray(job.answers) ? job.answers : []
+    const { result, output, used, short } = await runProgram(mod, job.code, ctx.task, answers)
     const after = contextRef.current
+    // Reset, a tutor's edit or an un-solve while it ran: an old typed redraw never paints.
+    if (staleTyped(job)) return
     if (short) {
       shortTaskRef.current = job.taskId
       if (after.task?.id === job.taskId) setReplayAnswers(null)
@@ -206,12 +241,14 @@ export function useScrubPreview({
     })
     // A finished typed redraw (request 131): its result, for the checks on typing.
     if (job.typed && result.status === 'success') {
-      const ticked = after.onTypedResult?.({
+      // Awaited inside this preview's slot: a Run waits for it (settleScrubPreview).
+      const ticked = await after.onTypedResult?.({
         code: job.code,
         taskId: job.taskId,
         moduleType: job.moduleType,
         outputRaw: output.raw,
         result,
+        probe: (code) => probe(mod, code, job),
       })
       // Marked on the job the scheduler remembers as the last run (its isSame above), only when
       // it ticked.
@@ -238,6 +275,14 @@ export function useScrubPreview({
   }, [task?.id, moduleType])
   useEffect(() => () => clearTimeout(typedTimerRef.current), [])
 
+  // Drops a typed redraw still waiting for the pause, and keeps one already running from painting
+  // or being checked (its generation is old).
+  function cancelTypedEdit() {
+    clearTimeout(typedTimerRef.current)
+    typedTimerRef.current = null
+    typedGenRef.current += 1
+  }
+
   function typedEdit(code) {
     const ctx = contextRef.current
     if (freePlay || !ctx.task) return
@@ -260,6 +305,7 @@ export function useScrubPreview({
         notify: null,
         quietErrors: true,
         typed: true,
+        typedGen: typedGenRef.current,
       })
     }, TYPED_PREVIEW_DELAY_MS)
   }
@@ -361,5 +407,6 @@ export function useScrubPreview({
     rememberRunAnswers,
     scrubCommitted,
     typedEdit,
+    cancelTypedEdit,
   }
 }
