@@ -132,13 +132,7 @@ export default function ExportWorkDialog({ student, lesson, session, onClose }) 
   // On document.body, like the other dialogs over the student modal: inside the modal's own
   // .ui-modal-backdrop, the shared header rule (src/index.css) painted this whole dialog purple.
   return createPortal(
-    <div
-      className="ui-modal-backdrop"
-      style={s.overlay}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose()
-      }}
-    >
+    <div className="ui-modal-backdrop" style={s.overlay}>
       <div style={s.modal} role="dialog" aria-modal="true" aria-label="Export work">
         <div style={s.header}>
           <span style={s.title}>Export work</span>

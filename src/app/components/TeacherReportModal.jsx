@@ -309,7 +309,6 @@ export default function TeacherReportModal({
   namedBadgeRows = null,
   lesson = null,
 }) {
-  const overlayRef = useRef(null)
   const [savedFeedback, setSavedFeedback] = useState(null)
   const [editingFeedback, setEditingFeedback] = useState(false)
   const displayReport = useMemo(() => {
@@ -346,12 +345,8 @@ export default function TeacherReportModal({
 
   return (
     <div
-      ref={overlayRef}
       className="ui-modal-backdrop"
       style={s.overlay}
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose?.()
-      }}
       role="dialog"
       aria-modal="true"
       aria-label="Session report"

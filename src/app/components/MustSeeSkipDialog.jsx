@@ -20,9 +20,6 @@ export default function MustSeeSkipDialog({ taskTitle, onGoToIt, onSkip, onClose
       aria-labelledby="must-see-skip-title"
       data-testid="must-see-skip-dialog"
       style={s.overlay}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation()
@@ -52,6 +49,14 @@ export default function MustSeeSkipDialog({ taskTitle, onGoToIt, onSkip, onClose
             data-testid="must-see-skip"
           >
             Skip anyway
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={onClose}
+            data-testid="must-see-cancel"
+          >
+            Cancel
           </button>
         </div>
       </div>

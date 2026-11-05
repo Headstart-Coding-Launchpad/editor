@@ -142,11 +142,7 @@ export function TopicLibraryDialog({
   }, [onClose])
 
   return (
-    <div
-      style={s.overlay}
-      role="presentation"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-    >
+    <div style={s.overlay} role="presentation">
       <section style={s.dialog} role="dialog" aria-modal="true" aria-label="Topic library">
         <header style={s.header}>
           <div>

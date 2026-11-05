@@ -150,7 +150,6 @@ export default function StudentModal({
   carryWaiting = false,
   onUseCarryStarter = null,
 }) {
-  const overlayRef = useRef(null)
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
   const [answerEditing, setAnswerEditing] = useState(false)
@@ -702,16 +701,7 @@ export default function StudentModal({
   }, [handleCloseRef])
 
   return (
-    <div
-      ref={overlayRef}
-      className="ui-modal-backdrop"
-      style={s.overlay}
-      onClick={(e) => {
-        if (e.target === overlayRef.current) handleClose()
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
+    <div className="ui-modal-backdrop" style={s.overlay} role="dialog" aria-modal="true">
       <div style={s.modal}>
         {/* Modal header: one fixed-height line. Name and small status chips on the left (they
             scroll sideways rather than wrap); student switching, Support, Run, More and close on

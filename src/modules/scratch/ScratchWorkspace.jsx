@@ -3415,10 +3415,9 @@ export default function ScratchWorkspace({
       )}
 
       {variablePrompt && (
-        <div style={s.modalOverlay} onClick={() => setVariablePrompt(null)}>
+        <div style={s.modalOverlay}>
           <form
             style={s.variableModal}
-            onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault()
               submitCreateVariable(variablePrompt.value)
@@ -3452,8 +3451,8 @@ export default function ScratchWorkspace({
       )}
 
       {removeSpritePrompt && (
-        <div style={s.modalOverlay} onClick={() => setRemoveSpritePrompt(null)}>
-          <div style={s.variableModal} onClick={(e) => e.stopPropagation()}>
+        <div style={s.modalOverlay}>
+          <div style={s.variableModal}>
             <span style={s.askLabel}>Remove {removeSpritePrompt.name}?</span>
             <span style={s.removePromptHint}>Its code and costumes will be deleted.</span>
             <div style={s.variableModalRow}>

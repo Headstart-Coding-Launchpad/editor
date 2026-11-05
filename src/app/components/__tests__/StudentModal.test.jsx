@@ -400,11 +400,12 @@ describe('StudentModal', () => {
       expect(props.onClose).toHaveBeenCalledOnce()
     })
 
-    it('calls onClose when the overlay backdrop is clicked directly', () => {
+    it('does not close when the overlay backdrop is clicked; the Close button does', () => {
       const props = mkProps()
       render(<StudentModal {...props} />)
-      // The overlay div carries role="dialog"; clicking it directly (not a child) triggers onClose
       fireEvent.click(screen.getByRole('dialog'))
+      expect(props.onClose).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(props.onClose).toHaveBeenCalledOnce()
     })
 
@@ -435,10 +436,10 @@ describe('StudentModal', () => {
         return { props, onCommitTeacherEdit, onCancelTeacherEdit }
       }
 
-      it('auto-saves the edit (commits, does not cancel) when the backdrop is clicked', async () => {
+      it('auto-saves the edit (commits, does not cancel) when the Close button is clicked', async () => {
         const { props, onCommitTeacherEdit, onCancelTeacherEdit } = await renderEditing()
 
-        fireEvent.click(screen.getByRole('dialog'))
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
         expect(onCommitTeacherEdit).toHaveBeenCalledWith('student-1', {
           code: BASE_STUDENT.currentCode,
@@ -486,7 +487,7 @@ describe('StudentModal', () => {
       await user.click(screen.getByRole('button', { name: /^More/ }))
       await user.click(screen.getByRole('button', { name: /Edit Code/i }))
 
-      fireEvent.click(screen.getByRole('dialog'))
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
       expect(onCancelTeacherEdit).toHaveBeenCalledWith('student-1')
       expect(onCommitTeacherEdit).not.toHaveBeenCalled()

@@ -39,11 +39,11 @@ describe('TeacherEndSessionModal', () => {
     expect(props.onEndAndGoHome).toHaveBeenCalledOnce()
   })
 
-  it('calls onClose when the overlay backdrop is clicked', () => {
+  it('does not close when the overlay backdrop is clicked', () => {
     const props = renderModal()
     fireEvent.click(
       screen.getByRole('button', { name: 'Cancel' }).closest('.teacher-end-modal__overlay')
     )
-    expect(props.onClose).toHaveBeenCalledOnce()
+    expect(props.onClose).not.toHaveBeenCalled()
   })
 })

@@ -767,12 +767,7 @@ export function PrebuiltStacksEditor({ prebuiltStacks = [], predefinedBlocks = [
 
       {editingStack &&
         createPortal(
-          <div
-            className="te-stack-edit-overlay"
-            onPointerDown={(e) => {
-              if (e.target === e.currentTarget) setEditingStackId(null)
-            }}
-          >
+          <div className="te-stack-edit-overlay">
             <div className="te-stack-edit-modal">
               <div className="te-stack-edit-modal__header">
                 <span

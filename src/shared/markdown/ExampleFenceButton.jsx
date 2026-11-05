@@ -113,7 +113,6 @@ function ExampleDialog({ example, titleId, renderIntro, renderCode, onClose, dis
       role="presentation"
       onMouseDown={(event) => {
         event.stopPropagation()
-        if (event.target === event.currentTarget) onClose()
       }}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={handleKeyDown}

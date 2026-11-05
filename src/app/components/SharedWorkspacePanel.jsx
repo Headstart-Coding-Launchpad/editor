@@ -81,13 +81,8 @@ export default function SharedWorkspacePanel({ sharedWorkspaces, viewerId, onOpe
       )}
 
       {open && (
-        <div style={s.overlay} onClick={() => setOpen(false)}>
-          <div
-            style={s.modal}
-            role="dialog"
-            aria-label="Shared work"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={s.overlay}>
+          <div style={s.modal} role="dialog" aria-label="Shared work">
             <div style={s.modalHeader}>
               <span style={s.modalTitle}>📤 Shared work</span>
               <button

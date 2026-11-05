@@ -23,15 +23,7 @@ export default function MessageCompose({
   if (!isOpen) return null
 
   return (
-    <div
-      style={s.overlay}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose()
-          setText('')
-        }
-      }}
-    >
+    <div style={s.overlay}>
       <div style={s.modal}>
         <div style={s.header}>
           <span style={s.title}>

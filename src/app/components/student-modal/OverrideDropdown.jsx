@@ -43,12 +43,7 @@ export function OverrideItems({ student, task, onOverrideCheck, onFail, close })
 export function OverrideFailModal({ onApply, onCancel }) {
   const [failHint, setFailHint] = useState('')
   return (
-    <div
-      style={s.modalOverlay}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel()
-      }}
-    >
+    <div style={s.modalOverlay}>
       <div style={s.modal}>
         <div style={s.modalHeader}>
           <span style={s.modalTitle}>Override: Fail</span>

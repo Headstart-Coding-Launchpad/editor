@@ -11,7 +11,6 @@ export default function TeacherFeedbackModal({
   onClose,
   platformOnly = false,
 }) {
-  const overlayRef = useRef(null)
   const [activeTab, setActiveTab] = useState(platformOnly ? 'platform' : 'lesson')
   const [lessonText, setLessonText] = useState('')
   const [taskText, setTaskText] = useState('')
@@ -102,12 +101,8 @@ export default function TeacherFeedbackModal({
 
   return (
     <div
-      ref={overlayRef}
       className="ui-modal-backdrop"
       style={s.overlay}
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose?.()
-      }}
       role="dialog"
       aria-modal="true"
       aria-label="Submit feedback"

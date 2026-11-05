@@ -257,9 +257,6 @@ export default function BadgeAwardDialog({
       aria-modal="true"
       aria-labelledby="badge-award-title"
       style={s.overlay}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose?.()
-      }}
       onKeyDown={(event) => {
         // Stop here so the student modal behind this one stays open.
         if (event.key === 'Escape') {

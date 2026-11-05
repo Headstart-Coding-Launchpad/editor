@@ -7,9 +7,8 @@ export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome 
       role="dialog"
       aria-modal="true"
       aria-label="End session"
-      onClick={onClose}
     >
-      <div className="teacher-end-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="teacher-end-modal">
         <div className="teacher-end-modal__header">
           <h2 className="teacher-end-modal__title">End Session?</h2>
         </div>

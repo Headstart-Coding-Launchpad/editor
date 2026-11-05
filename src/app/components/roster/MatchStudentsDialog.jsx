@@ -87,9 +87,8 @@ export default function MatchStudentsDialog({
       role="dialog"
       aria-modal="true"
       aria-label="Match students"
-      onClick={onClose}
     >
-      <div style={s.modal} onClick={(e) => e.stopPropagation()}>
+      <div style={s.modal}>
         <div style={s.header}>
           <h2 style={s.title}>Match students</h2>
           <button type="button" style={s.close} aria-label="Close" onClick={onClose}>

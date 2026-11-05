@@ -11,7 +11,6 @@ export default function TeacherReportsPanel({
   lesson = null,
   onClose,
 }) {
-  const overlayRef = useRef(null)
   const user = useAuth()?.user
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
@@ -77,12 +76,8 @@ export default function TeacherReportsPanel({
 
   return (
     <div
-      ref={overlayRef}
       className="ui-modal-backdrop"
       style={s.overlay}
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose?.()
-      }}
       role="dialog"
       aria-modal="true"
       aria-label="Past session reports"
