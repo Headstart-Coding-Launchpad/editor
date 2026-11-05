@@ -2,6 +2,7 @@
 // every module type. Pins current behaviour ahead of the module-registry refactor —
 // see docs/architecture/modular-activities-plan.md step 0.2.
 import { describe, expect, it, vi } from 'vitest'
+import { getModuleDefinition } from '../../../modules/definitions'
 import {
   ANON,
   renderStudentCodeState,
@@ -135,6 +136,60 @@ describe('useStudentCodeState load — arcade', () => {
     })
     expect(h.result.current.code).toBe('player = 9')
     expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('mine'))
+  })
+
+  // The Game kit's playground task ships a seeded player sprite; a returning student's own saved
+  // code and design must win over it.
+  describe('Arcade playground (Game kit) for a returning student', () => {
+    const lessonId = '__playground__arcade'
+    const playgroundLesson = () => ({
+      id: lessonId,
+      isPlayground: true,
+      type: 'arcade',
+      tasks: [getModuleDefinition('arcade').lifecycle.playgroundTask()],
+    })
+
+    it('restores their saved code and design, not the seeded player', () => {
+      writeStored(taskKey(1, { lessonId }), {
+        code: 'my_game = 1',
+        arcadeDesign: normalisedArcadeDesign('mine'),
+      })
+      const h = renderStudentCodeState({
+        lesson: playgroundLesson(),
+        lessonId,
+        currentTaskId: 1,
+        phase: 'solo',
+      })
+      expect(h.result.current.code).toBe('my_game = 1')
+      expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('mine'))
+    })
+
+    it('keeps a saved empty design (every sprite deleted) rather than re-seeding the player', () => {
+      writeStored(taskKey(1, { lessonId }), {
+        code: 'my_game = 1',
+        arcadeDesign: EMPTY_ARCADE_DESIGN,
+      })
+      const h = renderStudentCodeState({
+        lesson: playgroundLesson(),
+        lessonId,
+        currentTaskId: 1,
+        phase: 'solo',
+      })
+      expect(h.result.current.code).toBe('my_game = 1')
+      expect(h.result.current.arcadeDesign).toEqual(EMPTY_ARCADE_DESIGN)
+    })
+
+    it('keeps saved code from before the seed, adding only the seeded player picture', () => {
+      writeStored(taskKey(1, { lessonId }), { code: 'my_game = 1' })
+      const h = renderStudentCodeState({
+        lesson: playgroundLesson(),
+        lessonId,
+        currentTaskId: 1,
+        phase: 'solo',
+      })
+      expect(h.result.current.code).toBe('my_game = 1')
+      expect(h.result.current.arcadeDesign.sprites.map((s) => s.name)).toEqual(['player.png'])
+    })
   })
 
   it('carries code (not the design) from carryCodeFrom', () => {
