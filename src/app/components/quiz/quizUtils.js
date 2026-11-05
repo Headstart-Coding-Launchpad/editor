@@ -5,7 +5,7 @@ export { stableHash } from '../../../shared/textUtils'
 export { parseQuizAnswerState } from '../../../shared/quizAnswers'
 import { stableHash } from '../../../shared/textUtils'
 import { answerTextMatches } from '../../../shared/quizAnswers'
-import { quizOptionLabel } from '../../../shared/quizPictureOptions'
+import { optionHasPicture, quizOptionLabel } from '../../../shared/quizPictureOptions'
 
 // Styling lives in quizStyles.js. Re-exported here so the quiz components can keep a
 // single import, and so this split stayed a move rather than a rename of 40 call sites.
@@ -18,12 +18,14 @@ export {
   confidenceStyles,
 } from './quizStyles'
 
-// An option's words for cards and labels: its text (a picture option's caption), else a
-// picture's alt text, else its id; '' when no option has that id.
+// An option's words for cards and labels. A word option (no picture) is unchanged from before
+// picture options: its text as a string ('' when blank or missing). A picture option: its caption,
+// else the picture's alt text, else its id. '' when no option has that id.
 export function getQuizOptionText(task, answerId) {
   const option = task?.options?.find((candidate) => candidate.id === answerId)
-  if (!option) return ''
-  if (option.text?.trim()) return normalizeQuizAnswerText(option.text)
+  if (!optionHasPicture(option)) return normalizeQuizAnswerText(option?.text ?? '')
+  if (typeof option.text === 'string' && option.text.trim())
+    return normalizeQuizAnswerText(option.text)
   return quizOptionLabel(option)
 }
 

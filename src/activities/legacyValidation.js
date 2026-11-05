@@ -22,6 +22,7 @@ import {
   PICTURE_QUIZ_MAX_OPTIONS,
   countGraphemes,
   isHttpsUrl,
+  isSingleEmoji,
   optionHasPicture,
   quizHasPictureOptions,
 } from '../shared/quizPictureOptions.js'
@@ -75,6 +76,10 @@ function validatePictureOptions(task, { n, errors, warnings }) {
     else if (hasEmoji && countGraphemes(option.emoji) > 1)
       errors.push(
         `Task ${n} is a quiz but option ${option.id} has more than one emoji (use one emoji, or an image)`
+      )
+    else if (hasEmoji && !isSingleEmoji(option.emoji))
+      errors.push(
+        `Task ${n} is a quiz but option ${option.id} has an emoji picture that is not an emoji (use one emoji, or an image)`
       )
   }
   if (task.options.length > PICTURE_QUIZ_MAX_OPTIONS)
@@ -165,7 +170,7 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
   // another type in the Builder loses them (switchQuizType), so this catches YAML and imports.
   if (quizType !== 'multiple_choice' && quizType !== 'poll') {
     for (const option of Array.isArray(task.options) ? task.options : []) {
-      if (option?.image != null || option?.emoji != null)
+      if (optionHasPicture(option))
         errors.push(
           `Task ${n} is not a multiple-choice quiz but option ${option.id} has a picture (picture options work in multiple-choice quizzes only)`
         )

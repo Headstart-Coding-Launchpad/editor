@@ -10,11 +10,13 @@
 // string of the sorted ticked ids ('["a","c"]', '' for none), counted once per option.
 import { encodePollChoice, parsePollChoice } from '../../shared/classPolls.js'
 import { defineQuizActivity, printTable } from '../quiz/quizActivity.js'
-import { quizOptionDescription } from '../../shared/quizPictureOptions.js'
+import { optionHasPicture, quizOptionDescription } from '../../shared/quizPictureOptions.js'
 
 // A poll option's words. Polls take no pictures (validation), but a stray picture option from an
-// import or a direct write is named by its alt text rather than left blank.
-const optionWords = (option) => option?.text || quizOptionDescription(option)
+// import or a direct write is named by its alt text rather than left blank. A word option is
+// returned untouched, exactly as before picture options.
+const optionWords = (option) =>
+  optionHasPicture(option) ? option.text || quizOptionDescription(option) : option?.text
 
 function optionIds(task) {
   return (task?.options ?? []).map((option) => option.id)
@@ -85,7 +87,9 @@ export default defineQuizActivity('poll', {
   summarize: (task, state) => {
     if (task?.multiple === true) {
       const text = parsePollChoice(state)
-        .map((id) => `${id} ${optionWords((task?.options ?? []).find((o) => o.id === id))}`.trim())
+        .map((id) =>
+          `${id} ${optionWords((task?.options ?? []).find((o) => o.id === id)) || ''}`.trim()
+        )
         .join(', ')
       return { text, tone: 'neutral' }
     }

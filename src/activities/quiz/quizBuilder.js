@@ -1,8 +1,14 @@
-import { stripOptionPicture } from '../../shared/quizPictureOptions.js'
+import {
+  PICTURE_FIELDS,
+  optionHasPicture,
+  quizHasPictureOptions,
+  stripOptionPicture,
+} from '../../shared/quizPictureOptions.js'
 
 // Builder task conversions for the legacy quiz activities (moved from TaskEditor with plan step
 // 2.4; the results are unchanged). Each quiz_<type>/ui.jsx exposes `builderConvert` built from
-// switchQuizType, so the Builder's quiz-type picker needs no per-type code. Pure.
+// switchQuizType, so the Builder's quiz-type picker needs no per-type code. Pure, except for the
+// picture stash below.
 
 export function makeDefaultQuizOptions() {
   return [
@@ -38,18 +44,53 @@ export function toQuizTask(task) {
   }
 }
 
-// Picture options are multiple-choice only: leaving multiple choice turns each picture into words
-// (its caption, else its alt text) rather than blocking the switch, so no option goes blank.
-function withoutPictures(options) {
-  return Array.isArray(options) ? options.map(stripOptionPicture) : options
-}
+// Picture options are multiple-choice only. Leaving multiple choice turns each picture into words
+// (its caption, else its alt text) so the task saved as a poll (or any other type) holds no
+// pictures and validates; the pictures are kept in this in-memory stash, by task id, so switching
+// back to multiple choice in the same Builder session (same task id and title) brings them back. The stash is never saved:
+// after a reload a poll is just a poll.
+const pictureStash = new Map()
 
 // Switching an existing quiz to another quiz type. Fields the new type shares are kept; the new
 // type's required fields get empty defaults (the author fills them in).
 export function switchQuizType(task, quizType) {
-  if (quizType !== 'multiple_choice' && Array.isArray(task.options))
-    return switchQuizTypeInner({ ...task, options: withoutPictures(task.options) }, quizType)
-  return switchQuizTypeInner(task, quizType)
+  const stashKey = task?.id ?? null
+  if (quizType === 'multiple_choice') {
+    const stash = stashKey == null ? null : pictureStash.get(stashKey)
+    if (stash) pictureStash.delete(stashKey)
+    // Same id and title: the same task (ids repeat across lessons opened in one session).
+    const restored =
+      stash && stash.title === task.title ? restorePictures(task.options, stash) : task.options
+    return switchQuizTypeInner({ ...task, options: restored }, quizType)
+  }
+  if (!quizHasPictureOptions(task)) return switchQuizTypeInner(task, quizType)
+  const next = switchQuizTypeInner(
+    { ...task, options: task.options.map(stripOptionPicture) },
+    quizType
+  )
+  if (stashKey != null)
+    pictureStash.set(stashKey, { title: task.title, original: task.options, left: next.options })
+  return next
+}
+
+// The options unchanged since the switch (or gone, as on a confidence check): the original
+// options back as they were. Otherwise each option with the same id and no picture of its own
+// gets its picture back, and its alt-text words go back to an empty caption if untouched.
+function restorePictures(options, { original, left }) {
+  if (!Array.isArray(options) || options.length === 0) return original
+  if (JSON.stringify(options) === JSON.stringify(left)) return original
+  return options.map((option) => {
+    const before = original.find((candidate) => candidate?.id === option?.id)
+    if (!optionHasPicture(before) || optionHasPicture(option)) return option
+    const after = left?.find((candidate) => candidate?.id === option?.id)
+    const pictureFields = Object.fromEntries(
+      PICTURE_FIELDS.filter((field) => field in before).map((field) => [field, before[field]])
+    )
+    const untouched = after && option.text === after.text
+    const text = untouched ? before.text : option.text
+    const { text: _text, ...rest } = option
+    return { ...rest, ...pictureFields, ...(text === undefined ? {} : { text }) }
+  })
 }
 
 function switchQuizTypeInner(task, quizType) {

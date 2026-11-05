@@ -143,8 +143,11 @@ export default function MultipleChoiceQuiz({
             const textColour = verdict ? verdict.text : active ? '#fff' : colour.text
             // A picture option's words are its caption; outside picture mode (a poll, say) a
             // stray picture option is named by its alt text rather than left blank.
+            // A word option (no picture) is unchanged: its text as it always was.
             const optionText = normalizeQuizAnswerText(
-              pictureMode || option.text?.trim() ? option.text : quizOptionDescription(option)
+              !optionHasPicture(option) || pictureMode
+                ? option.text
+                : option.text || quizOptionDescription(option)
             )
             const usesBlockMarkdown = hasFencedCodeBlock(optionText)
             const usesScratchMarkdown = isScratchMarkdown(optionText)

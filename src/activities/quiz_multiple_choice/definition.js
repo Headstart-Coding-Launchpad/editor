@@ -7,6 +7,7 @@ import {
   printTable,
 } from '../quiz/quizActivity.js'
 import {
+  optionHasPicture,
   optionPictureSource,
   quizHasPictureOptions,
   quizOptionDescription,
@@ -95,10 +96,9 @@ export default defineQuizActivity('multiple_choice', {
 
   summarize: (task, state) => {
     const option = (task?.options ?? []).find((candidate) => candidate.id === state)
-    return {
-      text: `${state} ${quizOptionDescription(option) || 'Selected answer'}`,
-      tone: 'neutral',
-    }
+    // A word option reads exactly as before picture options; a picture option by caption or alt.
+    const words = optionHasPicture(option) ? quizOptionDescription(option) : option?.text
+    return { text: `${state} ${words || 'Selected answer'}`, tone: 'neutral' }
   },
 
   // Printed only for tasks that name their quizType (unchanged print output). Picture options

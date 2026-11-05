@@ -36,8 +36,47 @@ export function countGraphemes(value) {
   const text = String(value ?? '').trim()
   if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function')
     return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].length
-  // No Segmenter: allow up to 8 code points (a ZWJ sequence), as one emoji.
-  return [...text].length <= 8 ? 1 : [...text].length
+  return countGraphemesFallback(text)
+}
+
+// The count without Intl.Segmenter, for emoji: a code point after a zero-width joiner, a
+// variation selector, a skin-tone modifier, a keycap mark, a tag character or a combining mark
+// joins the one before it, and two regional indicators make one flag. Every other code point
+// starts a new grapheme, so 'abcdefgh' is 8.
+const JOINS_PREVIOUS = /^(?:[\uFE00-\uFE0F\u20E3\u{E0020}-\u{E007F}]|\p{Emoji_Modifier}|\p{M})$/u
+const REGIONAL_INDICATOR = /^\p{Regional_Indicator}$/u
+export function countGraphemesFallback(value) {
+  let count = 0
+  let afterJoiner = false
+  let openFlag = false
+  for (const codePoint of String(value ?? '').trim()) {
+    if (codePoint === '\u200D') {
+      afterJoiner = true
+      continue
+    }
+    if (afterJoiner || (count > 0 && JOINS_PREVIOUS.test(codePoint))) {
+      afterJoiner = false
+      continue
+    }
+    if (REGIONAL_INDICATOR.test(codePoint)) {
+      if (openFlag) {
+        openFlag = false
+        continue
+      }
+      openFlag = true
+    } else openFlag = false
+    count += 1
+  }
+  return count
+}
+
+// One emoji, and really an emoji: a pictograph, a flag or a keycap (a letter, digit or '?' is
+// not, though digits and '#' are technically emoji code points).
+const EMOJI_PICTURE = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u
+export function isSingleEmoji(value) {
+  if (typeof value !== 'string') return false
+  const text = value.trim()
+  return text !== '' && EMOJI_PICTURE.test(text) && countGraphemes(text) === 1
 }
 
 // What the option says in words: the caption, else the picture's alt text ('' if neither).
