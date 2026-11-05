@@ -123,7 +123,14 @@ export function useScrubPreview({
   if (!schedulerRef.current) {
     schedulerRef.current = createPreviewScheduler({
       run: (job) => runPreview(job),
-      isSame: (a, b) => a.code === b.code && a.fileName === b.fileName && a.taskId === b.taskId,
+      // A typed redraw (request 131) repeats the last preview of the same code unless that one
+      // already handed its result to onTypedResult: an earlier scrub or run-on-open preview, one
+      // that bailed (a Run started) or one that ended in an error never did.
+      isSame: (a, b) =>
+        a.code === b.code &&
+        a.fileName === b.fileName &&
+        a.taskId === b.taskId &&
+        (!a.typed || b.typedDelivered === true),
     })
   }
 
@@ -197,6 +204,8 @@ export function useScrubPreview({
     })
     // A finished typed redraw (request 131): its result, for the checks on typing.
     if (job.typed && result.status === 'success') {
+      // Marked on the job the scheduler remembers as the last run (its isSame above).
+      job.typedDelivered = true
       after.onTypedResult?.({
         code: job.code,
         taskId: job.taskId,
