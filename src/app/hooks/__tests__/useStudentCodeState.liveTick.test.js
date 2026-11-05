@@ -194,6 +194,39 @@ describe('Fun moment: typing the right code ticks the task without Run', () => {
     expect(live.result.current.checkPassed).toBe(pressed.result.current.checkPassed)
   })
 
+  // commitLivePassNow repeats runWithRuntime's feedback sequence for a pass (stage offer, check
+  // feedback, support stage, run status, error line): this fails if the two end in different
+  // feedback state. (The end state, not the order of the calls.)
+  it('ends in the same feedback state as a pressed Run of the same passing code', async () => {
+    const FEEDBACK_FIELDS = [
+      'checkPassed',
+      'checkAttempted',
+      'checkSuggestion',
+      'checkFailCount',
+      'offeredStageIndex',
+      'supportStageReveals',
+      'activeSupportStageIndex',
+      'offeredSupportStageIndex',
+      'targetedStageOffer',
+      'targetedPreviewStageIndex',
+      'runStatus',
+      'errorLine',
+    ]
+    const pick = (h) =>
+      Object.fromEntries(FEEDBACK_FIELDS.map((name) => [name, h.result.current[name]]))
+    runsTheCode()
+    const live = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    await typeAndPause(live, RIGHT)
+    const liveState = pick(live)
+    live.unmount()
+    localStorage.clear()
+    runsTheCode()
+    const pressed = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => pressed.result.current.handleCodeChange(RIGHT))
+    await actAsync(() => pressed.result.current.handleRun())
+    expect(liveState).toEqual(pick(pressed))
+  })
+
   it('publishes the pass to Go Live when this student is the source, as a Run does', async () => {
     runsTheCode()
     const h = renderStudentCodeState({
