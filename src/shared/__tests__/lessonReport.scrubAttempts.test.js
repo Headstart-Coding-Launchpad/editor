@@ -109,6 +109,25 @@ describe('failed scrub releases are not attempts', () => {
     ])
   })
 
+  it('a live pass the student then ran (source cleared to null by logAttempt) is a Run again', () => {
+    const ran = buildSessionReport({
+      session: {
+        ...session,
+        attemptLog: {
+          alice: {
+            1: {
+              a1: { ...miss(1), source: null, passed: true, passedAt: 1200, retries: 1 },
+            },
+          },
+        },
+      },
+      lesson,
+    })
+    const [attempt] = taskOf(ran, 0).distinctAttempts
+    expect(attempt.passed).toBe(true)
+    expect(attempt).not.toHaveProperty('source')
+  })
+
   it('omits scrubChecks when nobody had a failed release', () => {
     const quiet = buildSessionReport({
       session: {

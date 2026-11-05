@@ -127,6 +127,37 @@ describe('TeacherReportModal', () => {
     expect(screen.getByText('Passed 1 (while typing, no Run)')).toBeInTheDocument()
   })
 
+  it('a live pass the student then ran (its source taken over by the Run) shows as a Run', () => {
+    const ranReport = {
+      ...report,
+      students: [
+        {
+          ...report.students[0],
+          tasks: [
+            {
+              ...report.students[0].tasks[0],
+              attempts: 1,
+              distinctAttempts: [
+                {
+                  attemptNumber: 1,
+                  passed: true,
+                  retries: 1,
+                  suggestion: null,
+                  submission: 'print("hello")',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    render(<TeacherReportModal report={ranReport} onClose={vi.fn()} />)
+    fireEvent.click(screen.getByText('Student 1'))
+    fireEvent.click(screen.getByRole('button', { name: /Task One/ }))
+    expect(screen.getByText('Passed 1 (retried 1x)')).toBeInTheDocument()
+    expect(screen.queryByText(/while typing/)).toBeNull()
+  })
+
   it('renders override counts and per-student override detail', () => {
     const overriddenReport = {
       ...report,
