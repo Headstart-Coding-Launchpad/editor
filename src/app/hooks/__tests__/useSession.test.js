@@ -2196,6 +2196,34 @@ describe('useSession', () => {
       )
     })
 
+    it('marks an attempt a typed redraw ticked (request 131), and stores no other source', async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.logAttempt('student-live', 8, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'live',
+        })
+        await result.current.logAttempt('student-other', 8, {
+          submission: 'x = 1',
+          passed: true,
+          source: 'made-up',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-live/8/mockHighlightId',
+        }),
+        expect.objectContaining({ passed: true, source: 'live' })
+      )
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'sessions/lesson-1/attemptLog/student-other/8/mockHighlightId',
+        }),
+        expect.objectContaining({ source: null })
+      )
+    })
+
     it('pushes a code_arrange tile miss under the student’s own node, not the attempt log', async () => {
       const { result } = renderHook(() => useSession('lesson-1'))
       await act(async () => {

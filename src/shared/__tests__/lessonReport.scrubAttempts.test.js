@@ -84,6 +84,27 @@ describe('failed scrub releases are not attempts', () => {
     expect(summary.scrubChecks).toBe(5)
   })
 
+  it('counts a pass a typed redraw ticked (source live, request 131) as a normal pass', () => {
+    const live = buildSessionReport({
+      session: {
+        ...session,
+        attemptLog: {
+          alice: {
+            1: {
+              a1: { ...miss(1), source: 'live', passed: true, passedAt: 1200, suggestion: null },
+            },
+          },
+        },
+      },
+      lesson,
+    })
+    const alice = taskOf(live, 0)
+    expect(alice.completed).toBe(true)
+    expect(alice.attempts).toBe(1)
+    expect(alice).not.toHaveProperty('scrubChecks')
+    expect(isFailedScrubAttempt({ source: 'live', passed: true })).toBe(false)
+  })
+
   it('omits scrubChecks when nobody had a failed release', () => {
     const quiet = buildSessionReport({
       session: {

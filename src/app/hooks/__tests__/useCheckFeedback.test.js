@@ -3,6 +3,18 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useCheckFeedback } from '../useCheckFeedback'
 
 describe('useCheckFeedback', () => {
+  it('applyCheckFeedback updates checkPassedRef at once, before the next render', () => {
+    const { result } = renderHook(() => useCheckFeedback())
+    const ref = result.current.checkPassedRef
+    let seen
+    act(() => {
+      result.current.applyCheckFeedback(true, '', { skipLog: true })
+      seen = ref.current
+    })
+    expect(seen).toBe(true)
+    expect(result.current.checkPassed).toBe(true)
+  })
+
   describe('initial state', () => {
     it('starts with all check state false/empty/null', () => {
       const { result } = renderHook(() => useCheckFeedback())
