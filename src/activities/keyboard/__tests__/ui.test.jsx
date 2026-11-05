@@ -90,7 +90,7 @@ describe('Keyboard UI: find_key and symbols', () => {
     expect(picture.querySelector('[data-code="KeyQ"]')).toHaveClass('act-osk__key--highlight')
     expect(screen.getByText(/Look for Q/)).toBeInTheDocument()
     press(area, 'q', { code: 'KeyQ' })
-    expect(state().items.a).toEqual({ pressed: true, source: 'hardware', tries: 3 })
+    expect(state().items.a).toEqual({ pressed: true, source: 'hardware' })
   })
 
   it('records Shift for a UK symbol', () => {
@@ -99,8 +99,35 @@ describe('Keyboard UI: find_key and symbols', () => {
     const area = screen.getByTestId('keyboard-practice')
     press(area, '3', { code: 'Digit3' })
     press(area, '£', { code: 'Digit3', shiftKey: true })
-    expect(state().items.a).toEqual({ typedChar: '£', shift: true, source: 'hardware', tries: 2 })
+    expect(state().items.a).toEqual({ typedChar: '£', shift: true, source: 'hardware' })
     expect(keyboard.grade(task, state()).passed).toBe(true)
+  })
+
+  it.each([
+    ['without showKey', {}],
+    ['with showKey', { showKey: true }],
+  ])('find_key %s: Shift, Ctrl, Alt, Meta and Caps Lock are not misses', (_name, extra) => {
+    renderKeyboard({ ...FIND, ...extra })
+    const area = screen.getByTestId('keyboard-practice')
+    const picture = screen.getByTestId('keyboard-picture')
+    for (const [key, code] of [
+      ['Shift', 'ShiftLeft'],
+      ['Control', 'ControlLeft'],
+      ['Alt', 'AltLeft'],
+      ['Meta', 'MetaLeft'],
+      ['CapsLock', 'CapsLock'],
+    ]) {
+      press(area, key, { code })
+    }
+    expect(screen.queryByText(/That was|You pressed/)).toBeNull()
+    // Without showKey two misses would light the key; modifiers never count towards that.
+    if (!extra.showKey) expect(picture.querySelector('.act-osk__key--highlight')).toBeNull()
+  })
+
+  it('find_key still finishes when the target itself is Shift or Caps Lock', () => {
+    const { state } = renderKeyboard({ ...FIND, items: [{ id: 'a', key: 'Shift' }] })
+    press(screen.getByTestId('keyboard-practice'), 'Shift', { code: 'ShiftLeft', shiftKey: true })
+    expect(state().items.a).toMatchObject({ pressed: true })
   })
 })
 

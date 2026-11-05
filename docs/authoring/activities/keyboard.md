@@ -206,11 +206,14 @@ way. Every typing mode records `mode`, `accuracy` (0–1), `cpm` (correct charac
 |---|---|
 | `type_text` | `typed`, `shiftCapitals`, `capsLockCapitals`, `source` |
 | `type_code` | `typed`, `source` |
-
-`find_key` and `symbols` items store `pressed` / `typedChar` (and `shift`), `source`, and `tries`:
-how many presses the item took (1 = first go), saved once with the finished result, never per
-keystroke.
 | `falling_words` | `cleared`, `missed`, `score`, `source` (stored as one item with id `round`; `accuracy` is the share of keystrokes that matched the start of a token on screen) |
+
+`find_key` and `symbols` items store `pressed` / `typedChar` (and `shift`) and `source`. With
+`showKey: true` they also store `tries`: how many presses the item took (1 = first go; a bare
+Shift, Ctrl, Alt, Meta or Caps Lock press never counts), saved once with the finished result,
+never per keystroke. `tries` is optional: tasks without `showKey` (every lesson written before it)
+never store it, and anything reading results must treat it as missing. The count is kept on the
+student's screen until the item finishes, so a reload or task switch mid-item starts it again.
 
 ## Typing history (`showHistory`)
 

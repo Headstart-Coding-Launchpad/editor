@@ -38,8 +38,9 @@ import {
 // result that keyboard.js grades:
 //   type_text: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, shiftCapitals,
 //                capsLockCapitals, source, done }
-//   find_key:  { pressed, source, tries }
-//   symbols:   { typedChar, shift, source, tries }   (tries: presses it took, saved once on finish)
+//   find_key:  { pressed, source, tries? }
+//   symbols:   { typedChar, shift, source, tries? }   (tries: presses it took, saved once on
+//              finish, only when the task has showKey; readers must treat it as optional)
 //   shortcuts: { performed, via: 'keyboard' | 'menu', source }
 //   edit_text: { text, orig, caret, anchor, used, source, done }   (see editText.js)
 //   type_code: { mode, typed, accuracy, cpm, wpm, corrections, timeMs, source, done }
@@ -104,6 +105,12 @@ function pressesKey(event, itemKey, layout) {
   const target = getKeyForChar(itemKey, layout)
   if (target && event.code === target.code) return true
   return String(event.key).toLowerCase() === String(itemKey).toLowerCase()
+}
+
+// A bare Shift, Ctrl, Alt, Meta or Caps Lock press is never a miss in find_key or symbols: it is
+// on its way to the real key (find_key checks its own target first, so a Shift item still counts).
+function ignoredPress(event) {
+  return isModifierKey(event.key)
 }
 
 // showKey (request 133): the target shown big ("(" or "Enter") and, when it needs Shift, the words
@@ -322,10 +329,12 @@ export function KeyboardStudentView({
     )
   }
 
-  // find_key and symbols save how many presses the item took (request 133), once, in the
-  // finished result: no extra writes, and the tutor card can say "( took 3 tries".
+  // With showKey, find_key and symbols save how many presses the item took (request 133), once,
+  // in the finished result: no extra writes, and the tutor card can say "( took 3 tries". Without
+  // showKey the result is exactly as before (no `tries`), so old lessons store the same shape.
+  // The count lives in this view's state: a remount (reload, task switch) starts it again at 0.
   function finishWithTries(next) {
-    finishItem({ ...next, tries: (misses[current.id] ?? 0) + 1 })
+    finishItem(showKey ? { ...next, tries: (misses[current.id] ?? 0) + 1 } : next)
   }
 
   // Marked as you go: finishing the core items passes the task (useActivityState auto-submits
@@ -454,6 +463,9 @@ export function KeyboardStudentView({
   function handleFindKey(event) {
     if (pressesKey(event, current.key, layout)) {
       finishWithTries({ pressed: true, source: event.source })
+    } else if (ignoredPress(event)) {
+      // Holding Shift for a shifted key (it glows with showKey) is part of the press, not a miss.
+      return false
     } else if (!event.repeat) {
       miss(`You pressed ${event.key === ' ' ? 'Space' : event.key}.`, event)
     }
@@ -461,7 +473,7 @@ export function KeyboardStudentView({
   }
 
   function handleSymbols(event) {
-    if (isModifierKey(event.key) || event.key.length !== 1) return false
+    if (ignoredPress(event) || event.key.length !== 1) return false
     if (event.key === current.char) {
       finishWithTries({ typedChar: event.key, shift: event.mods.shift, source: event.source })
     } else {

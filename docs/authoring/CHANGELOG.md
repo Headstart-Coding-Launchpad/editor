@@ -54,9 +54,11 @@ Entries written before 2026-09-29 are not tagged.
   the start: a steady amber glow that pulses twice (no pulse with reduce motion). A press that
   isn't the target gets a calm line, "Hold Shift, then press 9" or "That was 8. Press the glowing
   keys."; the "Look for…" hint is not needed. Left out, nothing changes: the key lights after two
-  misses. The Builder turns `showKey` on for a new `find_key` / `symbols` task. Each finished
-  `find_key` / `symbols` item now saves `tries` (once, with the result), and the tutor card adds
-  the hardest item once it took 3 or more presses (`2/5 done · ( took 3 tries`). Keyboard tasks
+  misses. The Builder turns `showKey` on for a new `find_key` / `symbols` task. With `showKey`, each
+  finished item also saves `tries` (once, with the result; without it the stored result is
+  unchanged), and the tutor card adds the hardest item once it took 3 or more presses
+  (`2/5 done · ( took 3 tries`). A bare Shift, Ctrl, Alt, Meta or Caps Lock press is no longer a
+  miss in `find_key` (it already wasn't in `symbols`). Keyboard tasks
   also take `highlight: "key:("` (any UK character, letters once, or `Space`, `Enter`, `Tab`,
   `Shift`, in quotes): the key glows for 20 seconds on the picture or the on-screen keyboard when
   the task opens, and tutors can do the same live from the Highlight menu. Modes with no picture
