@@ -63,6 +63,10 @@ describe('review notes rules', () => {
     await assertSucceeds(doc(as.admin, `${PATH}/n1`).update({ text: 'Swap 2 and 3', tag: null }))
     await assertSucceeds(doc(as.admin, `${PATH}/n1`).get())
     await assertSucceeds(as.admin.firestore().collection(PATH).get())
+    // The preview box's query: one task's notes.
+    await assertSucceeds(
+      as.admin.firestore().collection(PATH).where('taskId', 'in', [3, '3']).limit(200).get()
+    )
     await assertSucceeds(doc(as.admin, `${PATH}/n1`).delete())
   })
 
@@ -81,13 +85,29 @@ describe('review notes rules', () => {
       newNote('admin-2'),
       newNote('admin-1', { lessonId: 'other' }),
       newNote('admin-1', { createdAt: new Date(0) }),
+      newNote('admin-1', { taskId: '' }),
+      newNote('admin-1', { taskId: 'x'.repeat(101) }),
+      newNote('admin-1', { taskId: -1 }),
+      newNote('admin-1', { taskId: null }),
+      newNote('admin-1', { lessonVersion: -1 }),
+      newNote('admin-1', { lessonVersion: 1.5 }),
+      newNote('admin-1', { lessonVersion: '7' }),
     ]
     for (const [i, data] of bad.entries()) {
       await assertFails(doc(as.admin, `${PATH}/bad-${i}`).set(data))
     }
     const { tag: _tag, ...noTag } = newNote('admin-1')
     await assertFails(doc(as.admin, `${PATH}/bad-notag`).set(noTag))
-    expect(bad.length).toBe(8)
+    expect(bad.length).toBe(15)
+  })
+
+  it('takes a text task id up to 100 characters and lesson version 0', async () => {
+    await assertSucceeds(
+      doc(as.admin, `${PATH}/s1`).set(newNote('admin-1', { taskId: 'x'.repeat(100) }))
+    )
+    await assertSucceeds(
+      doc(as.admin, `${PATH}/s2`).set(newNote('admin-1', { taskId: 'task-3', lessonVersion: 0 }))
+    )
   })
 
   it('a client never moves the status on, and cannot edit a note once it is picked up', async () => {

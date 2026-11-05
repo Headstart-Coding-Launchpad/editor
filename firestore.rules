@@ -124,6 +124,10 @@ service cloud.firestore {
         return d.text is string && d.text.size() >= 1 && d.text.size() <= 500
                && (d.tag == null || d.tag in ['wrong', 'confusing', 'too_long', 'love_it']);
       }
+      // Task ids are numbers in authored lessons and text in some older ones.
+      function validTaskId(t) {
+        return (t is int && t >= 0) || (t is string && t.size() >= 1 && t.size() <= 100);
+      }
       allow read: if isAdmin();
       allow create: if isAdmin()
                     && request.resource.data.keys().hasOnly(
@@ -133,8 +137,9 @@ service cloud.firestore {
                          ['lessonId', 'taskId', 'lessonVersion', 'text', 'tag', 'createdAt',
                           'status', 'statusChangedAt', 'createdBy'])
                     && request.resource.data.lessonId == lessonId
-                    && (request.resource.data.taskId is int || request.resource.data.taskId is string)
-                    && request.resource.data.lessonVersion is number
+                    && validTaskId(request.resource.data.taskId)
+                    && request.resource.data.lessonVersion is int
+                    && request.resource.data.lessonVersion >= 0
                     && request.resource.data.status == 'new'
                     && request.resource.data.createdAt == request.time
                     && request.resource.data.statusChangedAt == request.time
