@@ -70,10 +70,12 @@ export const BADGE_SIGNAL_WRITER_NAMES = [
   'recordSandboxRunSignal',
   'flagSandboxRunError',
   'addSandboxTimeSignal',
+  'recordEmojiRunSignal',
 ]
 
 export const WRITER_NAMES = [
   'writeStudentRun',
+  'writeStudentTaskRun',
   'writeStudentHintState',
   'logAttempt',
   'writeStudentAnswer',
