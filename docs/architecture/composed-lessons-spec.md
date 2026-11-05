@@ -223,6 +223,9 @@ Add login-less routes:
 | `/playground/arcade` | Arcade Kit editor and game preview |
 | `/playground/electronics` | Electronics workspace and MicroPython controls |
 | `/playground/scratch` | Scratch block editor, sprites, and stage canvas |
+| `/playground/turtle` | Python Turtle editor and drawing canvas (added 2026-11-05 as a kit of the Python chooser) |
+
+Since 2026-11-05 `/playground/python` opens on a "Pick a kit" chooser (Turtle, Game, Picture Lab, Beats; Charts and Blank page under More kits). Turtle and Game route to their own playgrounds; the Python kits use `?kit=<id>`. See `src/app/playgroundKits.js` and `docs/agents/runtime-model.md` (URL Structure, localStorage Keys).
 
 The landing page exposes a Playgrounds entry point. Playgrounds use the corresponding existing module workspace and local-only saved state, but have no lesson ID, task checks, teacher controls, session reports, teacher-live writes, lesson assets, or Realtime Database session.
 

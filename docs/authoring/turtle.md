@@ -7,9 +7,14 @@ written — running inside the same shared Pyodide Web Worker as the Python
 module (see `src/modules/python/pyodide.worker.js`), not a separate runtime.
 
 **Status:** Shipped. Not supported: multiple `Turtle()` instances, per-task
-canvas size, and reference/expected-image comparison. There is no standalone
-`/playground/turtle` route, and Turtle work can't be shared through shared
-workspaces yet.
+canvas size, and reference/expected-image comparison. Turtle work can't be
+shared through shared workspaces yet.
+
+**Playground:** `/playground/turtle` is the Turtle kit of the Python
+playground's chooser (starter: a purple-and-gold filled square drawn in a
+`for` loop). A Turtle lesson's "Open Playground" (lesson complete, session
+ended) goes straight there. It has Help topics (the topic library filtered to
+`turtle`) and Switch kit.
 
 ## Lesson and task shape
 

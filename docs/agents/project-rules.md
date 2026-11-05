@@ -28,6 +28,10 @@ A feature that answers "no" to 1, 2 or 4 is incomplete. Ship it only with the ga
 - What the tutor sees is see-only unless the feature gives them an explicit action. Seeing a draft never marks it, scores it or turns it into a badge signal.
 - Students stay login-less. Visibility uses the existing anonymous-ID session paths, never new student auth.
 
+**Agreed gaps.**
+
+- **Playgrounds are private** (Ryan, 2026-11-05, playground kit chooser sketch). `/playground/:type` (the Python kit chooser and its kits, Turtle, Arcade, Electronics, Scratch) is solo, local-only and outside any session: the tutor sees nothing live, nothing before submit, and has no action there. Help topics opens there are not logged either. A later "Show my tutor" could go through shared workspaces; not planned.
+
 **Examples already built:** live short-answer and gap drafts ("✏️ Typing, not submitted"), tutor highlights on arrange and drag-and-drop tiles, badge suggestions that always name their task, the stale-pane badge, the teacher pane highlight/force commands, the tutor hint chip and the "student sees" banner. The six requests filed on 2026-10-09 in `docs/authoring/authoring-requests/` closed the gaps found when the principle was set.
 
 ## Tech Stack

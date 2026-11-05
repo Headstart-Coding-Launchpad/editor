@@ -8,7 +8,7 @@ This is a product-facing overview of the eight lesson modules registered in `src
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Python | Code editor, Run/Stop, console output | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 | Arcade Kit | Python game editor, pixel-game canvas, Run/Stop | Yes | Yes | Yes | No | Yes | Yes | No | No | Yes | Yes |
-| Python Turtle | Python editor, turtle-graphics canvas, Run/Stop | No | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | No |
+| Python Turtle | Python editor, turtle-graphics canvas, Run/Stop | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | No |
 | HTML/CSS/JS | Multi-file editor and sandboxed webpage preview | No | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
 | Scratch | Block editor, sprites, and stage canvas | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes |
 | Filesystem | Virtual file-manager workspace | No | Yes | Yes | No | Yes | Yes | No | Yes | Yes | Yes |
@@ -21,7 +21,7 @@ This is a product-facing overview of the eight lesson modules registered in `src
 
 | Feature | Meaning |
 |---|---|
-| Landing-page playground | A standalone, local-only workspace opened from the landing page. The currently available playgrounds are Python, Arcade Kit, Electronics, and Scratch. |
+| Landing-page playground | A standalone, local-only workspace opened from the landing page. The currently available playgrounds are Python, Turtle, Arcade Kit, Electronics, and Scratch. The Landing picker lists Python, Scratch and Electronics; Turtle and Arcade Kit (the Game kit) are kit cards in the Python playground's "Pick a kit" chooser (`src/app/playgroundKits.js`). |
 | Lesson sandbox | A separate freeform workspace inside a lesson. Students can enter a personal sandbox; teachers can also switch a live class to sandbox mode. It is separate from the task workspace and task checks. |
 | View student work live | A teacher can open a student's workspace from the student grid and inspect their current state. Python and HTML additionally support teacher code highlights with an optional note. |
 | Directly edit one student's current work | Python, Turtle and Scratch support a consent-based teacher edit: the teacher requests access, the student accepts, and the teacher can live-edit then commit that student's code or blocks. Other module views are read-only; teachers can still request a starter/stage/complete state, remotely reset a student, send a message or code highlight, or work in the shared sandbox. |

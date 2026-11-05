@@ -54,10 +54,10 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
-| `LandingPage.jsx` | Entry screen: student enters a lesson ID, opens `.launchpad` code, or chooses a standalone playground |
+| `LandingPage.jsx` | Entry screen: student enters a lesson ID, opens `.launchpad` code, or chooses a standalone playground (the picker lists `LANDING_PLAYGROUND_TYPES`: the playground types minus the kit playgrounds Turtle and Arcade) |
 | `CodeFileWorkspace.jsx` | Lightweight standalone Python editor/runner for one or many imported `.launchpad` code tasks |
 | `ShotView.jsx` | `#/shot`: the page `lessons screenshot` captures. Renders `StudentView` (`forceSolo previewMode showPreviewBanner={false}`) from `window.__HSC_SHOT__` (`{ lesson, taskId }`, set by Playwright, never from the URL); no session or writes |
-| `PlaygroundView.jsx` | Local-only Python, Arcade Kit, Electronics, and Scratch playground route built from the existing student workspaces |
+| `PlaygroundView.jsx` | Local-only Python, Turtle, Arcade Kit, Electronics, and Scratch playground route built from the existing student workspaces. `/playground/python` shows `PlaygroundKitChooser` until `?kit=` names a Python kit, which swaps in the kit's starter and lesson id. Hands `StudentView` its top-bar `playgroundControls`: Switch kit (Python, Turtle, Arcade) and `PlaygroundHelpTopics` |
 | `SharedWorkView.jsx` | `/share/:id`: public read-only page for an Export work share link — `loadShareLink` (gone when missing, expired, revoked or refused by the rules), then the module exporter's `ShareView` with the frozen payload; no login, nothing written |
 | `LoginPage.jsx` | Email/password sign-in form; reads `?redirect` param and navigates after success |
 | `LessonRoute.jsx` | URL dispatcher: reads `:lessonId` + query params; auth-guards teacher paths, routes to TeacherView or StudentView. `?live=true` is a deprecated no-op (bare URL now smart-joins); `?solo=true` forces solo unconditionally; `?preview=true` (auth-gated like `?teacher=true`) renders an ephemeral, unrestricted-navigation solo StudentView, used by the Admin Portal's Preview link |
@@ -71,6 +71,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
+| `playgroundKits.js` | The Python playground's kits: `MAIN_KITS` (Turtle, Game, Picture Lab, Beats) and `MORE_KITS` (Charts, Blank page) with starters; `kitPath`, `getPythonKit`, `pythonKitLessonId` (`__playground__python:<kit>`, Blank keeps `__playground__python`), `hasKitChooser`, `canSwitchKit`, `KIT_PLAYGROUND_TYPES`, `LANDING_PLAYGROUND_TYPES`, and the "Carry on" key (`loadLastKitId`/`saveLastKitId`, `headstart_playground_last_kit`) |
 | `studentStorage.js` | Student task/file localStorage key construction and saved-work persistence helpers; personal sandbox load/save helpers; tutor timing-run localStorage helpers (`loadTimingRun`, `saveTimingRun`, `clearTimingRun`), raw per-file record helpers (`loadSavedFileRecord`, `saveFileRecord`, `loadPersonalSandboxFileRecord`, `savePersonalSandboxFileRecord`, ephemeral equivalents) for the storage adapters |
 | `codeCheckContext.js` | `buildCodeCheckContext()` — the check-evaluation context for code tasks (Check/Submit); defers to a run-checked module's `checking.buildContext` (Electronics adds `circuit` so code checks read the MicroPython source), else `{ ...extras, code }` |
 | `studentTaskContent.js` | `prepareClassroomLesson(lesson)` — the classroom copy of a lesson with line-hint markers stripped (StudentView/TeacherView apply it after any session override; TeacherView keeps the authored lesson for Edit Lesson). Pure student task-content selection and authored carry-chain precedence helpers, plus `resolveRemoteResetTarget()` — what a teacher's remote reset/complete action should put in front of the student, dispatched to each module's `lifecycle.resetTarget` |
@@ -103,6 +104,8 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 
 | File | Role |
 |---|---|
+| `PlaygroundKitChooser.jsx` | The Python playground's "Pick a kit to start" screen: 4 kit cards + More kits (5 controls; Charts and Blank page behind More), the last kit marked "Carry on" |
+| `PlaygroundHelpTopics.jsx` | A playground's "Help topics" top-bar button: opens `TopicLibraryDialog` with the topic library filtered to the playground type; renders nothing where `capabilities.topicLibrary` is false (Scratch) |
 | `TopBar.jsx` | Header: lesson title, level badge, "Lesson N" when the lesson has a `lessonNumber`, SOLO/LIVE/SANDBOX badge, student name, progress dots slot; `singleRow` (StudentView) makes it one fixed-height 52px row that never wraps, with the name as a small chip |
 | `TaskNavigator.jsx` | Left sidebar: task list with group collapse, run/check stats, sandbox and pause controls |
 | `TaskProgressDots.jsx` | Top bar progress indicator: clickable past dots, locked future dots, current highlighted; measures itself and falls back to an "x/y" counter; `compact` (student top bar) uses smaller dots (34px on a touch device) and scrolls sideways when at least five fit but not all: the row is narrowed to whole dots, the current (or viewed) dot is scrolled into view by whole dots on entry and on every task change, swiping snaps per dot, and the edge with more dots fades |
