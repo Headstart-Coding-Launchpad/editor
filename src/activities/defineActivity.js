@@ -181,6 +181,10 @@ export function defineActivity(def) {
       summaryFields: () => ({}),
     },
     printHtml: null,
+    // Where this task's highlightTargets can show: (task) → 'all' (every device), 'touch' (touch
+    // screens only; the tutor menu labels them so) or 'none' (the tutor menu offers none). The
+    // Keyboard's depends on its mode (keyboardHighlightReach).
+    highlightReach: () => 'all',
     ...def,
     fields: normaliseFields(id, def.fields),
     // Carry between lessons (see normaliseCarrySlot): null, or { id, extract, apply }.

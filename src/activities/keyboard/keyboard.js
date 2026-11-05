@@ -54,6 +54,15 @@ export const NAMED_KEYS = [
 // They are also the modes that show the keyboard picture on a laptop.
 export const SHOW_KEY_MODES = ['find_key', 'symbols']
 
+// Where a `key:<key>` highlight can glow in a mode (request 133): 'all' (the keyboard picture on a
+// laptop, the on-screen keyboard on a tablet), 'touch' (only tablets' on-screen keyboard: type_text
+// and shortcuts) or 'none' (edit_text and type_code ask tablets for a real keyboard, and
+// falling_words has no keyboard on screen).
+export function keyboardHighlightReach(mode) {
+  if (SHOW_KEY_MODES.includes(mode)) return 'all'
+  return mode === 'type_text' || mode === 'shortcuts' ? 'touch' : 'none'
+}
+
 const MAX_TEXT_LENGTH = 200
 
 const capitalsIn = (text) => [...text].filter((c) => c !== c.toLowerCase()).length
@@ -126,11 +135,16 @@ export function validateKeyboardTask(task, n) {
       )
     }
   }
-  // highlight: "key:…" (request 133 part B) glows on the keyboard picture, which laptops only
-  // show in find_key and symbols; tablets' on-screen keyboard shows it in every mode.
-  if (task.highlight != null && !SHOW_KEY_MODES.includes(task.mode)) {
+  // highlight: "key:…" (request 133 part B) glows on the keyboard picture (laptops, find_key and
+  // symbols) or tablets' on-screen keyboard (those and type_text, shortcuts).
+  const reach = keyboardHighlightReach(task.mode)
+  if (task.highlight != null && reach === 'touch') {
     warnings.push(
       `${where}: highlight only shows on the on-screen keyboard (tablets) in ${task.mode} mode; laptops have no keyboard picture here.`
+    )
+  } else if (task.highlight != null && reach === 'none') {
+    warnings.push(
+      `${where}: highlight shows nowhere in ${task.mode} mode (no keyboard picture, and no on-screen keyboard on tablets); remove it.`
     )
   }
   if (task.mode === 'falling_words') {

@@ -9,6 +9,7 @@ import {
   validateKeyboardTask,
   KEYBOARD_MODES,
   SHOW_KEY_MODES,
+  keyboardHighlightReach,
 } from './keyboard.js'
 import { roundSummaryText } from '../round.js'
 import { keyboardHighlightTargets } from './keyTargets.js'
@@ -147,6 +148,9 @@ export default defineActivity({
   // `highlight: "key:("` and the tutor's Highlight menu make one key glow on the keyboard
   // picture or on-screen keyboard (request 133 part B; OnScreenKeyboard marks the keys).
   highlightTargets: keyboardHighlightTargets(),
+  // The keys show on the picture in find_key / symbols, on tablets' on-screen keyboard in
+  // type_text / shortcuts too, and nowhere in the other modes: the tutor menu follows that.
+  highlightReach: (task) => keyboardHighlightReach(task?.mode),
 
   fields: {
     modeField: 'mode',

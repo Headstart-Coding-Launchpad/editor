@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import {
   describeHighlightTargets,
+  hasTutorHighlightTargets,
   highlightScopeForTask,
   highlightTargetText,
   listHighlightTargets,
   moduleHasHighlightTargets,
   resolveHighlightTarget,
+  tutorHighlightTargets,
   validateTaskHighlight,
 } from '../controlHighlight.js'
+import ControlHighlightDropdown, {
+  ControlHighlightControls,
+} from '../../app/components/student-modal/ControlHighlightMenu.jsx'
 import { locateHighlight } from '../useControlHighlight.js'
 import { defineActivity } from '../../activities/defineActivity.js'
 import { getActivityDefinitions } from '../../activities/registry.pure.js'
@@ -64,6 +69,59 @@ describe('activity highlight targets', () => {
   })
 })
 
+describe('the tutor Highlight menu follows what the Keyboard mode shows', () => {
+  const task = (mode) => ({ ...KEYBOARD, mode })
+
+  it('offers the keys as they are where the picture shows them (find_key, symbols)', () => {
+    for (const mode of ['find_key', 'symbols']) {
+      const list = tutorHighlightTargets(SCOPE, task(mode))
+      expect(list).toEqual(listHighlightTargets(SCOPE))
+      expect(hasTutorHighlightTargets(SCOPE, task(mode))).toBe(true)
+    }
+  })
+
+  it('labels the keys tablets only where only the on-screen keyboard shows them', () => {
+    for (const mode of ['type_text', 'shortcuts']) {
+      const list = tutorHighlightTargets(SCOPE, task(mode))
+      expect(list.length).toBe(listHighlightTargets(SCOPE).length)
+      expect(list.every((target) => target.touchOnly)).toBe(true)
+      expect(new Set(list.map((target) => target.group))).toEqual(new Set(['Keys (tablets only)']))
+    }
+  })
+
+  it('offers no keys where no keyboard shows at all', () => {
+    for (const mode of ['edit_text', 'type_code', 'falling_words']) {
+      expect(tutorHighlightTargets(SCOPE, task(mode))).toEqual([])
+      expect(hasTutorHighlightTargets(SCOPE, task(mode))).toBe(false)
+    }
+  })
+
+  it('leaves module scopes and a missing task unchanged', () => {
+    expect(tutorHighlightTargets('python', null)).toEqual(listHighlightTargets('python'))
+    expect(tutorHighlightTargets(SCOPE, null)).toEqual(listHighlightTargets(SCOPE))
+  })
+
+  it('the menu shows the tablets-only group and hides itself where nothing shows', () => {
+    const { container, unmount } = render(
+      <ControlHighlightDropdown
+        lessonType={SCOPE}
+        task={task('type_code')}
+        onHighlight={() => {}}
+      />
+    )
+    expect(container.innerHTML).toBe('')
+    unmount()
+    render(
+      <ControlHighlightControls
+        lessonType={SCOPE}
+        task={task('type_text')}
+        onHighlight={() => {}}
+      />
+    )
+    expect(screen.getByText('Keys (tablets only)')).toBeInTheDocument()
+  })
+})
+
 describe('validateTaskHighlight on activity tasks', () => {
   const run = (task) => {
     const errors = []
@@ -116,7 +174,12 @@ describe.each([
       lesson({ mode: 'type_code', items: [{ id: 'a', code: 'print(1)' }], highlight: 'key:Enter' })
     )
     expect(typing.errors.join('\n')).not.toMatch(/highlight/)
-    expect(typing.warnings.join('\n')).toMatch(/highlight only shows on the on-screen keyboard/)
+    expect(typing.warnings.join('\n')).toMatch(/highlight shows nowhere in type_code mode/)
+    const tablets = validate(
+      lesson({ mode: 'type_text', items: [{ id: 'a', text: 'hi' }], highlight: 'key:Enter' })
+    )
+    expect(tablets.errors.join('\n')).not.toMatch(/highlight/)
+    expect(tablets.warnings.join('\n')).toMatch(/highlight only shows on the on-screen keyboard/)
     const bad = validate(
       lesson({ mode: 'symbols', items: [{ id: 'a', char: '(' }], highlight: 'run' })
     )

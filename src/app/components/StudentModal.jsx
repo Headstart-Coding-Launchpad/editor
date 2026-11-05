@@ -1269,7 +1269,7 @@ export default function StudentModal({
                 !!onPushTeacherControlHighlight &&
                 !isInformation &&
                 (!isQuizLike || isActivity) &&
-                hasControlHighlightTargets(highlightScope)
+                hasControlHighlightTargets(highlightScope, isActivity ? task : null)
               if (
                 !hasSupport &&
                 !hasRunOnStudent &&
@@ -1518,6 +1518,7 @@ export default function StudentModal({
                         <section aria-label="Highlight" style={s.menuSection}>
                           <ControlHighlightControls
                             lessonType={highlightScope}
+                            task={isActivity ? task : null}
                             onHighlight={(target) =>
                               onPushTeacherControlHighlight(
                                 student.anonymousId,

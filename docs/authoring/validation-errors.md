@@ -238,6 +238,8 @@ Rules shared by every activity with an `items` list (Binary, Keyboard, Mouse; Mo
 | `Task …: showHistory must be true or false.` / `Task … item …: showHistory must be true or false.` | `showHistory` is not a boolean. | Write `showHistory: true`, or remove it. |
 | `Task …: showKey must be true or false.` | `showKey` is not a boolean. | Write `showKey: true`, or remove it. |
 | `Task …: showKey only works in find_key and symbols modes; it is ignored here.` (warning) | `showKey` on another mode. | Remove it, or change the mode. |
+| `Task …: highlight only shows on the on-screen keyboard (tablets) in … mode; laptops have no keyboard picture here.` (warning) | A Keyboard `highlight` in `type_text` or `shortcuts`. | Fine for tablet classes; otherwise use `find_key` or `symbols`, or remove it. |
+| `Task …: highlight shows nowhere in … mode (no keyboard picture, and no on-screen keyboard on tablets); remove it.` (warning) | A Keyboard `highlight` in `edit_text`, `type_code` or `falling_words`. | Remove it. |
 | `Task …: showHistory only works on type_text, type_code and falling_words tasks, so it is ignored here.` (warning) | Only typing modes keep a speed and accuracy history. | Remove `showHistory`, or use a typing mode. |
 | `Task … item …: showHistory on an item only works on type_text and type_code tasks, so it is ignored here.` (warning) | Per-item `showHistory` was set on another mode. | Remove it, or set `showHistory` on the task. |
 | `Task … item …: code is required.` | A `type_code` item has no `code`, or only spaces. | Add the block to type (a YAML block scalar keeps its lines and indentation). |

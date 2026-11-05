@@ -299,7 +299,9 @@ so a task's `highlight` field and the tutor's Highlight menu can make one of its
 (`src/shared/controlHighlight.js`). A hosted activity task's scope is `activity:<id>`
 (`highlightScopeForTask`); every function there that takes a module type takes the scope too.
 StudentView runs the highlight for such a task outside the sandbox (no reveal panes), and
-StudentModal / TeacherView list its targets. The UI marks each control with
+StudentModal / TeacherView list its targets, filtered by the activity's optional
+`highlightReach(task)` (`'all'` by default, `'touch'` labels them "(tablets only)", `'none'` offers
+none; `tutorHighlightTargets`). The UI marks each control with
 `data-highlight-target`. Only the Keyboard declares any (`key:<key>`, `keyboard/keyTargets.js`,
 request 133); `highlight` on another activity is an error ("the <activity> activity has no
 highlight targets").

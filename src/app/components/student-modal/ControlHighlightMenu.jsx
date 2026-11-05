@@ -1,18 +1,26 @@
 import DropdownMenu from './DropdownMenu'
-import { listHighlightTargets, moduleHasHighlightTargets } from '../../../shared/controlHighlight'
+import { hasTutorHighlightTargets, tutorHighlightTargets } from '../../../shared/controlHighlight'
 
 // The tutor's "Highlight ▸" choices: pulse one control (Run, Stop, the green flag, a Costumes
 // tab, a block category) on the student's screen (src/shared/controlHighlight.js). The list is
 // the module's `capabilities.highlightTargets` for the task on screen; `lessonType` must be
 // that task's effective type (composed lessons), never lesson.type.
 // StudentModal shows the controls in its More menu (one student); ControlHighlightDropdown wraps
-// them in their own menu for TeacherView (the whole class).
-export function hasControlHighlightTargets(lessonType) {
-  return moduleHasHighlightTargets(lessonType)
+// them in their own menu for TeacherView (the whole class). `task` (optional) is the task on
+// screen: a hosted activity's targets follow where they show for it (the Keyboard's keys are
+// labelled "tablets only" in type_text and shortcuts, and not offered in modes with no keyboard).
+export function hasControlHighlightTargets(lessonType, task = null) {
+  return hasTutorHighlightTargets(lessonType, task)
 }
 
-export function ControlHighlightControls({ lessonType, onHighlight, onClear, onDone }) {
-  const targets = listHighlightTargets(lessonType)
+export function ControlHighlightControls({
+  lessonType,
+  task = null,
+  onHighlight,
+  onClear,
+  onDone,
+}) {
+  const targets = tutorHighlightTargets(lessonType, task)
   const plain = targets.filter((target) => !target.group)
   const groups = []
   for (const target of targets) {
@@ -88,17 +96,19 @@ export function ControlHighlightControls({ lessonType, onHighlight, onClear, onD
 
 export default function ControlHighlightDropdown({
   lessonType,
+  task = null,
   onHighlight,
   onClear,
   label = 'Highlight ▸',
   buttonStyle,
 }) {
-  if (!hasControlHighlightTargets(lessonType)) return null
+  if (!hasControlHighlightTargets(lessonType, task)) return null
   return (
     <DropdownMenu label={label} buttonClassName="btn-ghost" buttonStyle={buttonStyle} clearHeader>
       {(close) => (
         <ControlHighlightControls
           lessonType={lessonType}
+          task={task}
           onHighlight={onHighlight}
           onClear={onClear}
           onDone={close}

@@ -325,10 +325,17 @@ passes on every machine. Prompts, hints and the keyboard picture use the student
 - **Highlight ▸** (the tutor's control highlight, and a task's `highlight` field) can make one key
   glow for 20 seconds on the keyboard picture or the on-screen keyboard: `highlight: "key:Enter"`,
   `"key:("`, `"key:Shift"`. The family is every character on the UK layout (letters once, any
-  case) plus `Space`, `Enter`, `Tab` and `Shift`; a symbol must be in quotes. The keys only show in
-  `find_key` and `symbols` on a laptop (the picture) and in every mode with the on-screen keyboard
-  (tablets); other modes get a validation warning. Another activity's `highlight` is an error
-  ("the <activity> activity has no highlight targets").
+  case) plus `Space`, `Enter`, `Tab` and `Shift`; a symbol must be in quotes. Where the keys show,
+  and so what the tutor's menu offers, depends on the mode:
+
+  | Mode | Keys glow on | Tutor's Highlight menu |
+  |---|---|---|
+  | `find_key`, `symbols` | the picture (laptops) and the on-screen keyboard (tablets) | **Keys** |
+  | `type_text`, `shortcuts` | the on-screen keyboard (tablets) only | **Keys (tablets only)** |
+  | `edit_text`, `type_code`, `falling_words` | nowhere | no keys |
+
+  A `highlight` in the last two rows gets a validation warning. Another activity's `highlight` is
+  an error ("the <activity> activity has no highlight targets").
 - `type_code` cards add the average accuracy and speed of the blocks finished so far: `2/3 done ·
   94% · 71 cpm`. While the tutor watches a student, the modal shows the block with every typed
   character marked as they type it.

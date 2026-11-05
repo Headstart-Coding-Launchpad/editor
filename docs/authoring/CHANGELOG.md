@@ -58,11 +58,12 @@ Entries written before 2026-09-29 are not tagged.
   finished item also saves `tries` (once, with the result; without it the stored result is
   unchanged), and the tutor card adds the hardest item once it took 3 or more presses
   (`2/5 done · ( took 3 tries`). A bare Shift, Ctrl, Alt, Meta or Caps Lock press is no longer a
-  miss in `find_key` (it already wasn't in `symbols`). Keyboard tasks
-  also take `highlight: "key:("` (any UK character, letters once, or `Space`, `Enter`, `Tab`,
+  miss in `find_key` (it already wasn't in `symbols`). Keyboard tasks also take `highlight: "key:("` (any UK character, letters once, or `Space`, `Enter`, `Tab`,
   `Shift`, in quotes): the key glows for 20 seconds on the picture or the on-screen keyboard when
   the task opens, and tutors can do the same live from the Highlight menu. Modes with no picture
-  on laptops (`type_text`, `type_code`, `edit_text`, `shortcuts`, `falling_words`) get a warning.
+  on laptops get a warning: `type_text` and `shortcuts` show the key on tablets only (the tutor
+  menu says "Keys (tablets only)"), and `edit_text`, `type_code` and `falling_words` show it
+  nowhere (the tutor menu offers no keys there).
   `highlight` on any other activity is an error: "the <activity> activity has no highlight
   targets". UK layout only. See [activities/keyboard.md](activities/keyboard.md).
   - Affects: keyboard (symbols, find_key), cli · Existing lessons: no changes needed · Resolves:

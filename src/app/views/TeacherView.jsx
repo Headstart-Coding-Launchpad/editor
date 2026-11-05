@@ -1016,6 +1016,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
                 <ControlHighlightDropdown
                   label="Highlight Class"
                   lessonType={classHighlightType}
+                  task={classHighlightActivity ? currentTask : null}
                   onHighlight={(target) =>
                     pushClassControlHighlight(
                       target,

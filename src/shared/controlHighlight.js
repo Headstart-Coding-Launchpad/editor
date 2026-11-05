@@ -102,6 +102,32 @@ export function listHighlightTargets(moduleType) {
   return list
 }
 
+const TABLETS_ONLY = ' (tablets only)'
+
+/**
+ * The targets the tutor's Highlight menu offers for a task: listHighlightTargets, except that an
+ * activity scope asks the activity where the task's targets show (defineActivity
+ * `highlightReach`): 'none' offers nothing (the Keyboard's edit_text, type_code, falling_words),
+ * 'touch' marks every target touchOnly with its group labelled "(tablets only)" (type_text,
+ * shortcuts). A module scope or a missing task gets the full list.
+ */
+export function tutorHighlightTargets(scope, task) {
+  const list = listHighlightTargets(scope)
+  const activity = task ? activityOfScope(scope) : null
+  const reach = activity?.highlightReach?.(task) ?? 'all'
+  if (reach === 'none') return []
+  if (reach !== 'touch') return list
+  return list.map((target) =>
+    target.group
+      ? { ...target, touchOnly: true, group: `${target.group}${TABLETS_ONLY}` }
+      : { ...target, touchOnly: true, label: `${target.label}${TABLETS_ONLY}` }
+  )
+}
+
+export function hasTutorHighlightTargets(scope, task) {
+  return tutorHighlightTargets(scope, task).length > 0
+}
+
 // The touch-only targets (Python's key row), grouped by family for the Builder's
 // "Keys (touch screens)" optgroup: [{ label, targets }].
 export function touchHighlightGroups(moduleType) {
