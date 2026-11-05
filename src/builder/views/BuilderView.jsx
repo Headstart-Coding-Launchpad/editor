@@ -100,10 +100,9 @@ export default function BuilderView({
 
   // Preview review notes (admins only, by the rules): read-only here, newest first.
   useEffect(() => {
-    if (!selectedTaskId || !lesson?.id || role !== 'admin') {
-      setTaskReviewNotes([])
-      return
-    }
+    // Clear first so the last task's notes never show under the newly selected task.
+    setTaskReviewNotes([])
+    if (!selectedTaskId || !lesson?.id || role !== 'admin') return
     let cancelled = false
     listTaskReviewNotes(lesson.id, selectedTaskId)
       .then((notes) => !cancelled && setTaskReviewNotes(notes))
