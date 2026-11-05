@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { KeyboardStudentView } from '../ui.jsx'
 import keyboard from '../definition.js'
@@ -21,6 +21,9 @@ const TYPE = {
   requireShiftForCapitals: true,
   items: [{ id: 'a', text: 'Hi' }],
 }
+
+// The on-screen text, not showKey's screen-reader-only live region.
+const visibleText = (text) => screen.getByText(text, { ignore: '.act-sr-only, script, style' })
 
 function press(element, key, init = {}) {
   fireEvent.keyDown(element, { key, ...init })
@@ -170,9 +173,9 @@ describe('Keyboard UI: showKey (request 133)', () => {
     renderKeyboard(SYMBOLS)
     const area = screen.getByTestId('keyboard-practice')
     press(area, '9', { code: 'Digit9' })
-    expect(screen.getByText('Hold Shift, then press 9')).toBeInTheDocument()
+    expect(visibleText('Hold Shift, then press 9')).toBeInTheDocument()
     press(area, '8', { code: 'Digit8' })
-    expect(screen.getByText('That was 8. Press the glowing keys.')).toBeInTheDocument()
+    expect(visibleText('That was 8. Press the glowing keys.')).toBeInTheDocument()
     expect(screen.queryByText(/wrong|error|mistake/i)).toBeNull()
     // The glow stays on after a miss.
     const picture = screen.getByTestId('keyboard-picture')
@@ -195,7 +198,63 @@ describe('Keyboard UI: showKey (request 133)', () => {
     expect(screen.getByTestId('keyboard-target-symbol')).toHaveTextContent('Q')
     expect(lit(screen.getByTestId('keyboard-picture'))).toEqual(['KeyQ'])
     press(screen.getByTestId('keyboard-practice'), 'w', { code: 'KeyW' })
-    expect(screen.getByText('That was w. Press the glowing key.')).toBeInTheDocument()
+    expect(visibleText('That was w. Press the glowing key.')).toBeInTheDocument()
+  })
+
+  it('names the big symbol in plain words for screen readers', () => {
+    renderKeyboard({
+      ...SYMBOLS,
+      items: [
+        { id: 'a', char: '(' },
+        { id: 'b', char: ':' },
+        { id: 'c', char: ',' },
+      ],
+    })
+    expect(screen.getByRole('img', { name: 'Press open bracket: Shift and 9' })).toBe(
+      screen.getByTestId('keyboard-target-symbol')
+    )
+    // The words under the symbol are in its name, so they are not read twice.
+    expect(screen.getByTestId('keyboard-target-keys')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('one polite live region says the new target and the calm miss line, once each', () => {
+    renderKeyboard({
+      ...SYMBOLS,
+      items: [
+        { id: 'a', char: '(' },
+        { id: 'b', char: ':' },
+      ],
+    })
+    const live = screen.getByTestId('keyboard-announce')
+    expect(live).toHaveAttribute('aria-live', 'polite')
+    expect(live).toHaveTextContent('Press open bracket: Shift and 9')
+    const area = screen.getByTestId('keyboard-practice')
+    press(area, '9', { code: 'Digit9' })
+    expect(live).toHaveTextContent('Hold Shift, then press 9')
+    // The visible line is not a second live region.
+    const visible = screen
+      .getAllByText('Hold Shift, then press 9')
+      .filter((element) => element !== live)
+    expect(visible).toHaveLength(1)
+    expect(visible[0].closest('[role="status"], [aria-live]')).toBeNull()
+  })
+
+  it('the next item is announced when it comes up', async () => {
+    renderKeyboard({
+      ...SYMBOLS,
+      items: [
+        { id: 'a', char: '(' },
+        { id: 'b', char: ':' },
+      ],
+    })
+    press(screen.getByTestId('keyboard-practice'), '(', { code: 'Digit9', shiftKey: true })
+    await waitFor(
+      () =>
+        expect(screen.getByTestId('keyboard-announce')).toHaveTextContent(
+          'Press colon: Shift and semicolon'
+        ),
+      { timeout: 4000 }
+    )
   })
 
   it('the tutor read-only view shows the same big symbol and lit keys', () => {

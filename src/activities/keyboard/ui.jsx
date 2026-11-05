@@ -6,6 +6,7 @@ import { useRoundFlow } from '../ui/useRoundFlow.js'
 import { coreCountOf } from '../round.js'
 import ActivityCorrect, { SpinTick } from '../ui/ActivityCorrect.jsx'
 import OnScreenKeyboard, { charsByCode, codesForKey } from './OnScreenKeyboard.jsx'
+import { spokenChar } from './keyTargets.js'
 import TypeCodeBlock from './TypeCodeBlock.jsx'
 import FallingWordsView from './FallingWordsView.jsx'
 import {
@@ -124,7 +125,27 @@ function bigTarget(task, item, platform) {
         ? raw.toUpperCase()
         : String(raw ?? '')
   const words = describeItem(task, item, platform)
-  return { text, words: words && words !== text ? words : null }
+  return {
+    text,
+    words: words && words !== text ? words : null,
+    spoken: spokenTarget(task, raw, platform),
+  }
+}
+
+// What a screen reader hears for the big target, in plain words: "Press open bracket: Shift
+// and 9", "Press comma", "Press Enter", "Press left arrow".
+function spokenTarget(task, raw, platform) {
+  const char = String(raw ?? '')
+  if (char.length !== 1) {
+    const name = keyName(char, platform)
+      .replace(/^Arrow(\w+)$/, (_, way) => `${way.toLowerCase()} arrow`)
+      .replace(/^CapsLock$/, 'Caps Lock')
+    return `Press ${name}`
+  }
+  const layout = task?.layout ?? DEFAULT_LAYOUT
+  const key = getKeyForChar(char, layout)
+  const plain = key?.shift ? charsByCode(layout)[key.code]?.plain : null
+  return `Press ${spokenChar(char)}${plain ? `: Shift and ${spokenChar(plain)}` : ''}`
 }
 
 // The calm line after a press that was not the target (showKey only): never "wrong". The right
@@ -619,16 +640,29 @@ export function KeyboardStudentView({
           <span
             className={`act-key-target__symbol${[...target.text].length > 1 ? ' act-key-target__symbol--word' : ''}`}
             data-testid="keyboard-target-symbol"
-            aria-label={`Press ${target.words ?? target.text}`}
+            role="img"
+            aria-label={target.spoken}
           >
             <span aria-hidden="true">{target.text}</span>
           </span>
           {target.words && (
-            <span className="act-key-target__keys" data-testid="keyboard-target-keys">
+            // Already in the symbol's name above, so not read twice.
+            <span
+              className="act-key-target__keys"
+              data-testid="keyboard-target-keys"
+              aria-hidden="true"
+            >
               {target.words}
             </span>
           )}
         </div>
+      )}
+      {/* showKey's one polite live region: the new target when an item comes up, then the calm
+          line after a miss (the visible line below is not a second live region). */}
+      {target && !readOnly && (
+        <p className="act-sr-only" aria-live="polite" data-testid="keyboard-announce">
+          {finished ? '' : (lastWrong ?? target.spoken)}
+        </p>
       )}
 
       {mode === 'type_text' && (
@@ -779,7 +813,10 @@ export function KeyboardStudentView({
         </p>
       )}
 
-      {lastWrong && !finished && <p role="status">{lastWrong}</p>}
+      {lastWrong && !finished && (
+        // With showKey the live region above says it; without, this line is its own status.
+        <p role={target ? undefined : 'status'}>{lastWrong}</p>
+      )}
       {showHint && (
         <p className="act-hint" role="status">
           💡 Look for {describeItem(task, current, platform) ?? 'the key'} — it is lit up on the

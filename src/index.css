@@ -5500,6 +5500,19 @@ label.te-backdrop-tag,
   min-height: 52px;
 }
 
+/* Heard, not seen: showKey's live region (the new target, the calm miss line). */
+.act-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .act-osk__key--highlight.act-osk__key--glow {
   background: #f59e0b;
   border-color: #b45309;

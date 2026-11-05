@@ -55,6 +55,13 @@ export function keyTargetChars(layout = DEFAULT_LAYOUT) {
   return chars.sort((a, b) => rank(a) - rank(b))
 }
 
+// One typed character in plain words for a screen reader: "open bracket", "Q", "9", "Space".
+export function spokenChar(char) {
+  if (char === ' ') return 'Space'
+  if (/^[a-z]$/.test(char)) return char.toUpperCase()
+  return SYMBOL_NAMES[char] ?? char
+}
+
 function spokenName(option) {
   if (option === 'Space') return 'Space bar'
   if (option === 'Shift') return 'Shift keys'
