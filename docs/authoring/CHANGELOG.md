@@ -39,6 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-05
 
+- **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
+  picture instead of words: `image` (an `https://` URL, normally a lesson asset from `assets
+  upload`) or `emoji`, with required `alt` text and an optional `text` caption. Students see 2-4
+  equal picture cards (side by side, 2x2 for four, one column on a narrow screen) and one tap
+  chooses and submits, as before; the stored answer is still the option id. The tutor card shows
+  a thumbnail of the chosen picture. Validation: `alt` required, `https` only, 2 to 4 options,
+  a warning when only some options have pictures, and no pictures on polls. Pictures are authored
+  in YAML for now (the Builder keeps them and shows them read-only). A picture in the question
+  (`explainer` Markdown) with word or code options already worked and is now documented. See
+  [quiz-tasks.md](quiz-tasks.md#picture-options).
+  - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves:
+    authoring-requests/2026-11-05-picture-answer-options-in-multiple-choice-quizzes.md
+
 - **Python: an Indent (Tab) key on the touch key row, and `highlight: "key:Tab"`.** iPad students
   with no hardware keyboard get a `⇥` key right after the colon that indents the current line (or
   every selected line) by one step. A task or tutor can make it glow like any other key.

@@ -61,10 +61,56 @@ A multiple-choice quiz takes exactly one `answer_equals` check (or the `answer:`
 |---|:---:|---|
 | `options` | Yes | At least two options. `id` is usually `a`, `b`, `c` etc. |
 | `options[].id` | Yes | Stable identifier matched by the check. |
-| `options[].text` | Yes | Shown to students. Markdown supported, including fenced code and Scratch stacks. |
+| `options[].text` | Yes* | Shown to students. Markdown supported, including fenced code and Scratch stacks. *On a [picture option](#picture-options) it is an optional caption. |
+| `options[].image` | No | [Picture option](#picture-options): an `https://` URL, normally a lesson asset. Needs `alt`. |
+| `options[].emoji` | No | [Picture option](#picture-options): one emoji as the picture. Needs `alt`. |
+| `options[].alt` | With `image`/`emoji` | What the picture shows, in words. Names the card for screen readers (when there is no caption) and labels it in the tutor card and reports. |
 | `options[].feedback` | No | Shown when this wrong option is selected. Markdown supported. |
 | `options[].hint` | No | Older name for `feedback`, still read when `feedback` is missing. Use `feedback`. |
 | `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}`. Option text is mapped to its id. |
+
+### Picture options
+
+Students pick a **picture** as the answer ("Which picture will this code draw?"). Give each
+option an `image` (or an `emoji`) plus `alt`, and optionally a short `text` caption:
+
+```yaml
+- type: quiz
+  title: Which Is on Top?
+  explainer: 'This code runs: `circle(50, "red")` then `background("blue")`. What do you see?'
+  options:
+    - { id: a, image: "https://firebasestorage.googleapis.com/.../top-circle.png", alt: "Red circle above a blue background" }
+    - { id: b, image: "https://firebasestorage.googleapis.com/.../blue-only.png", alt: "Only a blue background" }
+    - { id: c, emoji: "🦊", alt: "A fox", text: "Fox" }   # text = optional caption under the picture
+    - { id: d, image: "https://firebasestorage.googleapis.com/.../red-only.png", alt: "Only a red circle" }
+  answer: b
+```
+
+- **Where pictures come from:** upload each PNG with `node cli/cli.mjs assets upload <lessonId> <file>`
+  ([lesson-assets-cli.md](lesson-assets-cli.md)) and paste the URL it prints. Stage pictures: make
+  them with the [`lessons screenshot`](lesson-screenshot-cli.md) command or a Stage export. Only
+  `https://` URLs are accepted.
+- **Layout:** 2 or 3 pictures sit side by side, 4 make a 2x2 grid, and the cards stack in one
+  column when the quiz pane is under about 480px wide. Every card is the same size; the picture
+  fills it without being cropped (a square or 4:3 PNG of about 400px looks best) and the caption
+  sits underneath. Cards are at least 120px tall, so they are easy to tap on an iPad.
+- **Choosing:** one tap chooses and submits, exactly as with word options. The chosen card gets
+  a tick badge and a thick outline. Keyboard: Tab to a card, Enter or Space.
+- **Rules (validation):** `alt` is required on every picture; `image` must be `https://`; 2 to 4
+  options when any option has a picture; `text` may be empty on a picture option. Mixing picture
+  and word-only options is a warning. Pictures are not allowed on polls yet.
+- **Order:** as everywhere, options show in the order written. Shuffle them once when you write
+  the lesson, so the tutor can say "picture B" to the whole room.
+- **Tutor view:** the student card shows a small thumbnail of the chosen picture with its id and
+  caption (or alt text); the student window shows the same grid with the chosen card ticked, and
+  after a wrong answer the right picture under "Correct answer". Reports and print label an option
+  by its caption, else its alt text, else its id; print shows the pictures.
+- **Builder:** the Builder shows each picture read-only and keeps `image`, `emoji` and `alt` when
+  you edit the caption or feedback. Add or change pictures in the lesson YAML for now.
+
+**A picture in the question** ("Which code drew this?") needs nothing new: put the picture in
+the `explainer` as Markdown (`![Red circle in the middle](https://...)`) and keep code or word
+options. The question panel shows it up to 240px tall (less on a short screen).
 
 ---
 
