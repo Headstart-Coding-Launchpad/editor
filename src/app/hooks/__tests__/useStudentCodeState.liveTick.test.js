@@ -1402,3 +1402,108 @@ describe('round 6: unchanged code, stale redraws, ineligible tasks, queued redra
     expect(h.result.current.output).toContain('hm')
   })
 })
+
+// Round 7 (sixth review).
+describe('round 7: Reset of a solved task, non-typed jobs, stale redraws, solved tasks', () => {
+  // Like runsTheCode, but a run of `slowCode` waits for release() before finishing.
+  function codeWaits(slowCode) {
+    let release
+    const gate = new Promise((resolve) => {
+      release = resolve
+    })
+    const run = mockModuleRun('python', async (callbacks, code) => {
+      if (code === slowCode) await gate
+      callbacks.onOutput(output(code), 'stdout')
+      return { status: 'success', stage: STAGE }
+    })
+    return { run, release: () => release() }
+  }
+
+  it('Reset of a solved task redraws the starter (the editor syncs it in the same commit)', async () => {
+    const run = runsTheCode()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ runOnOpen: true }),
+      currentTaskId: 't1',
+    })
+    await wait(500)
+    await typeAndPause(h, RIGHT)
+    expect(h.result.current.checkPassed).toBe(true)
+    // Reset, and the code editor's sync of the starter into the editor (no origin), before the
+    // un-solve's effects run.
+    actSync(() => {
+      h.result.current.handleResetCode()
+      h.result.current.handleCodeChange(WRONG)
+    })
+    expect(h.result.current.checkPassed).toBe(false)
+    expect(h.result.current.stageResult).toBeNull()
+    await wait(700)
+    await act(async () => {})
+    expect(run.mock.calls.at(-1)[0]).toBe(WRONG)
+    expect(h.result.current.stageResult).toEqual(STAGE)
+    expect(h.result.current.output).toContain('ho')
+    expect(h.result.current.checkPassed).toBe(false)
+  })
+
+  it.each([
+    [
+      'a tutor override',
+      (h) => h.updateStudent({ checkOverridePassed: false, checkOverridePushedAt: 1 }),
+    ],
+    ['Reset', (h) => actSync(() => h.result.current.handleResetCode())],
+  ])('a queued run on open still previews after %s', async (_name, interrupt) => {
+    const SLOW = `${WRONG}\n# scrubbed`
+    const { run, release } = codeWaits(SLOW)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ runOnOpen: true }),
+      currentTaskId: 't1',
+    })
+    // A scrub frame still running when the run on open asks to preview the starter.
+    actSync(() => h.result.current.scrubPreview(SLOW))
+    await wait(200)
+    expect(run.mock.calls.map(([code]) => code)).toEqual([SLOW])
+    interrupt(h)
+    release()
+    await wait(400)
+    await act(async () => {})
+    expect(run.mock.calls.map(([code]) => code)).toEqual([SLOW, WRONG])
+  })
+
+  it('a slow redraw that finished stale is not remembered: typing back to it redraws and ticks', async () => {
+    const { run, release } = codeWaits(RIGHT)
+    const h = renderStudentCodeState({
+      lesson: liveLesson({ runOnOpen: true }),
+      currentTaskId: 't1',
+    })
+    // The run on open: the starter misses.
+    await wait(500)
+    await act(async () => {})
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    await wait(600)
+    // The student keeps typing while the redraw of RIGHT runs, so it finishes stale...
+    actSync(() => h.result.current.handleCodeChange(ALSO_WRONG, EDITOR))
+    release()
+    await wait(50)
+    expect(h.result.current.checkPassed).toBe(false)
+    // ...then types RIGHT back before ALSO_WRONG is redrawn.
+    await typeAndPause(h, RIGHT)
+    expect(run.mock.calls.map(([code]) => code)).toEqual([WRONG, RIGHT, RIGHT])
+    expect(h.result.current.checkPassed).toBe(true)
+  })
+
+  it('redraws and scrub frames of a solved task are never judged', async () => {
+    runsTheCode()
+    const h = renderStudentCodeState({ lesson: liveLesson(), currentTaskId: 't1' })
+    actSync(() => h.result.current.handleCodeChange(RIGHT, EDITOR))
+    await actAsync(() => h.result.current.handleRun())
+    expect(h.result.current.checkPassed).toBe(true)
+    await wait(700)
+    judgeRun.mockClear()
+    await typeAfterMiss(h, RIGHT_TOO)
+    actSync(() => h.result.current.scrubPreview(`${RIGHT}\n# frame`))
+    await wait(300)
+    await act(async () => {})
+    expect(judgeRun).not.toHaveBeenCalled()
+  })
+})

@@ -84,6 +84,40 @@ describe('createPreviewScheduler', () => {
     expect(calls).toHaveLength(2)
   })
 
+  // Request 131 round 7: a run that bailed (it resolves false) is not remembered as run.
+  it('forgets a run that resolves false, so the same request runs again', async () => {
+    const run = vi.fn(async (job) => (job.bail ? false : undefined))
+    const scheduler = createPreviewScheduler({
+      run,
+      delayMs: 10,
+      isSame: (a, b) => a.code === b.code,
+    })
+    scheduler.request({ code: 'x', bail: true })
+    await vi.runAllTimersAsync()
+    scheduler.request({ code: 'x' })
+    await vi.runAllTimersAsync()
+    scheduler.request({ code: 'x' })
+    await vi.runAllTimersAsync()
+    expect(run).toHaveBeenCalledTimes(2)
+  })
+
+  it('cancel(shouldDrop) drops only a waiting request it matches', async () => {
+    const { run, calls, finishNext } = controlledRun()
+    const scheduler = createPreviewScheduler({ run, delayMs: 10 })
+    scheduler.request({ id: 'a' })
+    await vi.advanceTimersByTimeAsync(10)
+    scheduler.request({ id: 'b', typed: false })
+    scheduler.cancel((job) => job.typed === true)
+    await finishNext()
+    expect(calls.map((job) => job.id)).toEqual(['a', 'b'])
+    scheduler.request({ id: 'c', typed: true })
+    scheduler.cancel((job) => job.typed === true)
+    await finishNext()
+    await vi.runAllTimersAsync()
+    expect(calls.map((job) => job.id)).toEqual(['a', 'b'])
+    expect(scheduler.busy()).toBe(false)
+  })
+
   it('settle drops a waiting request and resolves when the running one ends', async () => {
     const { run, calls, finishNext } = controlledRun()
     const scheduler = createPreviewScheduler({ run, delayMs: 10 })

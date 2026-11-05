@@ -79,8 +79,10 @@ export const TYPED_PREVIEW_DELAY_MS = 500
  * a preview never runs any program but its own, and a preview of the same code as the last one
  * run is skipped (typed or not). This hook never judges or writes anything. `cancelTypedEdit()`
  * (Reset, a tutor's edit or override, any replacement of the work, an un-solve) drops a typed
- * redraw still waiting or queued, keeps one already running from painting or being reported, and
- * forgets the last preview so the same code typed again redraws.
+ * redraw still waiting or queued (never a scrub frame or the run on open; `{ keepCode }` keeps a
+ * waiting redraw of the work just restored), keeps one already running from painting or being
+ * reported, and forgets the last preview so the same code typed again redraws. A preview that
+ * bailed, or a typed redraw that finished after the code changed, is not remembered as run.
  */
 export function useScrubPreview({
   moduleType,
@@ -172,15 +174,18 @@ export function useScrubPreview({
   const typedGenRef = useRef(0)
   const staleTyped = (job) => job.typed === true && job.typedGen !== typedGenRef.current
 
+  // Returns false when the preview bailed or finished stale (nothing painted and checked for the
+  // work now): the scheduler then does not remember its code as run, so the same code typed again
+  // redraws (request 131 round 7).
   async function runPreview(job) {
     const ctx = contextRef.current
     // A real Run started meanwhile, or the student moved to another module's task.
-    if (!ctx || ctx.running || ctx.moduleType !== job.moduleType || staleTyped(job)) return
+    if (!ctx || ctx.running || ctx.moduleType !== job.moduleType || staleTyped(job)) return false
     const mod = getLessonModule(job.moduleType)
     const definition = getModuleDefinition(job.moduleType)
     const runKind = definition?.capabilities.run ?? 'none'
     if (runKind === 'preview') {
-      if (typeof mod?.runtime?.buildPreviewSrc !== 'function') return
+      if (typeof mod?.runtime?.buildPreviewSrc !== 'function') return false
       const files = (ctx.readWork() ?? []).map((file) =>
         file.name === job.fileName ? { ...file, content: job.code } : file
       )
@@ -190,23 +195,23 @@ export function useScrubPreview({
         ctx.previewOptions()
       )
       ctx.setIframeSrc(src)
-      return
+      return true
     }
-    if (runKind !== 'runtime' || typeof mod?.runtime?.run !== 'function') return
+    if (runKind !== 'runtime' || typeof mod?.runtime?.run !== 'function') return false
     // input() answers are replayed from the last Run, in order; one too many stops the preview.
     const answers = Array.isArray(job.answers) ? job.answers : []
     const { result, output, used, short } = await runProgram(mod, job.code, ctx.task, answers)
     const after = contextRef.current
     // Reset, a tutor's edit or an un-solve while it ran: an old typed redraw never paints.
-    if (staleTyped(job)) return
+    if (staleTyped(job)) return false
     if (short) {
       shortTaskRef.current = job.taskId
       if (after.task?.id === job.taskId) setReplayAnswers(null)
       job.notify?.('press-run-answers')
-      return
+      return false
     }
-    if (!result || result.status === 'stopped') return
-    if (after.moduleType !== job.moduleType || after.task?.id !== job.taskId) return
+    if (!result || result.status === 'stopped') return false
+    if (after.moduleType !== job.moduleType || after.task?.id !== job.taskId) return false
     const paints = !after.running && !(job.quietErrors && result.status === 'error')
     if (paints) {
       setReplayAnswers(used > 0 ? answers.slice(0, used) : null)
@@ -231,6 +236,13 @@ export function useScrubPreview({
       outputRaw: output.raw,
       result,
     })
+    // A typed redraw of code the student has since changed was not checked for the work now
+    // (commitLivePass skips it): not remembered as run, so typing back to it redraws.
+    if (job.typed === true) {
+      const work = after.readWork?.()
+      if (typeof work === 'string' && work !== job.code) return false
+    }
+    return true
   }
 
   // A task change drops any waiting preview, the replay note and a waiting check on release.
@@ -246,6 +258,8 @@ export function useScrubPreview({
 
   // Typed edits: one preview once the typing pauses (see the comment above useScrubPreview).
   const typedTimerRef = useRef(null)
+  // The code the waiting typed redraw will preview.
+  const typedTimerCodeRef = useRef(null)
   useEffect(() => {
     clearTimeout(typedTimerRef.current)
     typedTimerRef.current = null
@@ -254,12 +268,19 @@ export function useScrubPreview({
 
   // Drops a typed redraw still waiting for the pause or queued in the scheduler, keeps one already
   // running from painting or being checked (its generation is old), and forgets the last preview
-  // (a job that bails is never remembered as run), so the same code typed again redraws.
-  function cancelTypedEdit() {
-    clearTimeout(typedTimerRef.current)
-    typedTimerRef.current = null
+  // (a job that bails is never remembered as run), so the same code typed again redraws. Only
+  // typed redraws: a queued scrub frame or run on open still runs. `keepCode`: a redraw still
+  // waiting for the pause of exactly that code is kept (the work Reset or a tutor's edit just
+  // restored, synced into the editor in the same commit as an un-solve: round 7).
+  function cancelTypedEdit({ keepCode } = {}) {
+    const keep =
+      typedTimerRef.current != null && keepCode != null && typedTimerCodeRef.current === keepCode
+    if (!keep) {
+      clearTimeout(typedTimerRef.current)
+      typedTimerRef.current = null
+    }
     typedGenRef.current += 1
-    schedulerRef.current.cancel()
+    schedulerRef.current.cancel((job) => job.typed === true)
     schedulerRef.current.reset()
   }
 
@@ -270,6 +291,7 @@ export function useScrubPreview({
     if (!live) return
     if (getModuleDefinition(ctx.moduleType)?.capabilities?.run !== 'runtime') return
     clearTimeout(typedTimerRef.current)
+    typedTimerCodeRef.current = code
     typedTimerRef.current = setTimeout(() => {
       typedTimerRef.current = null
       const now = contextRef.current

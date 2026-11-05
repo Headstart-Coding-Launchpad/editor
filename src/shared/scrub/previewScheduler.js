@@ -7,8 +7,9 @@
 // request after a quiet spell runs at once. While a run is still going a new one never starts
 // (Chromebooks stay responsive): the latest request waits and runs when the current one ends (no
 // sooner than `delayMs` after it started), and requests in between are skipped. A request the
-// same as the last one run (`isSame`, by default ===) is skipped too. settle() resolves once
-// nothing is running or waiting.
+// same as the last one run (`isSame`, by default ===) is skipped too; a run that resolves `false`
+// (it bailed: nothing was shown or checked) is not remembered as run, so the same request runs
+// again. settle() resolves once nothing is running or waiting.
 
 export const SCRUB_PREVIEW_DELAY_MS = 200
 
@@ -58,6 +59,9 @@ export function createPreviewScheduler({
     lastStartedAt = now()
     running = Promise.resolve()
       .then(() => run(job))
+      .then((ran) => {
+        if (ran === false && lastRan === job) lastRan = null
+      })
       .catch(() => {})
       .then(() => {
         running = null
@@ -71,8 +75,12 @@ export function createPreviewScheduler({
       pending = job
       schedule()
     },
-    /** Drops a waiting request (a running one finishes). */
-    cancel() {
+    /**
+     * Drops a waiting request (a running one finishes). With `shouldDrop`, only a waiting request
+     * it returns true for (another is kept, and still runs).
+     */
+    cancel(shouldDrop) {
+      if (pending != null && typeof shouldDrop === 'function' && !shouldDrop(pending)) return
       if (timer != null) clearTimer(timer)
       timer = null
       pending = null

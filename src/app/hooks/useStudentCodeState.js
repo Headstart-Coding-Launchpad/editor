@@ -326,6 +326,9 @@ export function useStudentCodeState({
   const lastRedrawRef = useRef(null)
   const livePassTaskRef = useRef(null)
   const cancelTypedEditRef = useRef(null)
+  // The code restoreWork last put in (Reset, a tutor's edit, carried work), until the student's
+  // own typing: an un-solve in the same commit keeps the editor's redraw of it (round 7).
+  const restoredCodeRef = useRef(null)
   const inputValueRef = useRef('')
   const lastRuntimeCodeWriteRef = useRef(0)
   const outputRafIdRef = useRef(null)
@@ -500,6 +503,8 @@ export function useStudentCodeState({
     typedEditRef.current = null
     lastRedrawRef.current = null
     cancelTypedEditRef.current?.()
+    const restoredCode = workSlot.stored(restored)?.work
+    restoredCodeRef.current = typeof restoredCode === 'string' ? restoredCode : null
     if (workSlot.workspaceOwned) {
       setPushedWork(restored)
       if (stageIndex !== undefined) setPushedStageIndex(stageIndex)
@@ -1037,10 +1042,11 @@ export function useStudentCodeState({
   // Request 131: a task un-solved (Reset, the tutor's Mark Fail, any other way) drops a typed
   // redraw still waiting, queued or running (it never paints over the un-solved state) and
   // forgets the last preview, so the identical passing code typed again redraws, and the last
-  // redraw's verdict (the transition rule starts again).
+  // redraw's verdict (the transition rule starts again). A redraw of the work restoreWork just put
+  // in (Reset's starter, synced into the editor in the same commit) is kept: it shows that work.
   useEffect(() => {
     if (!checkPassed) {
-      scrubPreview.cancelTypedEdit()
+      scrubPreview.cancelTypedEdit({ keepCode: restoredCodeRef.current })
       lastRedrawRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1049,7 +1055,7 @@ export function useStudentCodeState({
   // redraw still waiting or running and the last redraw's verdict: nothing typed before it ticks.
   useEffect(() => {
     if (!myStudentData?.checkOverridePushedAt) return
-    scrubPreview.cancelTypedEdit()
+    scrubPreview.cancelTypedEdit({ keepCode: restoredCodeRef.current })
     lastRedrawRef.current = null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudentData?.checkOverridePushedAt])
@@ -2221,7 +2227,8 @@ export function useStudentCodeState({
       const task = findTaskById(lessonRef.current?.tasks, taskId)
       const definition = moduleType ? getModuleDefinition(moduleType) : null
       // A task no typed redraw could ever tick here is never judged (cheap, no code read).
-      if (!liveTickTaskEligible(liveTickWhere(task, definition))) {
+      // Nor is a solved task (nothing can tick until it is un-solved, which forgets the verdict).
+      if (!liveTickTaskEligible(liveTickWhere(task, definition)) || isAlreadySolved()) {
         lastRedrawRef.current = null
         return false
       }
@@ -2550,6 +2557,7 @@ export function useStudentCodeState({
     // Any other edit is not the student's typing: no earlier redraw counts for the transition
     // rule (request 131, commitLivePass).
     if (origin !== 'editor') lastRedrawRef.current = null
+    else restoredCodeRef.current = null
     handleWorkChange(withCode(moduleType, newCode), { moduleType })
     // A scrub task redraws a moment after typing pauses, as a scrub does (useScrubPreview); a
     // typed edit, with the Runs started so far, is what a live pass must still match.
