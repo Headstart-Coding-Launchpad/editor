@@ -51,14 +51,21 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
       refs.inPersonalSandboxRef.current ||
       isWatched)
   ) {
-    await writers.writeStudentRun(actor.anonymousId, {
-      code,
-      output: outputRaw,
-      status,
-      checkPassed: hasTests || isFreePlay ? undefined : passed,
-      ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
-      errorText: status === 'error' ? lastErrorLine(outputRaw) : undefined,
-    })
+    // A rejected write (permission denied: the session ended or the student was removed) must
+    // not end the Run here: it skipped the records below and setRunning(false), so Run stayed
+    // stuck on Stop. Warn and carry on.
+    try {
+      await writers.writeStudentRun(actor.anonymousId, {
+        code,
+        output: outputRaw,
+        status,
+        checkPassed: hasTests || isFreePlay ? undefined : passed,
+        ...(typeof scrubPassed === 'boolean' ? { scrubPassed } : {}),
+        errorText: status === 'error' ? lastErrorLine(outputRaw) : undefined,
+      })
+    } catch (err) {
+      console.warn('[run] writeStudentRun failed', err)
+    }
     // Turtle's canvas is a run RESULT (like output), not an editing-tool state like
     // Arcade's design — so it's synced here alongside writeStudentRun, not only on
     // explicit edits. Lets a teacher open StudentModal and see the student's actual
