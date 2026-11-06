@@ -209,6 +209,10 @@ describe('useSideQuestOffer', () => {
     passNow(update)
     advance(5000)
     expect(result.current.visible).toBe(false)
+    // The student taps the banner's x: a pointer press, then the banner is gone.
+    act(() => {
+      document.dispatchEvent(new Event('pointerdown'))
+    })
     update({ passBannerUp: false })
     expect(result.current.visible).toBe(false)
     advance(idleMs + 10)
