@@ -4,7 +4,9 @@ import { SIDE_QUEST_OFFER_TIMING, useSideQuestOffer } from '../useSideQuestOffer
 import { sideQuestOfferStorageKey } from '../../studentStorage'
 
 const QUESTS = [{ index: 0, title: 'Make it spin', kind: 'challenge' }]
-const { arrivalGraceMs, afterPassMs, idleMs } = SIDE_QUEST_OFFER_TIMING
+const { arrivalGraceMs, passBannerCapMs, idleMs } = SIDE_QUEST_OFFER_TIMING
+// With no pass banner up, the card waits only for the idle wait.
+const afterPassMs = idleMs
 
 function setup(overrides = {}) {
   const openQuest = vi.fn()
@@ -32,10 +34,12 @@ function setup(overrides = {}) {
 
 const advance = (ms) => act(() => vi.advanceTimersByTime(ms))
 
-// A pass the student watched: after the arrival grace, and the quests become eligible with it.
+// A pass the student watched: after the arrival grace, from a Run they pressed here, and the
+// quests become eligible with it.
 function passNow(update) {
   advance(arrivalGraceMs + 10)
-  update({ passed: true, eligible: true })
+  update({ running: true })
+  update({ running: false, passed: true, eligible: true })
 }
 
 describe('useSideQuestOffer', () => {
@@ -99,7 +103,8 @@ describe('useSideQuestOffer', () => {
   it('a pass where quests are not offered (sandbox, broadcast) never queues it', () => {
     const { result, update } = setup()
     advance(arrivalGraceMs + 10)
-    update({ passed: true, eligible: false })
+    update({ running: true })
+    update({ running: false, passed: true, eligible: false })
     advance(10)
     update({ eligible: true })
     advance(afterPassMs + idleMs)
@@ -161,5 +166,100 @@ describe('useSideQuestOffer', () => {
     advance(afterPassMs + idleMs)
     expect(result.current.visible).toBe(true)
     setItem.mockRestore()
+  })
+
+  it('a pass with no Run pressed in this view (a slow restore) is not a moment', () => {
+    const { result, update } = setup()
+    advance(arrivalGraceMs + 10)
+    update({ passed: true, eligible: true })
+    advance(passBannerCapMs + idleMs)
+    expect(result.current.visible).toBe(false)
+  })
+
+  it('opening a quest from the strip while the card is pending cancels it', () => {
+    const { result, update } = setup()
+    passNow(update)
+    advance(10)
+    update({ questOpen: true, eligible: false })
+    advance(passBannerCapMs + idleMs)
+    update({ questOpen: false, eligible: true })
+    advance(passBannerCapMs + idleMs)
+    expect(result.current.visible).toBe(false)
+  })
+
+  it.each([
+    ['left on screen', () => {}],
+    ['Not now', (result) => act(() => result.current.dismiss())],
+    ['Try it', (result) => act(() => result.current.tryQuest(0))],
+  ])('never reshows after %s, then Next and Back', (_label, action) => {
+    const { result, update } = setup({ persist: false })
+    passNow(update)
+    advance(afterPassMs + idleMs)
+    expect(result.current.visible).toBe(true)
+    action(result)
+    update({ taskId: 2, passed: false, eligible: false })
+    advance(10)
+    update({ taskId: 1, passed: true, eligible: true })
+    advance(passBannerCapMs + idleMs)
+    expect(result.current.visible).toBe(false)
+  })
+
+  it('waits while the pass banner is up and shows once it goes on its own', () => {
+    const { result, update } = setup({ passBannerUp: true })
+    passNow(update)
+    advance(5000)
+    expect(result.current.visible).toBe(false)
+    update({ passBannerUp: false })
+    expect(result.current.visible).toBe(false)
+    advance(idleMs + 10)
+    expect(result.current.visible).toBe(true)
+  })
+
+  it('shows at the cap even if the pass banner is still up', () => {
+    const { result, update } = setup({ passBannerUp: true })
+    passNow(update)
+    advance(passBannerCapMs - 50)
+    expect(result.current.visible).toBe(false)
+    advance(100)
+    expect(result.current.visible).toBe(true)
+  })
+
+  it('not while the output iframe has focus; shows once focus leaves it', () => {
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    try {
+      const { result, update } = setup()
+      passNow(update)
+      frame.focus()
+      expect(document.activeElement).toBe(frame)
+      advance(afterPassMs + idleMs + 1000)
+      expect(result.current.visible).toBe(false)
+      frame.blur()
+      document.body.focus()
+      advance(1000)
+      expect(result.current.visible).toBe(true)
+    } finally {
+      frame.remove()
+    }
+  })
+
+  it('not while the tab is hidden, and not saved as offered until it really shows', () => {
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+    try {
+      const { result, update } = setup()
+      passNow(update)
+      advance(passBannerCapMs + idleMs + 1000)
+      expect(result.current.visible).toBe(false)
+      expect(localStorage.getItem(sideQuestOfferStorageKey('L', '1', 'kid'))).toBeNull()
+      hidden.mockReturnValue(false)
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+      advance(1000)
+      expect(result.current.visible).toBe(true)
+      expect(localStorage.getItem(sideQuestOfferStorageKey('L', '1', 'kid'))).not.toBeNull()
+    } finally {
+      hidden.mockRestore()
+    }
   })
 })
