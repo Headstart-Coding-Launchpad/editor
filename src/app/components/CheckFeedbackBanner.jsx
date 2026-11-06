@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { HELP_BUTTON_LABEL } from './peerHelp/helpLabel'
 
@@ -19,9 +19,12 @@ export default function CheckFeedbackBanner({
   onGoPersonalSandbox,
   // The tutor's own "Send hint": a calm 💡 note from the tutor, not a failed check.
   fromTutor = false,
-  // Close a pass banner now (the bonus quest card has taken its place). It stays closed until the
-  // next check remounts the banner.
+  // Close a pass banner now (the bonus quest card has taken its place, at its 10s cap). It stays
+  // closed until the next check remounts the banner.
   closeIfPassed = false,
+  // Told whether a pass banner is on screen (true), or has gone (false: closed, timed out,
+  // unmounted), so the bonus quest card can wait for it.
+  onPassShownChange,
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissed, setDismissed] = useState(false)
@@ -37,6 +40,14 @@ export default function CheckFeedbackBanner({
   useEffect(() => {
     if (closeIfPassed && passed) setDismissed(true)
   }, [closeIfPassed, passed])
+
+  const passShown = !!passed && !fromTutor && !dismissed
+  const onPassShownChangeRef = useRef(onPassShownChange)
+  onPassShownChangeRef.current = onPassShownChange
+  useEffect(() => {
+    onPassShownChangeRef.current?.(passShown)
+  }, [passShown])
+  useEffect(() => () => onPassShownChangeRef.current?.(false), [])
 
   if (dismissed) return null
 

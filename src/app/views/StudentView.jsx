@@ -686,9 +686,11 @@ export default function StudentView({
     setSideQuestDone,
     writeSideQuestCode,
   })
-  // The one-time bonus quest card is up (SideQuestOffer, below the workspace): the pass banner
-  // steps aside so the two never stack.
+  // The one-time bonus quest card is up (SideQuestOffer, below the workspace), and whether the
+  // pass banner is on screen: the card waits for the banner to go (10s cap, then the banner
+  // closes for it), so the two never stack.
   const [sideQuestOfferUp, setSideQuestOfferUp] = useState(false)
+  const [passBannerUp, setPassBannerUp] = useState(false)
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -2289,6 +2291,7 @@ export default function StudentView({
               )}
               forcedPaneCommand={forcedPaneCommand}
               closePassBanner={sideQuestOfferUp}
+              onPassBannerChange={setPassBannerUp}
             />
             <ControlHighlightRing
               ring={controlHighlight.ring}
@@ -2314,6 +2317,7 @@ export default function StudentView({
           !isStudentPanelBroadcast
         }
         running={!!cs.running}
+        passBannerUp={passBannerUp}
         blocked={!teacherPresentation && !!badgeCelebrations.card}
         questOpen={!!openSideQuest}
         persist={sideQuests.persist}

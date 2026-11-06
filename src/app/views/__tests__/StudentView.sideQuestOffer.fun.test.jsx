@@ -5,7 +5,7 @@ import StudentView from '../StudentView'
 import { SIDE_QUEST_OFFER_TIMING } from '../../hooks/useSideQuestOffer'
 
 // The Fun moment for the bonus quest card (sketch option C, 2026-11-06): a student's check
-// passes on a task with side quests; once the pass banner has had its moment and they stop
+// passes on a task with side quests; once the pass banner has gone (or at its cap) and they stop
 // typing, a calm card slides in: "Nice! You finished. Want a bonus quest?" with "Try it: <title>".
 // Tapping it opens the quest. "Not now" closes it for good on that task. A reload of a passed
 // task, or a task with no quests, never shows it. Real StudentView → Python StudentWorkspace;
@@ -138,7 +138,12 @@ const saved = { ...SIDE_QUEST_OFFER_TIMING }
 describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
   beforeEach(() => {
     localStorage.clear()
-    Object.assign(SIDE_QUEST_OFFER_TIMING, { arrivalGraceMs: 300, afterPassMs: 150, idleMs: 100 })
+    Object.assign(SIDE_QUEST_OFFER_TIMING, {
+      arrivalGraceMs: 300,
+      passBannerCapMs: 600,
+      idleMs: 100,
+      recheckMs: 50,
+    })
     mocks.runPython = vi.fn((code, { onOutput }) => {
       onOutput?.('hi\n')
       return Promise.resolve({ status: 'success' })
@@ -151,8 +156,12 @@ describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
   it('appears after the pass banner has had its moment; Try it opens the quest', async () => {
     const { user, session } = renderLesson(QUEST_LESSON)
     await runAndPass(user)
-    // Not straight away: the pass banner shows first.
+    // Not straight away: the pass banner shows first, with its own links, and the card waits for it.
     expect(offerCard()).toBeNull()
+    expect(screen.getByText('Correct!')).toBeInTheDocument()
+    await wait(SIDE_QUEST_OFFER_TIMING.idleMs + 150)
+    expect(offerCard()).toBeNull()
+    expect(screen.getByText('Correct!')).toBeInTheDocument()
 
     await waitFor(() => expect(offerCard()).not.toBeNull())
     expect(offerCard()).toHaveTextContent('Nice! You finished. Want a bonus quest?')
@@ -179,7 +188,7 @@ describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
 
     // Run (and pass) again: still no card.
     await user.click(await screen.findByRole('button', { name: 'Run' }))
-    await wait(SIDE_QUEST_OFFER_TIMING.afterPassMs + SIDE_QUEST_OFFER_TIMING.idleMs + 300)
+    await wait(SIDE_QUEST_OFFER_TIMING.passBannerCapMs + SIDE_QUEST_OFFER_TIMING.idleMs + 300)
     expect(offerCard()).toBeNull()
   })
 
@@ -193,7 +202,7 @@ describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
     // Reload: the student runs and passes again, but the card was already offered on this task.
     const again = renderLesson(QUEST_LESSON)
     await runAndPass(again.user)
-    await wait(SIDE_QUEST_OFFER_TIMING.afterPassMs + SIDE_QUEST_OFFER_TIMING.idleMs + 400)
+    await wait(SIDE_QUEST_OFFER_TIMING.passBannerCapMs + SIDE_QUEST_OFFER_TIMING.idleMs + 400)
     expect(offerCard()).toBeNull()
   })
 
@@ -212,7 +221,7 @@ describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
     await wait(SIDE_QUEST_OFFER_TIMING.arrivalGraceMs + 50)
     await user.click(await screen.findByRole('button', { name: 'Run' }))
     await waitFor(() => expect(mocks.runPython).toHaveBeenCalled())
-    await wait(SIDE_QUEST_OFFER_TIMING.afterPassMs + SIDE_QUEST_OFFER_TIMING.idleMs + 300)
+    await wait(SIDE_QUEST_OFFER_TIMING.passBannerCapMs + SIDE_QUEST_OFFER_TIMING.idleMs + 300)
     expect(offerCard()).toBeNull()
     expect(screen.queryByText(/bonus quest/i)).toBeNull()
   })

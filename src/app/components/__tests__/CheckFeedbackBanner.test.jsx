@@ -336,4 +336,24 @@ describe('CheckFeedbackBanner: a hint the tutor sent', () => {
     render(<CheckFeedbackBanner passed={false} closeIfPassed />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
+
+  it('onPassShownChange reports a pass banner on screen, and its going (x or unmount)', async () => {
+    const user = userEvent.setup()
+    const onPassShownChange = vi.fn()
+    const { unmount } = render(<CheckFeedbackBanner passed onPassShownChange={onPassShownChange} />)
+    expect(onPassShownChange).toHaveBeenLastCalledWith(true)
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(onPassShownChange).toHaveBeenLastCalledWith(false)
+    onPassShownChange.mockClear()
+    const again = render(<CheckFeedbackBanner passed onPassShownChange={onPassShownChange} />)
+    again.unmount()
+    expect(onPassShownChange).toHaveBeenLastCalledWith(false)
+    unmount()
+  })
+
+  it('onPassShownChange is false for a fail banner', () => {
+    const onPassShownChange = vi.fn()
+    render(<CheckFeedbackBanner passed={false} onPassShownChange={onPassShownChange} />)
+    expect(onPassShownChange).not.toHaveBeenCalledWith(true)
+  })
 })
