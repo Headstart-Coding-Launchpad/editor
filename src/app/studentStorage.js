@@ -175,6 +175,31 @@ export function saveSideQuestWork(lessonId, taskId, index, anonymousId, record) 
   }
 }
 
+// The bonus quest card (SideQuestOfferCard) was offered on this task: `{ at }`, written once
+// when it shows, so a reload never offers it again. Best-effort only: the card also remembers
+// in memory, and a blocked storage just means it might show once more after a reload.
+export const sideQuestOfferStorageKey = (lessonId, taskId, anonymousId) =>
+  studentTaskStorageKey(lessonId, `${taskId}_sidequest_offered`, anonymousId)
+
+export function loadSideQuestOffered(lessonId, taskId, anonymousId) {
+  try {
+    return safeParse(sideQuestOfferStorageKey(lessonId, taskId, anonymousId)) != null
+  } catch {
+    return false
+  }
+}
+
+export function saveSideQuestOffered(lessonId, taskId, anonymousId) {
+  try {
+    localStorage.setItem(
+      sideQuestOfferStorageKey(lessonId, taskId, anonymousId),
+      JSON.stringify({ at: Date.now() })
+    )
+  } catch {
+    // Storage full or blocked: remembered in memory for this visit.
+  }
+}
+
 // ── Layout tab preference ──────────────────────────────────────────────────────
 // A device-level display preference (which compact-layout tab was last active),
 // not lesson/task-specific, so the key is unscoped like `headstart_builder_current`.
