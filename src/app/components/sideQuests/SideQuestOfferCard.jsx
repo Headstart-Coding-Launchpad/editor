@@ -36,7 +36,7 @@ export default function SideQuestOfferCard({ quests, onTry, onNotNow }) {
             {quest.title}
           </button>
         ))}
-        <button type="button" className="btn-ghost" style={s.notNow} onClick={onNotNow}>
+        <button type="button" className="btn-ghost-outline" style={s.notNow} onClick={onNotNow}>
           Not now
         </button>
       </div>
