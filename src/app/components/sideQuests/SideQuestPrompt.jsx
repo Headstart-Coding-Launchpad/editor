@@ -4,7 +4,8 @@ import { sideQuestKindMeta } from '../../../shared/sideQuests'
 /**
  * The prompt inside a finished task: "You've finished! Try a side-quest", with one button per
  * side-quest (a ✓ on the ones marked Done). Shown above the workspace once the student passes a
- * task that has side-quests (src/shared/sideQuests.js).
+ * task that has side-quests (src/shared/sideQuests.js). The one-time bonus quest card
+ * (SideQuestOfferCard) offers the same quests once, just after the pass; this strip stays.
  */
 export default function SideQuestPrompt({ quests, isDone, onOpen }) {
   if (!quests?.length) return null
@@ -42,7 +43,7 @@ const s = {
     gap: 10,
     flexWrap: 'wrap',
     padding: '6px 12px',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: 600,
     background: 'rgba(124, 58, 237, 0.08)',
     color: 'var(--colour-text)',
@@ -51,5 +52,6 @@ const s = {
   },
   text: { minWidth: 0 },
   buttons: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-  button: { fontSize: 13, padding: '4px 12px' },
+  // Tablet-sized targets (at least 44px), like the bonus quest card's.
+  button: { fontSize: 15, minHeight: 44, padding: '6px 14px' },
 }
