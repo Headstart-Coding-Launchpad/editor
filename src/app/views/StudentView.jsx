@@ -94,6 +94,7 @@ import { applyPeerEdit, visiblePeerHelpOffers } from '../../shared/peerHelp'
 import { supportsPeerHelp } from '../peerHelpAnchors'
 import { useSideQuests } from '../hooks/useSideQuests'
 import SideQuestPrompt from '../components/sideQuests/SideQuestPrompt'
+import { SideQuestOffer } from '../components/sideQuests/SideQuestOfferCard'
 import SideQuestWorkspace from '../components/sideQuests/SideQuestWorkspace'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import {
@@ -685,6 +686,9 @@ export default function StudentView({
     setSideQuestDone,
     writeSideQuestCode,
   })
+  // The one-time bonus quest card is up (SideQuestOffer, below the workspace): the pass banner
+  // steps aside so the two never stack.
+  const [sideQuestOfferUp, setSideQuestOfferUp] = useState(false)
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
@@ -2284,6 +2288,7 @@ export default function StudentView({
                 highlightOnActivity ? null : controlHighlight.revealPanes
               )}
               forcedPaneCommand={forcedPaneCommand}
+              closePassBanner={sideQuestOfferUp}
             />
             <ControlHighlightRing
               ring={controlHighlight.ring}
@@ -2292,6 +2297,29 @@ export default function StudentView({
           </PollTaskClassContext.Provider>
         )}
       </div>
+      {/* The one-time "Want a bonus quest?" card, under the workspace (never over the code or the
+          Run output). Local to the student: it writes nothing for the tutor; "Try it" opens the
+          quest through sideQuests.openQuest, which logs it like the strip does. */}
+      <SideQuestOffer
+        lessonId={lessonId}
+        taskId={sideQuests.taskId}
+        anonymousId={identity?.anonymousId ?? null}
+        quests={sideQuests.quests}
+        passed={cs.checkPassed}
+        eligible={
+          sideQuestsVisible &&
+          !openSideQuest &&
+          !showPeerHelperWorkspace &&
+          !activeShare &&
+          !isStudentPanelBroadcast
+        }
+        running={!!cs.running}
+        blocked={!teacherPresentation && !!badgeCelebrations.card}
+        questOpen={!!openSideQuest}
+        persist={sideQuests.persist}
+        openQuest={sideQuests.openQuest}
+        onVisibleChange={setSideQuestOfferUp}
+      />
     </div>
   )
 

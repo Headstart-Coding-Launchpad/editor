@@ -322,4 +322,18 @@ describe('CheckFeedbackBanner: a hint the tutor sent', () => {
     expect(screen.getByText('💡')).toBeInTheDocument()
     expect(screen.queryByText('!')).not.toBeInTheDocument()
   })
+
+  it('closeIfPassed closes a pass banner (the bonus quest card took its place) and it stays closed', () => {
+    const { rerender } = render(<CheckFeedbackBanner passed />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    rerender(<CheckFeedbackBanner passed closeIfPassed />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    rerender(<CheckFeedbackBanner passed />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('closeIfPassed leaves a fail or tutor hint banner alone', () => {
+    render(<CheckFeedbackBanner passed={false} closeIfPassed />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
 })

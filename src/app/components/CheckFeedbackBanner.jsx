@@ -19,6 +19,9 @@ export default function CheckFeedbackBanner({
   onGoPersonalSandbox,
   // The tutor's own "Send hint": a calm 💡 note from the tutor, not a failed check.
   fromTutor = false,
+  // Close a pass banner now (the bonus quest card has taken its place). It stays closed until the
+  // next check remounts the banner.
+  closeIfPassed = false,
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissed, setDismissed] = useState(false)
@@ -30,6 +33,10 @@ export default function CheckFeedbackBanner({
     const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    if (closeIfPassed && passed) setDismissed(true)
+  }, [closeIfPassed, passed])
 
   if (dismissed) return null
 

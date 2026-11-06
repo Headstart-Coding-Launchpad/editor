@@ -204,6 +204,9 @@ export default function LessonTaskContent({
   onVisiblePanesChange,
   highlightedPanes,
   forcedPaneCommand,
+  // The bonus quest card is up (StudentView): a pass banner on screen closes so the two never
+  // stack.
+  closePassBanner = false,
 }) {
   const badgeSignals = useBadgeSignals()
   // Cross-lesson carry (src/shared/roster/crossLessonCarry.js): the student's own task is held
@@ -611,6 +614,7 @@ export default function LessonTaskContent({
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
+      closeIfPassed={closePassBanner}
     />
   ) : null
 
