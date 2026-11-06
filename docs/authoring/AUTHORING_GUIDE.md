@@ -379,7 +379,11 @@ do meanwhile: up to three optional, **unchecked** mini tasks on that code task.
   run or saved.
 - **Unlock:** only after the task's own completion check passes (so the task needs a `check`).
   Live: only while the class is still on that task; solo: after a pass. A bar above the workspace
-  says "🎉 You've finished! Try a side-quest" with a button per side-quest.
+  says "🎉 You've finished! Try a side-quest" with a button per side-quest. The first time a
+  student passes the task, a calm card also slides in under the workspace once the pass banner has
+  had its moment: "Nice! You finished. Want a bonus quest?" with **Try it: <title>** per
+  side-quest and **Not now**. It shows once per task per student and never on a reload; the bar
+  stays. A short, clear `title` reads best there ("Make it spin").
 - **Isolated:** each opens in place of the task in its own scratch editor of the task's module
   (Python, Turtle or HTML; Scratch later). It never changes the task's saved code and never feeds
   `carryCodeFrom`. Its code is kept on the student's device for the session, and a copy goes to

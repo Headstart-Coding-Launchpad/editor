@@ -37,6 +37,17 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-06
+
+- **Side-quests: a "bonus quest" card after the first pass.** On a task with `sideQuests`, the
+  first time a student passes, a calm card slides in under the workspace once the pass banner has
+  had its moment: "Nice! You finished. Want a bonus quest?" with **Try it: <title>** per
+  side-quest and **Not now** (not a pop-up that blocks; once per task per student, never on a
+  reload). The bar above the workspace stays, with bigger text and buttons. Nothing to author:
+  short, clear side-quest titles read best on the button. See
+  [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md) "Side-quests".
+  - Affects: python, turtle, html (side-quests) · Existing lessons: no changes needed · Resolves: none
+
 ## 2026-11-05
 
 - **Multiple choice: picture cards sized to the screen.** A picture option's picture is now scaled
