@@ -191,7 +191,7 @@ export default function StagePane({
       )}
       {showCanvas && (
         <div style={compact ? { ...s.fit, minHeight: 0 } : s.fit}>
-          <div style={s.square}>
+          <div style={s.square} data-testid="stage-canvas">
             <canvas ref={canvasRef} style={s.canvas} role="img" aria-label={description} />
           </div>
         </div>

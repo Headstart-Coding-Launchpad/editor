@@ -36,7 +36,7 @@ node cli/cli.mjs lessons screenshot caakmdqj5j --task 21 --view tutor-grid
 | `--task <id>` | The task id (as in the lesson, not a 0-based index). |
 | `--open-task <id>` | Show this task instead, for an image that belongs to one task but shows the next. The file is named after the task shown. |
 | `--view` | `student` (default), `student-live`, `tutor`, `tutor-grid`, `student-modal` or `shared-work`. See [Session views](#session-views). The names `editor+output`, `editor`, `output`, `stage`, `student-page` and `tutor-page` also work. |
-| `--crop` | `page` (default, the whole window), `workspace` (editor and output together), `instructions`, `editor`, `output`, `console` or `stage`. Student and `student-live` views only. |
+| `--crop` | `page` (default, the whole window), `workspace` (editor and output together), `instructions`, `editor`, `output`, `console` or `stage` (just the drawing, without the Stage header or Save my picture). Student and `student-live` views only. |
 | `--device` | `desktop` (1440×900, default) or `tablet` (1024×768, touch). `--width` / `--height` override it. |
 | `--scale <n>` | Pixel ratio. `2` gives sharper, double-size images. |
 | `--code <text\|@file>` | Code to show instead of the starter. Python and Turtle take code; HTML takes the entry file's content; Scratch takes a blocks JSON state. A path after `@` is read relative to the working folder. |

@@ -27,7 +27,7 @@ export const CROP_TEST_IDS = {
   editor: ['editor-panel', 'scratch-blocks'],
   output: ['stage-pane', 'scratch-stage', 'turtle-canvas', 'iframe-preview', 'output-panel'],
   console: ['output-panel', 'iframe-preview'],
-  stage: ['stage-pane', 'scratch-stage', 'turtle-canvas'],
+  stage: ['stage-canvas', 'stage-pane','scratch-stage', 'turtle-canvas'],
 }
 
 // The names request #75 used for views, read as a view plus a crop.
