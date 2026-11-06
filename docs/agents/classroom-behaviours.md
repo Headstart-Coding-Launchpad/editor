@@ -386,14 +386,19 @@ students who have passed it while the class waits. Python, Turtle and HTML
   `SideQuestOfferCard` (`useSideQuestOffer`): a one-time, non-modal card in the page flow under
   the workspace (no dim, no focus trap; never over the code or Run output): "Nice! You finished.
   Want a bonus quest?", a filled **Try it: <title>** per side-quest (max 3) and a quiet **Not
-  now**. It is queued only by a pass the student watched (`usePassMoment`, not within the
-  complete chime's arrival grace, and only where the strip would show), then waits 3 s for the
-  pass banner, for any Run to finish and for 2 s with no key or pointer input; it never shows
-  while a `BadgeCelebration` plays, over a broadcast, a share, peer help or the solo
-  explainer/completion slides. When it shows, the pass banner closes (`closeIfPassed`) so they
-  never stack. Once per task per student: kept in memory, and best-effort in
-  `headstart_{lessonId}_{taskId}_sidequest_offered_{anonymousId}`. "Not now" closes it for good on
-  that task; "Try it" calls `useSideQuests.openQuest` (live: `openedAt` logged as from the
+  now**. It is queued only by a pass the student watched (`usePassMoment`, from a Run pressed in
+  this view, not within the complete chime's arrival grace, and only where the strip would show).
+  It then waits for the pass banner to go on its own (the student's x or its own timeout;
+  `CheckFeedbackBanner` reports it through `onPassShownChange`), so the banner's pass hint and
+  "Test further in Personal Sandbox" link stay usable; only if the banner is still up 10 s after
+  the pass does the card show and the banner close (`closeIfPassed`), so they never stack. It also
+  waits for any Run to finish, 2 s with no key or pointer input, the tab to be visible and focus to
+  be outside the output iframe; it never shows while a `BadgeCelebration` plays, over a broadcast,
+  a share, peer help or the solo explainer/completion slides. Once per task per student: it counts
+  as offered only when it really shows (or a quest is opened from the strip first), kept in memory
+  and best-effort in `headstart_{lessonId}_{taskId}_sidequest_offered_{anonymousId}`. Leaving the
+  task (Next, Back, the class moving on) ends it for good; "Not now" closes it for good on that
+  task; "Try it" calls `useSideQuests.openQuest` (live: `openedAt` logged as from the
   strip). **Tutor view:** the card is local to the student and writes nothing; the tutor sees the
   quest once it is opened, as before. No tutor off switch. Solo the same, with no writes.
 - **Workspace.** `SideQuestWorkspace` takes the workspace slot, like `SharedWorkspaceViewer`: a

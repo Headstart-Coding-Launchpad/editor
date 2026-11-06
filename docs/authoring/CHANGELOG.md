@@ -41,7 +41,8 @@ Entries written before 2026-09-29 are not tagged.
 
 - **Side-quests: a "bonus quest" card after the first pass.** On a task with `sideQuests`, the
   first time a student passes, a calm card slides in under the workspace once the pass banner has
-  had its moment: "Nice! You finished. Want a bonus quest?" with **Try it: <title>** per
+  gone (closed by the student or timed out; at most 10 seconds after the pass, when a banner still
+  up closes for it, so its hint and Personal Sandbox link stay usable until then): "Nice! You finished. Want a bonus quest?" with **Try it: <title>** per
   side-quest and **Not now** (not a pop-up that blocks; once per task per student, never on a
   reload). The bar above the workspace stays, with bigger text and buttons. Nothing to author:
   short, clear side-quest titles read best on the button. See
