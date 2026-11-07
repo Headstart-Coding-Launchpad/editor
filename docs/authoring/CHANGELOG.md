@@ -39,6 +39,11 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
+- **Inline Scratch C-block pills are one-line pills.** An inline `` `scratch:repeat (10)` `` (or
+  forever, if, if-else) drew an empty C with a mouth; it now draws a compact pill like any other
+  inline block. Fenced `scratch` blocks still draw the full C shape with inner blocks.
+  - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
+
 - **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still
   starts open.** A 🧱 **Blocks** button above the script opens and closes it; blocks hidden under
   it are scrolled clear each time it opens. New optional lesson field `scratchPaletteClosed: true`
