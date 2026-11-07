@@ -89,13 +89,13 @@ describe('validateStageChange', () => {
         'Task 1 copyBefore has no copyCode to place; it is ignored',
       ],
     })
-    expect(run({ codeStages: [starter], copyCode: 'x', copyAfter: 5, copyBefore: 6 }).errors).toEqual(
-      [
-        'Task 1 copyAfter must be the text of one line of code',
-        'Task 1 copyBefore must be the text of one line of code',
-        'Task 1 has both copyAfter and copyBefore; use one',
-      ]
-    )
+    expect(
+      run({ codeStages: [starter], copyCode: 'x', copyAfter: 5, copyBefore: 6 }).errors
+    ).toEqual([
+      'Task 1 copyAfter must be the text of one line of code',
+      'Task 1 copyBefore must be the text of one line of code',
+      'Task 1 has both copyAfter and copyBefore; use one',
+    ])
   })
 
   it('an ignored place line (no copyCode) only warns, never also errors', () => {

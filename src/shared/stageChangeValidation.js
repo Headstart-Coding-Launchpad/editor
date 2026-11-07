@@ -30,18 +30,27 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
     }
   })
 
-  const present = COPY_ANCHOR_FIELDS.filter((field) => task?.[field] != null)
+  // A blank place line is unset (the Builder holds the chosen mode with no text yet, and the
+  // export drops it), so it is neither an error nor a warning.
+  const present = COPY_ANCHOR_FIELDS.filter(
+    (field) => task?.[field] != null && !(typeof task[field] === 'string' && !task[field].trim())
+  )
+  if (!present.length) return
+  // Without copyCode the export drops every place line, so each is only ignored: a warning per
+  // field, and no error about what it holds.
+  if (!(typeof task?.copyCode === 'string' && task.copyCode.trim())) {
+    for (const field of present) {
+      warnings.push(`Task ${n} ${field} has no copyCode to place; it is ignored`)
+    }
+    return
+  }
   for (const field of present) {
-    if (typeof task[field] !== 'string' || !task[field].trim()) {
+    if (typeof task[field] !== 'string') {
       errors.push(`Task ${n} ${field} must be the text of one line of code`)
     }
   }
   if (present.length === 2) {
     errors.push(`Task ${n} has both copyAfter and copyBefore; use one`)
-  }
-  if (present.length && !(typeof task?.copyCode === 'string' && task.copyCode.trim())) {
-    warnings.push(`Task ${n} ${present[0]} has no copyCode to place; it is ignored`)
-    return
   }
   // The named line should be in the code the student starts from. Carried code can't be read
   // here, so a task that carries is not checked.
