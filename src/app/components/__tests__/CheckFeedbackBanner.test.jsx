@@ -3,6 +3,7 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { HelpRequestContext } from '../peerHelp/helpRequestContext'
 
 // CheckFeedbackBanner imports MarkdownRenderer from shared/markdown.
 // We do NOT mock it — letting it render keeps the tests honest and avoids
@@ -255,16 +256,44 @@ describe('CheckFeedbackBanner', () => {
       }
     })
 
-    it('points to the persistent ✋ Help control (by its real name) instead of rendering its own button on fail', () => {
-      render(<CheckFeedbackBanner passed={false} />)
-      expect(screen.getByText(/Still stuck\? Tap “✋ Help”/)).toBeInTheDocument()
-      expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /Help/i })).not.toBeInTheDocument()
+    it("on fail, with a tutor to ask, '✋ Ask for help' does what the top-bar ✋ Help does", async () => {
+      const user = userEvent.setup()
+      const onAsk = vi.fn()
+      render(
+        <HelpRequestContext.Provider value={{ onAsk, requested: false }}>
+          <CheckFeedbackBanner passed={false} />
+        </HelpRequestContext.Provider>
+      )
+      expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: '✋ Ask for help' }))
+      expect(onAsk).toHaveBeenCalledTimes(1)
     })
 
-    it('does not show the help pointer on pass', () => {
-      render(<CheckFeedbackBanner passed={true} />)
+    it('once asked it says so and a second tap does nothing', async () => {
+      const user = userEvent.setup()
+      const onAsk = vi.fn()
+      render(
+        <HelpRequestContext.Provider value={{ onAsk, requested: true }}>
+          <CheckFeedbackBanner passed={false} />
+        </HelpRequestContext.Provider>
+      )
+      await user.click(screen.getByRole('button', { name: '✋ Help requested' }))
+      expect(onAsk).not.toHaveBeenCalled()
+    })
+
+    it('with no tutor to ask (solo, Builder) there is no help line or button', () => {
+      render(<CheckFeedbackBanner passed={false} />)
       expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /help/i })).not.toBeInTheDocument()
+    })
+
+    it('does not offer help on pass', () => {
+      render(
+        <HelpRequestContext.Provider value={{ onAsk: vi.fn(), requested: false }}>
+          <CheckFeedbackBanner passed={true} />
+        </HelpRequestContext.Provider>
+      )
+      expect(screen.queryByRole('button', { name: /Ask for help/i })).not.toBeInTheDocument()
     })
 
     it('uses the corner-anchored popup class so it stays clear of the toolbar and code', () => {
