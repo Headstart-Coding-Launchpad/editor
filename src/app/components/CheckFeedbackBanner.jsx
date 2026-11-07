@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
-import {
-  ASK_FOR_HELP_LABEL,
-  HELP_REQUESTED_LABEL,
-  useHelpRequest,
-} from './peerHelp/helpRequestContext'
+import { ASK_FOR_HELP_LABEL, HELP_REQUESTED_LABEL } from './peerHelp/helpLabel'
+import { useHelpRequest } from './peerHelp/helpRequestContext'
 
 // Auto-dismiss delay for the popup — long enough to read, short enough not to linger
 // and block the workspace behind it once a student has moved on.
@@ -36,6 +33,11 @@ export default function CheckFeedbackBanner({
   // close button or timer, 16px text and buttons for its actions. It never covers anything, so it
   // never holds up the bonus quest card (onPassShownChange says false).
   docked = false,
+  // Docked only: the student has moved on since this failed check (changed the code, started a
+  // Run), so the hint stays readable but goes gentle (blue), no longer a warning.
+  settled = false,
+  // Docked only: a "Got it" button that puts the tutor's hint away (the caller hides it).
+  onDismiss,
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissedState, setDismissed] = useState(false)
@@ -69,14 +71,15 @@ export default function CheckFeedbackBanner({
   const actionStyle = docked ? s.dockedAction : s.actionLink
   // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
   // once. Callers remount this per check (see above), which replays the one-shot class.
-  const motionClass = passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'
+  const gentle = docked && settled && !passed && !fromTutor
+  const motionClass = passed || fromTutor ? 'motion-pop-in' : gentle ? '' : 'motion-wobble'
   return (
     <div
-      className={docked ? motionClass : `check-feedback-popup ${motionClass}`}
+      className={docked ? motionClass || undefined : `check-feedback-popup ${motionClass}`}
       style={{
         ...s.banner,
         ...(docked ? s.docked : null),
-        ...(passed ? s.pass : fromTutor ? s.tutor : s.fail),
+        ...(passed ? s.pass : fromTutor || gentle ? s.tutor : s.fail),
       }}
       role="status"
     >
@@ -95,10 +98,10 @@ export default function CheckFeedbackBanner({
           className={passed ? 'motion-spin-once' : undefined}
           style={{
             ...s.icon,
-            background: passed ? '#166534' : fromTutor ? '#1e40af' : '#92400e',
+            background: passed ? '#166534' : fromTutor || gentle ? '#1e40af' : '#92400e',
           }}
         >
-          {passed ? '✓' : fromTutor ? '💡' : '!'}
+          {passed ? '✓' : fromTutor || gentle ? '💡' : '!'}
         </span>
         <div style={s.text}>
           {fromTutor && !passed && <div style={s.tutorLabel}>Hint from your tutor</div>}
@@ -149,7 +152,14 @@ export default function CheckFeedbackBanner({
           </button>
         </div>
       )}
-      {!passed && help && <AskForHelpButton help={help} style={actionStyle} />}
+      {/* Help is offered for a failed check, never on the tutor's own hint (they are already
+          helping) or a pass. */}
+      {!passed && !fromTutor && help && <AskForHelpButton help={help} style={actionStyle} />}
+      {docked && fromTutor && !passed && onDismiss && (
+        <button type="button" style={actionStyle} onClick={onDismiss}>
+          Got it
+        </button>
+      )}
       {passed && onGoPersonalSandbox && (
         <button type="button" style={s.sandboxLink} onClick={onGoPersonalSandbox}>
           Test further in Personal Sandbox

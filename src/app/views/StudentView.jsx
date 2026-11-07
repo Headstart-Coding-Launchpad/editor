@@ -85,7 +85,7 @@ import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
-import { HelpRequestContext } from '../components/peerHelp/helpRequestContext'
+import { HelpRequestProvider } from '../components/peerHelp/helpRequestContext'
 import PeerHelpAskBubble from '../components/peerHelp/PeerHelpAskBubble'
 import HelperPromiseDialog from '../components/peerHelp/HelperPromiseDialog'
 import PeerHelpOfferToast from '../components/peerHelp/PeerHelpOfferToast'
@@ -1358,9 +1358,6 @@ export default function StudentView({
     await handleNeedHelp()
     if (peerHelpAvailable && !peerHelp.ownRequestId) setPeerAskOpen(true)
   }
-  // The same ✋ Help for the hint beside the task and the check popup ('✋ Ask for help'), only
-  // where the top-bar button shows: no tutor to ask (solo, presentation) means no offer of help.
-  const helpRequest = canRequestHelp ? { onAsk: handleHelpTap, requested: myNeedsHelp } : null
 
   async function handleClassmateCanHelp() {
     setPeerAskOpen(false)
@@ -2216,7 +2213,14 @@ export default function StudentView({
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>
-            <HelpRequestContext.Provider value={helpRequest}>
+            {/* The same ✋ Help for the hint beside the task and the check popup ('✋ Ask for help'),
+                only where the top-bar button shows: no tutor to ask (solo, presentation) means no
+                offer of help. Its value changes only when the offer does. */}
+            <HelpRequestProvider
+              enabled={canRequestHelp}
+              onAsk={handleHelpTap}
+              requested={myNeedsHelp}
+            >
               <LessonTaskContent
                 lesson={displayedLesson}
                 task={task}
@@ -2298,7 +2302,7 @@ export default function StudentView({
                 closePassBanner={sideQuestOfferUp}
                 onPassBannerChange={setPassBannerUp}
               />
-            </HelpRequestContext.Provider>
+            </HelpRequestProvider>
             <ControlHighlightRing
               ring={controlHighlight.ring}
               announce={controlHighlight.announce}
