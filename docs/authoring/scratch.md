@@ -516,9 +516,11 @@ Scratch tasks open on a calm screen, the same at every screen size:
 - **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
   tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
   one-line title, never behind a tab, and a long explainer scrolls inside the card. On a
-  portrait tablet the card gets at most about a third of the height (the blocks keep at least
-  360px), and a card taller than that starts folded to its title on the task's first view (one tap
-  opens it). Keep explainers short for portrait tablets. Turning a
+  portrait tablet the card gets at most about a third of the height (the blocks keep up to 360px,
+  less on a short screen so the stage row still fits), and a card taller than that starts folded
+  to its title on the task's first view (one tap opens it). That is decided once, as the card
+  arrives (after its pictures load, within about 1.5 seconds): a card the student is already
+  scrolling or tapping is never folded under them. Keep explainers short for portrait tablets. Turning a
   tablet round keeps the card as it was (folded or open, scrolled where it was). Each new task
   opens its card. There is no "Task N of N+1" explainer slide.
 - **The hint is docked under the card** (the same hint box as the calm Python screen): a nudge
