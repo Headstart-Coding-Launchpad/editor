@@ -45,10 +45,12 @@ Entries written before 2026-09-29 are not tagged.
   **Remove**) or indent (one amber note), each placed by a dimmed line of their own code ("after
   this line", or "before this line" at the top). No line numbers. It compares with the student's
   editor code (else the starter), never stored; too much change shows the whole program with the
-  changes marked. **Show all the code** toggles; the Solo load button reads "Replace my code with
-  this" and still loads the whole stage. Default `full`: nothing changes until a stage opts in.
+  changes marked (no "Show only the changes" then). **Show all the code** toggles and keeps the
+  stage's 🔒 Locked tags and line hints; the Solo load button reads "Replace my code with this"
+  and still loads the whole stage. Python only at runtime too. Default `full`: nothing changes until a stage opts in.
   The Copy code panel takes `copyAfter` (or `copyBefore`), the text of the line the typed lines
-  go after (before): it shows that line dimmed, then the lines in green. Builder: "Show only the
+  go after (before): it shows that line dimmed, then the lines in green. An empty one counts as
+  not set. Builder: "Show only the
   changes" on a Complete stage; a place line under the Copy code panel. See
   [python-tasks.md](python-tasks.md#change-view).
   - Affects: python (stage `show`, `copyAfter`, `copyBefore`), turtle, arcade (`copyAfter`, `copyBefore`) · Existing lessons: no changes needed · Resolves: authoring-requests/2026-11-07-python-code-stages-a-change-view-green-add-red-remove-anchor.md

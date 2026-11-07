@@ -65,7 +65,9 @@ clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex ro
 code task's `sideQuests` run in a throwaway workspace of this module; `src/shared/sideQuests.js`;
 python, turtle, html), `errorHelp` (a crashed run's Python error is explained in plain words under the output with a hint ladder, and replaces completion-check hints; `ErrorHelp`, python, turtle), `typingStats` (keystrokes in the shared code editor feed the session
 report's `typing` measures), `previewInspector` (a task's `inspector` field adds the HTML Inspector
-to the preview; `src/modules/html/inspector/`; html).
+to the preview; `src/modules/html/inspector/`; html), `stageChangeView` (a Complete code stage with
+`show: 'change'` shows only what changes against the student's code; `src/shared/stageChange.js`,
+`SupportStagePanel`; python).
 
 Optional (default none): `scrub` (live number / colour scrubbing in the code editor for a
 task's `scrub` field: `{ liveRerun: 'preview' | 'none', needsImport, inputCall }`, checked by
