@@ -28,6 +28,11 @@ export default function CheckFeedbackBanner({
   // Told whether a pass banner is on screen (true), or has gone (false: closed, timed out,
   // unmounted), so the bonus quest card can wait for it.
   onPassShownChange,
+  // Docked in the page (the calm Scratch screen's hint, ScratchHintDock) instead of a popup: no
+  // auto-dismiss, no ×, no "Still stuck?" line. `help` ({ onAsk, requested }, only where the
+  // top-bar Help shows) adds an "✋ Ask for help" button instead.
+  docked = false,
+  help = null,
 }) {
   const hint = String(suggestion ?? '').trim()
   const [dismissed, setDismissed] = useState(false)
@@ -36,9 +41,10 @@ export default function CheckFeedbackBanner({
   // check/stage event actually happens, so this timer — and any earlier dismissal — is
   // naturally reset for a genuinely new popup rather than carried over from a stale one.
   useEffect(() => {
+    if (docked) return undefined
     const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [])
+  }, [docked])
 
   useEffect(() => {
     if (closeIfPassed && passed) setDismissed(true)
@@ -58,18 +64,24 @@ export default function CheckFeedbackBanner({
   // once. Callers remount this per check (see above), which replays the one-shot class.
   return (
     <div
-      className={`check-feedback-popup ${passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'}`}
-      style={{ ...s.banner, ...(passed ? s.pass : fromTutor ? s.tutor : s.fail) }}
+      className={`${docked ? '' : 'check-feedback-popup '}${passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'}`}
+      style={{
+        ...s.banner,
+        ...(docked ? s.docked : null),
+        ...(passed ? s.pass : fromTutor ? s.tutor : s.fail),
+      }}
       role="status"
     >
-      <button
-        type="button"
-        style={s.closeBtn}
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
-      >
-        ×
-      </button>
+      {!docked && (
+        <button
+          type="button"
+          style={s.closeBtn}
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      )}
       <div style={s.row}>
         <span
           className={passed ? 'motion-spin-once' : undefined}
@@ -129,11 +141,12 @@ export default function CheckFeedbackBanner({
           </button>
         </div>
       )}
-      {!passed && (
+      {!passed && !docked && (
         <span style={s.helpNote}>
           Still stuck? Tap “{HELP_BUTTON_LABEL}” at the top of the page.
         </span>
       )}
+      {!passed && docked && help && <AskForHelpButton help={help} />}
       {passed && onGoPersonalSandbox && (
         <button type="button" style={s.sandboxLink} onClick={onGoPersonalSandbox}>
           Test further in Personal Sandbox
@@ -143,7 +156,45 @@ export default function CheckFeedbackBanner({
   )
 }
 
+export const ASK_FOR_HELP_LABEL = '✋ Ask for help'
+export const HELP_REQUESTED_LABEL = '✋ Help requested'
+
+// The student's ✋ Help away from the top bar (the calm screen's docked hint): `help.onAsk` is the
+// very handler the top-bar Help button calls; once asked it reads "Help requested".
+export function AskForHelpButton({ help, style }) {
+  return (
+    <button
+      type="button"
+      style={{ ...s.askHelp, ...style }}
+      onClick={help.onAsk}
+      disabled={!!help.requested}
+    >
+      {help.requested ? HELP_REQUESTED_LABEL : ASK_FOR_HELP_LABEL}
+    </button>
+  )
+}
+
 const s = {
+  // In the page, not floating: no shadow, no room kept for the ×.
+  docked: {
+    position: 'relative',
+    padding: '12px 14px',
+    boxShadow: 'none',
+    borderRadius: 10,
+  },
+  askHelp: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    padding: '6px 12px',
+    border: '1px solid currentColor',
+    borderRadius: 8,
+    background: '#fff',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 14,
+    color: 'inherit',
+    cursor: 'pointer',
+  },
   // Floating and out of document flow, so it never affects page layout, and auto-dismisses
   // (see AUTO_DISMISS_MS). Where it sits lives in `.check-feedback-popup` (src/index.css):
   // the bottom-left corner, clear of the Run button, the file tabs, the top of the student's

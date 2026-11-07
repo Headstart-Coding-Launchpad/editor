@@ -796,10 +796,13 @@ export default function StudentView({
   // lesson.type — activeLesson is already the effective, composed-aware lesson for
   // currentTaskId (see getEffectiveLessonForTask), same as everything else in this
   // component that needs to know the current task's real module type.
-  // Only the fixed-width explainer (capabilities.fixedExplainer: Scratch) tabs away like this.
+  // Only the fixed-width explainer (capabilities.fixedExplainer) tabs away like this. The calm
+  // Scratch screen (capabilities.calmScratch) never hides its explainer (its card only folds to
+  // a title strip), so it has no explainer slide.
   const rawExplainerHidden =
     phase === 'solo' &&
     !!activeModuleCaps?.fixedExplainer &&
+    !activeModuleCaps?.calmScratch &&
     !!explainerPseudoCandidateTask?.explainer &&
     explainerPseudoCandidateTask?.taskType !== 'information' &&
     !isHostedActivityTask(explainerPseudoCandidateTask) &&
@@ -2216,6 +2219,7 @@ export default function StudentView({
               lesson={displayedLesson}
               task={task}
               cs={taskCs}
+              helpRequest={canRequestHelp ? { onAsk: handleHelpTap, requested: myNeedsHelp } : null}
               lessonId={lessonId}
               identityId={effectiveIdentity?.anonymousId}
               sandboxExplainer={session?.sandboxExplainer}

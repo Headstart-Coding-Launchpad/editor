@@ -31,6 +31,9 @@ export default function StudentWorkspace({
   onVisiblePanesChange,
   highlightedPanes,
   forcedPaneCommand,
+  // The calm screen (capabilities.calmScratch; LessonTaskContent): { stacked, aside,
+  // paletteStartsOpen }, or null. Reset Blocks moves into the workspace's Blocks row.
+  calm = null,
 }) {
   // Outgoing slide of a task transition: render as a detached snapshot so the remounted
   // previous-task workspace can't save, broadcast, or report check results onto the new task.
@@ -120,24 +123,30 @@ export default function StudentWorkspace({
     cs.scratchExternalState,
   ])
 
+  const showResetBlocks =
+    !isViewingPrev &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing
+  const calmConfig = calm
+    ? { ...calm, onResetBlocks: showResetBlocks ? cs.handleResetCode : null }
+    : null
+
   return (
     <div style={s.scratchStudentWorkspace}>
-      {!isViewingPrev &&
-        !isSandbox &&
-        !cs.inPersonalSandbox &&
-        !isForcedTeacherLive &&
-        !isTeacherEditing && (
-          <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
-            <button
-              className="btn-ghost-outline"
-              style={s.resetBtn}
-              onClick={cs.handleResetCode}
-              title="Reset blocks to the starter blocks for this task"
-            >
-              Reset Blocks
-            </button>
-          </div>
-        )}
+      {showResetBlocks && !calm && (
+        <div style={{ display: 'flex', flexShrink: 0, paddingBottom: 4 }}>
+          <button
+            className="btn-ghost-outline"
+            style={s.resetBtn}
+            onClick={cs.handleResetCode}
+            title="Reset blocks to the starter blocks for this task"
+          >
+            Reset Blocks
+          </button>
+        </div>
+      )}
       <ScratchWorkspace
         key={`scratch-${viewingTaskId ?? currentTaskId}-${isSandbox ? 'sandbox' : cs.inPersonalSandbox ? 'personal-sandbox' : 'task'}-${liveEndEpoch}`}
         task={cs.inPersonalSandbox ? personalSandboxTask : task}
@@ -166,6 +175,7 @@ export default function StudentWorkspace({
         runToken={detached ? null : cs.remoteRunToken}
         onRunTokenHandled={detached ? undefined : cs.acknowledgeRemoteRun}
         onSlowMoUse={detached ? undefined : cs.recordSlowMoUse}
+        calm={calmConfig}
       />
     </div>
   )

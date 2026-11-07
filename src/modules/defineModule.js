@@ -89,6 +89,9 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // (src/modules/html/inspector; html)
   'stageChangeView', // a Complete code stage with `show: 'change'` shows only what changes against
   // the student's code (src/shared/stageChange.js, SupportStagePanel; python)
+  'calmScratch', // the calm Scratch screen: the palette starts closed behind a Blocks button, the
+  // explainer card and docked hint stay beside the blocks at every size (never a tab), flag/stop/
+  // reset in one row, sprite properties behind More (src/modules/scratch/calm/; scratch)
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete

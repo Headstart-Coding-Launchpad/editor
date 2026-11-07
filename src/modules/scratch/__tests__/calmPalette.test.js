@@ -7,6 +7,7 @@ import {
   calmStackedStageScale,
   openPaletteReveal,
   paletteStartsOpen,
+  placeScriptOnArrival,
   rememberPaletteCategory,
   rememberedPaletteCategory,
   topFlyoutCategory,
@@ -67,6 +68,17 @@ describe('Fun moment: opening the Blocks palette never hides the child’s scrip
     expect(Math.min(...lefts())).toBeGreaterThan(flyoutRight)
   })
 
+  it('measures the palette, not the hidden trashcan flyout Blockly puts before it', () => {
+    const { ws, div, flyoutEl, lefts, flyoutRight } = fakeWorkspace([-150])
+    const trash = document.createElement('div')
+    trash.className = 'blocklyFlyout'
+    trash.style.display = 'none'
+    trash.getBoundingClientRect = () => ({ left: 0, right: 0, width: 0 })
+    div.insertBefore(trash, flyoutEl)
+    expect(openPaletteReveal(ws, div)).toBe('revealed')
+    expect(Math.min(...lefts())).toBeGreaterThan(flyoutRight)
+  })
+
   it('leaves a script that is already clear exactly where it is', () => {
     const { ws, div, lefts } = fakeWorkspace([420])
     expect(openPaletteReveal(ws, div)).toBe('clear')
@@ -84,6 +96,22 @@ describe('Fun moment: opening the Blocks palette never hides the child’s scrip
     flyoutEl.style.display = 'none'
     expect(openPaletteReveal(ws, div)).toBe('clear')
     expect(lefts()).toEqual([-150])
+  })
+
+  it('on arrival with the palette closed, places the script at the left of the canvas (either way)', () => {
+    for (const startX of [-207, 366]) {
+      const { ws, div, flyoutEl, lefts } = fakeWorkspace([startX])
+      flyoutEl.style.display = 'none'
+      div.getBoundingClientRect = () => ({ left: 0, right: 500, width: 500 })
+      expect(placeScriptOnArrival(ws, div)).toBe(true)
+      expect(lefts()).toEqual([16])
+    }
+    // Already near the left: left alone.
+    const near = fakeWorkspace([40])
+    near.flyoutEl.style.display = 'none'
+    near.div.getBoundingClientRect = () => ({ left: 0, right: 500, width: 500 })
+    expect(placeScriptOnArrival(near.ws, near.div)).toBe(false)
+    expect(near.lefts()).toEqual([40])
   })
 })
 

@@ -34,7 +34,8 @@ describe('the Blocks button (calm Scratch palette)', () => {
 
     await user.click(blocks)
     expect(blocks).toHaveAttribute('aria-expanded', 'true')
-    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'drop a block' }))
+    for (let i = 0; i < 3; i++)
+      await user.click(screen.getByRole('button', { name: 'drop a block' }))
     await user.click(screen.getByTestId('stage'))
     await user.click(screen.getByTestId('script'))
     expect(screen.getByTestId('palette')).toBeVisible()

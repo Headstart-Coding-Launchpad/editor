@@ -73,6 +73,18 @@ import { getStartingBackdrop, getStartingBackdropName } from './startingBackdrop
 import { keyScratchSpriteStates } from './jsonWorkspace.js'
 import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
+import {
+  calmFoldsSpriteProps,
+  calmStackedStageScale,
+  openPaletteReveal,
+  placeScriptOnArrival,
+  syncCanvasScroll,
+  rememberPaletteCategory,
+  restorePaletteCategory,
+  revealBlocksBesideFlyout,
+  topFlyoutCategory,
+} from './calm/calmPalette.js'
+import { CalmMoreFold, CalmPaletteToggle } from './calm/CalmControls.jsx'
 
 export const STAGE_W = 480
 export const STAGE_H = 360
@@ -176,29 +188,10 @@ export function computeStageScale(width, height, { compact, flyoutCollapsed }) {
   const nextScale = Math.min(maxScale, Math.max(MIN_STAGE_SCALE, Math.min(widthScale, heightScale)))
   return Number.isFinite(nextScale) ? nextScale : 1
 }
-// Scrolls a workspace so no top-level block starts under the always-open palette. On desktop the
-// starter "say Hello! for 2 seconds" block loaded half hidden behind the palette while the
-// instructions said "Click the block stack" (HSC Audit 08). Measured from the DOM, since the
-// palette overlays the canvas: shifts the canvas right (scrollX grows as the canvas moves right)
-// by just enough to clear the palette's right edge plus a small gap. Returns whether it scrolled.
-const FLYOUT_CLEAR_GAP = 16
-export function revealBlocksBesideFlyout(ws, div) {
-  if (!ws || !div) return false
-  const flyoutEl = div.querySelector?.('.blocklyFlyout')
-  if (!flyoutEl || flyoutEl.style?.display === 'none') return false
-  const flyoutRect = flyoutEl.getBoundingClientRect()
-  if (!flyoutRect?.width) return false
-  let leftmost = Infinity
-  for (const block of ws.getTopBlocks?.(false) ?? []) {
-    const rect = block.getSvgRoot?.()?.getBoundingClientRect?.()
-    if (rect?.width) leftmost = Math.min(leftmost, rect.left)
-  }
-  if (!Number.isFinite(leftmost)) return false
-  const shortfall = flyoutRect.right + FLYOUT_CLEAR_GAP - leftmost
-  if (shortfall <= 0) return false
-  ws.scroll(ws.scrollX + shortfall, ws.scrollY)
-  return true
-}
+// Calm screen: how long the layout must stay still before the script is placed on arrival.
+const ARRIVAL_SETTLE_MS = 250
+// revealBlocksBesideFlyout (scroll blocks clear of the palette) lives with the calm palette rules.
+export { revealBlocksBesideFlyout }
 
 const PAGE_NAVIGATION_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '])
 const STAGE_RUNTIME_STATE = {
@@ -997,7 +990,17 @@ export default function ScratchWorkspace({
   onRunTokenHandled = null,
   // Slow-mo use for the session report ({ kind: 'run' | 'step' }); see slowMo/useScratchSlowMo.js.
   onSlowMoUse = null,
+  // The calm screen (capabilities.calmScratch; StudentWorkspace from LessonTaskContent), or null:
+  // { stacked, aside, paletteStartsOpen, onResetBlocks }. The palette starts closed behind a
+  // Blocks button and is scrolled clear on every open; the stage is never behind a tab (stacked:
+  // pinned above the blocks with `aside`, the explainer column, beside it); the sprite property row
+  // and + Backdrop fold behind More. Blockly's own layout and drag-and-drop are untouched.
+  calm = null,
 }) {
+  const calmOn = !!calm
+  const calmStacked = !!calm?.stacked
+  const calmRef = useRef(calm)
+  calmRef.current = calm
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
   // an author-gated student "Add sprite"/"Add backdrop" picker (see below) can grow them during
   // a session without disturbing already-injected Blockly workspaces. ScratchWorkspace remounts
@@ -1196,7 +1199,12 @@ export default function ScratchWorkspace({
   }
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
-  const [flyoutCollapsed, setFlyoutCollapsed] = useState(false)
+  // Calm screen: the palette starts closed (a read-only workspace has no palette at all) unless
+  // the lesson opts out (scratchPaletteOpen). Only the Blocks button changes it.
+  const [flyoutCollapsed, setFlyoutCollapsed] = useState(
+    () => !!calm && !calm.paletteStartsOpen && !readOnly
+  )
+  const pendingRevealRef = useRef(false)
   // Manual-only rail collapse for the stage panel in the wide (non-compact) layout — the
   // student clicks to reclaim editor space; nothing auto-toggles it. See `compact` below
   // for the separate, measurement-driven Blocks/Stage tab switcher used at narrow sizes.
@@ -1254,7 +1262,7 @@ export default function ScratchWorkspace({
     [rootSizeRef]
   )
   const rootResizeFrameRef = useRef(0)
-  const flyoutCollapsedRef = useRef(false)
+  const flyoutCollapsedRef = useRef(flyoutCollapsed)
   const compactRef = useRef(forceCompact)
   const blockScaleRef = useRef(BLOCK_SCALE_MAX)
   const blockDragActiveRef = useRef(false)
@@ -1581,15 +1589,24 @@ export default function ScratchWorkspace({
           Number.isFinite(scrollX) &&
           Number.isFinite(scrollY)
         ) {
-          ws.scrollX = scrollX
-          ws.scrollY = scrollY
-          ws.translate?.(scrollX, scrollY)
+          if (calmRef.current) {
+            // Through Blockly's scroll, which keeps the hidden palette's offset (a bare translate
+            // drops it and the script jumps left until the next pan).
+            ws.scroll(scrollX, scrollY)
+          } else {
+            ws.scrollX = scrollX
+            ws.scrollY = scrollY
+            ws.translate?.(scrollX, scrollY)
+          }
         }
         // Until the student first touches this canvas, keep its blocks clear of the palette
         // (the layout settles over several resizes after load). A hidden sprite's canvas
         // measures zero and is left alone.
+        // The calm screen instead places the script once the layout settles (arrival, palette
+        // closed) and reveals on every palette open (flyout effect).
         if (!workspaceTouchedRef.current.has(spriteId)) {
-          revealBlocksBesideFlyout(ws, blocksDivRefs.current[spriteId])
+          if (!calmRef.current) revealBlocksBesideFlyout(ws, blocksDivRefs.current[spriteId])
+          else scheduleArrivalPlacementRef.current?.()
         }
       } catch {}
     }
@@ -1960,6 +1977,13 @@ export default function ScratchWorkspace({
       once: true,
     })
     setWorkspaceBlocklyContext(ws, () => blocklyContextForWorkspace(spriteId))
+    // Calm screen: a palette that starts closed is never shown first (no flash, and the load-time
+    // reveal below has nothing to scroll clear of).
+    if (flyoutCollapsedRef.current) {
+      try {
+        ws.getFlyout?.()?.setVisible(false)
+      } catch {}
+    }
     Blockly.svgResize(ws)
     if (canCreateVariable && !readOnly) {
       try {
@@ -2095,14 +2119,69 @@ export default function ScratchWorkspace({
         // The deferred recalc triggered on pointerup will run svgResize afterwards.
         if (blockDragActiveRef.current) {
           pendingScaleRecalcRef.current = true
+          if (calmRef.current && !flyoutCollapsed) pendingRevealRef.current = true
           return
         }
         try {
           BlocklyRef.current.svgResize(ws)
         } catch {}
+        // Calm screen: on EVERY open (not only until the first press), go back to the last
+        // category and scroll any block hidden under the palette clear of it. One frame later, so
+        // the toolbox refresh and resize queued by this same toggle have laid the palette out.
+        if (calmRef.current && !flyoutCollapsed) {
+          requestAnimationFrame(() => revealCalmPalette(selectedSpriteId))
+        } else if (calmRef.current) {
+          // Blockly redraws the canvas without the palette's offset when it hides, but scrolls
+          // with it: re-applying its own scroll keeps the two in step, so closing the palette
+          // never moves the script (and a later pan cannot make it jump).
+          syncCanvasScroll(ws)
+          scheduleArrivalPlacementRef.current?.()
+        }
       })
     } catch {}
   }, [flyoutCollapsed, selectedSpriteId, status])
+
+  function revealCalmPalette(spriteId) {
+    const ws = workspaceRefs.current[spriteId]
+    if (!ws) return
+    try {
+      restorePaletteCategory(ws)
+    } catch {}
+    const result = openPaletteReveal(ws, blocksDivRefs.current[spriteId], {
+      dragging: blockDragActiveRef.current,
+    })
+    if (result === 'deferred') pendingRevealRef.current = true
+  }
+  // Calm screen, palette closed, canvas not touched yet: one placement of the script at the left
+  // of the canvas once the resizes of arrival (or a sprite switch) have settled.
+  const arrivalTimerRef = useRef(0)
+  const scheduleArrivalPlacementRef = useRef(null)
+  scheduleArrivalPlacementRef.current = () => {
+    clearTimeout(arrivalTimerRef.current)
+    arrivalTimerRef.current = setTimeout(() => {
+      const id = selectedSpriteId
+      const ws = workspaceRefs.current[id]
+      if (!ws || !calmRef.current || !flyoutCollapsedRef.current) return
+      if (workspaceTouchedRef.current.has(id) || blockDragActiveRef.current) return
+      try {
+        placeScriptOnArrival(ws, blocksDivRefs.current[id])
+      } catch {}
+    }, ARRIVAL_SETTLE_MS)
+  }
+  useEffect(() => () => clearTimeout(arrivalTimerRef.current), [])
+  const revealCalmPaletteRef = useRef(null)
+  revealCalmPaletteRef.current = () => {
+    if (calmRef.current && !flyoutCollapsedRef.current) revealCalmPalette(selectedSpriteId)
+  }
+
+  // Calm screen: the Blocks button, the only control that opens or closes the palette. Closing
+  // remembers the category on screen (this page session only).
+  function toggleCalmPalette() {
+    if (!flyoutCollapsed) {
+      rememberPaletteCategory(topFlyoutCategory(workspaceRefs.current[selectedSpriteId]))
+    }
+    setFlyoutCollapsed((collapsed) => !collapsed)
+  }
 
   // ── Update toolbox when task.toolbox or predefined blocks change ─────────────
   useEffect(() => {
@@ -2294,25 +2373,45 @@ export default function ScratchWorkspace({
     // margin before switching back, so the layout change compact causes can't immediately
     // re-measure back across the same line and flip straight back.
     const wasCompact = compactRef.current
+    // The calm screen never puts the stage behind a Blocks/Stage tab.
     const isCompact =
       forceCompact ||
-      (wasCompact
-        ? w < SCRATCH_COMPACT_BREAKPOINT + COMPACT_EXIT_HYSTERESIS
-        : w < SCRATCH_COMPACT_BREAKPOINT)
+      (!calmOn &&
+        (wasCompact
+          ? w < SCRATCH_COMPACT_BREAKPOINT + COMPACT_EXIT_HYSTERESIS
+          : w < SCRATCH_COMPACT_BREAKPOINT))
     setCompact(isCompact)
     compactRef.current = isCompact
     blockScaleRef.current = computeBlockScale(w, h)
 
-    const scale = computeStageScale(w, h, {
-      compact: isCompact,
-      flyoutCollapsed: flyoutCollapsedRef.current,
-    })
+    const scale = stageScaleFor(w, h, isCompact)
     setStageScale(scale)
     cancelAnimationFrame(rootResizeFrameRef.current)
     isWindowResizeRef.current = true
     rootResizeFrameRef.current = requestAnimationFrame(resizeBlocklyWorkspaces)
     return () => cancelAnimationFrame(rootResizeFrameRef.current)
-  }, [rootSize.width, rootSize.height, hideStage, forceCompact, resizeBlocklyWorkspaces])
+  }, [
+    rootSize.width,
+    rootSize.height,
+    hideStage,
+    forceCompact,
+    calmOn,
+    calmStacked,
+    resizeBlocklyWorkspaces,
+  ])
+
+  // The stage size for the room the workspace has. On the calm screen the stage never changes size
+  // when the palette opens or closes (the palette overlays the script area), and in the stacked
+  // (portrait) layout it is pinned at about 300px wide above the blocks.
+  function stageScaleFor(w, h, isCompact) {
+    if (calmRef.current?.stacked) return calmStackedStageScale(w)
+    return computeStageScale(w, h, {
+      compact: isCompact,
+      flyoutCollapsed: calmRef.current ? false : flyoutCollapsedRef.current,
+    })
+  }
+  const stageScaleForRef = useRef(stageScaleFor)
+  stageScaleForRef.current = stageScaleFor
 
   // Re-calculate stage scale when flyout collapses/expands (ResizeObserver won't re-fire).
   // If a pointer drag is active (block being dragged from the palette), defer until pointerup
@@ -2327,7 +2426,7 @@ export default function ScratchWorkspace({
     if (!el) return
     const { width: w, height: h } = el.getBoundingClientRect()
     if (!w) return
-    setStageScale(computeStageScale(w, h, { compact, flyoutCollapsed }))
+    setStageScale(stageScaleFor(w, h, compact))
     requestAnimationFrame(resizeBlocklyWorkspaces)
   }, [flyoutCollapsed, hideStage, compact, resizeBlocklyWorkspaces])
 
@@ -2344,12 +2443,7 @@ export default function ScratchWorkspace({
       if (!rootEl) return
       const { width: w, height: h } = rootEl.getBoundingClientRect()
       if (!w) return
-      setStageScale(
-        computeStageScale(w, h, {
-          compact: compactRef.current,
-          flyoutCollapsed: flyoutCollapsedRef.current,
-        })
-      )
+      setStageScale(stageScaleForRef.current(w, h, compactRef.current))
       requestAnimationFrame(resizeBlocklyWorkspaces)
     }
 
@@ -2359,6 +2453,11 @@ export default function ScratchWorkspace({
     const onUp = () => {
       blockDragActiveRef.current = false
       runPendingRecalc()
+      // A palette opened mid-drag (calm screen) reveals once the block is let go.
+      if (pendingRevealRef.current) {
+        pendingRevealRef.current = false
+        requestAnimationFrame(() => revealCalmPaletteRef.current?.())
+      }
     }
 
     el.addEventListener('pointerdown', onDown)
@@ -3242,118 +3341,202 @@ export default function ScratchWorkspace({
       : null
   const assetTabsVisible = (showCostumesTab || showSoundsTab) && !!selectedSprite
 
-  const spritePanelFull = (
-    <div style={s.spritePanel}>
-      <div style={s.spriteTileRow}>
-        {stageTileFull}
-        {selectableSprites.map((sp) => (
-          <div
-            key={sp.id}
-            role="button"
-            tabIndex={0}
-            style={{ ...s.spriteTile, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
-            onClick={() => setSelectedSpriteId(sp.id)}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
-          >
-            <div style={s.spriteTileThumb}>
-              <SpriteThumb
-                sprite={sp}
-                state={spriteStates[sp.id]}
-                imageCache={imageCacheRef.current}
-                assetsPath={assetsPath}
-                size={52}
-                imageVersion={imageVersion}
-              />
-              {!spriteStates[sp.id]?.visible && (
-                <span style={s.spriteTileHiddenBadge} title="Hidden">
-                  👁
-                </span>
+  // + Backdrop: in the stage toolbar, or behind More on the calm screen.
+  const backdropAddControl = canAddBackdrop ? (
+    <div style={s.addPickerWrap} ref={backdropAddWrapRef}>
+      <button
+        type="button"
+        className="btn-secondary"
+        style={s.resetBtn}
+        onClick={() => setBackdropPickerOpen((open) => !open)}
+        aria-expanded={backdropPickerOpen}
+        title="Add backdrop"
+      >
+        + Backdrop
+      </button>
+      {backdropPickerOpen && (
+        <AddPickerPopover
+          anchorRef={backdropAddWrapRef}
+          onClose={() => setBackdropPickerOpen(false)}
+          style={s.addPickerPanel}
+          ariaLabel="Choose a backdrop to add"
+        >
+          {backdropLibraryOptions.length === 0 && (
+            <p style={s.addPickerEmpty}>No backdrops available</p>
+          )}
+          {backdropLibraryOptions.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              style={s.addPickerItem}
+              role="option"
+              onClick={() => handleAddBackdrop(preset)}
+            >
+              {preset.image ? (
+                <img
+                  src={resolveAssetFileUrl(assetsPath, preset.image)}
+                  alt=""
+                  style={s.addPickerThumbImg}
+                  onError={(e) => {
+                    e.target.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    ...s.addPickerThumbEmoji,
+                    background: preset.colour ?? '#fff',
+                    borderRadius: 4,
+                  }}
+                />
               )}
-            </div>
-            <span style={s.spriteTileName}>{sp.name}</span>
-            {!readOnly && (onRemoveSprite || (canRemoveSprite && isSpriteRemovable(sp, task))) && (
-              <button
-                type="button"
-                className="te-sprite-remove-circle"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (onRemoveSprite) onRemoveSprite(sp.id)
-                  else setRemoveSpritePrompt({ id: sp.id, name: sp.name })
-                }}
-                disabled={sprites.length <= 1}
-                title="Remove sprite"
-              >
-                ✕
-              </button>
+              <span style={s.addPickerName}>{preset.name}</span>
+            </button>
+          ))}
+        </AddPickerPopover>
+      )}
+    </div>
+  ) : null
+
+  // Calm screen: the sprite property row and + Backdrop fold behind More, unless a check reads
+  // sprite properties (then the row stays out where the child can watch it).
+  const calmFoldProps = calmOn && calmFoldsSpriteProps(task)
+  const calmPropsRow =
+    selectedSpriteId !== '__stage__' && !hideSpriteProps ? renderSpriteProps(false) : null
+  const calmMoreContents = calmOn ? (
+    <>
+      {calmFoldProps && calmPropsRow}
+      {backdropAddControl}
+    </>
+  ) : null
+  const calmHasMore = calmOn && ((calmFoldProps && !!calmPropsRow) || !!backdropAddControl)
+  const spriteTileRow = (moreButton) => (
+    <div style={s.spriteTileRow}>
+      {spriteTiles}
+      {moreButton}
+    </div>
+  )
+
+  const spriteTiles = (
+    <>
+      {stageTileFull}
+      {selectableSprites.map((sp) => (
+        <div
+          key={sp.id}
+          role="button"
+          tabIndex={0}
+          style={{ ...s.spriteTile, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
+          onClick={() => setSelectedSpriteId(sp.id)}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
+        >
+          <div style={s.spriteTileThumb}>
+            <SpriteThumb
+              sprite={sp}
+              state={spriteStates[sp.id]}
+              imageCache={imageCacheRef.current}
+              assetsPath={assetsPath}
+              size={52}
+              imageVersion={imageVersion}
+            />
+            {!spriteStates[sp.id]?.visible && (
+              <span style={s.spriteTileHiddenBadge} title="Hidden">
+                👁
+              </span>
             )}
           </div>
-        ))}
-        {!readOnly && onAddSprite && (
+          <span style={s.spriteTileName}>{sp.name}</span>
+          {!readOnly && (onRemoveSprite || (canRemoveSprite && isSpriteRemovable(sp, task))) && (
+            <button
+              type="button"
+              className="te-sprite-remove-circle"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onRemoveSprite) onRemoveSprite(sp.id)
+                else setRemoveSpritePrompt({ id: sp.id, name: sp.name })
+              }}
+              disabled={sprites.length <= 1}
+              title="Remove sprite"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      {!readOnly && onAddSprite && (
+        <button
+          type="button"
+          style={s.spriteAddTile}
+          onClick={onAddSprite}
+          aria-label="Add sprite"
+          title="Add sprite"
+        >
+          <span style={s.spriteAddIcon}>+</span>
+          <span style={s.spriteTileName}>Add</span>
+        </button>
+      )}
+      {canAddSprite && (
+        <div style={s.addPickerWrap} ref={spriteAddWrapRef}>
           <button
             type="button"
             style={s.spriteAddTile}
-            onClick={onAddSprite}
+            onClick={() => setSpritePickerOpen((open) => !open)}
+            aria-expanded={spritePickerOpen}
             aria-label="Add sprite"
             title="Add sprite"
           >
             <span style={s.spriteAddIcon}>+</span>
             <span style={s.spriteTileName}>Add</span>
           </button>
-        )}
-        {canAddSprite && (
-          <div style={s.addPickerWrap} ref={spriteAddWrapRef}>
-            <button
-              type="button"
-              style={s.spriteAddTile}
-              onClick={() => setSpritePickerOpen((open) => !open)}
-              aria-expanded={spritePickerOpen}
-              aria-label="Add sprite"
-              title="Add sprite"
+          {spritePickerOpen && (
+            <AddPickerPopover
+              anchorRef={spriteAddWrapRef}
+              onClose={() => setSpritePickerOpen(false)}
+              style={s.addPickerPanel}
+              ariaLabel="Choose a sprite to add"
             >
-              <span style={s.spriteAddIcon}>+</span>
-              <span style={s.spriteTileName}>Add</span>
-            </button>
-            {spritePickerOpen && (
-              <AddPickerPopover
-                anchorRef={spriteAddWrapRef}
-                onClose={() => setSpritePickerOpen(false)}
-                style={s.addPickerPanel}
-                ariaLabel="Choose a sprite to add"
-              >
-                {spriteLibraryOptions.length === 0 && (
-                  <p style={s.addPickerEmpty}>No sprites available</p>
-                )}
-                {spriteLibraryOptions.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    style={s.addPickerItem}
-                    role="option"
-                    onClick={() => handleAddSprite(preset)}
-                  >
-                    {preset.costumes?.[0]?.image ? (
-                      <img
-                        src={resolveAssetFileUrl(assetsPath, preset.costumes[0].image)}
-                        alt=""
-                        style={s.addPickerThumbImg}
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <span style={s.addPickerThumbEmoji}>
-                        {preset.costumes?.[0]?.emoji || preset.emoji || '🟢'}
-                      </span>
-                    )}
-                    <span style={s.addPickerName}>{preset.name}</span>
-                  </button>
-                ))}
-              </AddPickerPopover>
-            )}
-          </div>
-        )}
-      </div>
-      {selectedSpriteId !== '__stage__' && !hideSpriteProps && renderSpriteProps(false)}
+              {spriteLibraryOptions.length === 0 && (
+                <p style={s.addPickerEmpty}>No sprites available</p>
+              )}
+              {spriteLibraryOptions.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  style={s.addPickerItem}
+                  role="option"
+                  onClick={() => handleAddSprite(preset)}
+                >
+                  {preset.costumes?.[0]?.image ? (
+                    <img
+                      src={resolveAssetFileUrl(assetsPath, preset.costumes[0].image)}
+                      alt=""
+                      style={s.addPickerThumbImg}
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <span style={s.addPickerThumbEmoji}>
+                      {preset.costumes?.[0]?.emoji || preset.emoji || '🟢'}
+                    </span>
+                  )}
+                  <span style={s.addPickerName}>{preset.name}</span>
+                </button>
+              ))}
+            </AddPickerPopover>
+          )}
+        </div>
+      )}
+    </>
+  )
+
+  const spritePanelFull = (
+    <div style={s.spritePanel}>
+      {calmHasMore ? (
+        <CalmMoreFold row={spriteTileRow}>{calmMoreContents}</CalmMoreFold>
+      ) : (
+        spriteTileRow(null)
+      )}
+      {!calmFoldProps && calmPropsRow}
       {spritePanelEditor && <div style={s.spritePanelEditor}>{spritePanelEditor}</div>}
       {spritePanelFooter && <div style={s.spritePanelFooter}>{spritePanelFooter}</div>}
     </div>
@@ -3399,7 +3582,17 @@ export default function ScratchWorkspace({
   return (
     <div
       className="scratch-workspace"
-      style={hideStage ? s.rootColumn : compact ? s.rootCompact : s.root}
+      style={
+        hideStage
+          ? s.rootColumn
+          : calmStacked
+            ? calm.aside
+              ? s.rootCalmStacked
+              : s.rootCalmStackedNoAside
+            : compact
+              ? s.rootCompact
+              : s.root
+      }
       ref={setRootNode}
     >
       {status !== 'ready' && (
@@ -3509,12 +3702,32 @@ export default function ScratchWorkspace({
         style={
           compact
             ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' }
-            : s.editorPane
+            : calmStacked
+              ? { ...s.editorPane, gridArea: 'blocks' }
+              : s.editorPane
         }
       >
-        <div style={s.editorPaneHeader}>
+        <div style={calmOn && !readOnly ? s.calmEditorHeader : s.editorPaneHeader}>
+          {calmOn && !readOnly && assetTab === 'code' && (
+            <CalmPaletteToggle open={!flyoutCollapsed} onToggle={toggleCalmPalette} />
+          )}
+          {calmOn && calm.onResetBlocks && (
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={s.calmResetBlocks}
+              onClick={calm.onResetBlocks}
+              title="Reset blocks to the starter blocks for this task"
+            >
+              Reset Blocks
+            </button>
+          )}
           {assetTabsVisible && (
-            <div style={s.assetTabs} role="tablist" aria-label="Sprite editor">
+            <div
+              style={calmOn ? { ...s.assetTabs, marginLeft: 'auto' } : s.assetTabs}
+              role="tablist"
+              aria-label="Sprite editor"
+            >
               {[
                 { id: 'code', label: 'Code' },
                 ...(showCostumesTab ? [{ id: 'costumes', label: 'Costumes' }] : []),
@@ -3534,7 +3747,7 @@ export default function ScratchWorkspace({
               ))}
             </div>
           )}
-          {assetTab === 'code' && (
+          {!calmOn && assetTab === 'code' && (
             <button
               type="button"
               onClick={() => setFlyoutCollapsed((c) => !c)}
@@ -3655,7 +3868,15 @@ export default function ScratchWorkspace({
                   flexShrink: 1,
                   flexBasis: 0,
                 }
-              : s.stagePane
+              : calmOn
+                ? {
+                    ...s.stagePane,
+                    // As wide as the stage: the toolbar and the property row wrap under it rather
+                    // than widening the pane and squeezing the blocks.
+                    width: STAGE_W * stageScale + 4,
+                    ...(calmStacked ? { gridArea: 'stage', overflow: 'visible' } : null),
+                  }
+                : s.stagePane
           }
         >
           <div
@@ -3673,18 +3894,21 @@ export default function ScratchWorkspace({
                 <LiveCursorDot down={effectiveCursor.down} />
               </div>
             )}
-            <CollapseTabButton
-              onClick={() => setStagePanelCollapsed(true)}
-              direction="right"
-              title="Collapse Stage"
-              ariaLabel="Collapse Stage"
-              // Reserved (not simply omitted) in compact mode: this button toggles the
-              // side-by-side collapsible stage pane, which doesn't exist in compact's
-              // Blocks/Stage tab layout — but removing it outright shifted the green
-              // flag and every button after it left by its width, so its position no
-              // longer matched between compact and non-compact layouts.
-              style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
-            />
+            {/* The calm screen keeps the stage (and its flag) always in view: no collapse. */}
+            {!calmOn && (
+              <CollapseTabButton
+                onClick={() => setStagePanelCollapsed(true)}
+                direction="right"
+                title="Collapse Stage"
+                ariaLabel="Collapse Stage"
+                // Reserved (not simply omitted) in compact mode: this button toggles the
+                // side-by-side collapsible stage pane, which doesn't exist in compact's
+                // Blocks/Stage tab layout — but removing it outright shifted the green
+                // flag and every button after it left by its width, so its position no
+                // longer matched between compact and non-compact layouts.
+                style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+              />
+            )}
             <button
               type="button"
               className="btn-ghost-outline"
@@ -3728,61 +3952,7 @@ export default function ScratchWorkspace({
             >
               Reset Stage
             </button>
-            {canAddBackdrop && (
-              <div style={s.addPickerWrap} ref={backdropAddWrapRef}>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  style={s.resetBtn}
-                  onClick={() => setBackdropPickerOpen((open) => !open)}
-                  aria-expanded={backdropPickerOpen}
-                  title="Add backdrop"
-                >
-                  + Backdrop
-                </button>
-                {backdropPickerOpen && (
-                  <AddPickerPopover
-                    anchorRef={backdropAddWrapRef}
-                    onClose={() => setBackdropPickerOpen(false)}
-                    style={s.addPickerPanel}
-                    ariaLabel="Choose a backdrop to add"
-                  >
-                    {backdropLibraryOptions.length === 0 && (
-                      <p style={s.addPickerEmpty}>No backdrops available</p>
-                    )}
-                    {backdropLibraryOptions.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        style={s.addPickerItem}
-                        role="option"
-                        onClick={() => handleAddBackdrop(preset)}
-                      >
-                        {preset.image ? (
-                          <img
-                            src={resolveAssetFileUrl(assetsPath, preset.image)}
-                            alt=""
-                            style={s.addPickerThumbImg}
-                            onError={(e) => {
-                              e.target.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <span
-                            style={{
-                              ...s.addPickerThumbEmoji,
-                              background: preset.colour ?? '#fff',
-                              borderRadius: 4,
-                            }}
-                          />
-                        )}
-                        <span style={s.addPickerName}>{preset.name}</span>
-                      </button>
-                    ))}
-                  </AddPickerPopover>
-                )}
-              </div>
-            )}
+            {!calmOn && backdropAddControl}
           </div>
 
           <div
@@ -3911,6 +4081,14 @@ export default function ScratchWorkspace({
           </div>
         </div>
       )}
+
+      {/* Calm stacked (portrait) layout: the explainer column beside the pinned stage. Last, so
+          the blocks and stage panes above keep their place in the tree when it comes and goes. */}
+      {calmStacked && calm.aside && (
+        <div data-testid="scratch-calm-stacked-aside" style={s.calmStackedAside}>
+          {calm.aside}
+        </div>
+      )}
     </div>
   )
 }
@@ -3920,6 +4098,60 @@ const s = {
   // natural height — the stage stays a constant size and the editor pane (which stretches
   // to match via align-items:stretch) tracks it, instead of both being squeezed by
   // whatever vertical space sibling page content happens to leave.
+  // Calm screen, portrait: the stage pinned top-left with the explainer column beside it, the
+  // blocks below across the whole width (calm.stacked).
+  rootCalmStacked: {
+    display: 'grid',
+    gridTemplateColumns: 'auto minmax(0, 1fr)',
+    gridTemplateRows: 'auto minmax(0, 1fr)',
+    gridTemplateAreas: '"stage aside" "blocks blocks"',
+    flex: '1 1 auto',
+    minWidth: 0,
+    minHeight: 0,
+    height: '100%',
+    gap: 10,
+    position: 'relative',
+  },
+  rootCalmStackedNoAside: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    gridTemplateRows: 'auto minmax(0, 1fr)',
+    gridTemplateAreas: '"stage" "blocks"',
+    flex: '1 1 auto',
+    minWidth: 0,
+    minHeight: 0,
+    height: '100%',
+    gap: 10,
+    position: 'relative',
+  },
+  calmStackedAside: {
+    gridArea: 'aside',
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    overflow: 'hidden',
+  },
+  calmEditorHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 56,
+    padding: '6px 8px',
+    borderBottom: '1px solid var(--ui-border-neutral)',
+    background: '#fafafa',
+    flexShrink: 0,
+  },
+  calmResetBlocks: {
+    whiteSpace: 'nowrap',
+    minHeight: 44,
+    padding: '6px 14px',
+    fontSize: 14,
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+  },
   root: {
     display: 'flex',
     flex: '1 1 auto',

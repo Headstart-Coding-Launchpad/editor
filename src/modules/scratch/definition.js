@@ -99,6 +99,9 @@ export default defineModule({
     teacherFillHeight: true,
     teacherSandboxRow: true,
     explainerBlockMenu: true,
+    // The calm screen (src/modules/scratch/calm/): palette behind a Blocks button, explainer and
+    // hint always beside the blocks, no Blocks/Stage or Instructions/Code tabs.
+    calmScratch: true,
     // The stage runs inside the workspace, which reports its checks (handleScratchCheck).
     run: 'workspace',
   },

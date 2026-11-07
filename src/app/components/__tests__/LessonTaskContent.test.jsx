@@ -321,51 +321,30 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(widthAt3000).toBeInTheDocument()
   })
 
-  it('switches to an Instructions/Code tab switcher when the panel is measured as narrow, defaulting to Code, without unmounting either pane', async () => {
-    const user = userEvent.setup()
+  // The calm Scratch screen (capabilities.calmScratch) replaced the Instructions/Code tabs: the
+  // explainer stays beside the blocks at every width (stacked beside the stage on a portrait
+  // tablet). See LessonTaskContent.scratchCalm.test.jsx.
+  it.each([700, 1000, 1200, 1331, 1332])(
+    'never tabs Instructions away from the code at %ipx (calm Scratch screen)',
+    (width) => {
+      getLessonModule.mockReturnValue(SCRATCH_MODULE)
+      useElementSize.mockReturnValue([{ current: null }, { width, height: 700 }])
+
+      render(<LessonTaskContent {...scratchProps} />)
+
+      expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
+      expect(screen.getByText('Workspace')).toBeVisible()
+    }
+  )
+
+  it('keeps the explainer on screen beside the blocks on a 1024px tablet', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
-    useElementSize.mockReturnValue([{ current: null }, { width: 700, height: 500 }])
+    useElementSize.mockReturnValue([{ current: null }, { width: 992, height: 700 }])
 
     render(<LessonTaskContent {...scratchProps} />)
 
-    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Code' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText('Workspace')).toBeVisible()
-    // The explainer stays mounted (not unmounted) even while its tab isn't active.
-    expect(screen.getByText('Drag the move block.')).not.toBeVisible()
-
-    await user.click(screen.getByRole('tab', { name: 'Instructions' }))
-
-    expect(screen.getByRole('tab', { name: 'Instructions' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
     expect(screen.getByText('Drag the move block.')).toBeVisible()
-    expect(screen.getByText('Workspace')).not.toBeVisible()
-  })
-
-  it('tabs Instructions away before the code area would be squeezed under 1000px by a fixed 320px explainer, instead of leaving Blocks/Stage to compact on their own', () => {
-    getLessonModule.mockReturnValue(SCRATCH_MODULE)
-    // 1200 - 320 (fixed explainer) = 880px code area, under ScratchWorkspace's own 1000px
-    // "wide" threshold — but 1200px is plenty if Code gets the whole row via a tab.
-    useElementSize.mockReturnValue([{ current: null }, { width: 1200, height: 900 }])
-
-    render(<LessonTaskContent {...scratchProps} />)
-
-    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
     expect(screen.getByText('Workspace')).toBeVisible()
-  })
-
-  it('sits right at the boundary: 1332px (320 explainer + 12 gap + 1000 code) stays split, 1331px tabs', () => {
-    getLessonModule.mockReturnValue(SCRATCH_MODULE)
-
-    useElementSize.mockReturnValue([{ current: null }, { width: 1332, height: 900 }])
-    const { rerender } = render(<LessonTaskContent {...scratchProps} />)
-    expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
-
-    useElementSize.mockReturnValue([{ current: null }, { width: 1331, height: 900 }])
-    rerender(<LessonTaskContent {...scratchProps} />)
-    expect(screen.getByRole('tablist', { name: 'Task panel' })).toBeInTheDocument()
   })
 
   it('ignores height for the Instructions/Code decision — a short-but-wide panel stays split, leaving ScratchWorkspace to compact its own Blocks/Stage split if needed', () => {
@@ -377,7 +356,7 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
   })
 
-  it('still supports manually collapsing the explainer to a rail in the fixed-width layout', async () => {
+  it('collapses the explainer to its one-line title strip, never to a rail (calm Scratch screen)', async () => {
     const user = userEvent.setup()
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
@@ -385,11 +364,13 @@ describe('LessonTaskContent compact Scratch layout', () => {
     render(<LessonTaskContent {...scratchProps} />)
 
     expect(screen.getByText('Drag the move block.')).toBeVisible()
+    expect(screen.queryByTitle('Collapse Explainer')).not.toBeInTheDocument()
 
-    await user.click(screen.getByTitle('Collapse Explainer'))
+    await user.click(screen.getByRole('button', { name: /Move the cat/ }))
 
     expect(screen.queryByText('Drag the move block.')).not.toBeInTheDocument()
-    expect(screen.getByTitle('Show Explainer')).toBeInTheDocument()
+    expect(screen.getByText('Move the cat')).toBeVisible()
+    expect(screen.queryByTitle('Show Explainer')).not.toBeInTheDocument()
   })
 
   it('gives the Scratch panel no minimum-height floor, so a growing sibling (e.g. the completion banner) can shrink it freely — ScratchWorkspace scales its own stage down to fit rather than the page needing to scroll around a reserved floor', () => {
@@ -463,7 +444,7 @@ describe('LessonTaskContent instructions-pane reporting', () => {
     isTeacherEditing: false,
   }
 
-  it('removes "instructions" from visiblePanes when the Scratch explainer rail is collapsed', async () => {
+  it('removes "instructions" from visiblePanes when the Scratch explainer card is folded to its strip', async () => {
     const user = userEvent.setup()
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
@@ -480,7 +461,7 @@ describe('LessonTaskContent instructions-pane reporting', () => {
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
 
-    await user.click(screen.getByTitle('Collapse Explainer'))
+    await user.click(screen.getByRole('button', { name: /Move the cat/ }))
 
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['blocks', 'stage'])
   })
