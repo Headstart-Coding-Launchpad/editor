@@ -261,7 +261,7 @@ describe('Inline change inside a line', () => {
     renderPanel({ changeBase: MOVE_START, stage: completeStage({ code: MOVE_DONE }) })
     const panel = screen.getByLabelText('Complete solution stage reference')
     const row = within(panel).getByLabelText(
-      'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100)'
+      'added: “, x=100, y=100”, in the line circle(100, "gold", x=100, y=100)'
     )
     expect(row).toHaveTextContent('circle(100, "gold", x=100, y=100)')
     // No red line, no Remove word.
@@ -287,7 +287,7 @@ describe('Inline change inside a line', () => {
     })
     const panel = screen.getByLabelText('Complete solution stage reference')
     const row = within(panel).getByLabelText(
-      'changed: removed 5, added 3, in the line for i in range(3):'
+      'changed: removed “5”, added “3”, in the line for i in range(3):'
     )
     expect(within(row).getByText('±')).toBeInTheDocument()
     expect(within(row).getByText('Remove')).toBeInTheDocument()
@@ -295,6 +295,40 @@ describe('Inline change inside a line', () => {
     expect(within(row).getByText('5').style.textDecoration).toContain('line-through')
     expect(within(row).getByText('3').style.textDecoration).toContain('underline')
     expect(within(panel).queryByLabelText(/^removed:/)).not.toBeInTheDocument()
+    // Not colour alone in grayscale: a heavier double left border than an added or plain row.
+    expect(row.style.borderLeft).toContain('double')
+  })
+
+  it('words added inside a string show inside it', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\nprint("Hi")\ndone()',
+      stage: completeStage({ code: 'from turtle import *\nprint("Hi there")\ndone()' }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    const row = within(panel).getByLabelText('added: “there”, in the line print("Hi there")')
+    expect(within(row).getByText(' there').style.textDecoration).toContain('underline')
+  })
+
+  it('a whitespace-only edit keeps the red and green rows', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\nx=1\ndone()',
+      stage: completeStage({ code: 'from turtle import *\nx = 1\ndone()' }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(within(panel).getByLabelText('removed: x=1')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: x = 1')).toBeInTheDocument()
+  })
+
+  it('a line whose indent changes as well keeps the red and green rows', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\nfor i in range(3):\n    forward(50)\nforward(10)',
+      stage: completeStage({
+        code: 'from turtle import *\nfor i in range(3):\n    forward(50)\n    forward(10, 2)',
+      }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(within(panel).getByLabelText('removed: forward(10)')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: forward(10, 2)')).toBeInTheDocument()
   })
 
   it('a line where more than about half changes keeps the red and green rows', () => {
@@ -338,7 +372,7 @@ describe('Inline change inside a line', () => {
     const panel = screen.getByLabelText('Complete solution stage reference')
     expect(
       within(panel).getByLabelText(
-        'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100), hint: Move it'
+        'added: “, x=100, y=100”, in the line circle(100, "gold", x=100, y=100), hint: Move it'
       )
     ).toBeInTheDocument()
     expect(rowsOf(panel)).toHaveLength(3)
@@ -356,7 +390,7 @@ describe('Inline change inside a line', () => {
     const panel = screen.getByLabelText('Python reference code')
     expect(rowsOf(panel).map((row) => row.getAttribute('aria-label'))).toEqual([
       'unchanged anchor: size -= step',
-      'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100)',
+      'added: “, x=100, y=100”, in the line circle(100, "gold", x=100, y=100)',
       'added: turn += 10',
     ])
     expect(within(panel).getByText(', x=100, y=100').style.textDecoration).toContain('underline')

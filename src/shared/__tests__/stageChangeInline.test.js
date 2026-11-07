@@ -52,15 +52,62 @@ describe('inlineLineChange', () => {
     ).toBe(null)
   })
 
-  it('ignores a leading-indent difference and keeps the new indent', () => {
-    expect(inlineLineChange('  circle(10)', '        circle(10, x=5)')).toEqual({
+  it('keeps the red and green rows (null) when the indent width differs', () => {
+    expect(inlineLineChange('  circle(10)', '        circle(10, x=5)')).toBeNull()
+    expect(inlineLineChange('circle(10)', '\tcircle(10, x=5)')).toBeNull()
+  })
+
+  it('keeps the shared indent in the first piece when the indent matches', () => {
+    expect(inlineLineChange('    circle(10)', '\tcircle(10, x=5)')).toEqual({
       kind: 'insert',
       pieces: [
-        { type: 'same', text: '        circle(10' },
+        { type: 'same', text: '\tcircle(10' },
         { type: 'add', text: ', x=5' },
         { type: 'same', text: ')' },
       ],
     })
+  })
+
+  it('a whitespace-only edit is null (keeps the red and green rows)', () => {
+    expect(inlineLineChange('x=1', 'x = 1')).toBeNull()
+    expect(inlineLineChange('circle(10,x=5)', 'circle(10, x=5)')).toBeNull()
+  })
+
+  it('a whitespace piece next to a real change is shown as unchanged text', () => {
+    expect(inlineLineChange('f(a,b)', 'f(a, b, c)')).toEqual({
+      kind: 'insert',
+      pieces: [
+        { type: 'same', text: 'f(a, b' },
+        { type: 'add', text: ', c' },
+        { type: 'same', text: ')' },
+      ],
+    })
+  })
+
+  it('words added inside a string show inside it', () => {
+    expect(inlineLineChange('print("Hi")', 'print("Hi there")')).toEqual({
+      kind: 'insert',
+      pieces: [
+        { type: 'same', text: 'print("Hi' },
+        { type: 'add', text: ' there' },
+        { type: 'same', text: '")' },
+      ],
+    })
+    expect(inlineLineChange('print("Hi Sam")', 'print("Hi Ava")').pieces).toEqual([
+      { type: 'same', text: 'print("Hi ' },
+      { type: 'remove', text: 'Sam' },
+      { type: 'add', text: 'Ava' },
+      { type: 'same', text: '")' },
+    ])
+  })
+
+  it('a string never splits inside a word', () => {
+    expect(inlineLineChange('color("Hello")', 'color("Help")').pieces).toEqual([
+      { type: 'same', text: 'color(' },
+      { type: 'remove', text: '"Hello"' },
+      { type: 'add', text: '"Help"' },
+      { type: 'same', text: ')' },
+    ])
   })
 
   it('is null when the lines match (apart from indent)', () => {
@@ -115,6 +162,36 @@ describe('pairInlineRows', () => {
   })
 })
 
+describe('pairInlineRows choices', () => {
+  it('pairs each new line with the old line it changes least, keeping order', () => {
+    const rows = pairInlineRows([
+      { type: 'remove', text: 'move(1, 2, 3)' },
+      { type: 'remove', text: 'move(1, 2, 4)' },
+      { type: 'add', text: 'move(1, 2, 4, 5)' },
+    ])
+    expect(rows.map((row) => [row.type, row.text, row.inline?.kind ?? null])).toEqual([
+      ['remove', 'move(1, 2, 3)', null],
+      ['add', 'move(1, 2, 4, 5)', 'insert'],
+    ])
+  })
+
+  it('a whitespace-only edit keeps the red row and the green row', () => {
+    const rows = [
+      { type: 'remove', text: 'x=1' },
+      { type: 'add', text: 'x = 1' },
+    ]
+    expect(pairInlineRows(rows)).toEqual(rows)
+  })
+
+  it('a run of more than 12 lines on a side is left as red and green rows', () => {
+    const removes = Array.from({ length: 13 }, (_, i) => ({ type: 'remove', text: `dot(${i})` }))
+    const adds = Array.from({ length: 13 }, (_, i) => ({ type: 'add', text: `dot(${i}, 2)` }))
+    expect(pairInlineRows([...removes, ...adds])).toEqual([...removes, ...adds])
+    const small = pairInlineRows([...removes.slice(0, 12), ...adds.slice(0, 12)])
+    expect(small.every((row) => row.inline)).toBe(true)
+  })
+})
+
 describe('copyAnchorRows with the starter', () => {
   const starter = 'size = 100\nstep = 5\nsize -= step\ncircle(100, "gold")'
 
@@ -143,5 +220,53 @@ describe('copyAnchorRows with the starter', () => {
       { type: 'add', text: 'turn += 10' },
       { type: 'add', text: 'step = 3' },
     ])
+  })
+
+  it('extends only the anchor line or the line on the typed side of it', () => {
+    const starterLines = 'a = 1\ncircle(10)\nb = 2\nsquare(5)\nc = 3'
+    // copyAfter: the anchor itself, or the line right after it.
+    expect(
+      copyAnchorRows({ code: 'circle(10, x=5)', after: 'a = 1', starter: starterLines }).rows[0]
+        .inline?.kind
+    ).toBe('insert')
+    expect(
+      copyAnchorRows({ code: 'square(5, x=5)', after: 'square(5)', starter: starterLines }).rows[0]
+        .inline?.kind
+    ).toBe('insert')
+    // A starter line far from the anchor: all green.
+    expect(
+      copyAnchorRows({ code: 'square(5, x=5)', after: 'a = 1', starter: starterLines }).rows
+    ).toEqual([{ type: 'add', text: 'square(5, x=5)' }])
+    // copyBefore: the anchor itself, or the line right before it.
+    expect(
+      copyAnchorRows({ code: 'circle(10, x=5)', before: 'b = 2', starter: starterLines }).rows[0]
+        .inline?.kind
+    ).toBe('insert')
+    expect(
+      copyAnchorRows({ code: 'square(5, x=5)', before: 'b = 2', starter: starterLines }).rows
+    ).toEqual([{ type: 'add', text: 'square(5, x=5)' }])
+  })
+
+  it('Level A L1 tasks 36 and 38: a new line under the anchor stays all green', () => {
+    // From the Level A L1 lesson (hlrv9r2gtg): copyAfter, the starter and the typed line.
+    const task36 = copyAnchorRows({
+      code: 'circle(90, "orange", x=100, y=250)\n',
+      after: 'background("black")',
+      starter: 'from stage import *\nbackground("black")\n',
+    })
+    expect(task36).toEqual({
+      anchor: { lines: ['background("black")'], position: 'after' },
+      rows: [{ type: 'add', text: 'circle(90, "orange", x=100, y=250)' }],
+    })
+    const task38 = copyAnchorRows({
+      code: 'text("Ava", "gold", x=200, y=100, size=64)\n',
+      after: 'circle(25, "red", x=100, y=200)',
+      starter:
+        'from stage import *\nbackground("black")\ncircle(90, "orange", x=100, y=250)\ncircle(25, "red", x=100, y=200)\n',
+    })
+    expect(task38).toEqual({
+      anchor: { lines: ['circle(25, "red", x=100, y=200)'], position: 'after' },
+      rows: [{ type: 'add', text: 'text("Ava", "gold", x=200, y=100, size=64)' }],
+    })
   })
 })
