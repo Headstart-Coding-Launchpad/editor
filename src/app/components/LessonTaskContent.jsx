@@ -353,9 +353,14 @@ export default function LessonTaskContent({
   if (calmFoldBase.task !== task?.id) {
     setCalmFoldBase({ task: task?.id, openings: calmExplainerOpenings })
   }
+  // The stacked rows, worked out once from the task panel's size: the workspace caps the card's
+  // column with the same number the card folds against (`calm.layout`).
+  const calmStackedRows = calmStacked
+    ? calmStackedLayout(taskPanelSize.height, { width: taskPanelSize.width })
+    : null
   const calmFoldIfTallerThan =
     calmStacked && calmFoldBase.task === task?.id && calmFoldBase.openings === calmExplainerOpenings
-      ? calmStackedLayout(taskPanelSize.height).asideMaxHeight
+      ? calmStackedRows.asideMaxHeight
       : null
   // The calm palette's last category, for this view (ScratchWorkspace `calm.categoryMemory`).
   const [paletteCategoryMemory] = useState(createPaletteCategoryMemory)
@@ -1142,6 +1147,7 @@ export default function LessonTaskContent({
             calmScratch
               ? {
                   stacked: calmStacked,
+                  layout: calmStackedRows,
                   aside:
                     calmStacked && calmAside ? (
                       <CalmAsideSlot aside={calmAsideHost.aside} style={s.calmStackedSlot} />

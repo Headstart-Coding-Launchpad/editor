@@ -3,6 +3,9 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import { firstViewKey, useFirstView } from '../../shared/motion'
 import InkSurface from '../liveInk/InkSurface'
 
+// The longest the first-view auto-fold waits for the card's pictures (foldIfTallerThan).
+const AUTO_FOLD_SETTLE_MS = 1500
+
 export default function ExplainerPanel({
   title,
   content,
@@ -37,9 +40,10 @@ export default function ExplainerPanel({
   // Room (px) to keep clear at the right of the title bar for a control laid over it (the side
   // explainer's collapse arrow), so a long title wraps before it rather than running under it.
   titleEndInset = 0,
-  // A height (px) the card has room for: on its first view a card taller than this (title + text,
-  // measured again as pictures load) starts folded to its title strip, once. Never after the
-  // student taps the strip. Null never folds. (The calm Scratch screen, stacked beside the stage.)
+  // A height (px) the card has room for: on its first view a card taller than this (all of it,
+  // decided once: at once, or when its pictures have loaded, at most AUTO_FOLD_SETTLE_MS later)
+  // starts folded to its title strip. Never once the student scrolls, taps or focuses inside it.
+  // Null never folds. (The calm Scratch screen, stacked beside the stage.)
   foldIfTallerThan = null,
 }) {
   const isFirstView = useFirstView(
@@ -74,27 +78,62 @@ export default function ExplainerPanel({
     if (collapsible) onCollapsedChange?.(collapsed)
   }, [collapsible, collapsed, onCollapsedChange])
 
-  // Armed until it has folded the card once or the student has tapped the strip.
-  const autoFoldArmedRef = useRef(true)
-  const checkAutoFold = useCallback(() => {
-    if (!autoFoldArmedRef.current || !collapsible || !(foldIfTallerThan > 0)) return
+  // The auto-fold decides ONCE, on the first view: measured as soon as there is a cap, and if the
+  // card fits then, once more when its pictures have loaded (or AUTO_FOLD_SETTLE_MS has passed),
+  // then never again. A scroll, tap, key or focus inside the card first means the student is
+  // reading it: no fold at all. 'idle' (no cap yet) | 'waiting' (pictures) | 'done'.
+  const autoFoldRef = useRef({ state: 'idle', deadline: 0 })
+  // The card's full height: what it takes on screen now (title, padding, border, the show-more
+  // bar), plus the text still scrolled out of view inside it.
+  const cardTooTall = useCallback(() => {
+    const panel = panelRef.current
     const el = contentRef.current
-    if (!el) return
-    const titleHeight = panelRef.current?.firstElementChild?.offsetHeight ?? 0
-    if (el.scrollHeight + titleHeight > foldIfTallerThan) {
-      autoFoldArmedRef.current = false
-      setCollapsed(true)
-    }
-  }, [collapsible, foldIfTallerThan])
+    if (!panel || !el) return false
+    return panel.offsetHeight - el.clientHeight + el.scrollHeight > foldIfTallerThan
+  }, [foldIfTallerThan])
   useLayoutEffect(() => {
-    if (isCollapsed) return undefined
-    checkAutoFold()
+    const fold = autoFoldRef.current
+    if (fold.state === 'done' || isCollapsed || !collapsible || !(foldIfTallerThan > 0)) {
+      return undefined
+    }
+    const panel = panelRef.current
     const el = contentRef.current
-    if (!el || !(foldIfTallerThan > 0)) return undefined
+    if (!panel || !el) return undefined
+    if (fold.state === 'idle') {
+      if (cardTooTall()) {
+        fold.state = 'done'
+        setCollapsed(true)
+        return undefined
+      }
+      fold.state = 'waiting'
+      fold.deadline = Date.now() + AUTO_FOLD_SETTLE_MS
+    }
+    const settle = () => {
+      if (fold.state !== 'waiting') return
+      fold.state = 'done'
+      if (cardTooTall()) setCollapsed(true)
+    }
     // A picture loading makes the card taller (load does not bubble: heard in the capture phase).
-    el.addEventListener('load', checkAutoFold, true)
-    return () => el.removeEventListener('load', checkAutoFold, true)
-  }, [checkAutoFold, content, isCollapsed, foldIfTallerThan])
+    const onPicture = () => {
+      if ([...el.querySelectorAll('img')].every((img) => img.complete)) settle()
+    }
+    const onRead = () => {
+      fold.state = 'done'
+    }
+    const timer = setTimeout(settle, Math.max(0, fold.deadline - Date.now()))
+    el.addEventListener('load', onPicture, true)
+    el.addEventListener('error', onPicture, true)
+    el.addEventListener('scroll', onRead, true)
+    const readEvents = ['pointerdown', 'keydown', 'focusin', 'wheel']
+    for (const type of readEvents) panel.addEventListener(type, onRead, true)
+    return () => {
+      clearTimeout(timer)
+      el.removeEventListener('load', onPicture, true)
+      el.removeEventListener('error', onPicture, true)
+      el.removeEventListener('scroll', onRead, true)
+      for (const type of readEvents) panel.removeEventListener(type, onRead, true)
+    }
+  }, [cardTooTall, collapsible, foldIfTallerThan, isCollapsed])
 
   const updateScrollState = useCallback(() => {
     const el = contentRef.current
@@ -151,7 +190,7 @@ export default function ExplainerPanel({
           className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={titleBarStyle}
           onClick={() => {
-            autoFoldArmedRef.current = false
+            autoFoldRef.current.state = 'done'
             setEntrance((current) => ({ ...current, over: true }))
             setCollapsed((c) => !c)
           }}

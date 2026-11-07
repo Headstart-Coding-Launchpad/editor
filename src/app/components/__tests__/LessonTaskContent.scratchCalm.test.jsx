@@ -104,6 +104,19 @@ describe('calm Scratch: the explainer stays in view while building', () => {
     expect(screen.getAllByText('Make the cat say Hello! 🎉')).toHaveLength(1)
   })
 
+  it('stacked, the workspace gets the rows worked out once, from the same height the card folds against', () => {
+    panelWidth(736, 960)
+    render(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm.layout).toEqual({
+      asideMaxHeight: Math.round(960 * 0.35),
+      blocksMinHeight: 360,
+    })
+    // Beside the blocks (not stacked) there are no rows to hand over.
+    panelWidth(1334)
+    render(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm.layout).toBeNull()
+  })
+
   describe('a long card on a portrait tablet', () => {
     let spy
     beforeEach(() => {

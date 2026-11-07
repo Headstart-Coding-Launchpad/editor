@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ExplainerPanel from '../ExplainerPanel'
 import { resetFirstViews } from '../../../shared/motion'
@@ -270,6 +270,70 @@ describe('ExplainerPanel foldIfTallerThan', () => {
     fireEvent.load(img)
     expect(strip).toHaveAttribute('aria-expanded', 'false')
     spy.mockRestore()
+  })
+
+  it('measures what the card takes on screen: title, padding and the show-more bar count', () => {
+    // Text 250px, scrolled inside a 40px window of a 130px card: 340px of card in all, over
+    // the 287px it has. (Title + text alone, 284px, would have left it open and squeezed.)
+    const heights = [
+      vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? 250 : 0
+      }),
+      vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? 40 : 0
+      }),
+      vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function () {
+        if (this.classList?.contains('card')) return 130
+        return this.tagName === 'BUTTON' ? 34 : 0
+      }),
+    ]
+    render(<ExplainerPanel title="Chrome" content="Text" fill foldIfTallerThan={287} />)
+    expect(screen.getByRole('button', { name: /Chrome/ })).toHaveAttribute('aria-expanded', 'false')
+    for (const spy of heights) spy.mockRestore()
+  })
+
+  it('never folds a card the student has started reading (a scroll inside it)', () => {
+    let height = 200
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? height : 0
+      })
+    const { container } = render(
+      <ExplainerPanel title="Read" content="With a picture" fill foldIfTallerThan={287} />
+    )
+    fireEvent.scroll(container.querySelector('[data-explainer-content]'))
+    height = 500
+    const img = document.createElement('img')
+    screen.getByTestId('markdown').appendChild(img)
+    fireEvent.load(img)
+    expect(screen.getByRole('button', { name: /Read/ })).toHaveAttribute('aria-expanded', 'true')
+    spy.mockRestore()
+  })
+
+  it('decides once, on the first view: never folds later (new content, a late picture)', () => {
+    vi.useFakeTimers()
+    let height = 200
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? height : 0
+      })
+    try {
+      const { rerender } = render(
+        <ExplainerPanel title="Once" content="Short" fill foldIfTallerThan={287} />
+      )
+      act(() => vi.advanceTimersByTime(3000))
+      height = 900
+      rerender(<ExplainerPanel title="Once" content="Now long" fill foldIfTallerThan={287} />)
+      const img = document.createElement('img')
+      screen.getByTestId('markdown').appendChild(img)
+      fireEvent.load(img)
+      expect(screen.getByRole('button', { name: /Once/ })).toHaveAttribute('aria-expanded', 'true')
+    } finally {
+      spy.mockRestore()
+      vi.useRealTimers()
+    }
   })
 
   it('never folds without the prop', () => {
