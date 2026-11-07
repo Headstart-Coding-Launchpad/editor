@@ -42,7 +42,8 @@ Entries written before 2026-09-29 are not tagged.
 - **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
   stage's change view are now one box titled **What to change** above the code (never both). It
   is open when the task opens and folds to one line ("Show what to change" and the first new
-  line) after a passing Run, never after a failed one; a tap opens it again. Lesson text that
+  line) after the first passing Run (never a failed one), once per task view; a tap opens it
+  again, and it stays as the student leaves it. Lesson text that
   names the box should say "the *What to change* box" on Python tasks (Turtle and Arcade keep
   "⌨️ Type this out"). The check result is no longer a popup on Python: the hint sits under the
   task card the whole time (a gentle nudge, then the check's hint in amber after a failed Run),
