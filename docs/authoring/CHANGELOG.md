@@ -39,6 +39,12 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
+- **Inline Scratch C-blocks draw their real shape.** An inline `` `scratch:repeat (10)` `` (or
+  forever, `if <> then`, `if <> then else`) was drawn as a flat orange pill with a hat-style notch
+  and no mouth. It now draws the full C: header, an empty mouth (two for if-else, with the `else`
+  band) and the closing bottom arm. Fenced `scratch` blocks are unchanged.
+  - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
+
 - **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still
   starts open.** A 🧱 **Blocks** button above the script opens and closes it; blocks hidden under
   it are scrolled clear each time it opens. New optional lesson field `scratchPaletteClosed: true`

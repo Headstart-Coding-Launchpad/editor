@@ -177,6 +177,38 @@ describe('MarkdownRenderer', () => {
     )
   })
 
+  it.each([
+    ['scratch:repeat (10)', 'control_repeat', 1, true],
+    ['scratch:forever', 'control_forever', 1, false],
+    ['scratch:if <> then', 'control_if', 1, true],
+    ['scratch:if <> then else', 'control_if_else', 2, true],
+  ])('draws inline `%s` as a C with its mouth and closing bottom arm', (code, opcode, mouths) => {
+    const { container } = render(<MarkdownRenderer content={`Use \`${code}\` here.`} />)
+    const block = container.querySelector(`[data-scratch-opcode="${opcode}"]`)
+    expect(block).toHaveAttribute('data-scratch-shape', 'c')
+    expect(block).toHaveAttribute('data-scratch-mouths', String(mouths))
+    expect(block.querySelectorAll('[data-scratch-mouth-stack]')).toHaveLength(mouths)
+    expect(block.querySelector('[data-scratch-c-path="fill"]')).toBeInTheDocument()
+    expect(block.querySelector('[data-scratch-c-path="outer"]')).toBeInTheDocument()
+  })
+
+  it('draws a fenced C with inner blocks inside its mouth and a nested C inside that', () => {
+    const content = [
+      '```scratch',
+      'repeat (10)',
+      '  move (10) steps',
+      '  repeat (3)',
+      '    turn right (15) degrees',
+      '```',
+    ].join('\n')
+    const { container } = render(<MarkdownRenderer content={content} />)
+    const outer = container.querySelector('[data-scratch-opcode="control_repeat"]')
+    const mouth = outer.querySelector('[data-scratch-mouth-stack="children"]')
+    expect(mouth.querySelector('[data-scratch-opcode="motion_movesteps"]')).toBeInTheDocument()
+    const inner = mouth.querySelector('[data-scratch-opcode="control_repeat"]')
+    expect(inner.querySelector('[data-scratch-opcode="motion_turnright"]')).toBeInTheDocument()
+  })
+
   it('renders Scratch blocks with mouths and nested reporter/boolean shapes', () => {
     const content = [
       '```scratch',

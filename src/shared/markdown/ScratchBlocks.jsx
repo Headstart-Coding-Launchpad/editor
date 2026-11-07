@@ -1087,6 +1087,21 @@ function rootMarginTop(nodes, index) {
 
 export function InlineScratchBlock({ text }) {
   const info = findScratchBlock(text) ?? fallbackInfo()
+  if (info.shape === 'c') {
+    // A C block in a line of text keeps its real shape: header, empty mouth(s), closing bottom arm.
+    const node = {
+      text: text.replace(/\s+else$/i, ''),
+      info,
+      children: [],
+      elseChildren: [],
+      hasElse: info.opcode === 'control_if_else',
+    }
+    return (
+      <span style={{ display: 'inline-block', verticalAlign: 'middle', margin: '4px 2px' }}>
+        <ScratchCBlock node={node} />
+      </span>
+    )
+  }
   return <ScratchBlockBody text={text} info={info} inline />
 }
 
