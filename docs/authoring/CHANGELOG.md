@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
+- **Python change view: only the changed part of a line.** In a Complete stage's change view (and
+  its **Show all the code**), a line that only gains text is now one green row: the part already
+  there dimmed, the new text green, bold and underlined, with **Add**, and no red line. A small
+  swap inside a line is one `±` row with only the old piece struck through in red and the new
+  piece underlined in green, with **Remove** and **Add**. A line where more than about half the
+  characters change, or with 3 or more separate changes, keeps the red line then the green line.
+  The Copy code panel with `copyAfter` / `copyBefore` does the same for a typed line that extends
+  a line of the task's starter. No new fields. See [python-tasks.md](python-tasks.md#change-view).
+  - Affects: python (stage `show: change`), turtle, arcade (`copyAfter`, `copyBefore`) · Existing lessons: no changes needed · Resolves: authoring-requests/2026-11-07-stage-change-view-show-only-the-changed-part-of-a-line-inlin.md
 - **Python: a Complete stage can show only what changes.** Set `show: change` on a Complete
   stage and, when it opens (Solo's "See complete code", the tutor's send stage, a feedback
   preview), the student sees only the lines to add (green, `+`, **Add**), remove (red, `-`,
