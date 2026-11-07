@@ -124,6 +124,10 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
   if (lesson.lessonNumber != null && !isValidLessonNumber(lesson.lessonNumber)) {
     errors.push('lessonNumber must be a positive whole number (1, 2, 3 …) when provided')
   }
+  // The calm Scratch screen's opt-out: the block palette starts open (src/modules/scratch/calm/).
+  if (lesson.scratchPaletteOpen != null && typeof lesson.scratchPaletteOpen !== 'boolean') {
+    errors.push('scratchPaletteOpen must be true or false when provided')
+  }
 }
 
 // Firestore rejects a document whose maps/arrays nest more than 20 levels deep. Measure the

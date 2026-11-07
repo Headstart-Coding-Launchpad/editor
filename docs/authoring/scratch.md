@@ -501,6 +501,32 @@ Scratch Playground turns all four toggles on.
 
 ---
 
+## Calm Screen
+
+Scratch tasks open on a calm screen, the same at every screen size:
+
+- **The block palette starts closed** behind a 🧱 **Blocks** button above the script area. Only
+  that button opens or closes it: dropping blocks, tapping the stage or the script leaves it open.
+  Every time it opens, any block hidden under it is scrolled clear, and it goes back to the
+  category the student last had (this page visit only). Write "Tap **Blocks**, then drag…" when
+  an explainer sends the student to the palette.
+- **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
+  tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
+  one-line title, never behind a tab, and a long explainer scrolls inside the card. There is no
+  "Task N of N+1" explainer slide.
+- **The hint is docked under the card**: a nudge to try the green flag before any run, then the
+  check's hint after a failed run. "✋ Ask for help" shows only when a tutor is there (a live
+  lesson or the tutor's sandbox), never in Solo.
+- **Flag, Stop and Reset Stage** are always in one row above the stage. The sprite property row
+  (x, y, direction…) and **+ Backdrop** fold behind **More** unless one of the task's checks reads
+  a sprite property (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`).
+- The Costumes and Sounds tabs still need `showCostumesTab` / `showSoundsTab`.
+
+A lesson whose explainers rely on an open palette can set `scratchPaletteOpen: true` (lesson
+level) to start it open; everything else stays calm.
+
+---
+
 ## Highlighting a Control
 
 `highlight` pulses a ring around one control on each student's screen when the task opens (once
@@ -521,8 +547,8 @@ seconds. With reduced motion it's a still outline.
 | `category:<name>` | A category heading in the block palette: `Motion`, `Looks`, `Sound`, `Events`, `Control`, `Sensing`, `Operators`, `Variables` or `My Blocks`. The palette scrolls to it |
 
 Any other target is a validation error. When the control is out of sight, the way to it pulses
-instead: the **Stage** or **Blocks** tab on a narrow screen, the collapsed Stage rail, or the
-"Show blocks palette" button. A category your `toolbox` leaves out has no heading, so nothing
+instead: the **Blocks** button while the palette is closed (calm screen), or the **Stage** /
+**Blocks** tab, the collapsed Stage rail or the "Show blocks palette" button outside it. A category your `toolbox` leaves out has no heading, so nothing
 pulses.
 
 Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)

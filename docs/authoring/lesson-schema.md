@@ -31,6 +31,7 @@ Lessons live in the Firestore `lessons/` collection. Each document ID is the les
 | `sandboxToolbox` | No | string | Scratch XML toolbox for the student's personal sandbox. |
 | `sandboxSprites` | No | sprite array | Scratch sprites for the student's personal sandbox. |
 | `sandboxBackdrops` | No | backdrop array | Scratch backdrops for the student's personal sandbox. |
+| `scratchPaletteOpen` | No | boolean | Scratch only. `true` starts the block palette open on every Scratch task of the lesson (the calm screen starts it closed behind a **Blocks** button). Use it only for a lesson whose explainers point at blocks in an open palette. See [scratch.md](scratch.md#calm-screen). |
 | `sandboxStarterFs` | No | path map | Filesystem sandbox initial state. |
 | `sandboxStarterDesktop` | No | desktop state object | Desktop sandbox initial desktop (`fs`, `recycleBin`, `windows`). See `desktop.md`. |
 | `sandboxStarterCircuit` | No | circuit object | Electronics sandbox initial breadboard. |

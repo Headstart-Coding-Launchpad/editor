@@ -52,6 +52,23 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 
 ## Scratch Compact Layout: Instructions/Code and Blocks/Stage tabs
 
+> **Calm screen (`capabilities.calmScratch`, Scratch today):** none of the tabs below apply to
+> Scratch any more. `LessonTaskContent` keeps the explainer card (folding only to its title strip,
+> reported to the tutor as `instructions` while open) and the docked hint (`ScratchHintDock`) in a
+> 220-320px column beside the blocks, or, below `SCRATCH_CALM_STACK_BREAKPOINT` (880px task panel:
+> a portrait tablet), passes them to the workspace as `calm.aside`, which `ScratchWorkspace` puts
+> beside its stage pinned above the blocks (CSS grid; the blocks and stage panes keep their tree
+> position, so Blockly is never re-injected). `ScratchWorkspace` never goes `compact` and has no
+> stage collapse, so `visiblePanes` is always `blocks` + `stage`; StudentView shows no explainer
+> slide. The palette starts closed (`calm.paletteStartsOpen` from the lesson's
+> `scratchPaletteOpen`) behind `CalmPaletteToggle`; each open re-lays out through the existing
+> flyout effect and then runs `openPaletteReveal` (skipped and re-run on pointerup while a block is
+> dragged); with it closed, `syncCanvasScroll` and the debounced `placeScriptOnArrival` keep the
+> script where Blockly thinks it is (Blockly still counts the hidden palette's width). Reset Blocks
+> moves into the Blocks row (`calm.onResetBlocks`). Tutor view is unchanged: no new writes, the
+> mirror (`TeacherLiveView`, read-only, no palette) is not calm. The mechanisms below remain for a
+> `fixedExplainer` module without `calmScratch`.
+
 - The response to a shrinking panel is graduated, and — deliberately — the explainer gives way *before* the code area (Blocks/Stage) is ever forced to compact, not after. `LessonTaskContent.jsx` measures its explainer+workspace container (`useElementSize.js`, a `ResizeObserver` hook) and, for Scratch lessons only:
   1. **Split**: the explainer renders at a **fixed, non-resizable width** (`EXPLAINER_FIXED_WIDTH`, 320px — Scratch explainers often carry block-pill images/markdown that need real width) alongside the code area — no `SplitPane`, no drag handle, no percentage math. Deliberately simpler than a shrinking/pinning split: it's either 320px or a tab, nothing in between. This is a plain fixed-width flex layout, not a `SplitPane` change — every other lesson type (Python/HTML/Arcade/Electronics) still uses `SplitPane`'s draggable percentage split (`defaultSplit={26}`), untouched.
   2. **Instructions tabs away**: `LessonTaskContent` switches Instructions/Code to `PanelTabs` as soon as a fixed 320px explainer (plus the `s.scratchFixedSplit` gap between the two columns) would leave the code area under `ScratchWorkspace.jsx`'s own "wide" width — `EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH` (320 + 12 + 1000 = 1332px combined), where `SCRATCH_CODE_WIDE_WIDTH` is `ScratchWorkspace.jsx`'s exported `NARROW_BREAKPOINT`, imported rather than duplicated so the two thresholds can't drift apart. This is *before* the code area would otherwise be squeezed — the Code tab then gets the *entire* panel width, so Blocks/Stage stay side-by-side rather than being forced into their own compact tabs. Width-only: height doesn't factor in, since giving Code its own tab doesn't add height (explainer and code already share the same row).

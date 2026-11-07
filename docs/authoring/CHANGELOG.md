@@ -39,6 +39,16 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
+- **Scratch: the calm screen.** Every Scratch task now opens with the block palette closed behind
+  a 🧱 **Blocks** button (only that button opens or closes it; blocks hidden under it are scrolled
+  clear each time it opens), the explainer card and a docked hint always beside the blocks (no
+  Instructions/Code or Blocks/Stage tabs, no explainer slide in Solo), Flag / Stop / Reset Stage
+  in one row, and the sprite property row and **+ Backdrop** behind **More** unless a check reads
+  a sprite property. Explainers that say "drag from the palette" should now say "Tap **Blocks**,
+  then drag…". New optional lesson field `scratchPaletteOpen: true` starts the palette open for a
+  lesson that relies on it. See [scratch.md](scratch.md#calm-screen).
+  - Affects: scratch, lesson (`scratchPaletteOpen`) · Existing lessons: no changes needed (reword explainers that point at an open palette, or set `scratchPaletteOpen: true`) · Resolves: none
+
 - **Python change view: only the changed part of a line.** In a Complete stage's change view (and
   its **Show all the code**), a line that only gains text is now one green row: the part already
   there dimmed, the new text green, bold and underlined, with **Add**, and no red line. A small
