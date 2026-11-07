@@ -2132,8 +2132,8 @@ export default function ScratchWorkspace({
           requestAnimationFrame(() => revealCalmPalette(selectedSpriteId))
         } else if (calmRef.current) {
           // Blockly redraws the canvas without the palette's offset when it hides, but scrolls
-          // with it: re-applying its own scroll keeps the two in step, so closing the palette
-          // never moves the script (and a later pan cannot make it jump).
+          // with it: re-applying its own scroll keeps the two in step, so after closing, the
+          // script sits where Blockly keeps it and a later pan cannot make it jump.
           syncCanvasScroll(ws)
           scheduleArrivalPlacementRef.current?.()
         }
