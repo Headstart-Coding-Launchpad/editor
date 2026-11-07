@@ -56,6 +56,8 @@ export default function ModalStrip({ chips, mode = null }) {
   const chipRefs = useRef([])
   const [count, setCount] = useState(chips.length)
   const [overflowOpen, setOverflowOpen] = useState(false)
+  // The popover opens towards the side with room (the "+N" chip is usually far right).
+  const [alignRight, setAlignRight] = useState(false)
   const keys = chips.map((c) => c.key).join('|')
 
   // Every chip stays in the DOM (the hidden ones out of the flow) so each one can be measured.
@@ -115,7 +117,11 @@ export default function ModalStrip({ chips, mode = null }) {
                 style={s.more}
                 aria-expanded={overflowOpen}
                 aria-label={`${hidden.length} more`}
-                onClick={() => setOverflowOpen((open) => !open)}
+                onClick={(event) => {
+                  const box = event.currentTarget.getBoundingClientRect()
+                  setAlignRight(box.right > s.popover.width + 24)
+                  setOverflowOpen((open) => !open)
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape' && overflowOpen) {
                     event.stopPropagation()
@@ -126,7 +132,11 @@ export default function ModalStrip({ chips, mode = null }) {
                 +{hidden.length}
               </button>
               {overflowOpen && (
-                <div style={s.popover} className="ui-popover" data-testid="strip-overflow">
+                <div
+                  style={alignRight ? { ...s.popover, left: 'auto', right: 0 } : s.popover}
+                  className="ui-popover"
+                  data-testid="strip-overflow"
+                >
                   <div style={s.popoverHeading}>More, only you see</div>
                   {hidden.map((chip) => (
                     <StripChip
