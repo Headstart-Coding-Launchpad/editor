@@ -74,10 +74,15 @@ import { keyScratchSpriteStates } from './jsonWorkspace.js'
 import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
 import {
+  CALM_BLOCK_SCALE,
+  applyBlockScale,
   calmFoldsSpriteProps,
   calmPaletteFollowUp,
+  calmStackedGridStyle,
+  calmStackedLayout,
   createCalmDragEndStep,
   calmStackedStageScale,
+  listenForBlockDrags,
   createPaletteCategoryMemory,
   openPaletteReveal,
   placeScriptOnArrival,
@@ -150,18 +155,23 @@ const SCRATCH_WATCH_PANEL_TABS_SURFACE = 'scratch_watch_panel'
 // were removed as confusing) — scale is purely a function of available space, continuously
 // recalculated (see computeBlockScale). MAX matches the old fixed default scale, so a wide
 // screen looks exactly as before; MIN is a readability floor — below it we lean on the
-// flyout-collapse/compact-tab mechanisms instead of shrinking blocks further.
+// flyout-collapse/compact-tab mechanisms instead of shrinking blocks further. The calm screen
+// uses its own, smaller range (CALM_BLOCK_SCALE: 65% down to 55%).
 const BLOCK_SCALE_MAX = 0.75
 const BLOCK_SCALE_MIN = 0.6
+function blockScaleRange(calm) {
+  return calm ? CALM_BLOCK_SCALE : { min: BLOCK_SCALE_MIN, max: BLOCK_SCALE_MAX }
+}
 
 // Continuous, not tiered: full size whenever the container is at/above the same 1000×600
 // "wide" reference point `compact` uses, interpolating down to the floor as it shrinks
 // within compact territory. Exported (and pure) so it's unit-testable without Blockly.
-export function computeBlockScale(width, height) {
+export function computeBlockScale(width, height, { calm = false } = {}) {
+  const { min, max } = blockScaleRange(calm)
   const wFactor = Math.min(1, width / NARROW_BREAKPOINT)
   const hFactor = Math.min(1, height / NARROW_BREAKPOINT_HEIGHT)
   const factor = Math.min(wFactor, hFactor)
-  return BLOCK_SCALE_MIN + (BLOCK_SCALE_MAX - BLOCK_SCALE_MIN) * factor
+  return min + (max - min) * factor
 }
 
 // Shrinks the stage canvas to fit whatever space is actually available, on both axes — a
@@ -1276,7 +1286,7 @@ export default function ScratchWorkspace({
   const rootResizeFrameRef = useRef(0)
   const flyoutCollapsedRef = useRef(flyoutCollapsed)
   const compactRef = useRef(forceCompact)
-  const blockScaleRef = useRef(BLOCK_SCALE_MAX)
+  const blockScaleRef = useRef(blockScaleRange(calmOn).max)
   const blockDragActiveRef = useRef(false)
   const pendingScaleRecalcRef = useRef(false)
   const hideStageRef = useRef(hideStage)
@@ -1590,7 +1600,9 @@ export default function ScratchWorkspace({
     for (const [spriteId, ws] of Object.entries(workspaceRefs.current)) {
       try {
         try {
-          ws.setScale(blockScaleRef.current)
+          // Calm screen: only a real size change re-scales (setScale scrolls the canvas even
+          // when the size is unchanged, which moved the script on every palette toggle).
+          applyBlockScale(ws, blockScaleRef.current, { calm: !!calmRef.current })
         } catch {}
         const scrollX = ws.scrollX
         const scrollY = ws.scrollY
@@ -1976,9 +1988,9 @@ export default function ScratchWorkspace({
       zoom: {
         controls: false,
         wheel: false,
-        startScale: BLOCK_SCALE_MAX,
-        minScale: BLOCK_SCALE_MIN,
-        maxScale: BLOCK_SCALE_MAX,
+        startScale: blockScaleRef.current,
+        minScale: blockScaleRange(!!calmRef.current).min,
+        maxScale: blockScaleRange(!!calmRef.current).max,
       },
       move: { scrollbars: true, drag: true, wheel: true },
       trashcan: true,
@@ -2205,11 +2217,16 @@ export default function ScratchWorkspace({
   }
 
   // Calm screen: the Blocks button, the only control that opens or closes the palette. Closing
-  // remembers the category on screen (this page session only).
+  // remembers the category on screen (this page session only). The script does not move on
+  // screen (applyBlockScale) unless the open palette would hide it.
   function toggleCalmPalette() {
     if (!flyoutCollapsed) {
       paletteMemory().remember(topFlyoutCategory(workspaceRefs.current[selectedSpriteId]))
     }
+    // From the child's first toggle the script stays where it is on screen: no arrival
+    // placement after a close (it moved the script back left), only the open's reveal of blocks
+    // that would be hidden under the palette.
+    workspaceTouchedRef.current.add(selectedSpriteId)
     setFlyoutCollapsed((collapsed) => !collapsed)
   }
 
@@ -2412,7 +2429,7 @@ export default function ScratchWorkspace({
           : w < SCRATCH_COMPACT_BREAKPOINT))
     setCompact(isCompact)
     compactRef.current = isCompact
-    blockScaleRef.current = computeBlockScale(w, h)
+    blockScaleRef.current = computeBlockScale(w, h, { calm: calmOn })
 
     const scale = stageScaleFor(w, h, isCompact)
     setStageScale(scale)
@@ -2489,14 +2506,9 @@ export default function ScratchWorkspace({
       if (step) requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
     }
 
-    el.addEventListener('pointerdown', onDown)
-    document.addEventListener('pointerup', onUp)
-    document.addEventListener('pointercancel', onUp)
-    return () => {
-      el.removeEventListener('pointerdown', onDown)
-      document.removeEventListener('pointerup', onUp)
-      document.removeEventListener('pointercancel', onUp)
-    }
+    // Capture phase: a block dragged out of the palette counts too (Blockly stops that press
+    // from bubbling).
+    return listenForBlockDrags(el, { onStart: onDown, onEnd: onUp })
   }, [resizeBlocklyWorkspaces, pendingCalmStep])
 
   // ── Signal factory ───────────────────────────────────────────────────────────
@@ -3619,9 +3631,7 @@ export default function ScratchWorkspace({
         hideStage
           ? s.rootColumn
           : calmStacked
-            ? calm.aside
-              ? s.rootCalmStacked
-              : s.rootCalmStackedNoAside
+            ? calmStackedGridStyle(rootSize.height, { aside: !!calm.aside })
             : compact
               ? s.rootCompact
               : s.root
@@ -4118,7 +4128,14 @@ export default function ScratchWorkspace({
       {/* Calm stacked (portrait) layout: the explainer column beside the pinned stage. Last, so
           the blocks and stage panes above keep their place in the tree when it comes and goes. */}
       {calmStacked && calm.aside && (
-        <div data-testid="scratch-calm-stacked-aside" style={s.calmStackedAside}>
+        <div
+          data-testid="scratch-calm-stacked-aside"
+          style={{
+            ...s.calmStackedAside,
+            // Capped (the card scrolls inside), so a long card never squeezes the blocks.
+            maxHeight: calmStackedLayout(rootSize.height).asideMaxHeight ?? undefined,
+          }}
+        >
           {calm.aside}
         </div>
       )}
@@ -4132,31 +4149,7 @@ const s = {
   // to match via align-items:stretch) tracks it, instead of both being squeezed by
   // whatever vertical space sibling page content happens to leave.
   // Calm screen, portrait: the stage pinned top-left with the explainer column beside it, the
-  // blocks below across the whole width (calm.stacked).
-  rootCalmStacked: {
-    display: 'grid',
-    gridTemplateColumns: 'auto minmax(0, 1fr)',
-    gridTemplateRows: 'auto minmax(0, 1fr)',
-    gridTemplateAreas: '"stage aside" "blocks blocks"',
-    flex: '1 1 auto',
-    minWidth: 0,
-    minHeight: 0,
-    height: '100%',
-    gap: 10,
-    position: 'relative',
-  },
-  rootCalmStackedNoAside: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr)',
-    gridTemplateRows: 'auto minmax(0, 1fr)',
-    gridTemplateAreas: '"stage" "blocks"',
-    flex: '1 1 auto',
-    minWidth: 0,
-    minHeight: 0,
-    height: '100%',
-    gap: 10,
-    position: 'relative',
-  },
+  // blocks below across the whole width (calm.stacked; the grid is calmStackedGridStyle).
   calmStackedAside: {
     gridArea: 'aside',
     minWidth: 0,
