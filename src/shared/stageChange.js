@@ -29,6 +29,8 @@ export const CHANGE_LIMITS = {
   inlineMaxChangedShare: 0.5,
   // A changed line with this many separate changes or more keeps the red and green rows.
   inlineMaxChanges: 3,
+  // A run of removed and added lines with more than this many on a side is not paired.
+  inlineMaxRunLines: 12,
 }
 
 const TAB_WIDTH = 4
@@ -300,7 +302,8 @@ export function computeStageChange(baseCode, targetCode) {
 // ---- Inline change inside a line (platform request 135) ----
 // A changed line that only gains text, or has a small swap, shows once with only the changed part
 // marked. The line is split into tokens (names, numbers, whole strings, whitespace, single
-// punctuation), the tokens are diffed, and neighbouring changed tokens make one change.
+// punctuation), the tokens are diffed, and neighbouring changed tokens make one change. A string
+// swapped for one that shares its start or end (whole words) shows only the words that differ.
 
 const LINE_TOKEN =
   /[\p{L}_][\p{L}\p{N}_]*|\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|\s+|[^]/gu
@@ -309,39 +312,113 @@ function lineTokens(text) {
   return text.match(LINE_TOKEN) ?? []
 }
 
+const isBlank = (text) => text.trim() === ''
+const isWordChar = (ch) => ch !== undefined && /[\p{L}\p{N}_]/u.test(ch)
+const isStringToken = (token) => token.length >= 2 && /^(["'])[^]*\1$/.test(token)
+
+// One string swapped for another: [prefix, old middle, new middle, suffix], cut only between
+// words, or null when they share no more than their quotes.
+function splitStrings(oldString, newString) {
+  if (!isStringToken(oldString) || !isStringToken(newString) || oldString[0] !== newString[0]) {
+    return null
+  }
+  const shorter = Math.min(oldString.length, newString.length)
+  const cutsWord = (text, at) => isWordChar(text[at - 1]) && isWordChar(text[at])
+  let start = 0
+  while (start < shorter && oldString[start] === newString[start]) start += 1
+  while (start > 1 && (cutsWord(oldString, start) || cutsWord(newString, start))) start -= 1
+  let end = 0
+  while (
+    end < shorter - start &&
+    oldString[oldString.length - 1 - end] === newString[newString.length - 1 - end]
+  ) {
+    end += 1
+  }
+  while (
+    end > 1 &&
+    (cutsWord(oldString, oldString.length - end) || cutsWord(newString, newString.length - end))
+  ) {
+    end -= 1
+  }
+  if (start <= 1 && end <= 1) return null
+  return [
+    oldString.slice(0, start),
+    oldString.slice(start, oldString.length - end),
+    newString.slice(start, newString.length - end),
+    newString.slice(newString.length - end),
+  ]
+}
+
+// Every change view pairs its removed and added lines on each render, so the answers are kept.
+const inlineCache = new Map()
+const INLINE_CACHE_SIZE = 500
+
 /**
  * The change from `oldLine` to `newLine` inside the line, or null when the two lines should stay a
- * red row and a green row: the lines match (leading indent is ignored), more than about half the
- * characters of either line changed, or there are 3 or more separate changes.
+ * red row and a green row: the lines match, their indent widths differ, only spaces changed, more
+ * than about half the characters of either line changed, or there are 3 or more separate changes.
  * Returns { kind: 'insert' | 'change', pieces: [{ type: 'same' | 'add' | 'remove', text }] }:
  * 'insert' when the line only gains text. The pieces spell the new line (with its own indent) once
  * the 'remove' pieces are left out; each change is its 'remove' piece, then its 'add' piece.
  */
 export function inlineLineChange(oldLine, newLine) {
   if (typeof oldLine !== 'string' || typeof newLine !== 'string') return null
+  const key = `${oldLine}\u0000${newLine}`
+  if (inlineCache.has(key)) return inlineCache.get(key)
+  const found = computeInlineChange(oldLine, newLine)
+  if (inlineCache.size >= INLINE_CACHE_SIZE) inlineCache.clear()
+  inlineCache.set(key, found)
+  return found
+}
+
+function computeInlineChange(oldLine, newLine) {
+  if (indentWidth(oldLine) !== indentWidth(newLine)) return null
   const oldText = oldLine.trim()
   const lead = newLine.match(/^\s*/)[0]
   const newText = newLine.trim()
   if (!oldText || !newText || oldText === newText) return null
+  const share = CHANGE_LIMITS.inlineMaxChangedShare
+  // Cheap checks first: one line much longer than the other always changes over the share, and a
+  // line sharing neither its first nor its last token is a new line.
+  const longer = Math.max(oldText.length, newText.length)
+  if (Math.abs(oldText.length - newText.length) > longer * share) return null
   const oldTokens = lineTokens(oldText)
   const newTokens = lineTokens(newText)
+  if (oldTokens[0] !== newTokens[0] && oldTokens.at(-1) !== newTokens.at(-1)) return null
   const ops = diffKeys(oldTokens, newTokens)
 
   const pieces = []
   let changes = 0
-  let removed = 0
-  let added = 0
   let group = null
   const push = (type, text) => {
+    if (text === '') return
     const last = pieces.at(-1)
     if (last?.type === type && type === 'same') last.text += text
     else pieces.push({ type, text })
   }
   const closeGroup = () => {
     if (!group) return
-    if (group.remove) push('remove', group.remove)
-    if (group.add) push('add', group.add)
+    const { remove, add, removeTokens, addTokens } = group
     group = null
+    // Only spaces changed here: show the new spacing as it is, not as a change.
+    if (isBlank(remove) && isBlank(add)) {
+      push('same', add)
+      return
+    }
+    changes += 1
+    const strings =
+      removeTokens.length === 1 && addTokens.length === 1
+        ? splitStrings(removeTokens[0], addTokens[0])
+        : null
+    if (strings) {
+      push('same', strings[0])
+      push('remove', strings[1])
+      push('add', strings[2])
+      push('same', strings[3])
+      return
+    }
+    push('remove', remove)
+    push('add', add)
   }
   push('same', lead)
   for (const op of ops) {
@@ -350,32 +427,41 @@ export function inlineLineChange(oldLine, newLine) {
       push('same', newTokens[op.b])
       continue
     }
-    if (!group) {
-      group = { remove: '', add: '' }
-      changes += 1
-    }
+    if (!group) group = { remove: '', add: '', removeTokens: [], addTokens: [] }
     if (op.op === 'remove') {
       group.remove += oldTokens[op.a]
-      removed += oldTokens[op.a].length
+      group.removeTokens.push(oldTokens[op.a])
     } else {
       group.add += newTokens[op.b]
-      added += newTokens[op.b].length
+      group.addTokens.push(newTokens[op.b])
     }
   }
   closeGroup()
 
   if (!changes || changes >= CHANGE_LIMITS.inlineMaxChanges) return null
-  const share = CHANGE_LIMITS.inlineMaxChangedShare
+  const removed = changedLength(pieces, 'remove')
+  const added = changedLength(pieces, 'add')
   if (removed / oldText.length > share || added / newText.length > share) return null
-  const kept = pieces.filter((piece) => piece.text !== '')
-  return { kind: removed === 0 ? 'insert' : 'change', pieces: kept }
+  return { kind: removed === 0 ? 'insert' : 'change', pieces }
+}
+
+function changedLength(pieces, type) {
+  return pieces.reduce((sum, piece) => sum + (piece.type === type ? piece.text.length : 0), 0)
+}
+
+// The share of the two lines an inline change touches (lower: the closer pair).
+function changedShare(inline, oldLine, newLine) {
+  const changed = changedLength(inline.pieces, 'remove') + changedLength(inline.pieces, 'add')
+  return changed / (oldLine.trim().length + newLine.trim().length)
 }
 
 /**
  * Change-view rows (ChangeHunk's `rows`, or the whole-program `fullRows`) with each removed line
  * and the new line that only extends it, or swaps a small piece of it, made one row: the new
  * line's row, with `inline` (inlineLineChange) and type 'add' (it only gains text) or 'change'.
- * Pairs only inside a run of removed and added rows, in order; every other row is kept as it is.
+ * Pairs only inside a run of removed and added rows, in order, each new line with the removed line
+ * it changes least. A run with more than CHANGE_LIMITS.inlineMaxRunLines on a side, and every
+ * other row, is kept as it is.
  */
 export function pairInlineRows(rows) {
   const out = []
@@ -391,20 +477,30 @@ export function pairInlineRows(rows) {
       run.push(rows[index])
       index += 1
     }
+    const removeCount = run.filter((row) => row.type === 'remove').length
+    const limit = CHANGE_LIMITS.inlineMaxRunLines
+    if (!removeCount || removeCount > limit || run.length - removeCount > limit) {
+      out.push(...run)
+      continue
+    }
     const merged = new Map()
     const dropped = new Set()
     let lastRemove = -1
     run.forEach((row, at) => {
       if (row.type !== 'add') return
+      let best = null
       for (let r = lastRemove + 1; r < run.length; r += 1) {
-        if (run[r].type !== 'remove' || dropped.has(r)) continue
+        if (run[r].type !== 'remove') continue
         const inline = inlineLineChange(run[r].text, row.text)
         if (!inline) continue
-        dropped.add(r)
-        lastRemove = r
-        merged.set(at, { ...row, type: inline.kind === 'insert' ? 'add' : 'change', inline })
-        break
+        const share = changedShare(inline, run[r].text, row.text)
+        if (!best || share < best.share) best = { r, inline, share }
       }
+      if (!best) return
+      dropped.add(best.r)
+      lastRemove = best.r
+      const type = best.inline.kind === 'insert' ? 'add' : 'change'
+      merged.set(at, { ...row, type, inline: best.inline })
     })
     run.forEach((row, at) => {
       if (!dropped.has(at)) out.push(merged.get(at) ?? row)
@@ -413,19 +509,13 @@ export function pairInlineRows(rows) {
   return out
 }
 
-/** The code a task starts from: its first Starter stage's code, else the legacy starterCode. */
-export function taskStarterCode(task) {
-  const stage = (task?.codeStages ?? []).find((s) => getStageRole(s) === 'starter')
-  if (typeof stage?.code === 'string') return stage.code
-  return typeof task?.starterCode === 'string' ? task.starterCode : ''
-}
-
 /**
  * The Copy the Code panel's anchored look (`copyAfter` / `copyBefore`): { anchor, rows } with the
  * typed lines as adds, or null when neither field names a line (the panel looks as today).
  * `copyAfter` wins when both are set (the validator flags that). With `starter` (the task's
- * starter code), a typed line that only extends one starter line shows only the extension
- * (an 'add' row with `inline`); a wholly new line stays all green.
+ * starter code, starterCodeOf), a typed line that only extends the anchor line, or the starter
+ * line on the typed side of it (right after a copyAfter, right before a copyBefore), shows only
+ * the extension (an 'add' row with `inline`); any other line stays all green.
  */
 export function copyAnchorRows({ code, after, before, starter = '' }) {
   const named = (value) => typeof value === 'string' && value.trim() !== ''
@@ -436,10 +526,10 @@ export function copyAnchorRows({ code, after, before, starter = '' }) {
     .split(/\r?\n/)
     .map((line) => line.replace(/\s+$/, ''))
   while (typed.length && typed.at(-1) === '') typed.pop()
-  const starterLines = [...new Set(cleanCodeLines(starter).filter((line) => line.trim()))]
+  const candidates = extensionCandidates(starter, anchorText, position)
   const extension = (text) => {
-    if (!text.trim()) return null
-    const found = starterLines
+    if (!candidates.length || !text.trim()) return null
+    const found = candidates
       .map((line) => inlineLineChange(line, text))
       .filter((inline) => inline?.kind === 'insert')
     return found.length === 1 ? found[0] : null
@@ -451,4 +541,16 @@ export function copyAnchorRows({ code, after, before, starter = '' }) {
       return inline ? { type: 'add', text, inline } : { type: 'add', text }
     }),
   }
+}
+
+// The starter lines a typed line may extend: the anchor line (when its text names one line) and
+// the next non-blank line on the side the typed lines go.
+function extensionCandidates(starter, anchorText, position) {
+  const lines = cleanCodeLines(starter).filter((line) => line.trim())
+  const key = anchorText.trim()
+  const matches = lines.flatMap((line, at) => (line.trim() === key ? [at] : []))
+  if (matches.length !== 1) return []
+  const at = matches[0]
+  const next = lines[position === 'after' ? at + 1 : at - 1]
+  return next === undefined ? [lines[at]] : [lines[at], next]
 }

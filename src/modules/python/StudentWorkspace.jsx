@@ -11,7 +11,7 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { taskStarterCode } from '../../shared/stageChange'
+import { starterCodeOf } from '../moduleContract'
 import TaskVariablesPanel from '../../shared/variablesPanel/TaskVariablesPanel.jsx'
 import { useVariableLinks } from '../../shared/variablesPanel/useVariableLinks.js'
 import { codeCallsInput, getTaskRunOnOpen } from '../../shared/scrub/runOnOpen.js'
@@ -397,7 +397,7 @@ export default function StudentWorkspace({
           language="python"
           after={task.copyAfter}
           before={task.copyBefore}
-          starter={taskStarterCode(task)}
+          starter={starterCodeOf(task)}
         />
       )}
       {showEditableHeader && (

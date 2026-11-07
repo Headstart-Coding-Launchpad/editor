@@ -10,7 +10,7 @@ import ArcadePreview from './ArcadePreview'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import ArcadeDesignStudio from './ArcadeDesignStudio'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { taskStarterCode } from '../../shared/stageChange'
+import { starterCodeOf } from '../moduleContract'
 import {
   allowsArcadeTool,
   cloneArcadeDesign,
@@ -236,7 +236,7 @@ export default function StudentWorkspace({
                 language="python"
                 after={task.copyAfter}
                 before={task.copyBefore}
-                starter={taskStarterCode(task)}
+                starter={starterCodeOf(task)}
               />
             </div>
           )}

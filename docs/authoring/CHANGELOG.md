@@ -44,9 +44,10 @@ Entries written before 2026-09-29 are not tagged.
   there dimmed, the new text green, bold and underlined, with **Add**, and no red line. A small
   swap inside a line is one `±` row with only the old piece struck through in red and the new
   piece underlined in green, with **Remove** and **Add**. A line where more than about half the
-  characters change, or with 3 or more separate changes, keeps the red line then the green line.
+  characters change, with 3 or more separate changes, with only spaces changed, or with a different
+  indent, keeps the red line then the green line. Words added inside a string show on their own.
   The Copy code panel with `copyAfter` / `copyBefore` does the same for a typed line that extends
-  a line of the task's starter. No new fields. See [python-tasks.md](python-tasks.md#change-view).
+  the place line or the starter line right next to it. No new fields. See [python-tasks.md](python-tasks.md#change-view).
   - Affects: python (stage `show: change`), turtle, arcade (`copyAfter`, `copyBefore`) · Existing lessons: no changes needed · Resolves: authoring-requests/2026-11-07-stage-change-view-show-only-the-changed-part-of-a-line-inlin.md
 - **Python: a Complete stage can show only what changes.** Set `show: change` on a Complete
   stage and, when it opens (Solo's "See complete code", the tutor's send stage, a feedback

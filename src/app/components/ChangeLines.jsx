@@ -6,6 +6,7 @@
 // only the changed part marked: added text green, bold and underlined; removed text red and
 // struck through; the rest of the line dimmed.
 
+import { useMemo } from 'react'
 import { pairInlineRows } from '../../shared/stageChange'
 
 const ROW_KINDS = {
@@ -18,19 +19,18 @@ const ROW_KINDS = {
   anchor: { sign: '', tag: null, label: 'unchanged anchor' },
 }
 
-// One label per row; the pieces themselves are hidden from screen readers.
-// "added: , x=100, in the line circle(100, x=100)" or
-// "changed: removed 5, added 3, in the line for i in range(3):".
+// One label per row; the pieces themselves are hidden from screen readers. Each changed piece is
+// in quotes, spaces-only pieces are skipped, and the parts are joined by commas:
+// 'added: “, x=100”, in the line circle(100, x=100)' or
+// 'changed: removed “5”, added “3”, in the line for i in range(3):'.
 function inlineLabel(inline, text) {
-  const changed = inline.pieces.filter((piece) => piece.type !== 'same')
-  if (inline.kind === 'insert') {
-    const adds = changed.map((piece) => piece.text.trim())
-    return `added: ${adds.join(' and ')}, in the line ${text.trim()}`
-  }
-  const parts = changed.map(
-    (piece) => `${piece.type === 'remove' ? 'removed' : 'added'} ${piece.text.trim()}`
-  )
-  return `changed: ${parts.join(', ')}, in the line ${text.trim()}`
+  const changed = inline.pieces.filter((piece) => piece.type !== 'same' && piece.text.trim())
+  const quoted = (piece) => `“${piece.text.trim()}”`
+  const parts =
+    inline.kind === 'insert'
+      ? changed.map(quoted)
+      : changed.map((piece) => `${piece.type === 'remove' ? 'removed' : 'added'} ${quoted(piece)}`)
+  return `${inline.kind === 'insert' ? 'added' : 'changed'}: ${parts.join(', ')}, in the line ${text.trim()}`
 }
 
 function InlinePieces({ pieces }) {
@@ -132,13 +132,14 @@ function IndentNote({ indent }) {
 
 /** One change: its anchor line(s), its added / removed lines, and any indent note. */
 export function ChangeHunk({ anchor = null, rows = [], indent = null }) {
+  const paired = useMemo(() => pairInlineRows(rows), [rows])
   const anchorRows = anchor ? <AnchorRows anchor={anchor} /> : null
   return (
     <div style={s.hunk}>
       {rows.length > 0 || anchor ? (
         <div role="list">
           {anchor?.position !== 'before' && anchorRows}
-          {pairInlineRows(rows).map((row, index) => (
+          {paired.map((row, index) => (
             <ChangeRow key={index} type={row.type} text={row.text} inline={row.inline ?? null} />
           ))}
           {anchor?.position === 'before' && anchorRows}
@@ -152,9 +153,11 @@ export function ChangeHunk({ anchor = null, rows = [], indent = null }) {
 /** The whole program, every line marked (the fall-back and "Show all the code"), with any lock
  * tags and line hints (rows' `locked` / `hint`). */
 export function FullChangeRows({ rows }) {
+  // (inlineLineChange keeps its answers too, for callers that build `rows` afresh each render.)
+  const paired = useMemo(() => pairInlineRows(rows), [rows])
   return (
     <div role="list">
-      {pairInlineRows(rows).map((row, index) => (
+      {paired.map((row, index) => (
         <ChangeRow
           key={index}
           type={row.type}
@@ -171,7 +174,7 @@ export function FullChangeRows({ rows }) {
 const ROW_COLOURS = {
   add: { bg: '#dcfce7', bar: '#16a34a', tag: '#15803d' },
   remove: { bg: '#fee2e2', bar: '#dc2626', tag: '#b91c1c' },
-  change: { bg: '#f0fdf4', bar: '#16a34a', tag: '#15803d' },
+  change: { bg: '#f0fdf4', bar: '#14532d', tag: '#15803d' },
   indent: { bg: '#fef9c3', bar: '#ca8a04', tag: '#854d0e' },
   same: { bg: 'transparent', bar: 'transparent', tag: '#475569' },
   anchor: { bg: 'transparent', bar: 'transparent', tag: '#1d4ed8' },
@@ -184,9 +187,13 @@ const s = {
     gridTemplateColumns: '1.4em minmax(0, 1fr) auto',
     alignItems: 'start',
     columnGap: 6,
-    padding: '2px 10px 2px 7px',
+    padding: type === 'change' ? '2px 10px 2px 5px' : '2px 10px 2px 7px',
     background: ROW_COLOURS[type]?.bg,
-    borderLeft: `3px solid ${ROW_COLOURS[type]?.bar}`,
+    // A changed line (±) has a heavier double bar, so it never reads as a plain line in grey.
+    borderLeft:
+      type === 'change'
+        ? `5px double ${ROW_COLOURS.change.bar}`
+        : `3px solid ${ROW_COLOURS[type]?.bar}`,
     fontFamily: 'var(--font-code)',
     fontVariantLigatures: 'none',
     fontFeatureSettings: '"liga" 0, "calt" 0',
@@ -197,6 +204,7 @@ const s = {
     color: ROW_COLOURS[type]?.tag,
     fontWeight: 700,
     textAlign: 'center',
+    ...(type === 'change' ? { fontWeight: 800, fontSize: '1.15em', lineHeight: 1.3 } : null),
   }),
   text: (type, inline = false) => ({
     whiteSpace: 'pre-wrap',

@@ -11,7 +11,7 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
-import { taskStarterCode } from '../../shared/stageChange'
+import { starterCodeOf } from '../moduleContract'
 // A course task (task.course) shows its map and vehicle; any other task the plain picture.
 import TurtlePicture from './CoursePicture.jsx'
 // Course mode's tap-to-paint map editor (course.studentMap, turtle.course_map).
@@ -259,7 +259,7 @@ export default function StudentWorkspace({
           language="python"
           after={task.copyAfter}
           before={task.copyBefore}
-          starter={taskStarterCode(task)}
+          starter={starterCodeOf(task)}
         />
       )}
       {!readOnly && (

@@ -306,7 +306,7 @@ describe('Inline change inside a line', () => {
     })
     const panel = screen.getByLabelText('Complete solution stage reference')
     const row = within(panel).getByLabelText('added: “there”, in the line print("Hi there")')
-    expect(within(row).getByText(' there').style.textDecoration).toContain('underline')
+    expect(within(row).getByText('there').style.textDecoration).toContain('underline')
   })
 
   it('a whitespace-only edit keeps the red and green rows', () => {
