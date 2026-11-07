@@ -570,7 +570,7 @@ instead: the **Blocks** button while the palette is closed (calm screen), or the
 pulses.
 
 Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)
-or one student (the More menu in their workspace view).
+or one student (the Tools menu in their workspace view).
 
 ---
 
