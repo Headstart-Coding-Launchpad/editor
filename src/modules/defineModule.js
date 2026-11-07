@@ -92,6 +92,9 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   'calmScratch', // the calm Scratch screen: the palette starts closed behind a Blocks button, the
   // explainer card and docked hint stay beside the blocks at every size (never a tab), flag/stop/
   // reset in one row, sprite properties behind More (src/modules/scratch/calm/; scratch)
+  'calmCodeScreen', // the calm code screen (LessonTaskContent): one "What to change" box that folds
+  // after a passing Run, the hint docked beside the task instead of the check popup, and the Topic
+  // library chip in the workspace's code row (onOpenTopicLibrary); python
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete

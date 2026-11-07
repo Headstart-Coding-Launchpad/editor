@@ -95,10 +95,10 @@ describe.each([
     })
   })
 
-  it('reveal_stage_N on the complete stage shows the complete preview', () => {
+  it("reveal_stage_N on the complete stage shows the complete preview, marked as the tutor's", () => {
     const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't1' })
     remoteReset(h, 'reveal_stage_1')
-    expect(h.result.current.completePreviewShown).toBe(true)
+    expect(h.result.current.completePreviewShown).toBe('teacher')
     expect(h.writers.recordSupportStageReveal).not.toHaveBeenCalled()
     expect(h.result.current.code).toBe('print("start")')
   })

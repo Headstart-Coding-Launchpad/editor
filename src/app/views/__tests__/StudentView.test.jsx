@@ -98,9 +98,33 @@ vi.mock('../../components/TaskProgressDots', () => ({
   ),
 }))
 
-vi.mock('../../components/ExplainerPanel', () => ({
-  default: ({ task }) => <div>{task?.title}</div>,
-}))
+// A stand-in for the explainer card: its title folds the content away (the accordion), and it
+// reports that to LessonTaskContent as the real panel does.
+vi.mock('../../components/ExplainerPanel', async () => {
+  const { useEffect, useState } = await import('react')
+  return {
+    default: function ExplainerPanelStub({ title, content, collapsible, onCollapsedChange }) {
+      const [collapsed, setCollapsed] = useState(false)
+      useEffect(() => {
+        if (collapsible) onCollapsedChange?.(collapsed)
+      }, [collapsible, collapsed, onCollapsedChange])
+      return (
+        <div>
+          {collapsible ? (
+            <button
+              type="button"
+              aria-label={`Explainer: ${title}`}
+              onClick={() => setCollapsed((c) => !c)}
+            >
+              {title}
+            </button>
+          ) : null}
+          {!collapsed && <div data-testid="explainer-stub-content">{content}</div>}
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('../../components/TaskSlideTransition', () => ({
   default: ({ children }) => <>{children}</>,
@@ -1452,8 +1476,14 @@ describe('StudentView', () => {
       render(<StudentView lessonId="python-1-1" />)
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
-      const needHelpBtn = screen.getByRole('button', { name: /Help requested/i })
-      expect(needHelpBtn).toHaveAttribute('aria-disabled', 'true')
+      // The top-bar Help and the calm hint's '✋ Ask for help' (Python) share one handler, so
+      // both say so and neither can be tapped again.
+      const buttons = screen.getAllByRole('button', { name: /Help requested/i })
+      expect(buttons).toHaveLength(2)
+      expect(
+        within(screen.getByTestId('task-hint')).getByRole('button', { name: /Help requested/i })
+      ).toBeInTheDocument()
+      buttons.forEach((button) => expect(button).toHaveAttribute('aria-disabled', 'true'))
     })
 
     it('the pause screen tells the student their tutor will be back, in a full sentence', async () => {
@@ -1497,7 +1527,7 @@ describe('StudentView', () => {
       expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Collapse Explainer' })).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+      await user.click(screen.getByRole('button', { name: 'Explainer: Move the cat' }))
       expect(screen.queryByText('Drag a move block onto the stage.')).not.toBeInTheDocument()
 
       // Past the old debounce window: the count never bumps and Previous stays disabled.
@@ -1545,7 +1575,7 @@ describe('StudentView', () => {
       render(<StudentView lessonId="scratch-1-1" forceSolo lesson={scratchLessonWithExplainers} />)
 
       await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
-      await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+      await user.click(screen.getByRole('button', { name: 'Explainer: Move the cat' }))
       await user.click(screen.getByRole('button', { name: 'Next' }))
 
       await waitFor(() => expect(screen.getByText('Now add a turn block.')).toBeInTheDocument())
@@ -1619,7 +1649,7 @@ describe('StudentView', () => {
       await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
       expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+      await user.click(screen.getByRole('button', { name: 'Explainer: Move the cat' }))
 
       await new Promise((resolve) => setTimeout(resolve, 500))
       expect(screen.getByText('Task 1 of 2')).toBeInTheDocument()

@@ -18,14 +18,14 @@ import ReviewNotesControl from './ReviewNotesControl'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
-import ScratchHintDock from './ScratchHintDock'
+import TaskHintBox from './TaskHintBox'
 import {
   getCompleteStage,
   getEffectiveTaskMode,
   getRevealableStages,
   getStarterStage,
 } from '../../shared/taskUtils'
-import { chooseChangeBase } from '../../shared/stageChange'
+import { chooseChangeBase, stageShowsChange } from '../../shared/stageChange'
 import { getStageLineHints } from '../../shared/lineHints'
 import { getTaskLockSets } from '../../shared/lockedLines'
 import {
@@ -221,9 +221,6 @@ export default function LessonTaskContent({
   closePassBanner = false,
   // Told whether a pass banner is on screen, so the bonus quest card waits for it to go.
   onPassBannerChange,
-  // The student's ✋ Help for the calm Scratch hint dock: { onAsk, requested }, given only where the
-  // top-bar Help button shows (StudentView's canRequestHelp: a tutor is there), else null.
-  helpRequest = null,
 }) {
   const badgeSignals = useBadgeSignals()
   // Cross-lesson carry (src/shared/roster/crossLessonCarry.js): the student's own task is held
@@ -282,6 +279,10 @@ export default function LessonTaskContent({
   // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
   // Blocks/Stage panes reported through the dedicated scratchCodePanes state below.
   const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
+  // The calm code screen (capabilities.calmCodeScreen; Python): one "What to change" box that
+  // folds after a passing Run, the hint docked beside the task, and the Topic library chip in the
+  // workspace's code row. Other modules keep the check popup and their own panels.
+  const calmScreen = !!moduleCaps?.calmCodeScreen
   const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
   // Width-only: giving Code its own tab doesn't add height (explainer and code already
@@ -327,6 +328,68 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
+
+  // The "What to change" box (calm screen) is open on a task's first view and folds to one line
+  // ONCE per task view: on the first pass (a task with a check or tests: the check passing;
+  // otherwise a Run without an error) that follows a Run started in this view. Never after a
+  // failed Run, never for a pass that arrives without a Run here (a task passed before, restored
+  // late), and never again once it has folded: after that only the student's tap folds or reopens
+  // it, so a box they reopened stays open through later fails and passes.
+  const calmTaskKey = String(task?.id ?? '')
+  const [whatToChangeFoldedFor, setWhatToChangeFoldedFor] = useState(null)
+  const whatToChangeFolded = calmScreen && whatToChangeFoldedFor === calmTaskKey
+  const calmRunPassed =
+    task?.check || task?.tests?.length > 0 ? !!cs.checkPassed : cs.runStatus === 'success'
+  const calmRunning = !!(cs.running || cs.runningTests)
+  // Per task view: whether a Run has started here, and whether the one auto-fold has happened.
+  const calmFoldRef = useRef({ taskKey: calmTaskKey, ran: false, autoFolded: false })
+  const lastCalmPassedRef = useRef({ taskKey: calmTaskKey, passed: calmRunPassed })
+  // A new task view starts both halves of the fold state together (the auto-fold record and the
+  // folded box), so going A -> B -> A opens A again rather than showing a stale fold.
+  useEffect(() => {
+    if (calmFoldRef.current.taskKey !== calmTaskKey) {
+      calmFoldRef.current = { taskKey: calmTaskKey, ran: false, autoFolded: false }
+      setWhatToChangeFoldedFor(null)
+    }
+    if (calmRunning) calmFoldRef.current.ran = true
+  }, [calmTaskKey, calmRunning])
+  useEffect(() => {
+    const fold = calmFoldRef.current
+    const last = lastCalmPassedRef.current
+    lastCalmPassedRef.current = { taskKey: calmTaskKey, passed: calmRunPassed }
+    if (!calmScreen || fold.taskKey !== calmTaskKey || !fold.ran || fold.autoFolded) return
+    if (last.taskKey === calmTaskKey && !last.passed && calmRunPassed) {
+      fold.autoFolded = true
+      setWhatToChangeFoldedFor(calmTaskKey)
+    }
+  }, [calmScreen, calmTaskKey, calmRunPassed])
+  function toggleWhatToChange() {
+    setWhatToChangeFoldedFor((current) => (current === calmTaskKey ? null : calmTaskKey))
+  }
+  // The Topic library chip moves to the code row (calm screen, side explainer): a tap opens the
+  // explainer if it is folded away, then asks its library to open (libraryRequest). Only where
+  // that row actually renders (the module's StudentWorkspace, with its editable header: not an
+  // earlier task, a broadcast, the tutor's edit, a carry hold or the explainer-only layout);
+  // otherwise the chip stays on the task card, so it is never missing.
+  const [libraryRequest, setLibraryRequest] = useState(0)
+  const libraryInCodeRow =
+    calmScreen &&
+    useSideExplainer &&
+    presenterLayout !== 'code' &&
+    presenterLayout !== 'explainer' &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    !carryHold &&
+    !isActivityTask &&
+    !ModuleActivityWorkspace &&
+    !hasSandboxExplainer &&
+    !showsCompleteCode &&
+    (moduleCaps?.topicLibrary ?? true)
+  function openTopicLibrary() {
+    setExplainerCollapsed(false)
+    setLibraryRequest((count) => count + 1)
+  }
 
   // What's actually on screen right now, for the teacher's student list — see the
   // `scratchCodePanes` comment above for why Scratch and the other modules compute this
@@ -487,11 +550,66 @@ export default function LessonTaskContent({
     cs.targetedPreviewStageIndex != null
       ? (task?.codeStages?.[cs.targetedPreviewStageIndex] ?? null)
       : null
-  const displayedReferenceStage =
-    completeReferenceStage ??
-    targetedReferenceStage ??
-    teacherLiveReferenceStage ??
-    activeSupportStage
+  // The one stage the reference panel shows (SupportStagePanel), worked out once here for both the
+  // panel and the calm screen's one-box rule, so the two can never disagree: the stage, whether it
+  // is revealed, its source label, and whether the tutor put it there.
+  const shownReference = (() => {
+    const stage =
+      completeReferenceStage ??
+      targetedReferenceStage ??
+      teacherLiveReferenceStage ??
+      activeSupportStage?.stage ??
+      null
+    if (!stage) return null
+    // Which source won, in the order above (two can be the same stage object).
+    const kind = completeReferenceStage
+      ? 'complete'
+      : targetedReferenceStage
+        ? 'targeted'
+        : teacherLiveReferenceStage
+          ? 'live'
+          : 'support'
+    const reveal =
+      kind === 'support' ? (cs.supportStageReveals?.[activeSupportStage?.index] ?? null) : null
+    // The Complete preview says who opened it this time ('teacher' from the tutor's reveal or
+    // auto-reveal, true from the student's own See complete code), so a stale tutor reveal
+    // recorded on the stage's index never relabels the student's own preview.
+    const openedByTutor =
+      kind === 'complete'
+        ? cs.completePreviewShown === 'teacher'
+        : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
+    const sourceLabel =
+      kind === 'complete'
+        ? openedByTutor
+          ? 'Opened by your teacher'
+          : 'Complete reference'
+        : kind === 'targeted'
+          ? 'Shown for your feedback'
+          : kind === 'live'
+            ? cs.teacherLiveReferencePinned
+              ? "📌 Live from your teacher's screen"
+              : "Live from your teacher's screen"
+            : openedByTutor
+              ? 'Opened by your teacher'
+              : 'Shown after a failed attempt'
+    return {
+      stage,
+      kind,
+      // A support stage shows once revealed; the others are shown by being chosen.
+      revealed: kind !== 'support' || !!reveal,
+      sourceLabel,
+      // The tutor put it on the student's screen (a live push, a stage they opened): the
+      // student's own pass never folds it away.
+      fromTutor: kind === 'live' || openedByTutor,
+    }
+  })()
+  // A change view (a revealed Complete stage with `show: 'change'`) is on screen: on the calm
+  // screen that one box takes the Type this out's place.
+  const changeViewOnScreen =
+    calmScreen &&
+    !!shownReference?.revealed &&
+    !!moduleCaps?.stageChangeView &&
+    stageShowsChange(shownReference.stage)
   const targetedOfferStage = cs.targetedStageOffer
     ? (task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null)
     : null
@@ -547,7 +665,8 @@ export default function LessonTaskContent({
         />
       )}
       <ExplainerPanel
-        key={calmScratch ? `calm-${calmExplainerOpenings}` : undefined}
+        // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
+        key={calmScratch ? `calm-${task?.id ?? ''}-${calmExplainerOpenings}` : undefined}
         title={
           hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
         }
@@ -560,6 +679,9 @@ export default function LessonTaskContent({
         }
         topicType={lesson.type}
         showLibrary={moduleCaps?.topicLibrary ?? true}
+        libraryButton={!libraryInCodeRow}
+        libraryRequest={libraryInCodeRow ? libraryRequest : 0}
+        onLibraryRequestHandled={() => setLibraryRequest(0)}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
         openTopicId={openTopicId}
@@ -595,26 +717,57 @@ export default function LessonTaskContent({
 
   // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
-  const sentHintText = cs.teacherHint?.text ?? ''
+  // On the calm screen the student can put a tutor's hint away ("Got it"); it stays away until
+  // the tutor sends another (a new `at`).
+  const [dismissedTutorHintAt, setDismissedTutorHintAt] = useState(null)
+  const tutorHintPutAway = cs.teacherHint?.at != null && dismissedTutorHintAt === cs.teacherHint.at
+  const sentHintText = tutorHintPutAway ? '' : (cs.teacherHint?.text ?? '')
   const quietActivityPass =
     isActivityTask &&
     !isQuizTask &&
     displayCheckPassed &&
     getActivityDefinition(getActivityId(task))?.quietPass === true
-  // The calm Scratch hint, docked under the explainer card in place of the popup, on the student's
-  // own task (not a broadcast, an earlier task, the tutor's edit, a sandbox or a Code Arrange
-  // board, which keep the popup or none).
+  // The calm screens' hint (the Python code screen and the calm Scratch screen), docked beside the
+  // task in place of the popup, on the student's own code task (not a broadcast, an earlier task,
+  // the tutor's edit, a sandbox or a Code Arrange board, which keep the popup or none).
   const calmHintShown =
-    calmScratch &&
-    hasTaskExplainer &&
-    showExplainerPane &&
+    (calmScreen || calmScratch) &&
     !isSandbox &&
     !cs.inPersonalSandbox &&
     !isForcedTeacherLive &&
     !isViewingPrev &&
     !isTeacherEditing &&
+    !isQuizLike &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
     !isCodeArrangeTask &&
     !carryHold
+  // Where the docked hint goes in the layout actually rendered below ('left': under the task
+  // card; 'editor': under the editor), or null where it has no place (then the popup shows, so a
+  // failed check, a tutor's hint or a stage offer is never lost).
+  const showsSideBySide = useSideExplainer && showExplainerPane && showCodePane
+  // The calm Scratch hint sits under the explainer card in its column ('aside'), which renders only
+  // with both the card and the blocks on screen (not the presenter's explainer-only or code-only
+  // layout: there the popup shows).
+  const calmHintSlot = !calmHintShown
+    ? null
+    : calmScratch
+      ? hasTaskExplainer && showExplainerPane && showCodePane
+        ? 'aside'
+        : null
+      : showsSideBySide
+        ? isFixedExplainerLesson
+          ? null
+          : explainerCollapsed
+            ? 'editor'
+            : 'left'
+        : showCodePane
+          ? 'editor'
+          : showExplainerPane && hasTaskExplainer
+            ? 'left'
+            : null
+  const calmHintDocked = calmHintSlot != null
   const bannerPassed =
     cs.offeredSupportStageIndex != null || sentHintText ? false : !!displayCheckPassed
   const shouldShowFeedbackBanner =
@@ -627,6 +780,31 @@ export default function LessonTaskContent({
       displayCheckAttempted) ||
       cs.offeredSupportStageIndex != null ||
       !!sentHintText)
+  const hintToneNow = !shouldShowFeedbackBanner
+    ? 'nudge'
+    : sentHintText
+      ? 'tutor'
+      : bannerPassed
+        ? 'pass'
+        : 'fail'
+  // A failed check's hint goes gentle (blue, still readable, never dismissed) once the student
+  // moves on: the code changes from what was checked, or a new Run starts. The code at the fail is
+  // noted when the fail first shows (render-time state, like SupportStagePanel's base).
+  const calmFailKey =
+    calmHintDocked && hintToneNow === 'fail'
+      ? `${currentTaskId}|${cs.checkFailCount ?? ''}|${displayCheckSuggestion ?? ''}|${cs.offeredSupportStageIndex ?? ''}`
+      : null
+  // The key is not unique per fail (checkFailCount goes back to 0 on a pass and on Reset Code), so
+  // the noted fail is forgotten as soon as no fail shows: the next fail is new, and amber.
+  const [failSeen, setFailSeen] = useState(null)
+  if (calmFailKey != null && failSeen?.key !== calmFailKey) {
+    setFailSeen({ key: calmFailKey, code: cs.code })
+  } else if (calmFailKey == null && failSeen != null) {
+    setFailSeen(null)
+  }
+  const failSettled =
+    calmFailKey != null &&
+    (calmRunning || (failSeen?.key === calmFailKey && failSeen.code !== cs.code))
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
       // Remounts (resetting the popup's own auto-dismiss timer and any manual dismissal)
@@ -634,8 +812,13 @@ export default function LessonTaskContent({
       // re-render of this component.
       key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}-${cs.teacherHint?.at ?? ''}`}
       passed={bannerPassed}
-      docked={calmHintShown}
-      help={calmHintShown ? helpRequest : null}
+      docked={calmHintDocked}
+      settled={failSettled}
+      onDismiss={
+        calmHintDocked && cs.teacherHint?.at != null
+          ? () => setDismissedTutorHintAt(cs.teacherHint.at)
+          : undefined
+      }
       failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
       successMessage={
         isActivityTask && !isQuizTask
@@ -691,67 +874,56 @@ export default function LessonTaskContent({
           : undefined
       }
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
-      // A docked pass result is not a popup over the work: the bonus quest card need not wait.
-      closeIfPassed={calmHintShown ? false : closePassBanner}
-      onPassShownChange={calmHintShown ? undefined : onPassBannerChange}
+      closeIfPassed={closePassBanner}
+      onPassShownChange={onPassBannerChange}
     />
   ) : null
 
-  const calmHintTone = !feedbackBanner
-    ? 'nudge'
-    : sentHintText && !bannerPassed
-      ? 'tutor'
-      : bannerPassed
-        ? 'pass'
-        : 'fail'
-  const calmHint = calmHintShown ? (
-    <ScratchHintDock
+  const hintTone = failSettled ? 'nudge' : hintToneNow
+  const hasGreenLine =
+    changeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
+  const hintNudge = calmScratch
+    ? 'Have a go, then tap the green flag to see what happens.'
+    : task?.interactionMode === 'submit'
+      ? 'Have a go, then tap Submit.'
+      : hasGreenLine
+        ? 'Stuck? Look at the green line, then tap Run to try it.'
+        : 'Have a go, then tap Run to see what happens.'
+  const hintBox = calmHintDocked ? (
+    <TaskHintBox
       banner={feedbackBanner}
-      tone={calmHintTone}
-      nudge="Have a go, then tap the green flag to see what happens."
-      help={helpRequest}
-      style={s.calmHint}
+      tone={hintTone}
+      nudge={hintNudge}
+      style={
+        calmHintSlot === 'aside'
+          ? s.calmHint
+          : calmHintSlot === 'left'
+            ? s.hintInLeftColumn
+            : s.hintBelowEditor
+      }
     />
   ) : null
-  // The explainer column (card + docked hint): at the left, or beside the pinned stage (stacked).
+  // The calm Scratch explainer column (card + docked hint): at the left, or beside the pinned
+  // stage (stacked).
   const calmAside =
     calmScratch && hasTaskExplainer && showExplainerPane ? (
       <>
         {taskExplainer}
-        {calmHint}
+        {calmHintSlot === 'aside' && hintBox}
       </>
     ) : null
 
   const workspaceContent = (
     <>
-      {displayedReferenceStage &&
+      {shownReference &&
         (() => {
-          const reveal =
-            completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
-              ? null
-              : cs.supportStageReveals?.[activeSupportStage?.index]
-          const sourceLabel = completeReferenceStage
-            ? 'Complete reference'
-            : targetedReferenceStage
-              ? 'Shown for your feedback'
-              : teacherLiveReferenceStage
-                ? cs.teacherLiveReferencePinned
-                  ? "📌 Live from your teacher's screen"
-                  : "Live from your teacher's screen"
-                : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
-                  ? 'Opened by your teacher'
-                  : 'Shown after a failed attempt'
-          const referenceStage =
-            completeReferenceStage ??
-            targetedReferenceStage ??
-            teacherLiveReferenceStage ??
-            activeSupportStage.stage
+          const referenceStage = shownReference.stage
           // Authored stages show their line hints; the teacher's live code has none.
           const referenceStageIndex = task?.codeStages?.indexOf(referenceStage) ?? -1
           const lineHintsFor =
             referenceStageIndex >= 0
               ? (file) => getStageLineHints(task, referenceStageIndex, file)
-              : referenceStage === completeReferenceStage
+              : shownReference.kind === 'complete'
                 ? (file) => getStageLineHints(task, 'complete', file)
                 : undefined
           const changeViewKey = `${task?.id ?? ''}:${referenceStageIndex}`
@@ -759,7 +931,7 @@ export default function LessonTaskContent({
             <SupportStagePanel
               // One panel per task and stage, and a new one after "Load complete code": the change
               // view reads the student's code when the stage is revealed.
-              key={`${changeViewKey}:${referenceStage === teacherLiveReferenceStage ? 'live' : 'stage'}:${completeLoads}`}
+              key={`${changeViewKey}:${shownReference.kind === 'live' ? 'live' : 'stage'}:${completeLoads}`}
               changeBase={chooseChangeBase(
                 displayCode,
                 getStarterStage(task)?.stage?.code ?? task?.starterCode
@@ -772,15 +944,16 @@ export default function LessonTaskContent({
                 )
               }
               stage={referenceStage}
+              calm={calmScreen}
+              // What the tutor put on screen keeps its own fold (only a tap), never the one the
+              // student's pass folds.
+              folded={shownReference.fromTutor ? undefined : whatToChangeFolded}
+              onToggleFolded={shownReference.fromTutor ? undefined : toggleWhatToChange}
               lineHintsFor={lineHintsFor}
               lockSets={getTaskLockSets(task)}
               lessonType={lesson.type}
-              revealed={
-                completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
-                  ? true
-                  : !!reveal
-              }
-              sourceLabel={sourceLabel}
+              revealed={shownReference.revealed}
+              sourceLabel={shownReference.sourceLabel}
             />
           )
         })()}
@@ -927,6 +1100,16 @@ export default function LessonTaskContent({
                 }
               : undefined
           }
+          whatToChange={
+            calmScreen
+              ? {
+                  folded: whatToChangeFolded,
+                  onToggle: toggleWhatToChange,
+                  hideCopyCode: changeViewOnScreen,
+                }
+              : undefined
+          }
+          onOpenTopicLibrary={libraryInCodeRow ? openTopicLibrary : undefined}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
@@ -991,6 +1174,27 @@ export default function LessonTaskContent({
     </div>
   )
 
+  // The calm hint docks under the task card (left column) or under the editor. On the calm screen
+  // both columns are ALWAYS wrapped, hint or not, and only the hint moves between them: swapping
+  // the wrapper in and out would remount the workspace below (CodeMirror's focus, cursor and
+  // scroll, More keys, slow-mo, the output tab) whenever the explainer folds or the hint changes.
+  const leftPane = calmScreen ? (
+    <div style={s.calmColumn}>
+      {taskExplainer}
+      {calmHintSlot === 'left' && hintBox}
+    </div>
+  ) : (
+    taskExplainer
+  )
+  const editorPane = calmScreen ? (
+    <div style={s.calmColumn}>
+      {editorArea}
+      {calmHintSlot === 'editor' && hintBox}
+    </div>
+  ) : (
+    editorArea
+  )
+
   return (
     <TaskSlideTransition
       transitionKey={transitionKey}
@@ -1022,7 +1226,7 @@ export default function LessonTaskContent({
         </Banner>
       )}
 
-      {!calmHintShown && feedbackBanner}
+      {!calmHintDocked && feedbackBanner}
 
       {calmScratch && showCodePane ? (
         // The calm Scratch screen. The code pane stays the second child in both layouts, so the
@@ -1130,13 +1334,13 @@ export default function LessonTaskContent({
               highlighted={instructionsHighlighted}
             />
           }
-          left={taskExplainer}
-          right={editorArea}
+          left={leftPane}
+          right={editorPane}
         />
       ) : (
         <>
-          {showExplainerPane && taskExplainer}
-          {showCodePane && editorArea}
+          {showExplainerPane && (calmHintSlot === 'left' ? leftPane : taskExplainer)}
+          {showCodePane && editorPane}
         </>
       )}
     </TaskSlideTransition>
@@ -1285,6 +1489,19 @@ const s = {
     alignSelf: 'auto',
     color: '#fff',
   },
+  // The calm screen's two columns (task card or editor, then the docked hint, TaskHintBox): one
+  // style for both. In the left column the hint sits at the bottom, capped at about half.
+  calmColumn: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    overflow: 'hidden',
+  },
+  hintInLeftColumn: { marginTop: 'auto', maxHeight: '50%' },
+  hintBelowEditor: { maxHeight: '30vh' },
   fluidWorkspace: {
     flex: '1 1 auto',
     minWidth: 0,

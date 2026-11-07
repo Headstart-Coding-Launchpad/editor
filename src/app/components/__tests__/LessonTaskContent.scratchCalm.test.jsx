@@ -14,6 +14,7 @@ vi.mock('../../../shared/useElementSize', () => ({
 import { getLessonModule } from '../../../modules/registry'
 import { useElementSize } from '../../../shared/useElementSize'
 import LessonTaskContent from '../LessonTaskContent'
+import { HelpRequestProvider } from '../peerHelp/helpRequestContext'
 
 // The real Scratch StudentWorkspace hands `calm` to ScratchWorkspace, which shows `calm.aside`
 // beside its pinned stage in the stacked (portrait) layout. This stub does the same.
@@ -39,6 +40,15 @@ const PYTHON_MODULE = {
     return <div>Workspace</div>
   },
   getLayoutStyles: () => ({}),
+}
+
+// StudentView provides the top-bar ✋ Help's handler only where that button shows.
+function WithHelp({ onAsk, requested = false, children }) {
+  return (
+    <HelpRequestProvider enabled onAsk={onAsk} requested={requested}>
+      {children}
+    </HelpRequestProvider>
+  )
 }
 
 const baseProps = {
@@ -200,28 +210,43 @@ describe('calm Scratch: the hint is docked under the explainer', () => {
     const { rerender } = render(<LessonTaskContent {...baseProps} />)
     expect(screen.queryByRole('button', { name: /Ask for help/ })).not.toBeInTheDocument()
 
-    rerender(<LessonTaskContent {...baseProps} helpRequest={{ onAsk, requested: false }} />)
+    rerender(
+      <WithHelp onAsk={onAsk}>
+        <LessonTaskContent {...baseProps} />
+      </WithHelp>
+    )
     await user.click(screen.getByRole('button', { name: '✋ Ask for help' }))
     expect(onAsk).toHaveBeenCalledTimes(1)
 
     rerender(
-      <LessonTaskContent
-        {...baseProps}
-        helpRequest={{ onAsk, requested: false }}
-        task={{ ...baseProps.task, check: { type: 'block_used', opcode: 'looks_say' } }}
-        displayCheckAttempted
-        displayCheckPassed={false}
-        displayCheckSuggestion="Add a say block."
-      />
+      <WithHelp onAsk={onAsk}>
+        <LessonTaskContent
+          {...baseProps}
+          task={{ ...baseProps.task, check: { type: 'block_used', opcode: 'looks_say' } }}
+          displayCheckAttempted
+          displayCheckPassed={false}
+          displayCheckSuggestion="Add a say block."
+        />
+      </WithHelp>
     )
     expect(screen.getByRole('button', { name: '✋ Ask for help' })).toBeInTheDocument()
     expect(screen.queryByText(/Still stuck/)).not.toBeInTheDocument()
   })
 
-  it('shows "Help requested" once asked', () => {
+  it('shows "Help requested" once asked: still bright (aria-disabled, never greyed out), a second tap does nothing', async () => {
+    const user = userEvent.setup()
+    const onAsk = vi.fn()
     panelWidth(1334)
-    render(<LessonTaskContent {...baseProps} helpRequest={{ onAsk: vi.fn(), requested: true }} />)
-    expect(screen.getByRole('button', { name: '✋ Help requested' })).toBeDisabled()
+    render(
+      <WithHelp onAsk={onAsk} requested>
+        <LessonTaskContent {...baseProps} />
+      </WithHelp>
+    )
+    const button = screen.getByRole('button', { name: '✋ Help requested' })
+    expect(button).not.toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    await user.click(button)
+    expect(onAsk).not.toHaveBeenCalled()
   })
 
   it('keeps the popup (no dock) while the student watches a broadcast', () => {

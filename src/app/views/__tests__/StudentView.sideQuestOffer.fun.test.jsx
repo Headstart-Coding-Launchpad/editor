@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act, cleanup } from '@testing-library/react'
+import { render, screen, waitFor, act, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StudentView from '../StudentView'
@@ -153,17 +153,20 @@ describe('bonus quest card (sketch option C)', { timeout: 20000 }, () => {
     Object.assign(SIDE_QUEST_OFFER_TIMING, saved)
   })
 
-  it('appears after the pass banner has had its moment; Try it opens the quest', async () => {
+  it('appears after the pass has had its moment; Try it opens the quest', async () => {
     const { user, session } = renderLesson(QUEST_LESSON)
     await runAndPass(user)
-    // Not straight away: the pass banner shows first, with its own links, and the card waits for it.
+    // Not straight away: the green pass shows first. Python has the calm code screen, where the
+    // pass sits docked beside the task (never covering anything, never timing out), so the card
+    // waits only for the student to stop typing (idleMs), not for that note to go. (A floating
+    // pass popup still holds it back: useSideQuestOffer.test.js, passBannerUp.)
     expect(offerCard()).toBeNull()
     expect(screen.getByText('Correct!')).toBeInTheDocument()
-    await wait(SIDE_QUEST_OFFER_TIMING.idleMs + 150)
-    expect(offerCard()).toBeNull()
-    expect(screen.getByText('Correct!')).toBeInTheDocument()
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'pass')
 
     await waitFor(() => expect(offerCard()).not.toBeNull())
+    // The pass stays in view (and its links usable) beside the card.
+    expect(within(screen.getByTestId('task-hint')).getByText('Correct!')).toBeInTheDocument()
     expect(offerCard()).toHaveTextContent('Nice! You finished. Want a bonus quest?')
     expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument()
     // Kid words only.

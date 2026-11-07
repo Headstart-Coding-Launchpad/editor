@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { HELP_BUTTON_LABEL } from './peerHelp/helpLabel'
+import { AskForHelpButton } from './peerHelp/AskForHelpButton'
+import { useHelpRequest } from './peerHelp/helpRequestContext'
 
 // Auto-dismiss delay for the popup — long enough to read, short enough not to linger
 // and block the workspace behind it once a student has moved on.
@@ -28,14 +29,21 @@ export default function CheckFeedbackBanner({
   // Told whether a pass banner is on screen (true), or has gone (false: closed, timed out,
   // unmounted), so the bonus quest card can wait for it.
   onPassShownChange,
-  // Docked in the page (the calm Scratch screen's hint, ScratchHintDock) instead of a popup: no
-  // auto-dismiss, no ×, no "Still stuck?" line. `help` ({ onAsk, requested }, only where the
-  // top-bar Help shows) adds an "✋ Ask for help" button instead.
+  // The calm code screen's hint beside the task (TaskHintBox): in the page, not floating, with no
+  // close button or timer, 16px text and buttons for its actions. It never covers anything, so it
+  // never holds up the bonus quest card (onPassShownChange says false).
   docked = false,
-  help = null,
+  // Docked only: the student has moved on since this failed check (changed the code, started a
+  // Run), so the hint stays readable but goes gentle (blue), no longer a warning.
+  settled = false,
+  // Docked only: a "Got it" button that puts the tutor's hint away (the caller hides it).
+  onDismiss,
 }) {
   const hint = String(suggestion ?? '').trim()
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissed] = useState(false)
+  const dismissed = docked ? false : dismissedState
+  // The top-bar ✋ Help's own handler, only where that button shows (a tutor to ask).
+  const help = useHelpRequest()
 
   // Callers remount this component (via a `key` tied to the check result) whenever a new
   // check/stage event actually happens, so this timer — and any earlier dismissal — is
@@ -50,7 +58,7 @@ export default function CheckFeedbackBanner({
     if (closeIfPassed && passed) setDismissed(true)
   }, [closeIfPassed, passed])
 
-  const passShown = !!passed && !fromTutor && !dismissed
+  const passShown = !docked && !!passed && !fromTutor && !dismissed
   const onPassShownChangeRef = useRef(onPassShownChange)
   onPassShownChangeRef.current = onPassShownChange
   useEffect(() => {
@@ -60,15 +68,18 @@ export default function CheckFeedbackBanner({
 
   if (dismissed) return null
 
+  const actionStyle = docked ? s.dockedAction : s.actionLink
   // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
   // once. Callers remount this per check (see above), which replays the one-shot class.
+  const gentle = docked && settled && !passed && !fromTutor
+  const motionClass = passed || fromTutor ? 'motion-pop-in' : gentle ? '' : 'motion-wobble'
   return (
     <div
-      className={`${docked ? '' : 'check-feedback-popup '}${passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'}`}
+      className={docked ? motionClass || undefined : `check-feedback-popup ${motionClass}`}
       style={{
         ...s.banner,
         ...(docked ? s.docked : null),
-        ...(passed ? s.pass : fromTutor ? s.tutor : s.fail),
+        ...(passed ? s.pass : fromTutor || gentle ? s.tutor : s.fail),
       }}
       role="status"
     >
@@ -87,10 +98,10 @@ export default function CheckFeedbackBanner({
           className={passed ? 'motion-spin-once' : undefined}
           style={{
             ...s.icon,
-            background: passed ? '#166534' : fromTutor ? '#1e40af' : '#92400e',
+            background: passed ? '#166534' : fromTutor || gentle ? '#1e40af' : '#92400e',
           }}
         >
-          {passed ? '✓' : fromTutor ? '💡' : '!'}
+          {passed ? '✓' : fromTutor || gentle ? '💡' : '!'}
         </span>
         <div style={s.text}>
           {fromTutor && !passed && <div style={s.tutorLabel}>Hint from your tutor</div>}
@@ -113,10 +124,10 @@ export default function CheckFeedbackBanner({
       </div>
       {!passed && onShowCodeStage && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Want a hint?</span>
+          {!docked && <span style={s.completePrompt}>Want a hint?</span>}
           <button
             type="button"
-            style={s.actionLink}
+            style={actionStyle}
             onClick={() => {
               if (!stageActionConfirm || window.confirm(stageActionConfirm)) onShowCodeStage()
             }}
@@ -127,26 +138,31 @@ export default function CheckFeedbackBanner({
       )}
       {!passed && onPreviewCompleteCode && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Want to see the complete code?</span>
-          <button type="button" style={s.actionLink} onClick={onPreviewCompleteCode}>
+          {!docked && <span style={s.completePrompt}>Want to see the complete code?</span>}
+          <button type="button" style={actionStyle} onClick={onPreviewCompleteCode}>
             See complete code
           </button>
         </div>
       )}
       {!passed && onShowCompleteCode && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Ready to use it?</span>
-          <button type="button" style={s.actionLink} onClick={onShowCompleteCode}>
+          {!docked && <span style={s.completePrompt}>Ready to use it?</span>}
+          <button type="button" style={actionStyle} onClick={onShowCompleteCode}>
             {showCompleteCodeLabel}
           </button>
         </div>
       )}
-      {!passed && !docked && (
-        <span style={s.helpNote}>
-          Still stuck? Tap “{HELP_BUTTON_LABEL}” at the top of the page.
-        </span>
+      {/* Help is offered for a failed check, never on the tutor's own hint (they are already
+          helping) or a pass. By design only where the top-bar ✋ Help exists (StudentView's
+          HelpRequestProvider): hosts outside it (solo, Builder preview, the shared-work viewer)
+          show no help pointer at all, and a popup's button goes with it at the 45s auto-dismiss,
+          as the top-bar button stays. */}
+      {!passed && !fromTutor && help && <AskForHelpButton help={help} style={actionStyle} />}
+      {docked && fromTutor && !passed && onDismiss && (
+        <button type="button" style={actionStyle} onClick={onDismiss}>
+          Got it
+        </button>
       )}
-      {!passed && docked && help && <AskForHelpButton help={help} />}
       {passed && onGoPersonalSandbox && (
         <button type="button" style={s.sandboxLink} onClick={onGoPersonalSandbox}>
           Test further in Personal Sandbox
@@ -156,45 +172,7 @@ export default function CheckFeedbackBanner({
   )
 }
 
-export const ASK_FOR_HELP_LABEL = '✋ Ask for help'
-export const HELP_REQUESTED_LABEL = '✋ Help requested'
-
-// The student's ✋ Help away from the top bar (the calm screen's docked hint): `help.onAsk` is the
-// very handler the top-bar Help button calls; once asked it reads "Help requested".
-export function AskForHelpButton({ help, style }) {
-  return (
-    <button
-      type="button"
-      style={{ ...s.askHelp, ...style }}
-      onClick={help.onAsk}
-      disabled={!!help.requested}
-    >
-      {help.requested ? HELP_REQUESTED_LABEL : ASK_FOR_HELP_LABEL}
-    </button>
-  )
-}
-
 const s = {
-  // In the page, not floating: no shadow, no room kept for the ×.
-  docked: {
-    position: 'relative',
-    padding: '12px 14px',
-    boxShadow: 'none',
-    borderRadius: 10,
-  },
-  askHelp: {
-    alignSelf: 'flex-start',
-    minHeight: 44,
-    padding: '6px 12px',
-    border: '1px solid currentColor',
-    borderRadius: 8,
-    background: '#fff',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: 14,
-    color: 'inherit',
-    cursor: 'pointer',
-  },
   // Floating and out of document flow, so it never affects page layout, and auto-dismisses
   // (see AUTO_DISMISS_MS). Where it sits lives in `.check-feedback-popup` (src/index.css):
   // the bottom-left corner, clear of the Run button, the file tabs, the top of the student's
@@ -209,6 +187,31 @@ const s = {
     boxShadow: '0 12px 32px rgba(15,23,42,0.2)',
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
+  },
+  // In the page beside the task (TaskHintBox), not floating: no shadow, room for 16px text.
+  docked: {
+    position: 'relative',
+    padding: '12px 14px',
+    borderRadius: 10,
+    boxShadow: 'none',
+    fontSize: 16,
+    fontWeight: 600,
+    lineHeight: 1.35,
+  },
+  dockedAction: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    padding: '6px 12px',
+    border: '1px solid currentColor',
+    borderRadius: 8,
+    background: '#fff',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 14,
+    color: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'center',
+    lineHeight: 1.2,
   },
   pass: {
     background: '#dcfce7',
@@ -304,12 +307,5 @@ const s = {
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: 3,
-  },
-  helpNote: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.8rem',
-    color: '#92400e',
-    opacity: 0.85,
   },
 }

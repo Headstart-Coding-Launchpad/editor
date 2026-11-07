@@ -1,16 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
-import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
+import { BlocksButton, EmojiButton } from './EditorToolButtons'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
 import { describeRunCount } from '../../shared/runCounts.js'
-import { PYTHON_KEY_ROW } from './keyRow.js'
+import { PYTHON_KEY_ROW, pythonKeyRows } from './keyRow.js'
+import { useElementSize } from '../../shared/useElementSize'
+import { CONTROL_HIGHLIGHT_REVEAL_EVENT } from '../../shared/controlHighlight.js'
 
 // The tap-to-insert symbol row on touch/iPad (and the keys a tutor's `key:(` highlight can make
 // glow) is one shared list in ./keyRow.js.
 // Touch keys are 44px square (Apple's minimum tap size).
 const TOUCH_KEY = 44
+const KEYS_BY_SYMBOL = new Map(PYTHON_KEY_ROW.map((key) => [key.symbol, key]))
+// The calm key row: one key and its gap, the room "More keys" takes, and the main keys an
+// unmeasured row (a first render, jsdom) gets.
+const KEY_STEP = TOUCH_KEY + 4
+const MORE_KEYS_ROOM = 140
+const DEFAULT_MAIN_KEYS = 10
 
 export default function PythonEditor({
   code,
@@ -46,8 +54,25 @@ export default function PythonEditor({
   // Run-count boxes and counts on #@count lines (src/shared/runCountsEditor.js): getRunCountWidgets'
   // `{ mode, readOnly, marks }` plus `onChange` / `onCommit`, or null.
   runCounts = null,
+  // The calm code screen (Python StudentWorkspace, only inside the calm host): the Emoji and
+  // Blocks buttons live in the workspace's code row instead (the same EditorToolButtons), and
+  // touch screens get one row of main keys, chosen from `keyCode` (the task's code,
+  // taskKeyCode), with "More keys" opening the rest. Off, this editor keeps its own toolbar.
+  calm = false,
+  keyCode = '',
+  // Filled with `{ insertAtCursor }` so the code row's Emoji button can type into this editor.
+  editorApiRef = null,
 }) {
   const editorRef = useRef(null)
+  useEffect(() => {
+    if (!editorApiRef) return undefined
+    editorApiRef.current = {
+      insertAtCursor: (text) => editorRef.current?.insertAtCursor(text),
+    }
+    return () => {
+      editorApiRef.current = null
+    }
+  }, [editorApiRef])
   const slowMoKey = useMemo(() => JSON.stringify(slowMoMarker ?? null), [slowMoMarker])
   useEffect(() => {
     applySlowMoMarker(editorRef.current?.getView?.(), JSON.parse(slowMoKey))
@@ -55,11 +80,32 @@ export default function PythonEditor({
   const isTouchDevice = useIsTouchDevice()
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
-  const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
+  const [blockGuidesOn] = useBlockGuidesOn()
   // Non-touch: one "Keys" button folds the emoji key away. Touch (request #125): the symbol row is
   // always showing with the emoji key at its end, so there is no Keys button.
   const [keysOpen, setKeysOpen] = useState(false)
   const touchKeys = showSymbolButtons
+
+  function pressKey({ symbol, indent }) {
+    if (indent) editorRef.current?.indentAtCursor()
+    else editorRef.current?.insertAtCursor(symbol)
+  }
+  function renderKey(symbol) {
+    const { label, title } = KEYS_BY_SYMBOL.get(symbol) ?? {}
+    return (
+      <button
+        key={symbol}
+        type="button"
+        style={{ ...s.symbolBtn, ...s.touchKey }}
+        aria-label={title ?? symbol}
+        // A tutor's `key:(` highlight finds its key by this (src/shared/controlHighlight.js).
+        data-highlight-target={`key:${symbol}`}
+        onClick={() => pressKey(KEYS_BY_SYMBOL.get(symbol) ?? { symbol })}
+      >
+        {label ?? symbol}
+      </button>
+    )
+  }
 
   return (
     <div style={s.wrap} data-testid="editor-panel">
@@ -69,67 +115,37 @@ export default function PythonEditor({
           ⚠️ Python failed to load. Please refresh the page.
         </div>
       )}
-      {(showSymbolButtons || showEmojiButton || showBlocks) && (
-        <div style={s.symbolBar} role="toolbar" aria-label="Python editor tools">
-          {showEmojiButton && !touchKeys && (
-            <button
-              type="button"
-              style={{ ...s.blocksBtn, ...(keysOpen ? s.blocksBtnOn : null) }}
-              aria-pressed={keysOpen}
-              title="Show the emoji key"
-              onClick={() => setKeysOpen((v) => !v)}
-            >
-              Keys
-            </button>
+      {calm
+        ? showSymbolButtons && <CalmKeyRow keyCode={keyCode} renderKey={renderKey} />
+        : (showSymbolButtons || showEmojiButton || showBlocks) && (
+            <div style={s.symbolBar} role="toolbar" aria-label="Python editor tools">
+              {showEmojiButton && !touchKeys && (
+                <button
+                  type="button"
+                  style={{ ...s.blocksBtn, ...(keysOpen ? s.blocksBtnOn : null) }}
+                  aria-pressed={keysOpen}
+                  title="Show the emoji key"
+                  onClick={() => setKeysOpen((v) => !v)}
+                >
+                  Keys
+                </button>
+              )}
+              {showSymbolButtons && PYTHON_KEY_ROW.map(({ symbol }) => renderKey(symbol))}
+              {showEmojiButton && (touchKeys || keysOpen) && (
+                <EmojiButton
+                  size={touchKeys ? TOUCH_KEY : undefined}
+                  insert={(emoji) => editorRef.current?.insertAtCursor(emoji)}
+                />
+              )}
+              {showBlocks && (
+                <BlocksButton
+                  style={{ ...s.blocksBtn, ...(touchKeys ? s.touchKey : null) }}
+                  onStyle={s.blocksBtnOn}
+                  iconStyle={s.blocksIcon}
+                />
+              )}
+            </div>
           )}
-          {showSymbolButtons &&
-            PYTHON_KEY_ROW.map(({ symbol, label, title, indent }) => (
-              <button
-                key={symbol}
-                type="button"
-                style={{ ...s.symbolBtn, ...s.touchKey }}
-                aria-label={title}
-                // A tutor's `key:(` highlight finds its key by this (src/shared/controlHighlight.js).
-                data-highlight-target={`key:${symbol}`}
-                onClick={() =>
-                  indent
-                    ? editorRef.current?.indentAtCursor()
-                    : editorRef.current?.insertAtCursor(symbol)
-                }
-              >
-                {label ?? symbol}
-              </button>
-            ))}
-          {showEmojiButton && (touchKeys || keysOpen) && (
-            <EmojiPickerButton
-              size={touchKeys ? TOUCH_KEY : undefined}
-              onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)}
-            />
-          )}
-          {showBlocks && (
-            <button
-              type="button"
-              style={{
-                ...s.blocksBtn,
-                ...(touchKeys ? s.touchKey : null),
-                ...(blockGuidesOn ? s.blocksBtnOn : null),
-              }}
-              aria-pressed={blockGuidesOn}
-              title={
-                blockGuidesOn
-                  ? 'Hide the coloured brackets that show which lines belong to each block'
-                  : 'Show coloured brackets for which lines belong to each block'
-              }
-              onClick={() => setBlockGuidesOn(!blockGuidesOn)}
-            >
-              <span aria-hidden="true" style={s.blocksIcon}>
-                ⎣
-              </span>
-              Blocks
-            </button>
-          )}
-        </div>
-      )}
       <CodeEditor
         ref={editorRef}
         value={code}
@@ -157,6 +173,54 @@ export default function PythonEditor({
         style={{ flex: 1, minHeight: 240, ...editorStyle }}
       />
       {runCounts && <RunCountAnnouncement runCounts={runCounts} />}
+    </div>
+  )
+}
+
+/**
+ * The calm key row (touch screens): the main keys in one row, the task's own symbols first, as
+ * many as fit; "More keys" opens the rest as a flat strip under the row, in the page (never laid
+ * over the code), that stays open until "Fewer keys". A tutor's highlight on a key in the strip
+ * rings "More keys" (data-highlight-reveal) and opens the strip.
+ */
+function CalmKeyRow({ keyCode, renderKey }) {
+  const [rowRef, rowSize] = useElementSize()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const capacity =
+    rowSize.width > 0 ? Math.floor((rowSize.width - MORE_KEYS_ROOM) / KEY_STEP) : DEFAULT_MAIN_KEYS
+  const { main, more } = useMemo(() => pythonKeyRows(keyCode, capacity), [keyCode, capacity])
+  const moreKey = more.join(' ')
+  useEffect(() => {
+    function onReveal(event) {
+      const target = String(event?.detail?.target ?? '')
+      if (target.startsWith('key:') && moreKey.split(' ').includes(target.slice(4))) {
+        setMoreOpen(true)
+      }
+    }
+    window.addEventListener(CONTROL_HIGHLIGHT_REVEAL_EVENT, onReveal)
+    return () => window.removeEventListener(CONTROL_HIGHLIGHT_REVEAL_EVENT, onReveal)
+  }, [moreKey])
+  return (
+    <div style={s.calmKeys}>
+      <div ref={rowRef} style={s.calmKeyRow} role="toolbar" aria-label="Python keys">
+        {main.map(renderKey)}
+        {more.length > 0 && (
+          <button
+            type="button"
+            style={s.moreKeysBtn}
+            aria-expanded={moreOpen}
+            data-highlight-reveal="key"
+            onClick={() => setMoreOpen((open) => !open)}
+          >
+            {moreOpen ? 'Fewer keys ▴' : 'More keys ▾'}
+          </button>
+        )}
+      </div>
+      {moreOpen && more.length > 0 && (
+        <div style={s.moreKeysStrip} role="group" aria-label="More keys">
+          {more.map(renderKey)}
+        </div>
+      )}
     </div>
   )
 }
@@ -234,6 +298,33 @@ const s = {
     cursor: 'pointer',
   },
   touchKey: { minWidth: TOUCH_KEY, height: TOUCH_KEY, marginLeft: 0 },
+  calmKeys: { display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 },
+  calmKeyRow: { display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden' },
+  moreKeysBtn: {
+    marginLeft: 'auto',
+    flexShrink: 0,
+    minHeight: TOUCH_KEY,
+    padding: '0 12px',
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'var(--colour-primary)',
+    background: '#fff',
+    border: '1px solid #cdbdec',
+    borderRadius: 6,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  // In the flow, under the main row: it pushes the editor down rather than covering it.
+  moreKeysStrip: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+    padding: 4,
+    background: '#fbf9ff',
+    border: '1px solid #e6e0f0',
+    borderRadius: 6,
+  },
   blocksBtn: {
     marginLeft: 'auto',
     height: 32,

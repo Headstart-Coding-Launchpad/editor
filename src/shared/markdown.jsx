@@ -621,6 +621,14 @@ export function MarkdownRenderer({
   inheritColor = false,
   topicType = null,
   showLibrary = false,
+  // With showLibrary: false hides only the floating "Topic library" button; everything
+  // showLibrary turns on (the topic list, [[topic]] links, the dialog, openTopicId pushes and
+  // tutor reports) stays. Activity headers pass false (Ryan, 7 Nov 2026); the calm code screen
+  // has its own chip in the code row, whose request count (0: none) opens the library through
+  // libraryRequest, cleared through onLibraryRequestHandled.
+  libraryButton = true,
+  libraryRequest = 0,
+  onLibraryRequestHandled,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -665,6 +673,16 @@ export function MarkdownRenderer({
     setLibraryOpen(true)
     badgeSignals?.reportTopicOpen?.(TOPIC_LIBRARY_OPEN_ID, { via: 'button' })
   }
+
+  const handleLibraryButtonRef = React.useRef(handleLibraryButton)
+  handleLibraryButtonRef.current = handleLibraryButton
+  const onLibraryRequestHandledRef = React.useRef(onLibraryRequestHandled)
+  onLibraryRequestHandledRef.current = onLibraryRequestHandled
+  React.useEffect(() => {
+    if (!showLibrary || !libraryRequest) return
+    handleLibraryButtonRef.current()
+    onLibraryRequestHandledRef.current?.()
+  }, [showLibrary, libraryRequest])
 
   function handleDialogClose() {
     setLibraryOpen(false)
@@ -719,7 +737,7 @@ export function MarkdownRenderer({
                     }
                   : {})}
               >
-                {showLibrary && (
+                {showLibrary && libraryButton && (
                   <button
                     type="button"
                     onClick={handleLibraryButton}

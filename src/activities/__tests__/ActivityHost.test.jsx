@@ -7,8 +7,12 @@ import { getActivityUi, getTaskActivityUi } from '../registry.js'
 import { ACTIVITY_IDS } from '../registry.pure.js'
 
 vi.mock('../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content, showLibrary }) => (
-    <div data-testid="activity-markdown" data-show-library={String(!!showLibrary)}>
+  MarkdownRenderer: ({ content, showLibrary, libraryButton = true }) => (
+    <div
+      data-testid="activity-markdown"
+      data-show-library={String(!!showLibrary)}
+      data-library-button={String(libraryButton)}
+    >
       {content}
     </div>
   ),
@@ -80,7 +84,7 @@ describe('ActivityHost', () => {
     expect(activity.onSubmit).not.toHaveBeenCalled()
   })
 
-  it('shows the title as a header bar, with the Topic library only when the classroom wires it', () => {
+  it('shows the title as a header bar, with topic opens wired by the classroom but no chip', () => {
     const activity = activityFor(BINARY, binary.initialState(BINARY))
     const { container, rerender } = render(<ActivityHost task={BINARY} activity={activity} />)
     expect(container.querySelector('.act-header .act-title')).toHaveTextContent('Make 5')
@@ -93,6 +97,8 @@ describe('ActivityHost', () => {
       />
     )
     expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'true')
+    // Ryan, 7 Nov 2026: activity headers hide the Topic library chip itself.
+    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-library-button', 'false')
   })
 
   it('keeps a Check button only for activities that still submit by hand', () => {

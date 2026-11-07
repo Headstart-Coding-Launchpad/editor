@@ -3,6 +3,7 @@ import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import CheckFeedbackBanner from '../CheckFeedbackBanner'
+import { HelpRequestContext } from '../peerHelp/helpRequestContext'
 
 // CheckFeedbackBanner imports MarkdownRenderer from shared/markdown.
 // We do NOT mock it — letting it render keeps the tests honest and avoids
@@ -255,16 +256,65 @@ describe('CheckFeedbackBanner', () => {
       }
     })
 
-    it('points to the persistent ✋ Help control (by its real name) instead of rendering its own button on fail', () => {
-      render(<CheckFeedbackBanner passed={false} />)
-      expect(screen.getByText(/Still stuck\? Tap “✋ Help”/)).toBeInTheDocument()
-      expect(screen.queryByText(/Need Help/i)).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /Help/i })).not.toBeInTheDocument()
+    it("on fail, with a tutor to ask, '✋ Ask for help' does what the top-bar ✋ Help does", async () => {
+      const user = userEvent.setup()
+      const onAsk = vi.fn()
+      render(
+        <HelpRequestContext.Provider value={{ onAsk, requested: false }}>
+          <CheckFeedbackBanner passed={false} />
+        </HelpRequestContext.Provider>
+      )
+      expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: '✋ Ask for help' }))
+      expect(onAsk).toHaveBeenCalledTimes(1)
     })
 
-    it('does not show the help pointer on pass', () => {
-      render(<CheckFeedbackBanner passed={true} />)
+    it('once asked it says so and a second tap does nothing', async () => {
+      const user = userEvent.setup()
+      const onAsk = vi.fn()
+      render(
+        <HelpRequestContext.Provider value={{ onAsk, requested: true }}>
+          <CheckFeedbackBanner passed={false} />
+        </HelpRequestContext.Provider>
+      )
+      await user.click(screen.getByRole('button', { name: '✋ Help requested' }))
+      expect(onAsk).not.toHaveBeenCalled()
+    })
+
+    // By design: the pointer shows only where the top-bar ✋ Help exists (StudentView's
+    // HelpRequestProvider). Hosts outside it (solo, Builder preview, the shared-work viewer)
+    // show no help line or button, on every module's popup.
+    it('with no tutor to ask (solo, Builder preview, shared-work viewer) there is no help line or button', () => {
+      render(<CheckFeedbackBanner passed={false} suggestion="Try again" />)
       expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /help/i })).not.toBeInTheDocument()
+    })
+
+    it('the popup still auto-dismisses at 45 seconds with its Ask for help button (unchanged)', () => {
+      vi.useFakeTimers()
+      try {
+        render(
+          <HelpRequestContext.Provider value={{ onAsk: vi.fn(), requested: false }}>
+            <CheckFeedbackBanner passed={false} />
+          </HelpRequestContext.Provider>
+        )
+        expect(screen.getByRole('button', { name: '✋ Ask for help' })).toBeInTheDocument()
+        act(() => {
+          vi.advanceTimersByTime(45000)
+        })
+        expect(screen.queryByRole('button', { name: '✋ Ask for help' })).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not offer help on pass', () => {
+      render(
+        <HelpRequestContext.Provider value={{ onAsk: vi.fn(), requested: false }}>
+          <CheckFeedbackBanner passed={true} />
+        </HelpRequestContext.Provider>
+      )
+      expect(screen.queryByRole('button', { name: /Ask for help/i })).not.toBeInTheDocument()
     })
 
     it('uses the corner-anchored popup class so it stays clear of the toolbar and code', () => {
@@ -354,6 +404,15 @@ describe('CheckFeedbackBanner: a hint the tutor sent', () => {
   it('onPassShownChange is false for a fail banner', () => {
     const onPassShownChange = vi.fn()
     render(<CheckFeedbackBanner passed={false} onPassShownChange={onPassShownChange} />)
+    expect(onPassShownChange).not.toHaveBeenCalledWith(true)
+  })
+
+  it('a docked pass (calm screen) stays in view but never holds up the bonus quest card', () => {
+    const onPassShownChange = vi.fn()
+    render(
+      <CheckFeedbackBanner passed docked closeIfPassed onPassShownChange={onPassShownChange} />
+    )
+    expect(screen.getByText('Correct!')).toBeInTheDocument()
     expect(onPassShownChange).not.toHaveBeenCalledWith(true)
   })
 })

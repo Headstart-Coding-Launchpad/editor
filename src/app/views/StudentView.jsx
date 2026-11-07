@@ -85,6 +85,7 @@ import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
+import { HelpRequestProvider } from '../components/peerHelp/helpRequestContext'
 import PeerHelpAskBubble from '../components/peerHelp/PeerHelpAskBubble'
 import HelperPromiseDialog from '../components/peerHelp/HelperPromiseDialog'
 import PeerHelpOfferToast from '../components/peerHelp/PeerHelpOfferToast'
@@ -2215,88 +2216,96 @@ export default function StudentView({
           />
         ) : (
           <PollTaskClassContext.Provider value={pollTaskClass}>
-            <LessonTaskContent
-              lesson={displayedLesson}
-              task={task}
-              cs={taskCs}
-              helpRequest={canRequestHelp ? { onAsk: handleHelpTap, requested: myNeedsHelp } : null}
-              lessonId={lessonId}
-              identityId={effectiveIdentity?.anonymousId}
-              sandboxExplainer={session?.sandboxExplainer}
-              activeStudentView={session?.activeStudentView}
-              viewingTaskId={viewingTaskId}
-              currentTaskId={currentTaskId}
-              transitionKey={transitionKey}
-              transitionOrder={transitionOrder}
-              previewMode={previewMode}
-              showPreviewBanner={showPreviewBanner}
-              showReviewNotes={previewMode && !lessonProp}
-              isSandbox={isSandbox}
-              isViewingPrev={isViewingPrev}
-              isForcedTeacherLive={isForcedTeacherLive}
-              isMobile={isMobile}
-              isQuizTask={isQuizTask}
-              isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-              isInformationTask={isInformationTask}
-              badgeWall={badgeWall}
-              isActivityTask={isActivityTask}
-              displayAnswer={displayAnswer}
-              isViewingExplainerSlide={viewingExplainerSlide}
-              isViewingCompletionScreen={viewingCompletionScreen}
-              onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
-              soloCompanion={soloCompanion}
-              onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
-              onReplayLesson={handleReplayLesson}
-              isCodeArrangeTask={isCodeArrangeTask}
-              displayCode={displayCode}
-              displayArcadeDesign={displayArcadeDesign}
-              displayTurtleResult={displayTurtleResult}
-              displayVariablesPanel={displayVariablesPanel}
-              displayStage={displayStage}
-              displayPythonSlowMo={displayPythonSlowMo}
-              displaySpriteState={displaySpriteState}
-              displayCursor={displayCursor}
-              displayBlockDrag={displayBlockDrag}
-              displayCodeArrangeSlots={displayCodeArrangeSlots}
-              displayCodeArrangeCursor={displayCodeArrangeCursor}
-              displayFiles={displayFiles}
-              displayActiveFile={displayActiveFile}
-              displayOutput={displayOutput}
-              displayRunStatus={displayRunStatus}
-              displayCheckPassed={displayCheckPassed}
-              displayCheckAttempted={displayCheckAttempted}
-              displayCheckSuggestion={displayCheckSuggestion}
-              displaySelection={displaySelection}
-              displayOutputCollapsed={displayOutputCollapsed}
-              isLiveCopyBlocked={isLiveCopyBlocked}
-              displayFs={displayFs}
-              displayDesktop={displayDesktop}
-              isTeacherEditing={isTeacherEditing}
-              teacherLiveCode={teacherLiveCode}
-              teacherLiveFiles={teacherLiveFiles}
-              teacherLiveActiveFile={teacherLiveActiveFile}
-              teacherLiveWorkspace={teacherLiveWorkspace}
-              teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-              teacherLiveReferencePayload={session?.teacherLiveReference}
-              canOfferNextStage={canOfferNextStage}
-              canOfferCompletePreview={canOfferCompletePreview}
-              canOfferCompleteSolution={canOfferCompleteSolution}
-              canOfferPersonalSandbox={canOfferPersonalSandbox}
-              explainerShowsComplete={explainerShowsComplete}
-              presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
-              onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-              onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-              openTopicId={phase === 'lesson' ? openTopicId : null}
-              onVisiblePanesChange={handleVisiblePanesChange}
-              highlightedPanes={mergeHighlightedPanes(
-                highlightedPanes,
-                // An activity has no panes to point at.
-                highlightOnActivity ? null : controlHighlight.revealPanes
-              )}
-              forcedPaneCommand={forcedPaneCommand}
-              closePassBanner={sideQuestOfferUp}
-              onPassBannerChange={setPassBannerUp}
-            />
+            {/* The same ✋ Help for the hint beside the task and the check popup ('✋ Ask for help'),
+                only where the top-bar button shows: no tutor to ask (solo, presentation) means no
+                offer of help. Its value changes only when the offer does. */}
+            <HelpRequestProvider
+              enabled={canRequestHelp}
+              onAsk={handleHelpTap}
+              requested={myNeedsHelp}
+            >
+              <LessonTaskContent
+                lesson={displayedLesson}
+                task={task}
+                cs={taskCs}
+                lessonId={lessonId}
+                identityId={effectiveIdentity?.anonymousId}
+                sandboxExplainer={session?.sandboxExplainer}
+                activeStudentView={session?.activeStudentView}
+                viewingTaskId={viewingTaskId}
+                currentTaskId={currentTaskId}
+                transitionKey={transitionKey}
+                transitionOrder={transitionOrder}
+                previewMode={previewMode}
+                showPreviewBanner={showPreviewBanner}
+                showReviewNotes={previewMode && !lessonProp}
+                isSandbox={isSandbox}
+                isViewingPrev={isViewingPrev}
+                isForcedTeacherLive={isForcedTeacherLive}
+                isMobile={isMobile}
+                isQuizTask={isQuizTask}
+                isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+                isInformationTask={isInformationTask}
+                badgeWall={badgeWall}
+                isActivityTask={isActivityTask}
+                displayAnswer={displayAnswer}
+                isViewingExplainerSlide={viewingExplainerSlide}
+                isViewingCompletionScreen={viewingCompletionScreen}
+                onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
+                soloCompanion={soloCompanion}
+                onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+                onReplayLesson={handleReplayLesson}
+                isCodeArrangeTask={isCodeArrangeTask}
+                displayCode={displayCode}
+                displayArcadeDesign={displayArcadeDesign}
+                displayTurtleResult={displayTurtleResult}
+                displayVariablesPanel={displayVariablesPanel}
+                displayStage={displayStage}
+                displayPythonSlowMo={displayPythonSlowMo}
+                displaySpriteState={displaySpriteState}
+                displayCursor={displayCursor}
+                displayBlockDrag={displayBlockDrag}
+                displayCodeArrangeSlots={displayCodeArrangeSlots}
+                displayCodeArrangeCursor={displayCodeArrangeCursor}
+                displayFiles={displayFiles}
+                displayActiveFile={displayActiveFile}
+                displayOutput={displayOutput}
+                displayRunStatus={displayRunStatus}
+                displayCheckPassed={displayCheckPassed}
+                displayCheckAttempted={displayCheckAttempted}
+                displayCheckSuggestion={displayCheckSuggestion}
+                displaySelection={displaySelection}
+                displayOutputCollapsed={displayOutputCollapsed}
+                isLiveCopyBlocked={isLiveCopyBlocked}
+                displayFs={displayFs}
+                displayDesktop={displayDesktop}
+                isTeacherEditing={isTeacherEditing}
+                teacherLiveCode={teacherLiveCode}
+                teacherLiveFiles={teacherLiveFiles}
+                teacherLiveActiveFile={teacherLiveActiveFile}
+                teacherLiveWorkspace={teacherLiveWorkspace}
+                teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+                teacherLiveReferencePayload={session?.teacherLiveReference}
+                canOfferNextStage={canOfferNextStage}
+                canOfferCompletePreview={canOfferCompletePreview}
+                canOfferCompleteSolution={canOfferCompleteSolution}
+                canOfferPersonalSandbox={canOfferPersonalSandbox}
+                explainerShowsComplete={explainerShowsComplete}
+                presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
+                onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+                onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+                openTopicId={phase === 'lesson' ? openTopicId : null}
+                onVisiblePanesChange={handleVisiblePanesChange}
+                highlightedPanes={mergeHighlightedPanes(
+                  highlightedPanes,
+                  // An activity has no panes to point at.
+                  highlightOnActivity ? null : controlHighlight.revealPanes
+                )}
+                forcedPaneCommand={forcedPaneCommand}
+                closePassBanner={sideQuestOfferUp}
+                onPassBannerChange={setPassBannerUp}
+              />
+            </HelpRequestProvider>
             <ControlHighlightRing
               ring={controlHighlight.ring}
               announce={controlHighlight.announce}

@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
+import { BlocksButton, EmojiButton } from './EditorToolButtons'
+import { taskKeyCode } from './keyRow.js'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -49,6 +51,11 @@ import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 const PYTHON_SPLIT = 58
 // An edit from the student's own typing in the editor (cs.handleCodeChange's origin, request 131).
 const EDITOR_EDIT = { origin: 'editor' }
+// The code row stays one row of 44px controls: under these widths (px) Reset Code says "Reset",
+// then Topic library says "Topics" and Blocks shows only its bracket, then the Code label goes.
+const CODE_ROW_SHORT_RESET = 560
+const CODE_ROW_COMPACT = 500
+const CODE_ROW_TIGHT = 440
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -81,6 +88,13 @@ export default function StudentWorkspace({
   // Stage, name tags, slow-mo and console are this workspace's own, and open from the start.
   arrangeBoard = null,
   arrangeReady = true,
+  // The calm code screen (LessonTaskContent, capabilities.calmCodeScreen): the Type this out
+  // box's fold, `{ folded, onToggle, hideCopyCode }` (hideCopyCode while the Complete stage's
+  // change view shows the same lines above), and the code row's Topic library chip. Only that
+  // host passes `whatToChange`; without it (the teacher's view, Builder, shared work) this
+  // workspace keeps the editor's own toolbar and the Type this out panel.
+  whatToChange = null,
+  onOpenTopicLibrary,
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
   // student can predict before the first Run; so does one with a Stage target to draw over, and
@@ -134,7 +148,25 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
-  const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+  // Calm screen: only the calm host (LessonTaskContent, on capabilities.calmCodeScreen) passes
+  // `whatToChange`, so its presence is the switch (no import of this module's definition here).
+  const calm = !!whatToChange
+  const showCopyCode =
+    typeof task?.copyCode === 'string' &&
+    !!task.copyCode.trim() &&
+    !(calm && whatToChange.hideCopyCode)
+  // The code row (calm screen): Code, Emoji, Topic library, Blocks, Reset Code, Run Tests, Run.
+  // The Emoji button types into the editor through editorApiRef; Blocks is this device's setting
+  // (useBlockGuidesOn), hidden for a task with showBlocks: false. Off the calm screen those two
+  // stay in the editor's own toolbar (the same EditorToolButtons).
+  const editorApiRef = useRef(null)
+  const showBlocks = taskShowsBlocks(task)
+  const [codeRowRef, codeRowSize] = useElementSize()
+  const codeRowUnder = (limit) => codeRowSize.width > 0 && codeRowSize.width < limit
+  const resetLabel = codeRowUnder(CODE_ROW_SHORT_RESET) ? 'Reset' : 'Reset Code'
+  const codeRowCompact = codeRowUnder(CODE_ROW_COMPACT)
+  const codeRowTight = codeRowUnder(CODE_ROW_TIGHT)
+  const keyCode = useMemo(() => taskKeyCode(task), [task])
 
   // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
   // viewer follows the presenter's playback.
@@ -398,18 +430,82 @@ export default function StudentWorkspace({
           after={task.copyAfter}
           before={task.copyBefore}
           starter={starterCodeOf(task)}
+          calm={calm}
+          folded={calm && !!whatToChange.folded}
+          onToggleFolded={calm ? whatToChange.onToggle : undefined}
         />
       )}
       {showEditableHeader && (
-        <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
-          <span style={s.editorTitle}>Code</span>
+        <div
+          ref={codeRowRef}
+          style={s.editorHeader}
+          // ui-tabs--code-row (src/index.css) gives the row its spacing: .ui-tabs--editor sets
+          // padding and margin with !important, which inline styles cannot beat.
+          className="ui-tabs ui-tabs--editor ui-tabs--code-row"
+          role="group"
+          aria-label="Code"
+        >
+          {!codeRowTight && (
+            <span style={s.editorTitle} aria-hidden="true">
+              Code
+            </span>
+          )}
+          {calm && (
+            <EmojiButton
+              size={44}
+              insert={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
+            />
+          )}
+          {calm && onOpenTopicLibrary && (
+            <button
+              type="button"
+              style={s.libraryChip}
+              onClick={onOpenTopicLibrary}
+              aria-label="Topic library"
+            >
+              <span aria-hidden="true">📚 </span>
+              {codeRowCompact ? 'Topics' : 'Topic library'}
+            </button>
+          )}
           <div style={s.editorActions}>
+            {calm && showBlocks && (
+              <BlocksButton
+                style={s.rowBtn}
+                onStyle={s.rowBtnOn}
+                iconStyle={s.blocksIcon}
+                showLabel={!codeRowCompact}
+              />
+            )}
+            <button
+              type="button"
+              style={s.rowBtn}
+              onClick={cs.handleResetCode}
+              disabled={cs.running}
+              title={
+                inSandbox
+                  ? 'Reset code to the sandbox starter code'
+                  : 'Reset code to the starter code for this task'
+              }
+            >
+              {resetLabel}
+            </button>
             {task?.interactionMode === 'submit' ? (
               <button className="btn-primary" style={s.primaryBtn} onClick={cs.handleSubmit}>
                 Submit
               </button>
             ) : (
               <>
+                {/* Run Tests sits before Run, so Run is always the last control in the row. */}
+                {task?.tests?.length > 0 && (
+                  <button
+                    className="btn-primary"
+                    style={s.primaryBtn}
+                    onClick={handleRunTestsClick}
+                    disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
+                  >
+                    {cs.runningTests ? 'Running tests...' : 'Run Tests'}
+                  </button>
+                )}
                 <button
                   className={cs.running || cs.runningTests ? 'btn-danger' : 'btn-primary'}
                   style={s.primaryBtn}
@@ -437,33 +533,16 @@ export default function StudentWorkspace({
                     'Run'
                   )}
                 </button>
-                {task?.tests?.length > 0 && (
-                  <button
-                    className="btn-primary"
-                    style={s.primaryBtn}
-                    onClick={handleRunTestsClick}
-                    disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
-                  >
-                    {cs.runningTests ? 'Running tests...' : 'Run Tests'}
-                  </button>
-                )}
-                {!cs.running && <PredictRunLockNote lock={runLock} onReveal={revealTags} />}
               </>
             )}
-            <button
-              className="btn-ghost-outline"
-              style={s.resetBtn}
-              onClick={cs.handleResetCode}
-              disabled={cs.running}
-              title={
-                inSandbox
-                  ? 'Reset code to the sandbox starter code'
-                  : 'Reset code to the starter code for this task'
-              }
-            >
-              Reset Code
-            </button>
           </div>
+        </div>
+      )}
+      {/* Predict mode's lock note: its own line under the code row, so the row stays one row
+          with Run at its end. */}
+      {showEditableHeader && task?.interactionMode !== 'submit' && !cs.running && runLock && (
+        <div style={s.runLockLine}>
+          <PredictRunLockNote lock={runLock} onReveal={revealTags} />
         </div>
       )}
       {slowMoShown && (showEditableHeader || slowMoView) && (
@@ -488,6 +567,9 @@ export default function StudentWorkspace({
         />
       )}
       <PythonEditor
+        calm={calm}
+        keyCode={keyCode}
+        editorApiRef={editorApiRef}
         code={code}
         readOnly={readOnly}
         // Only the editor's own user edits (typing, scrubbing; CodeEditor's userEdit) may tick a
@@ -836,34 +918,67 @@ const s = {
     borderRadius: 6,
     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
   },
-  editorHeader: { flexShrink: 0 },
+  // The code row: one row of 44px controls, Run filled and at the right end. Its padding, margin
+  // and gap are in .ui-tabs--code-row (src/index.css), past .ui-tabs--editor's !important ones.
+  editorHeader: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  runLockLine: { display: 'flex', justifyContent: 'flex-end', padding: '0 4px 4px' },
   editorTitle: {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
     fontSize: '0.86rem',
     color: 'var(--colour-primary)',
-    padding: '0 10px',
+    padding: '0 2px 0 10px',
   },
   editorActions: {
     marginLeft: 'auto',
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 8,
+    paddingLeft: 4,
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    minWidth: 0,
   },
-  primaryBtn: { padding: '10px 28px', fontSize: 16, flexShrink: 0, minHeight: 44 },
-  resetBtn: {
-    fontSize: 12,
-    padding: '5px 10px',
-    marginLeft: 16,
-    color: '#6b7280',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    background: '#fff',
-    cursor: 'pointer',
+  primaryBtn: { padding: '0 18px', fontSize: 16, flexShrink: 0, minHeight: 44, minWidth: 84 },
+  rowBtn: {
+    minHeight: 44,
+    padding: '0 12px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
     fontFamily: 'var(--font-body)',
+    fontSize: 13,
     fontWeight: 600,
+    color: 'var(--colour-primary)',
+    background: '#fff',
+    border: '1px solid #cdbdec',
+    borderRadius: 8,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  rowBtnOn: { background: '#f0eafa', borderColor: '#d8c4f5' },
+  blocksIcon: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: '#7c3aed',
+    fontWeight: 700,
+  },
+  libraryChip: {
+    minHeight: 44,
+    padding: '0 14px',
+    borderRadius: 999,
+    border: '1px solid #ded1f3',
+    background: '#f7f2ff',
+    color: 'var(--colour-primary)',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   submitBanner: {
     display: 'flex',

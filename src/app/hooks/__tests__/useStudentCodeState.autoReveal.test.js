@@ -84,7 +84,8 @@ describe('auto reveal ("every task" reference)', () => {
       session: makeSession({ student: { autoRevealStage: 'solution' } }),
     })
     expect(revealsFor(h, 't1')).toEqual([{ stageIndex: 2, source: 'teacher-auto' }])
-    expect(h.result.current.completePreviewShown).toBe(true)
+    // Marked as the tutor's, so the calm screen labels it and the student's pass never folds it.
+    expect(h.result.current.completePreviewShown).toBe('teacher')
 
     h.update({ currentTaskId: 't2' })
     expect(revealsFor(h, 't2')).toEqual([{ stageIndex: 0, source: 'teacher-auto' }])
