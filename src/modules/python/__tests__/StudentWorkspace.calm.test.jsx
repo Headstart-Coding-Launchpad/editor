@@ -1,5 +1,6 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import StudentWorkspace from '../StudentWorkspace'
@@ -38,7 +39,10 @@ const copyTask = {
   copyAfter: 'background("black")',
 }
 
-function renderWorkspace({ task = copyTask, cs = {}, ...props } = {}) {
+// LessonTaskContent (the calm host) always passes whatToChange; other hosts pass none.
+const calmHost = { folded: false, onToggle: () => {} }
+
+function renderWorkspace({ task = copyTask, cs = {}, whatToChange = calmHost, ...props } = {}) {
   return render(
     <StudentWorkspace
       task={task}
@@ -52,6 +56,7 @@ function renderWorkspace({ task = copyTask, cs = {}, ...props } = {}) {
       isMobile={false}
       isTeacherEditing={false}
       teacherLiveCode=""
+      whatToChange={whatToChange}
       {...props}
     />
   )
@@ -129,5 +134,46 @@ describe('Python StudentWorkspace "What to change" box (Type this out)', () => {
   it('gives way to the Complete stage change view (no second copy of the same lines)', () => {
     renderWorkspace({ whatToChange: { hideCopyCode: true } })
     expect(screen.queryByRole('region', { name: 'What to change' })).not.toBeInTheDocument()
+  })
+})
+
+describe('Python StudentWorkspace code row stays one row', () => {
+  it('ends with Run, with Run Tests before it', () => {
+    renderWorkspace({ task: { ...copyTask, tests: [{ input: '', expected: '' }] } })
+    const buttons = within(screen.getByRole('group', { name: 'Code' })).getAllByRole('button')
+    expect(buttons.at(-1).textContent).toBe('Run')
+    expect(buttons.at(-2).textContent).toBe('Run Tests')
+  })
+
+  it("predict mode's lock note sits under the row, so Run stays last in it", () => {
+    renderWorkspace({
+      cs: { predictRunLock: { message: 'Fill in your predictions', missing: ['x'] } },
+    })
+    const row = screen.getByRole('group', { name: 'Code' })
+    const note = screen.getByRole('button', { name: /Fill in your predictions/ })
+    expect(row).not.toContainElement(note)
+    expect(within(row).getAllByRole('button').at(-1).textContent).toBe('Run')
+  })
+
+  it('has its own spacing class, and the CSS gives it real spacing', () => {
+    renderWorkspace()
+    expect(screen.getByRole('group', { name: 'Code' })).toHaveClass('ui-tabs--code-row')
+    const css = readFileSync(new URL('../../../index.css', import.meta.url), 'utf8')
+    expect(css).toMatch(/\.ui-tabs--editor\.ui-tabs--code-row\s*\{[^}]*padding:[^}]*!important/)
+    expect(css).toMatch(/\.ui-tabs--editor\.ui-tabs--code-row\s*\{[^}]*gap:[^}]*!important/)
+  })
+})
+
+describe('Python StudentWorkspace outside the calm host', () => {
+  it('without the calm pieces (teacher view, Builder, share view) keeps the editor toolbar and Type this out', () => {
+    renderWorkspace({ whatToChange: null })
+    expect(screen.getByText('⌨️ Type this out')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'What to change' })).not.toBeInTheDocument()
+    const row = screen.getByRole('group', { name: 'Code' })
+    expect(within(row).queryByRole('button', { name: 'Insert emoji' })).not.toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: /Blocks/ })).not.toBeInTheDocument()
+    const tools = screen.getByRole('toolbar', { name: 'Python editor tools' })
+    expect(within(tools).getByRole('button', { name: /Blocks/ })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Run' })).toBeInTheDocument()
   })
 })
