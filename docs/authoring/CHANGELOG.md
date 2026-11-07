@@ -39,24 +39,24 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
-- **Scratch: the calm screen.** **Existing Scratch lessons now start with the block palette
-  CLOSED** behind a 🧱 **Blocks** button, unless the lesson sets `scratchPaletteOpen: true`. Only
-  that button opens or closes it; blocks hidden under it are scrolled clear each time it opens. An
-  explainer that says "drag from the palette" now means "tap **Blocks**, then drag": reword it to
-  "Tap **Blocks**, then drag…". The explainer card and the docked hint (the calm Python screen's
-  hint box: nudge, amber hint after a failed run, ✋ Ask for help only with a tutor there) stay
-  beside the blocks (no Instructions/Code or Blocks/Stage tabs, no explainer slide in Solo), Flag
-  / Stop / Reset Stage sit in one row, and the sprite property row and **+ Backdrop** go behind
-  **More** unless a check (including `feedbackChecks` / `incorrectChecks`) reads a sprite
-  property. New optional lesson field `scratchPaletteOpen` (Builder: Lesson Details, **Keep the
-  block palette open for this lesson**) starts the palette open for a lesson that relies on it.
-  Blocks (and the palette) are drawn at 65% on the calm screen (75% elsewhere), and opening or
-  closing the palette leaves the script where it is unless the palette would cover it. On a
+- **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still
+  starts open.** A 🧱 **Blocks** button above the script opens and closes it; blocks hidden under
+  it are scrolled clear each time it opens. New optional lesson field `scratchPaletteClosed: true`
+  (Builder: Lesson Details, **Start with the block palette closed**) starts it closed behind that
+  button, for a calmer screen. Lesson Gen can opt a lesson in after checking its explainers: there
+  "drag from the palette" then means "tap **Blocks**, then drag". The explainer card and the
+  docked hint (the calm Python screen's hint box: nudge, amber hint after a failed run, ✋ Ask for
+  help only with a tutor there) stay beside the blocks (no Instructions/Code or Blocks/Stage tabs,
+  no explainer slide in Solo), Flag / Stop / Reset Stage sit in one row, and the sprite property
+  row and **+ Backdrop** go behind **More** unless a check (including `feedbackChecks` /
+  `incorrectChecks`) reads a sprite property. Blocks (and the palette) are drawn at 65% on the
+  calm screen (60% at the smallest; 75% elsewhere), and opening or closing the palette leaves the
+  script where it is unless the palette would cover it. On a
   portrait tablet the card takes at most about a third of the height and a card taller than that
   starts folded to its title on the task's first view (decided once as it arrives, never while
   the student is reading it): keep explainers short.
   See [scratch.md](scratch.md#calm-screen).
-  - Affects: scratch, lesson (`scratchPaletteOpen`) · Existing lessons: palette now starts closed; reword explainers that point at an open palette ("tap Blocks, then drag"), or set `scratchPaletteOpen: true` · Resolves: none
+  - Affects: scratch, lesson (`scratchPaletteClosed`) · Existing lessons: palette still starts open (new calm layout and explainer column); opt in with `scratchPaletteClosed: true` after rewording explainers that point at an open palette ("tap Blocks, then drag") · Resolves: none
 \n- **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
   stage's change view are now one box titled **What to change** above the code (never both). It
   is open when the task opens and folds to one line ("Show what to change" and the first new

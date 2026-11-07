@@ -125,8 +125,8 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
     errors.push('lessonNumber must be a positive whole number (1, 2, 3 …) when provided')
   }
   // The calm Scratch screen's opt-out: the block palette starts open (src/modules/scratch/calm/).
-  if (lesson.scratchPaletteOpen != null && typeof lesson.scratchPaletteOpen !== 'boolean') {
-    errors.push('scratchPaletteOpen must be true or false when provided')
+  if (lesson.scratchPaletteClosed != null && typeof lesson.scratchPaletteClosed !== 'boolean') {
+    errors.push('scratchPaletteClosed must be true or false when provided')
   }
 }
 

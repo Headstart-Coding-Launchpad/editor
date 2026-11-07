@@ -59,12 +59,12 @@ describe('computeBlockScale', () => {
     expect(computeBlockScale(0, 0)).toBeGreaterThanOrEqual(0.6)
   })
 
-  it('on the calm screen runs 65% down to 55% (blocks and palette smaller, the palette tidier)', () => {
+  it('on the calm screen runs 65% down to 60% (blocks and palette smaller, never below 60%)', () => {
     const calm = { calm: true }
     expect(computeBlockScale(1000, 600, calm)).toBeCloseTo(0.65)
     expect(computeBlockScale(2000, 2000, calm)).toBeCloseTo(0.65)
-    expect(computeBlockScale(500, 600, calm)).toBeCloseTo(0.6)
-    expect(computeBlockScale(0, 0, calm)).toBeCloseTo(0.55)
+    expect(computeBlockScale(500, 600, calm)).toBeCloseTo(0.625)
+    expect(computeBlockScale(0, 0, calm)).toBeCloseTo(0.6)
   })
 })
 

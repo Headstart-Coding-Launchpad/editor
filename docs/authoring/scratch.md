@@ -505,13 +505,14 @@ Scratch Playground turns all four toggles on.
 
 Scratch tasks open on a calm screen, the same at every screen size:
 
-- **The block palette starts closed** behind a 🧱 **Blocks** button above the script area. Only
-  that button opens or closes it: dropping blocks, tapping the stage or the script leaves it open.
+- **The block palette starts open**, as it always has, unless the lesson sets
+  `scratchPaletteClosed: true`; then it starts closed behind the 🧱 **Blocks** button above the
+  script area. Only that button opens or closes it: dropping blocks, tapping the stage or the script leaves it open.
   Every time it opens, any block hidden under it is scrolled clear, and it goes back to the
   category the student last had (this page visit only). Opening or closing it never moves the
-  script on screen unless the open palette would cover it. Write "Tap **Blocks**, then drag…" when
-  an explainer sends the student to the palette.
-- **Blocks are drawn at 65%** (55% at the smallest), smaller than the 75% elsewhere, so the open
+  script on screen unless the open palette would cover it. In a lesson with the palette closed,
+  write "Tap **Blocks**, then drag…" when an explainer sends the student to the palette.
+- **Blocks are drawn at 65%** (60% at the smallest), smaller than the 75% elsewhere, so the open
   palette is narrower (about 306px instead of 350px at 1366) and leaves more script area.
 - **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
   tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
@@ -535,12 +536,12 @@ Scratch tasks open on a calm screen, the same at every screen size:
   `check`, `feedbackChecks` or `incorrectChecks`.
 - The Costumes and Sounds tabs still need `showCostumesTab` / `showSoundsTab`.
 
-**Existing Scratch lessons now start with the palette closed.** Nothing in them needs changing to
-keep working, but an explainer that says "drag a block from the palette" now means "tap
-**Blocks**, then drag". Reword it, or, for a lesson whose explainers rely on an open palette, set
-`scratchPaletteOpen: true` (lesson level; in the Builder: Lesson Details, **Keep the block palette
-open for this lesson**) to start it open on every Scratch task of the lesson; everything else
-stays calm.
+**Existing Scratch lessons are unchanged: the palette still starts open** (they get the calm
+layout and the explainer column above). To start it closed for a calmer screen, set
+`scratchPaletteClosed: true` (lesson level, every Scratch task of the lesson; in the Builder:
+Lesson Details, **Start with the block palette closed**). Check the explainers first: with the
+palette closed, "drag a block from the palette" means "tap **Blocks**, then drag", so reword them.
+Lesson Gen can opt a lesson in once its explainers say that.
 
 ---
 

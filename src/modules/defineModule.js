@@ -89,9 +89,10 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // (src/modules/html/inspector; html)
   'stageChangeView', // a Complete code stage with `show: 'change'` shows only what changes against
   // the student's code (src/shared/stageChange.js, SupportStagePanel; python)
-  'calmScratch', // the calm Scratch screen: the palette starts closed behind a Blocks button, the
-  // explainer card and docked hint stay beside the blocks at every size (never a tab), flag/stop/
-  // reset in one row, sprite properties behind More (src/modules/scratch/calm/; scratch)
+  'calmScratch', // the calm Scratch screen: a Blocks button opens/closes the palette (open at the
+  // start unless the lesson sets scratchPaletteClosed), the explainer card and docked hint stay
+  // beside the blocks at every size (never a tab), flag/stop/reset in one row, sprite properties
+  // behind More (src/modules/scratch/calm/; scratch)
   'calmCodeScreen', // the calm code screen (LessonTaskContent): one "What to change" box that folds
   // after a passing Run, the hint docked beside the task instead of the check popup, and the Topic
   // library chip in the workspace's code row (onOpenTopicLibrary); python

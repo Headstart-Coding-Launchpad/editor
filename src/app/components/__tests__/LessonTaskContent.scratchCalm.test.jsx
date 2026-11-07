@@ -449,6 +449,16 @@ describe('calm Scratch: review fixes', () => {
     })
   })
 
+  it('keeps an existing Scratch lesson’s palette open; a lesson opts into the closed palette', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm.paletteStartsOpen).toBe(true)
+    rerender(
+      <LessonTaskContent {...baseProps} lesson={{ type: 'scratch', scratchPaletteClosed: true }} />
+    )
+    expect(workspaceProps.calm.paletteStartsOpen).toBe(false)
+  })
+
   it('hands the workspace one palette-category memory for the whole view, kept across tasks', () => {
     panelWidth(1334)
     const { rerender } = render(<LessonTaskContent {...baseProps} />)

@@ -292,8 +292,8 @@ describe('the script’s one placement on arrival (calm screen)', () => {
 })
 
 describe('block size on the calm screen', () => {
-  it('is 65% at most and never below 55%; 75% to 60% elsewhere; one helper picks it', () => {
-    expect(CALM_BLOCK_SCALE).toEqual({ min: 0.55, max: 0.65 })
+  it('is 65% at most and never below 60%; 75% to 60% elsewhere; one helper picks it', () => {
+    expect(CALM_BLOCK_SCALE).toEqual({ min: 0.6, max: 0.65 })
     expect(blockScaleRange(true)).toBe(CALM_BLOCK_SCALE)
     expect(blockScaleRange(false)).toEqual({ min: 0.6, max: 0.75 })
   })
@@ -301,22 +301,23 @@ describe('block size on the calm screen', () => {
   it('Blockly’s zoom options come from the same range as the size', () => {
     expect(blocklyZoomOptions(true, 0.62)).toMatchObject({
       startScale: 0.62,
-      minScale: 0.55,
+      minScale: 0.6,
       maxScale: 0.65,
     })
     expect(blocklyZoomOptions(false, 0.55).startScale).toBe(0.6)
+    expect(blocklyZoomOptions(true, 0.55).startScale).toBe(0.6)
     expect(blocklyZoomOptions(true, 0.75).startScale).toBe(0.65)
   })
 
   it('calm turned on or off after the workspace was made never re-scales (and scrolls) every toggle', () => {
-    // Made outside calm (floor 0.6); calm then asks for 0.55, which Blockly clamps to 0.6.
+    // Made outside calm (floor 0.6); calm then asks for its own floor, 0.6, once.
     const setScale = vi.fn(function (next) {
       this.scale = Math.min(0.75, Math.max(0.6, next))
     })
     const ws = { scale: 0.75, setScale, options: { zoomOptions: blocklyZoomOptions(false, 0.75) } }
-    expect(applyBlockScale(ws, 0.55, { calm: true })).toBe(true)
+    expect(applyBlockScale(ws, 0.6, { calm: true })).toBe(true)
     expect(ws.scale).toBe(0.6)
-    for (let i = 0; i < 3; i++) expect(applyBlockScale(ws, 0.55, { calm: true })).toBe(false)
+    for (let i = 0; i < 3; i++) expect(applyBlockScale(ws, 0.6, { calm: true })).toBe(false)
     expect(setScale).toHaveBeenCalledTimes(1)
     // Made on the calm screen (ceiling 0.65); calm off asks for 0.75.
     const calmWs = {
@@ -430,10 +431,13 @@ describe('the palette step on drag end (calm screen)', () => {
 })
 
 describe('calm Scratch layout rules', () => {
-  it('starts with the palette closed unless the lesson opts out', () => {
-    expect(paletteStartsOpen({})).toBe(false)
-    expect(paletteStartsOpen(null)).toBe(false)
-    expect(paletteStartsOpen({ scratchPaletteOpen: true })).toBe(true)
+  it('starts with the palette open (as before the calm screen) unless the lesson opts into closed', () => {
+    expect(paletteStartsOpen({})).toBe(true)
+    expect(paletteStartsOpen(null)).toBe(true)
+    expect(paletteStartsOpen({ scratchPaletteClosed: false })).toBe(true)
+    expect(paletteStartsOpen({ scratchPaletteClosed: true })).toBe(false)
+    // The old opt-out name (never on main) means nothing now.
+    expect(paletteStartsOpen({ scratchPaletteOpen: false })).toBe(true)
   })
 
   it('folds the sprite property row behind More unless a check reads sprite properties', () => {

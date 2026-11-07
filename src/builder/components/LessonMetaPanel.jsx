@@ -139,13 +139,13 @@ export default function LessonMetaPanel({
     .filter((level) => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const levelRef = getLessonLevelRef(lesson)
-  // The calm Scratch screen's palette opt-out (scratchPaletteOpen), offered where the lesson has a
+  // The calm Scratch screen's closed-palette opt-in (scratchPaletteClosed), offered where the lesson has a
   // module with that screen (a Scratch lesson, or a composed lesson with a Scratch module), and
   // wherever the field is set, so a stale value can still be cleared.
   const hasCalmScratch = [lesson.type, ...getComposedModuleTypes(lesson)].some(
     (type) => !!getModuleDefinition(type)?.capabilities?.calmScratch
   )
-  const showsPaletteOption = hasCalmScratch || lesson.scratchPaletteOpen != null
+  const showsPaletteOption = hasCalmScratch || lesson.scratchPaletteClosed != null
   const legacyLevel = levelTitleFromLesson(lesson, levels)
 
   return (
@@ -234,7 +234,7 @@ export default function LessonMetaPanel({
         {showsPaletteOption && (
           <Field
             label="Scratch block palette"
-            hint="Scratch tasks start with the block palette closed behind a Blocks button (students tap Blocks, then drag). Tick this only for a lesson whose explainers need the palette already open."
+            hint="Scratch tasks start with the block palette open, as they always have; the Blocks button opens and closes it. Tick this to start it closed for a calmer screen: check the explainers first, since 'drag from the palette' then means 'tap Blocks, then drag'."
           >
             <label
               style={{
@@ -248,17 +248,17 @@ export default function LessonMetaPanel({
             >
               <input
                 type="checkbox"
-                checked={lesson.scratchPaletteOpen === true}
+                checked={lesson.scratchPaletteClosed === true}
                 onChange={(e) => {
-                  const keepOpen = e.target.checked
+                  const startClosed = e.target.checked
                   // Unticking removes the key (never a stored null), so an export has no diff.
                   onUpdate((prev) => {
-                    const { scratchPaletteOpen: _cleared, ...rest } = prev
-                    return keepOpen ? { ...prev, scratchPaletteOpen: true } : rest
+                    const { scratchPaletteClosed: _cleared, ...rest } = prev
+                    return startClosed ? { ...prev, scratchPaletteClosed: true } : rest
                   })
                 }}
               />
-              Keep the block palette open for this lesson
+              Start with the block palette closed
             </label>
           </Field>
         )}

@@ -160,10 +160,10 @@ export function restorePaletteCategory(workspace, memory) {
   return name ? scrollFlyoutToCategory(workspace, name) : false
 }
 
-// Lesson-level opt-out (`scratchPaletteOpen: true`): the palette starts open, as before the calm
-// screen, for a lesson whose explainers point at blocks in an open palette.
+// The palette starts open, as before the calm screen, so existing lessons are unchanged. A lesson
+// opts into the calm closed palette (behind the Blocks button) with `scratchPaletteClosed: true`.
 export function paletteStartsOpen(lesson) {
-  return lesson?.scratchPaletteOpen === true
+  return lesson?.scratchPaletteClosed !== true
 }
 
 function readsSpriteProperties(check) {
@@ -258,11 +258,11 @@ export function calmStackedGridStyle(layout, { aside }) {
   }
 }
 
-// Block size: 65% at most on the calm screen (55% at least), 75% elsewhere (60% at least), so on
+// Block size: 65% at most on the calm screen (60% at least), 75% elsewhere (60% at least), so on
 // the calm screen blocks and the open palette are smaller and the palette tidier (350px wide at
 // 75%, about 306px at 65% at 1366). The ONE place the range is chosen: the size, Blockly's zoom
 // options and the unchanged-size check all read it.
-export const CALM_BLOCK_SCALE = Object.freeze({ min: 0.55, max: 0.65 })
+export const CALM_BLOCK_SCALE = Object.freeze({ min: 0.6, max: 0.65 })
 export const SCRATCH_BLOCK_SCALE = Object.freeze({ min: 0.6, max: 0.75 })
 export function blockScaleRange(calm) {
   return calm ? CALM_BLOCK_SCALE : SCRATCH_BLOCK_SCALE

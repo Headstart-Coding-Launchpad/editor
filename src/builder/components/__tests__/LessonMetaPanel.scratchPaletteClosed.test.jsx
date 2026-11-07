@@ -40,43 +40,43 @@ function renderPanel(lesson) {
 }
 
 // The Field's own label ("Scratch block palette") is part of the checkbox's name too.
-const LABEL = /Keep the block palette open for this lesson/
+const LABEL = /Start with the block palette closed/
 
-// The calm Scratch screen starts the block palette closed behind a Blocks button; this lesson-level
-// opt-out (scratchPaletteOpen) starts it open again.
-describe('LessonMetaPanel scratchPaletteOpen checkbox', () => {
-  it('is off for a Scratch lesson without the field (the palette starts closed)', () => {
+// Scratch lessons start with the block palette open, as before the calm screen; this lesson-level
+// opt-in (scratchPaletteClosed) starts it closed behind the Blocks button.
+describe('LessonMetaPanel scratchPaletteClosed checkbox', () => {
+  it('is off for a Scratch lesson without the field (the palette starts open)', () => {
     renderPanel(scratchLesson)
     expect(screen.getByRole('checkbox', { name: LABEL })).not.toBeChecked()
   })
 
   it('shows a stored true as ticked', () => {
-    renderPanel({ ...scratchLesson, scratchPaletteOpen: true })
+    renderPanel({ ...scratchLesson, scratchPaletteClosed: true })
     expect(screen.getByRole('checkbox', { name: LABEL })).toBeChecked()
   })
 
   it('sets true when ticked', () => {
     const { getLesson } = renderPanel(scratchLesson)
     fireEvent.click(screen.getByRole('checkbox', { name: LABEL }))
-    expect(getLesson().scratchPaletteOpen).toBe(true)
+    expect(getLesson().scratchPaletteClosed).toBe(true)
   })
 
   it('removes the key when unticked (no null left behind to show up in an export diff)', () => {
-    const { getLesson } = renderPanel({ ...scratchLesson, scratchPaletteOpen: true })
+    const { getLesson } = renderPanel({ ...scratchLesson, scratchPaletteClosed: true })
     fireEvent.click(screen.getByRole('checkbox', { name: LABEL }))
-    expect('scratchPaletteOpen' in getLesson()).toBe(false)
+    expect('scratchPaletteClosed' in getLesson()).toBe(false)
   })
 
   it('still shows a stale field on a lesson with no Scratch, so it can be cleared', () => {
     const { getLesson } = renderPanel({
       ...scratchLesson,
       type: 'python',
-      scratchPaletteOpen: true,
+      scratchPaletteClosed: true,
     })
     const box = screen.getByRole('checkbox', { name: LABEL })
     expect(box).toBeChecked()
     fireEvent.click(box)
-    expect('scratchPaletteOpen' in getLesson()).toBe(false)
+    expect('scratchPaletteClosed' in getLesson()).toBe(false)
   })
 
   it('is offered on a composed lesson with a Scratch module', () => {

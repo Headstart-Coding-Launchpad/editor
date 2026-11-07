@@ -158,7 +158,7 @@ const SCRATCH_WATCH_PANEL_TABS_SURFACE = 'scratch_watch_panel'
 // recalculated (see computeBlockScale). MAX matches the old fixed default scale, so a wide
 // screen looks exactly as before; MIN is a readability floor — below it we lean on the
 // flyout-collapse/compact-tab mechanisms instead of shrinking blocks further. The range (75% to
-// 60%; the calm screen's 65% to 55%) is chosen in one place, blockScaleRange (calmPalette.js).
+// 60%; the calm screen's 65% to 60%) is chosen in one place, blockScaleRange (calmPalette.js).
 
 // Continuous, not tiered: full size whenever the container is at/above the same 1000×600
 // "wide" reference point `compact` uses, interpolating down to the floor as it shrinks
@@ -1000,8 +1000,9 @@ export default function ScratchWorkspace({
   // Slow-mo use for the session report ({ kind: 'run' | 'step' }); see slowMo/useScratchSlowMo.js.
   onSlowMoUse = null,
   // The calm screen (capabilities.calmScratch; StudentWorkspace from LessonTaskContent), or null:
-  // { stacked, aside, paletteStartsOpen, onResetBlocks }. The palette starts closed behind a
-  // Blocks button and is scrolled clear on every open; the stage is never behind a tab (stacked:
+  // { stacked, aside, paletteStartsOpen, onResetBlocks }. The palette sits behind a Blocks button
+  // (open at the start unless the lesson sets scratchPaletteClosed) and is scrolled clear on every
+  // open; the stage is never behind a tab (stacked:
   // pinned above the blocks with `aside`, the explainer column, beside it); the sprite property row
   // and + Backdrop fold behind More. Blockly's own layout and drag-and-drop are untouched.
   calm = null,
@@ -1208,8 +1209,8 @@ export default function ScratchWorkspace({
   }
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
-  // Calm screen: the palette starts closed (a read-only workspace has no palette at all) unless
-  // the lesson opts out (scratchPaletteOpen). Only the Blocks button changes it.
+  // Calm screen: the palette starts open unless the lesson opts into closed (scratchPaletteClosed;
+  // a read-only workspace has no palette at all). Only the Blocks button changes it.
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(
     () => !!calm && !calm.paletteStartsOpen && !readOnly
   )
