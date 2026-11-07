@@ -231,9 +231,12 @@ export default function LessonTaskContent({
     !isTeacherEditing &&
     !previewMode
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
-  // A Complete stage's change view is on screen (SupportStagePanel), so the load button says
-  // "Replace my code with this": the student sees only part of what it loads.
-  const [stageChangeViewShown, setStageChangeViewShown] = useState(false)
+  // Which stage's change view is on screen (SupportStagePanel), as `${task id}:${stage index}`:
+  // when it is the stage the load button loads, the button says "Replace my code with this", as
+  // the student sees only part of what it loads.
+  const [stageChangeViewKey, setStageChangeViewKey] = useState(null)
+  // Bumped by "Load complete code" so the change view reopens against the replaced code.
+  const [completeLoads, setCompleteLoads] = useState(0)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
   // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
   // fallback for every type) so its open/closed state can feed visiblePanes below just
@@ -623,8 +626,20 @@ export default function LessonTaskContent({
             : undefined
       }
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
-      onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
-      showCompleteCodeLabel={stageChangeViewShown ? 'Replace my code with this' : undefined}
+      onShowCompleteCode={
+        canOfferCompleteSolution
+          ? () => {
+              cs.handleShowCompleteCode()
+              setCompleteLoads((count) => count + 1)
+            }
+          : undefined
+      }
+      showCompleteCodeLabel={
+        stageChangeViewKey != null &&
+        stageChangeViewKey === `${task?.id ?? ''}:${getCompleteStage(task)?.index ?? -1}`
+          ? 'Replace my code with this'
+          : undefined
+      }
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
       closeIfPassed={closePassBanner}
       onPassShownChange={onPassBannerChange}
@@ -663,15 +678,23 @@ export default function LessonTaskContent({
               : referenceStage === completeReferenceStage
                 ? (file) => getStageLineHints(task, 'complete', file)
                 : undefined
+          const changeViewKey = `${task?.id ?? ''}:${referenceStageIndex}`
           return (
             <SupportStagePanel
-              // One panel per task and stage: the change view reads the student's code when it opens.
-              key={`${task?.id ?? ''}:${referenceStageIndex}:${referenceStage === teacherLiveReferenceStage ? 'live' : 'stage'}`}
+              // One panel per task and stage, and a new one after "Load complete code": the change
+              // view reads the student's code when the stage is revealed.
+              key={`${changeViewKey}:${referenceStage === teacherLiveReferenceStage ? 'live' : 'stage'}:${completeLoads}`}
               changeBase={chooseChangeBase(
                 displayCode,
                 getStarterStage(task)?.stage?.code ?? task?.starterCode
               )}
-              onChangeViewShown={setStageChangeViewShown}
+              // Each panel sets or clears only its own key, so a panel unmounting after a newer
+              // one has opened leaves the newer one's value alone.
+              onChangeViewShown={(shown) =>
+                setStageChangeViewKey((current) =>
+                  shown ? changeViewKey : current === changeViewKey ? null : current
+                )
+              }
               stage={referenceStage}
               lineHintsFor={lineHintsFor}
               lockSets={getTaskLockSets(task)}
