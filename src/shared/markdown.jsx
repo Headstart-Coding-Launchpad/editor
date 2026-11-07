@@ -621,6 +621,10 @@ export function MarkdownRenderer({
   inheritColor = false,
   topicType = null,
   showLibrary = false,
+  // false hides only the "Topic library" button; everything showLibrary turns on (the topic list,
+  // [[topic]] links, the dialog, openTopicId pushes and tutor reports) stays. Activity headers
+  // pass false (Ryan, 7 Nov 2026).
+  libraryButton = true,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -719,7 +723,7 @@ export function MarkdownRenderer({
                     }
                   : {})}
               >
-                {showLibrary && (
+                {showLibrary && libraryButton && (
                   <button
                     type="button"
                     onClick={handleLibraryButton}

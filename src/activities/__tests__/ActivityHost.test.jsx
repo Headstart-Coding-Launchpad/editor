@@ -7,11 +7,11 @@ import { getActivityUi, getTaskActivityUi } from '../registry.js'
 import { ACTIVITY_IDS } from '../registry.pure.js'
 
 vi.mock('../../shared/markdown', () => ({
-  MarkdownRenderer: ({ content, showLibrary, onTopicOpen }) => (
+  MarkdownRenderer: ({ content, showLibrary, libraryButton = true }) => (
     <div
       data-testid="activity-markdown"
       data-show-library={String(!!showLibrary)}
-      data-topic-opens={String(!!onTopicOpen)}
+      data-library-button={String(libraryButton)}
     >
       {content}
     </div>
@@ -84,13 +84,11 @@ describe('ActivityHost', () => {
     expect(activity.onSubmit).not.toHaveBeenCalled()
   })
 
-  it('shows the title as a header bar with no Topic library chip, still reporting topic opens', () => {
+  it('shows the title as a header bar, with topic opens wired by the classroom but no chip', () => {
     const activity = activityFor(BINARY, binary.initialState(BINARY))
     const { container, rerender } = render(<ActivityHost task={BINARY} activity={activity} />)
     expect(container.querySelector('.act-header .act-title')).toHaveTextContent('Make 5')
     expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'false')
-    // Ryan, 7 Nov 2026: no chip even when the classroom wires topic opens; [[topic]] links and a
-    // tutor's "Open it" topic push still open the dialog and report to the tutor.
     rerender(
       <ActivityHost
         task={BINARY}
@@ -98,8 +96,9 @@ describe('ActivityHost', () => {
         topicLibrary={{ onTopicOpen: vi.fn(), onTopicClose: vi.fn(), openTopicId: null }}
       />
     )
-    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'false')
-    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-topic-opens', 'true')
+    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-show-library', 'true')
+    // Ryan, 7 Nov 2026: activity headers hide the Topic library chip itself.
+    expect(screen.getByTestId('activity-markdown')).toHaveAttribute('data-library-button', 'false')
   })
 
   it('keeps a Check button only for activities that still submit by hand', () => {

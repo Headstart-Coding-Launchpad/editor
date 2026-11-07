@@ -42,8 +42,8 @@ Entries written before 2026-09-29 are not tagged.
 - **Activities have no Topic library chip.** The purple title bar over an activity's instructions
   (keyboard, mouse, binary, quizzes, Mind Reader and the other activities) no longer shows the
   Topic library chip. `[[topic]]` links in an activity's `description` still open their topic,
-  and a tutor can still send a topic, also to an activity with no link or no text, and to a
-  quiz. Code lessons keep the chip.
+  and a tutor's sent topic still opens, as before (an activity with no title or text never had a
+  header to open it from, then or now). Code lessons keep the chip.
   - Affects: activities, topics · Existing lessons: no changes needed · Resolves: none
 
 - **Python change view: only the changed part of a line.** In a Complete stage's change view (and
