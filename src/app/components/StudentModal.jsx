@@ -79,6 +79,25 @@ const AUTO_REVEAL_OPTIONS = [
   { mode: 'solution', label: 'Solution' },
 ]
 
+function useNarrowWindow(width) {
+  const query = `(max-width: ${width - 1}px)`
+  const read = () =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false
+  const [narrow, setNarrow] = useState(read)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined
+    const list = window.matchMedia(query)
+    const onChange = () => setNarrow(list.matches)
+    onChange()
+    list.addEventListener?.('change', onChange)
+    return () => list.removeEventListener?.('change', onChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
+  return narrow
+}
+
 // The strip's "▶ Last run 12s ago": its own clock, so only this chip re-renders as it ages.
 function LastRunAgo({ at }) {
   const [now, setNow] = useState(() => Date.now())
@@ -204,6 +223,9 @@ export default function StudentModal({
   const [showExportDialog, setShowExportDialog] = useState(false)
   // A class hint picked from the Hint caret, to start the hint box from.
   const [hintPrefill, setHintPrefill] = useState('')
+  // Below 1280px wide (a tablet, a small laptop) the header's grouped buttons show only their
+  // icons so the line still fits; their names stay in aria-label and title.
+  const narrowHeader = useNarrowWindow(1280)
   // The left column (instructions, hint, Type this out) folded to a rail.
   const [leftCollapsed, setLeftCollapsed] = useState(false)
 
@@ -1528,7 +1550,7 @@ export default function StudentModal({
               {taskLabel}
             </span>
           )}
-          {showTaskDots && (
+          {showTaskDots && !narrowHeader && (
             <span style={s.dots} aria-hidden="true">
               {lessonTasks.map((t, i) => (
                 <span
@@ -1556,6 +1578,7 @@ export default function StudentModal({
                   showOther={false}
                   headerClassName=""
                   headerStyle={s.groupButtonAward}
+                  iconOnly={narrowHeader}
                 />
               )}
               {onThumbsUp && student.online && (
@@ -1571,7 +1594,7 @@ export default function StudentModal({
                   title="Send a 👍: tells this student they're on the right track"
                   aria-label={`Send ${studentName} a thumbs up`}
                 >
-                  {thumbsUpSent ? '✓ Sent' : '👍 Thumbs up'}
+                  {thumbsUpSent ? '✓ Sent' : narrowHeader ? '👍' : '👍 Thumbs up'}
                 </button>
               )}
               {canBroadcast && !isLiveForAll && (
@@ -1580,8 +1603,9 @@ export default function StudentModal({
                   style={s.groupButton}
                   onClick={() => onGoLiveForAll('panel')}
                   title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
+                  aria-label={narrowHeader ? 'Show to class' : undefined}
                 >
-                  📺 Show to class
+                  {narrowHeader ? '📺' : '📺 Show to class'}
                 </button>
               )}
             </div>
@@ -1595,7 +1619,8 @@ export default function StudentModal({
                 title="Put your own hint on this student's hint banner, without marking the task passed or failed"
                 data-testid="send-hint-button"
               >
-                <span aria-hidden="true">💡</span> Hint
+                <span aria-hidden="true">💡</span>
+                {narrowHeader ? <span style={s.srOnly}>Hint</span> : ' Hint'}
               </button>
               {classHints.length > 0 && (
                 <DropdownMenu
@@ -1636,8 +1661,9 @@ export default function StudentModal({
                 style={s.groupButton}
                 onClick={() => setShowMessageModal(true)}
                 title="Send this student a pop-up message"
+                aria-label={narrowHeader ? 'Message' : undefined}
               >
-                ✉ Message
+                {narrowHeader ? '✉' : '✉ Message'}
               </button>
               {(hasTopic || hasVideoCall) && (
                 <DropdownMenu
@@ -2208,6 +2234,14 @@ const s = {
     background: 'var(--colour-secondary, #fba504)',
   },
   spacer: { flex: 1, minWidth: 4 },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    whiteSpace: 'nowrap',
+  },
   group: {
     display: 'flex',
     alignItems: 'center',

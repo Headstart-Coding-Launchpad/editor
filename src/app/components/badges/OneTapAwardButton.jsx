@@ -28,6 +28,7 @@ export const UNDO_MS = 6000
  *   (false where the picker has its own entry, as in the StudentModal's Tools menu)
  * @param {object} [props.headerStyle] header: style laid over the header button(s)
  * @param {string} [props.headerClassName] header: class for the header button(s)
+ * @param {boolean} [props.iconOnly] header: the emoji only (the name stays in aria-label/title)
  */
 export default function OneTapAwardButton({
   student,
@@ -42,6 +43,7 @@ export default function OneTapAwardButton({
   showOther = true,
   headerStyle = null,
   headerClassName = 'btn-secondary',
+  iconOnly = false,
 }) {
   const headerBtn = headerStyle ? { ...s.headerBtn, ...headerStyle } : s.headerBtn
   const [busy, setBusy] = useState(false)
@@ -129,7 +131,9 @@ export default function OneTapAwardButton({
         }}
       >
         <span aria-hidden="true">{top.badge.emoji}</span>{' '}
-        <span style={s.btnText}>{busy ? 'Awarding…' : `Award ${top.badge.title}`}</span>
+        {!iconOnly && (
+          <span style={s.btnText}>{busy ? 'Awarding…' : `Award ${top.badge.title}`}</span>
+        )}
       </button>
     )
     if (!isCard && onOpenPicker && showOther) {
@@ -159,9 +163,12 @@ export default function OneTapAwardButton({
         className={headerClassName}
         style={headerBtn}
         data-testid="one-tap-award"
+        aria-label={iconOnly ? 'Award badge' : undefined}
+        title={iconOnly ? 'Award badge' : undefined}
         onClick={onOpenPicker}
       >
-        <span aria-hidden="true">🏅</span> Award badge
+        <span aria-hidden="true">🏅</span>
+        {!iconOnly && ' Award badge'}
       </button>
     )
   }
