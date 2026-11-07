@@ -71,8 +71,11 @@ export default function ModalStrip({ chips, mode = null }) {
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return undefined
+    // The row and every chip: a chip's text can change width without the list changing
+    // ("Last run 12 s ago" becoming "Last run 3 min ago").
     const observer = new ResizeObserver(measure)
     observer.observe(row)
+    chips.forEach((_, i) => chipRefs.current[i] && observer.observe(chipRefs.current[i]))
     return () => observer.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keys, mode])
@@ -103,6 +106,9 @@ export default function ModalStrip({ chips, mode = null }) {
               key={chip.key}
               ref={(el) => {
                 chipRefs.current[i] = el
+                // A chip behind "+N" keeps its buttons out of the tab order (it is listed again,
+                // live, in the popover).
+                if (el) el.inert = i >= shown
               }}
               style={i < shown ? s.slot : s.slotHidden}
               aria-hidden={i < shown ? undefined : true}
