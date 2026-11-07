@@ -306,7 +306,9 @@ const STAGE_ROLE_HINTS = {
   complete: 'The read-only solution, which students can choose to apply',
 }
 
-function StageMetadataEditor({ stage, onChange }) {
+// `showChangeOption`: the module shows a Complete stage's change view (Python), so a Complete
+// stage offers `show: 'change'` (platform request 134). Off is stored as no field.
+function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
   function update(updates) {
     onChange({
       ...(stage ?? {}),
@@ -332,6 +334,22 @@ function StageMetadataEditor({ stage, onChange }) {
           ))}
         </select>
       </label>
+      {showChangeOption && getStageRole(stage) === 'complete' && (
+        <label
+          style={stageMetadataStyles.revealToggle}
+          title="Students see only what to add, remove or indent, anchored by a line of their own code"
+        >
+          <input
+            type="checkbox"
+            checked={stage?.show === 'change'}
+            onChange={(e) => {
+              const { show: _show, ...rest } = stage ?? {}
+              onChange(e.target.checked ? { ...rest, show: 'change' } : rest)
+            }}
+          />{' '}
+          Show only the changes
+        </label>
+      )}
     </div>
   )
 }

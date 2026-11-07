@@ -30,6 +30,7 @@ import {
   never,
 } from '../moduleAuthoring.js'
 import { printCodeStringTask } from '../printHelpers.js'
+import { validateStageChange } from '../../shared/stageChangeValidation.js'
 
 // The work-slot value: the code plus the sprite/sound design that rides alongside it.
 const EMPTY_ARCADE_WORK = Object.freeze({ code: '', arcadeDesign: null })
@@ -166,6 +167,20 @@ export default defineModule({
     ]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
     {
+      name: 'copyAfter',
+      type: 'string',
+      authored: true,
+      description:
+        'The text of the line the copyCode lines go after: the Copy code panel shows it dimmed above them.',
+    },
+    {
+      name: 'copyBefore',
+      type: 'string',
+      authored: true,
+      description:
+        'For a change at the top: the text of the line the copyCode lines go before. Not with copyAfter.',
+    },
+    {
       name: 'showBlocks',
       type: 'boolean',
       description: 'Coloured block brackets in the Python editor (default true; false hides them).',
@@ -291,6 +306,7 @@ export default defineModule({
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
   validateTask: (task, { n, errors, warnings }) => {
     validateTaskChecks(task, (checks, kind) => validateCodeChecks(checks, n, errors, kind))
+    validateStageChange(task, n, errors, warnings)
     // Arcade games always run (there is no Submit button), so submit mode would do nothing.
     if (task.interactionMode != null && task.interactionMode !== 'run') {
       warnings.push(

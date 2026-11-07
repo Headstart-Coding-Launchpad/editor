@@ -92,6 +92,7 @@ export default function PythonTaskWorkspace({
             <StageMetadataEditor
               stage={activeStage}
               onChange={(nextStage) => replaceStage(activeStageIndex, nextStage)}
+              showChangeOption
             />
           </div>
         )}

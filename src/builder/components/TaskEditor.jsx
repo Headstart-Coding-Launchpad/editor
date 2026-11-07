@@ -110,6 +110,8 @@ export default function TaskEditor({
   // Modules whose Python editor draws block brackets declare a showBlocks task field; the
   // brackets show unless the task sets showBlocks: false (src/shared/blockGuides.js).
   const usesPythonEditor = !!moduleDefinition?.taskFields?.some((f) => f.name === 'showBlocks')
+  // Modules that declare copyAfter (python, turtle, arcade) offer the Copy code panel's place line.
+  const usesCopyAnchor = !!moduleDefinition?.taskFields?.some((f) => f.name === 'copyAfter')
   // Modules that declare the showVariables task field (python, turtle) offer the name-tag panel.
   const usesVariablesPanel = !!moduleDefinition?.taskFields?.some((f) => f.name === 'showVariables')
   // Modules that declare the stageTarget task field (python) offer the Python Stage's target.
@@ -229,6 +231,8 @@ export default function TaskEditor({
       'incorrectChecks',
       '_checkTested',
       'copyCode',
+      'copyAfter',
+      'copyBefore',
     ])
       delete next[field]
     onUpdate(next)
@@ -249,8 +253,16 @@ export default function TaskEditor({
       onUpdate({ ...task, copyCode: task.copyCode ?? '' })
       return
     }
-    const { copyCode: _copyCode, ...rest } = task
+    const { copyCode: _copyCode, copyAfter: _after, copyBefore: _before, ...rest } = task
     onUpdate(rest)
+  }
+
+  // The Copy code panel's place line (copyAfter / copyBefore, platform request 134): at most one.
+  const copyAnchorMode = task.copyAfter != null ? 'after' : task.copyBefore != null ? 'before' : ''
+  function handleCopyAnchor(mode, text) {
+    const { copyAfter: _after, copyBefore: _before, ...rest } = task
+    if (!mode) onUpdate(rest)
+    else onUpdate({ ...rest, [mode === 'after' ? 'copyAfter' : 'copyBefore']: text })
   }
 
   const {
@@ -415,6 +427,8 @@ export default function TaskEditor({
         carryCircuitFrom: _carryCircuitFrom,
         microcontroller: _microcontroller,
         copyCode: _copyCode,
+        copyAfter: _copyAfter,
+        copyBefore: _copyBefore,
         interactionMode: _im,
         _checkTested,
         lines: _lines,
@@ -861,6 +875,34 @@ export default function TaskEditor({
                 placeholder={moduleAuthoring?.copyCodePlaceholder ?? MARKUP_COPY_CODE_PLACEHOLDER}
               />
             )}
+            {task.copyCode !== null && task.copyCode !== undefined && usesCopyAnchor && (
+              <div style={s.copyAnchorRow}>
+                <select
+                  className="te-select"
+                  aria-label="Where the lines go"
+                  value={copyAnchorMode}
+                  onChange={(e) =>
+                    handleCopyAnchor(e.target.value, task.copyAfter ?? task.copyBefore ?? '')
+                  }
+                  title="Shows a line of the student's code, dimmed, so they see where to type"
+                >
+                  <option value="">No place line</option>
+                  <option value="after">After this line</option>
+                  <option value="before">Before this line (top of the code)</option>
+                </select>
+                {copyAnchorMode && (
+                  <input
+                    className="te-input"
+                    style={s.copyAnchorInput}
+                    aria-label="The place line"
+                    value={task.copyAfter ?? task.copyBefore ?? ''}
+                    onChange={(e) => handleCopyAnchor(copyAnchorMode, e.target.value)}
+                    spellCheck={false}
+                    placeholder="The line exactly as it is in the code"
+                  />
+                )}
+              </div>
+            )}
           </div>
         </Field>
       )}
@@ -1098,6 +1140,8 @@ const s = {
     flexDirection: 'column',
     gap: 8,
   },
+  copyAnchorRow: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+  copyAnchorInput: { flex: '1 1 220px', fontFamily: 'var(--font-code)', fontSize: '0.84rem' },
   copyCodeTextarea: {
     minHeight: 150,
     resize: 'vertical',

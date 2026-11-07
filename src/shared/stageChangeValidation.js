@@ -1,0 +1,60 @@
+// Lesson validation for the change view (platform request 134): a code stage's `show` and a
+// task's `copyAfter` / `copyBefore`. Shared by the Builder and the CLI through the python, turtle
+// and arcade module definitions' validateTask. Messages are in docs/authoring/validation-errors.md.
+import { getStageRole, getStarterStage } from './taskStages.js'
+import { cleanCodeLines } from './stageChange.js'
+
+export const STAGE_SHOW_VALUES = ['full', 'change']
+
+const COPY_ANCHOR_FIELDS = ['copyAfter', 'copyBefore']
+
+/**
+ * `changeView`: whether this module shows a Complete stage's change view (Python). Elsewhere
+ * `show: 'change'` is ignored, with a warning.
+ */
+export function validateStageChange(task, n, errors, warnings, { changeView = false } = {}) {
+  ;(Array.isArray(task?.codeStages) ? task.codeStages : []).forEach((stage, index) => {
+    if (stage?.show == null) return
+    const where = `Task ${n} stage ${index + 1}`
+    if (!STAGE_SHOW_VALUES.includes(stage.show)) {
+      errors.push(`${where} show must be "full" or "change"`)
+      return
+    }
+    if (stage.show !== 'change') return
+    if (!changeView) {
+      warnings.push(`${where} show: "change" works in Python lessons only; it is ignored here`)
+    } else if (getStageRole(stage) !== 'complete') {
+      warnings.push(
+        `${where} show: "change" works on a Complete stage only; this stage shows in full`
+      )
+    }
+  })
+
+  const present = COPY_ANCHOR_FIELDS.filter((field) => task?.[field] != null)
+  for (const field of present) {
+    if (typeof task[field] !== 'string' || !task[field].trim()) {
+      errors.push(`Task ${n} ${field} must be the text of one line of code`)
+    }
+  }
+  if (present.length === 2) {
+    errors.push(`Task ${n} has both copyAfter and copyBefore; use one`)
+  }
+  if (present.length && !(typeof task?.copyCode === 'string' && task.copyCode.trim())) {
+    warnings.push(`Task ${n} ${present[0]} has no copyCode to place; it is ignored`)
+    return
+  }
+  // The named line should be in the code the student starts from. Carried code can't be read
+  // here, so a task that carries is not checked.
+  if (task?.carryCodeFrom != null || task?.carryCodeFromLesson != null) return
+  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
+  if (typeof starter !== 'string') return
+  const starterLines = new Set(cleanCodeLines(starter).map((line) => line.trim()))
+  for (const field of present) {
+    const text = typeof task[field] === 'string' ? task[field].trim() : ''
+    if (text && !starterLines.has(text)) {
+      warnings.push(
+        `Task ${n} ${field} "${text}" is not a line of the starter code, so students may not find it`
+      )
+    }
+  }
+}

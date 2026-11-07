@@ -164,6 +164,11 @@ export function normalizeTasksForExport(tasks, { preserveIds = false } = {}) {
     const exported = { ...rest, id: idMap[task.id] }
     if (exported.copyCode != null && !String(exported.copyCode).trim()) delete exported.copyCode
     if (isLegacyQuizRecord(exported)) delete exported.copyCode
+    // A place line is kept only with copyCode to place, and only when it names a line.
+    for (const field of ['copyAfter', 'copyBefore']) {
+      if (exported[field] == null) continue
+      if (exported.copyCode == null || !String(exported[field]).trim()) delete exported[field]
+    }
     if (exported.taskMode === 'both') delete exported.taskMode
     if (exported.carryCodeFrom != null)
       exported.carryCodeFrom = idMap[exported.carryCodeFrom] ?? exported.carryCodeFrom

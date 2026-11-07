@@ -43,6 +43,7 @@ import {
   noUpdates,
 } from '../moduleAuthoring.js'
 import { printCodeStringTask } from '../printHelpers.js'
+import { validateStageChange } from '../../shared/stageChangeValidation.js'
 
 const DEFAULT_STARTER_CODE =
   'import turtle\n\nturtle.forward(100)\nturtle.left(90)\nturtle.forward(100)\n'
@@ -150,6 +151,20 @@ export default defineModule({
     { name: 'completeCode', type: 'string', authored: true },
     codeStagesField([{ name: 'code', type: 'string', authored: true }]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    {
+      name: 'copyAfter',
+      type: 'string',
+      authored: true,
+      description:
+        'The text of the line the copyCode lines go after: the Copy code panel shows it dimmed above them.',
+    },
+    {
+      name: 'copyBefore',
+      type: 'string',
+      authored: true,
+      description:
+        'For a change at the top: the text of the line the copyCode lines go before. Not with copyAfter.',
+    },
     {
       name: 'showBlocks',
       type: 'boolean',
@@ -267,6 +282,7 @@ export default defineModule({
     validateTaskChecks(task, (checks, kind) => validateTurtleChecks(checks, n, errors, kind))
     validateShowVariables(task, n, errors, warnings)
     validateRunCounts(task, n, errors, warnings)
+    validateStageChange(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
     })

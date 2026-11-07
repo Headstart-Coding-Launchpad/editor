@@ -26,6 +26,7 @@ import { LAYOUT_TASK_FIELD, validateTaskLayout } from '../../shared/resultPane/r
 import { validateShowVariables } from '../../shared/variablesPanel/validation.js'
 import { RUN_COUNTS_TASK_FIELD } from '../../shared/runCounts.js'
 import { validateRunCounts } from '../../shared/runCountsValidation.js'
+import { validateStageChange } from '../../shared/stageChangeValidation.js'
 import { PYTHON_SLOW_MO_TASK_FIELD, validatePythonSlowMo } from './slowMo/config.js'
 import {
   PUZZLE_TASK_FIELD,
@@ -160,8 +161,32 @@ export default defineModule({
   taskFields: [
     { name: 'starterCode', type: 'string', authored: true },
     { name: 'completeCode', type: 'string', authored: true },
-    codeStagesField([{ name: 'code', type: 'string', authored: true }]),
+    codeStagesField([
+      { name: 'code', type: 'string', authored: true },
+      {
+        name: 'show',
+        type: 'string',
+        values: ['full', 'change'],
+        authored: true,
+        description:
+          "Complete stages: 'change' shows only what changes from the student's code (default 'full').",
+      },
+    ]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
+    {
+      name: 'copyAfter',
+      type: 'string',
+      authored: true,
+      description:
+        'The text of the line the copyCode lines go after: the Copy code panel shows it dimmed above them.',
+    },
+    {
+      name: 'copyBefore',
+      type: 'string',
+      authored: true,
+      description:
+        'For a change at the top: the text of the line the copyCode lines go before. Not with copyAfter.',
+    },
     {
       name: 'showBlocks',
       type: 'boolean',
@@ -288,6 +313,7 @@ export default defineModule({
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
     validateRunCounts(task, n, errors, warnings)
+    validateStageChange(task, n, errors, warnings, { changeView: true })
     validateStageTarget(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {
       starterCode: getStarterStage(task)?.stage?.code ?? task.starterCode ?? null,
