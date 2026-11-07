@@ -114,6 +114,26 @@ export function calmPaletteFollowUp({ open, dragging }) {
   return dragging ? { now: null, onDragEnd: step } : { now: step, onDragEnd: null }
 }
 
+/**
+ * The palette step owed when a block drag ends. Toggles during one drag are only noted (`note`);
+ * on drag end `take` gives the step for the palette's FINAL state ('reveal' if it ends open, 'sync'
+ * if it ends closed), once, so a close then an open (or the reverse) mid-drag never loses a step
+ * to the other.
+ */
+export function createCalmDragEndStep() {
+  let owed = false
+  return {
+    note() {
+      owed = true
+    },
+    take({ open }) {
+      if (!owed) return null
+      owed = false
+      return open ? 'reveal' : 'sync'
+    },
+  }
+}
+
 // The category heading at (or just above) the top of the palette's view. Never throws.
 export function topFlyoutCategory(workspace) {
   try {

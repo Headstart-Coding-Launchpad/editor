@@ -6,6 +6,7 @@ import {
   calmFoldsSpriteProps,
   calmPaletteFollowUp,
   calmStackedStageScale,
+  createCalmDragEndStep,
   createPaletteCategoryMemory,
   openPaletteReveal,
   paletteStartsOpen,
@@ -190,6 +191,29 @@ describe('after the palette opens or closes (calm screen)', () => {
       now: null,
       onDragEnd: 'sync',
     })
+  })
+})
+
+describe('the palette step on drag end (calm screen)', () => {
+  it('runs nothing when the palette was not toggled during the drag', () => {
+    const pending = createCalmDragEndStep()
+    expect(pending.take({ open: true })).toBeNull()
+  })
+
+  it('closed then opened during one drag: the reveal for the open palette it ends on', () => {
+    const pending = createCalmDragEndStep()
+    pending.note()
+    pending.note()
+    expect(pending.take({ open: true })).toBe('reveal')
+    expect(pending.take({ open: true })).toBeNull()
+  })
+
+  it('opened then closed during one drag: the close fixups for the closed palette it ends on', () => {
+    const pending = createCalmDragEndStep()
+    pending.note()
+    pending.note()
+    expect(pending.take({ open: false })).toBe('sync')
+    expect(pending.take({ open: false })).toBeNull()
   })
 })
 

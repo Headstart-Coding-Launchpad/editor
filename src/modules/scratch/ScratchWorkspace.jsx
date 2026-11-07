@@ -76,6 +76,7 @@ import { useScratchCategoryReveal } from './scratchHighlight.js'
 import {
   calmFoldsSpriteProps,
   calmPaletteFollowUp,
+  createCalmDragEndStep,
   calmStackedStageScale,
   createPaletteCategoryMemory,
   openPaletteReveal,
@@ -1205,9 +1206,9 @@ export default function ScratchWorkspace({
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(
     () => !!calm && !calm.paletteStartsOpen && !readOnly
   )
-  // The calm palette step still to run when a block drag ends ('reveal' after an open, 'sync'
-  // after a close; calmPaletteFollowUp), or null.
-  const pendingCalmStepRef = useRef(null)
+  // The calm palette step owed when a block drag ends: toggles mid-drag are noted, and drag end
+  // runs the step for the palette's final state (createCalmDragEndStep).
+  const [pendingCalmStep] = useState(createCalmDragEndStep)
   // The last palette category: the student view's own memory (calm.categoryMemory), else one
   // for this workspace.
   const ownPaletteMemoryRef = useRef(null)
@@ -2137,7 +2138,7 @@ export default function ScratchWorkspace({
         if (blockDragActiveRef.current) {
           pendingScaleRecalcRef.current = true
           // The open reveal or the close fixups run on drag end instead (pointerup below).
-          if (followUp?.onDragEnd) pendingCalmStepRef.current = followUp.onDragEnd
+          if (followUp?.onDragEnd) pendingCalmStep.note()
           return
         }
         try {
@@ -2166,7 +2167,7 @@ export default function ScratchWorkspace({
     const result = openPaletteReveal(ws, blocksDivRefs.current[spriteId], {
       dragging: blockDragActiveRef.current,
     })
-    if (result === 'deferred') pendingCalmStepRef.current = 'reveal'
+    if (result === 'deferred') pendingCalmStep.note()
   }
   // Blockly redraws the canvas without the palette's offset when it hides, but scrolls with it:
   // re-applying its own scroll keeps the two in step, so after closing, the script sits where
@@ -2482,13 +2483,10 @@ export default function ScratchWorkspace({
     const onUp = () => {
       blockDragActiveRef.current = false
       runPendingRecalc()
-      // A palette opened or closed mid-drag (calm screen) gets its reveal or its close fixups
-      // once the block is let go.
-      const step = pendingCalmStepRef.current
-      if (step) {
-        pendingCalmStepRef.current = null
-        requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
-      }
+      // A palette opened or closed mid-drag (calm screen, any number of times) gets the reveal or
+      // the close fixups for the state it ends in, once the block is let go.
+      const step = pendingCalmStep.take({ open: !flyoutCollapsedRef.current })
+      if (step) requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
     }
 
     el.addEventListener('pointerdown', onDown)
@@ -2499,7 +2497,7 @@ export default function ScratchWorkspace({
       document.removeEventListener('pointerup', onUp)
       document.removeEventListener('pointercancel', onUp)
     }
-  }, [resizeBlocklyWorkspaces])
+  }, [resizeBlocklyWorkspaces, pendingCalmStep])
 
   // ── Signal factory ───────────────────────────────────────────────────────────
   const createSignal = useCallback(() => {
