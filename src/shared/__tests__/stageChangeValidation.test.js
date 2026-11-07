@@ -60,12 +60,49 @@ describe('validateStageChange', () => {
         copyBefore: 'size -= step',
       }).errors
     ).toEqual(['Task 1 has both copyAfter and copyBefore; use one'])
-    expect(run({ codeStages: [starter], copyCode: 'x', copyAfter: '  ' }).errors).toEqual([
+    expect(run({ codeStages: [starter], copyCode: 'x', copyAfter: 42 }).errors).toEqual([
       'Task 1 copyAfter must be the text of one line of code',
     ])
     expect(run({ codeStages: [starter], copyBefore: 'size = 100' }).warnings).toEqual([
       'Task 1 copyBefore has no copyCode to place; it is ignored',
     ])
+  })
+
+  it('an empty place line is unset, as the export drops it (the Builder mode with no text yet)', () => {
+    expect(run({ codeStages: [starter], copyCode: 'x', copyAfter: '' })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(run({ codeStages: [starter], copyCode: 'x', copyBefore: '   ' })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+  })
+
+  it('reports copyAfter and copyBefore problems both, not only the first', () => {
+    expect(
+      run({ codeStages: [starter], copyAfter: 'size = 100', copyBefore: 'size -= step' })
+    ).toEqual({
+      errors: [],
+      warnings: [
+        'Task 1 copyAfter has no copyCode to place; it is ignored',
+        'Task 1 copyBefore has no copyCode to place; it is ignored',
+      ],
+    })
+    expect(run({ codeStages: [starter], copyCode: 'x', copyAfter: 5, copyBefore: 6 }).errors).toEqual(
+      [
+        'Task 1 copyAfter must be the text of one line of code',
+        'Task 1 copyBefore must be the text of one line of code',
+        'Task 1 has both copyAfter and copyBefore; use one',
+      ]
+    )
+  })
+
+  it('an ignored place line (no copyCode) only warns, never also errors', () => {
+    expect(run({ codeStages: [starter], copyAfter: 7 })).toEqual({
+      errors: [],
+      warnings: ['Task 1 copyAfter has no copyCode to place; it is ignored'],
+    })
   })
 
   it('warns when the anchor is not a starter line, unless the task carries code', () => {

@@ -222,6 +222,18 @@ describe('computeStageChange', () => {
     expect(change.reason).toBe('big-add')
   })
 
+  it('6e. a fall-back has no hunks, whatever the reason (only the whole program shows)', () => {
+    const most = computeStageChange(lines('a = 1'), lines('a = 1', 'b = 2', 'c = 3'))
+    const base = lines('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l')
+    const many = computeStageChange(
+      base,
+      lines('a', 'A1', 'b', 'c', 'd', 'B1', 'e', 'f', 'g', 'C1', 'h', 'i', 'D1', 'j', 'k', 'l')
+    )
+    expect([most.reason, many.reason]).toEqual(['most', 'many'])
+    expect(most.hunks).toEqual([])
+    expect(many.hunks).toEqual([])
+  })
+
   it('6d. the fall-back keeps every line, marked', () => {
     const change = computeStageChange(
       lines('from turtle import *', 'right(90)', 'done()'),

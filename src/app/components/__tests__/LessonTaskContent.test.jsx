@@ -1023,6 +1023,68 @@ describe('LessonTaskContent Complete stage change view', () => {
     expect(screen.getByRole('button', { name: 'Replace my code with this' })).toBeInTheDocument()
   })
 
+  it('after "Replace my code with this" the view compares with the replaced code', async () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    const user = userEvent.setup()
+    function Harness() {
+      const [code, setCode] = React.useState('size = 100\nsize -= 5')
+      return (
+        <LessonTaskContent
+          {...props}
+          cs={{
+            inPersonalSandbox: false,
+            completePreviewShown: true,
+            handleShowCompleteCode: () => setCode(task.codeStages[1].code),
+          }}
+          displayCode={code}
+          displayCheckAttempted
+          displayCheckPassed={false}
+          canOfferCompleteSolution
+        />
+      )
+    }
+    render(<Harness />)
+    await user.click(screen.getByRole('button', { name: 'Replace my code with this' }))
+    expect(
+      within(screen.getByLabelText('Complete stage reference')).getByText(
+        'Your code already matches this step'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('keeps the old load words when the change view shows a stage the button does not load', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    const twoCompletes = {
+      ...task,
+      codeStages: [
+        task.codeStages[0],
+        { ...task.codeStages[1], label: 'First complete', show: undefined },
+        { ...task.codeStages[1], label: 'Other complete' },
+      ],
+    }
+    render(
+      <LessonTaskContent
+        {...props}
+        task={twoCompletes}
+        cs={{
+          inPersonalSandbox: false,
+          targetedPreviewStageIndex: 2,
+          handleShowCompleteCode: () => {},
+        }}
+        displayCode={'size = 100\nsize -= 5'}
+        displayCheckAttempted
+        displayCheckPassed={false}
+        canOfferCompleteSolution
+      />
+    )
+    expect(screen.getByLabelText('Other complete stage reference')).toHaveTextContent(
+      'after this line'
+    )
+    expect(
+      screen.getByRole('button', { name: 'Load complete code into my editor' })
+    ).toBeInTheDocument()
+  })
+
   it('a Complete stage without show: change shows the whole program as before', () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
     const fullTask = {

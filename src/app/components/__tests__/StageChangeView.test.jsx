@@ -136,6 +136,74 @@ describe('Complete stage change view', () => {
     expect(screen.queryByText('after this line')).not.toBeInTheDocument()
   })
 
+  it('a fall-back (too much changed) offers no "Show only the changes": there is no place to show', () => {
+    renderPanel({ changeBase: 'size = 100' })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(panel).toHaveTextContent('A lot changed in this step')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('a fall-back for many separate changes shows no green line without a place', () => {
+    const base = 'a = 1\nb = 2\nc = 3\nd = 4\ne = 5\nf = 6\ng = 7\nh = 8\ni = 9\nj = 10\nk = 11'
+    const target =
+      'a = 1\nA = 1\nb = 2\nc = 3\nB = 2\nd = 4\ne = 5\nC = 3\nf = 6\ng = 7\nD = 4\nh = 8\ni = 9\nj = 10\nk = 11'
+    renderPanel({ changeBase: base, stage: completeStage({ code: target }) })
+    expect(screen.queryByRole('button', { name: 'Show only the changes' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Complete solution stage reference')).toHaveTextContent('k = 11')
+  })
+
+  it('works in Python only: a Turtle or Arcade Complete stage shows in full', () => {
+    for (const lessonType of ['turtle', 'arcade']) {
+      const { unmount } = renderPanel({ lessonType })
+      expect(screen.queryByText('after this line')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('stage-change-view')).not.toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('compares with the code from when the stage is revealed, not when the panel mounted', () => {
+    const { rerender } = renderPanel({ revealed: false })
+    // The student finishes the step before the stage is revealed.
+    rerender(
+      <SupportStagePanel
+        stage={completeStage()}
+        lessonType="python"
+        revealed={false}
+        changeBase={COMPLETE}
+      />
+    )
+    rerender(
+      <SupportStagePanel stage={completeStage()} lessonType="python" revealed changeBase={COMPLETE} />
+    )
+    expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
+  })
+
+  it('"Show all the code" keeps the locked-line tags and the author\'s line hints', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      lockSets: [[{ line: 1, target: 'size = 100' }]],
+      lineHintsFor: () => [{ line: 4, text: 'Turn a bit more each time' }],
+    })
+    await user.click(screen.getByRole('button', { name: 'Show all the code' }))
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(within(panel).getByLabelText('unchanged: size = 100, locked')).toHaveTextContent(
+      'Locked'
+    )
+    expect(
+      within(panel).getByLabelText('added: turn += 10, hint: Turn a bit more each time')
+    ).toHaveTextContent('Turn a bit more each time')
+  })
+
+  it('the fall-back keeps hints on the right lines when the student\'s removed lines sit between', () => {
+    renderPanel({
+      changeBase: 'old = 1\nsize = 100',
+      lineHintsFor: () => [{ line: 5, text: 'Show it' }],
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(within(panel).getByLabelText('added: print(size), hint: Show it')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('removed: old = 1')).toBeInTheDocument()
+  })
+
   it('its toggle is a 44px touch target', () => {
     renderPanel()
     expect(screen.getByRole('button', { name: 'Show all the code' })).toHaveStyle({
