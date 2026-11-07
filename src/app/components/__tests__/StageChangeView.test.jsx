@@ -60,14 +60,15 @@ describe('Complete stage change view', () => {
     )
   })
 
-  it('a swap shows the old line in red with Remove and the new line in green', () => {
+  it('a line that changes a lot shows the old line in red with Remove and the new line in green', () => {
+    // Request 135: a small swap is one inline row; this one changes most of the line.
     renderPanel({
-      stage: completeStage({ code: STARTER.replace('step = 5', 'step = 3') }),
+      stage: completeStage({ code: STARTER.replace('step = 5', 'jump = size * 2') }),
     })
     const panel = screen.getByLabelText('Complete solution stage reference')
     expect(within(panel).getByLabelText('removed: step = 5')).toBeInTheDocument()
     expect(within(panel).getByText('Remove')).toBeInTheDocument()
-    expect(within(panel).getByLabelText('added: step = 3')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: jump = size * 2')).toBeInTheDocument()
     expect(within(panel).getByLabelText('unchanged anchor: size = 100')).toBeInTheDocument()
     expect(panel).not.toHaveTextContent('this line changes')
   })
@@ -246,6 +247,120 @@ describe('Copy the Code panel anchor', () => {
       'speed(0)'
     )
     expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+  })
+})
+
+// Fun moment (platform request 135): on their circle line the student sees exactly the few
+// characters to add (x=100, y=100), in one glance, not the whole line twice.
+describe('Inline change inside a line', () => {
+  const MOVE_START = 'from turtle import *\ncircle(100, "gold")\ndone()'
+  const MOVE_DONE = 'from turtle import *\ncircle(100, "gold", x=100, y=100)\ndone()'
+  const rowsOf = (panel) => within(panel).getAllByRole('listitem')
+
+  it('a line that only gains text is one row: old part dimmed, the insert green, bold, underlined', () => {
+    renderPanel({ changeBase: MOVE_START, stage: completeStage({ code: MOVE_DONE }) })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    const row = within(panel).getByLabelText(
+      'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100)'
+    )
+    expect(row).toHaveTextContent('circle(100, "gold", x=100, y=100)')
+    // No red line, no Remove word.
+    expect(within(panel).queryByText('Remove')).not.toBeInTheDocument()
+    expect(within(panel).queryByLabelText(/^removed:/)).not.toBeInTheDocument()
+    expect(within(row).getByText('Add')).toBeInTheDocument()
+    expect(within(row).getByText('+')).toBeInTheDocument()
+    // Not colour alone: the inserted text is bold and underlined; the old part is plain.
+    const inserted = within(row).getByText(', x=100, y=100')
+    expect(inserted).toHaveStyle({ fontWeight: '700' })
+    expect(inserted.style.textDecoration).toContain('underline')
+    expect(within(row).getByText('circle(100, "gold"').style.textDecoration).not.toContain(
+      'underline'
+    )
+    // Only the anchor row (from turtle import *) and this one.
+    expect(rowsOf(panel)).toHaveLength(2)
+  })
+
+  it('a small swap is one row with ±: the old piece struck through, the new piece underlined', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\nfor i in range(5):\n    forward(50)',
+      stage: completeStage({ code: 'from turtle import *\nfor i in range(3):\n    forward(50)' }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    const row = within(panel).getByLabelText(
+      'changed: removed 5, added 3, in the line for i in range(3):'
+    )
+    expect(within(row).getByText('±')).toBeInTheDocument()
+    expect(within(row).getByText('Remove')).toBeInTheDocument()
+    expect(within(row).getByText('Add')).toBeInTheDocument()
+    expect(within(row).getByText('5').style.textDecoration).toContain('line-through')
+    expect(within(row).getByText('3').style.textDecoration).toContain('underline')
+    expect(within(panel).queryByLabelText(/^removed:/)).not.toBeInTheDocument()
+  })
+
+  it('a line where more than about half changes keeps the red and green rows', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\nprint("Hello " + name)\ndone()',
+      stage: completeStage({
+        code: 'from turtle import *\nfor i in range(10): forward(i * 5)\ndone()',
+      }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(within(panel).getByLabelText('removed: print("Hello " + name)')).toBeInTheDocument()
+    expect(
+      within(panel).getByLabelText('added: for i in range(10): forward(i * 5)')
+    ).toBeInTheDocument()
+  })
+
+  it('a line with 3 or more separate changes keeps the red and green rows', () => {
+    renderPanel({
+      changeBase: 'from turtle import *\ngo(alpha, beta, gamma, delta)\ndone()',
+      stage: completeStage({
+        code: 'from turtle import *\ngo(one, beta, two, delta, three)\ndone()',
+      }),
+    })
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(
+      within(panel).getByLabelText('removed: go(alpha, beta, gamma, delta)')
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByLabelText('added: go(one, beta, two, delta, three)')
+    ).toBeInTheDocument()
+  })
+
+  it('"Show all the code" shows the same one row, with its hint', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      changeBase: MOVE_START,
+      stage: completeStage({ code: MOVE_DONE }),
+      lineHintsFor: () => [{ line: 2, text: 'Move it' }],
+    })
+    await user.click(screen.getByRole('button', { name: 'Show all the code' }))
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    expect(
+      within(panel).getByLabelText(
+        'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100), hint: Move it'
+      )
+    ).toBeInTheDocument()
+    expect(rowsOf(panel)).toHaveLength(3)
+  })
+
+  it('the Copy the Code anchor marks only the extension of a starter line; a new line stays green', () => {
+    render(
+      <CopyCodePanel
+        code={'circle(100, "gold", x=100, y=100)\nturn += 10'}
+        language="python"
+        after="size -= step"
+        starter={'size = 100\nstep = 5\nsize -= step\ncircle(100, "gold")'}
+      />
+    )
+    const panel = screen.getByLabelText('Python reference code')
+    expect(rowsOf(panel).map((row) => row.getAttribute('aria-label'))).toEqual([
+      'unchanged anchor: size -= step',
+      'added: , x=100, y=100, in the line circle(100, "gold", x=100, y=100)',
+      'added: turn += 10',
+    ])
+    expect(within(panel).getByText(', x=100, y=100').style.textDecoration).toContain('underline')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
 
