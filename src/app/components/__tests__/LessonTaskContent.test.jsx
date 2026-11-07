@@ -990,7 +990,9 @@ describe('LessonTaskContent Topic library chip', () => {
 
     render(<LessonTaskContent {...props} task={task} />)
 
-    expect(screen.getByRole('button', { name: /Topic library|Loading library/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Topic library|Loading library/ })
+    ).toBeInTheDocument()
   })
 })
 

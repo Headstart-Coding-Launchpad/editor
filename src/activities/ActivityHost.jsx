@@ -36,9 +36,10 @@ export function UnavailableActivityNotice() {
   )
 }
 
-// The same purple title bar and Topic library chip as other tasks' instructions (HSC Audit 14).
-// `topicLibrary` ({ onTopicOpen, onTopicClose, openTopicId }) reports opens to the tutor, as the
-// task explainer does; without it (Builder preview, StudentModal) there is no chip.
+// The same purple title bar as other tasks' instructions (HSC Audit 14), but with no Topic library
+// chip (Ryan, 7 Nov 2026). `topicLibrary` ({ onTopicOpen, onTopicClose, openTopicId }) still
+// opens [[topic]] links and a tutor's topic push, and reports them to the tutor, as the task
+// explainer does; without it (Builder preview, StudentModal) those opens are not reported.
 function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const text = task?.explainer ?? task?.description ?? ''
   const [open, setOpen] = useState(false)
@@ -55,7 +56,6 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
               content={text}
               topicType={lessonType ?? null}
               disableCopy
-              showLibrary={!!topicLibrary}
               onTopicOpen={topicLibrary?.onTopicOpen}
               onTopicClose={topicLibrary?.onTopicClose}
               openTopicId={topicLibrary?.openTopicId}
@@ -110,7 +110,7 @@ export function ActivityView({
   // {anonymousId}, src/shared/typingHistory.js), for activities with `history` hooks; null when
   // there is none.
   history = null,
-  // { onTopicOpen, onTopicClose, openTopicId }: shows the header's Topic library chip.
+  // { onTopicOpen, onTopicClose, openTopicId }: the header's topic link and tutor-push opens.
   topicLibrary = null,
   // The lesson's resolved assets base URL (resolveAssetsPath(lesson.assetsPath)), for activities
   // that show lesson pictures by relative path (Real or AI).
@@ -241,8 +241,8 @@ export default function ActivityHost({
   onDismissTileHighlights,
   // The student's own typing history (cs.typingHistory), passed to ActivityView.
   history = null,
-  // { onTopicOpen, onTopicClose, openTopicId } from the classroom, for the header's Topic
-  // library chip (opens are reported to the tutor like the task explainer's).
+  // { onTopicOpen, onTopicClose, openTopicId } from the classroom, for the header's [[topic]]
+  // links and a tutor's topic push (opens are reported to the tutor like the task explainer's).
   topicLibrary = null,
   // The lesson's resolved assets base URL, passed to ActivityView.
   assetsPath = '',
