@@ -192,6 +192,72 @@ describe('MarkdownRenderer', () => {
     expect(block.querySelector('[data-scratch-c-path="outer"]')).toBeInTheDocument()
   })
 
+  // A real Scratch C is open on the right: full-width header, left spine, short arms, nothing
+  // closing or filling the mouth. Below the header no outline point may sit past the arm width.
+  function expectOpenMouth(block, mouths) {
+    const fill = block.querySelector(':scope > svg [data-scratch-c-path="fill"]')
+    const d = fill.getAttribute('d')
+    expect(fill.getAttribute('fill-rule')).toBeNull()
+    expect(d.match(/M/g)).toHaveLength(1)
+    const width = Number.parseFloat(block.style.width)
+    const pts = [...d.matchAll(/Q [\d.]+ [\d.]+ ([\d.]+) ([\d.]+)/g)].map((m) => [+m[1], +m[2]])
+    const below = pts.filter(([, y]) => y > 38)
+    expect(below.length).toBeGreaterThan(0)
+    const armRight = Math.max(...below.map(([x]) => x))
+    expect(armRight).toBeLessThan(width)
+    expect(armRight).toBeLessThanOrEqual(width * 0.6)
+    expect(d.match(/V /g).length).toBeGreaterThanOrEqual(2 + mouths * 2)
+    expect(fill.getAttribute('fill')).not.toMatch(/^(#fff|white)/i)
+  }
+
+  it.each([
+    ['scratch:repeat (10)', 'control_repeat', 1],
+    ['scratch:forever', 'control_forever', 1],
+    ['scratch:if <> then', 'control_if', 1],
+    ['scratch:if <> then else', 'control_if_else', 2],
+  ])('draws inline `%s` open on the right with a short bottom arm', (code, opcode, mouths) => {
+    const { container } = render(<MarkdownRenderer content={`Use \`${code}\` here.`} />)
+    expectOpenMouth(container.querySelector(`[data-scratch-opcode="${opcode}"]`), mouths)
+  })
+
+  it.each([
+    ['repeat (10)', 'control_repeat', 1],
+    ['forever', 'control_forever', 1],
+    ['if <> then', 'control_if', 1],
+    ['if <> then else', 'control_if_else', 2],
+  ])('draws fenced `%s` open on the right, including a nested C', (head, opcode, mouths) => {
+    const lines = ['```scratch']
+    if (mouths === 2) {
+      lines.push(
+        'if <> then',
+        '  move (10) steps',
+        'else',
+        '  repeat (3)',
+        '    turn right (15) degrees',
+        '  end',
+        'end'
+      )
+    } else {
+      lines.push(
+        head,
+        '  move (10) steps',
+        '  repeat (3)',
+        '    turn right (15) degrees',
+        '  end',
+        'end'
+      )
+    }
+    lines.push('```')
+    const { container } = render(<MarkdownRenderer content={lines.join('\n')} />)
+    const blocks = container.querySelectorAll('[data-scratch-shape="c"]')
+    expect(blocks.length).toBeGreaterThanOrEqual(2)
+    expectOpenMouth(
+      container.querySelector(`[data-scratch-shape="c"][data-scratch-mouths="${mouths}"]`),
+      mouths
+    )
+    expectOpenMouth(blocks[blocks.length - 1], 1)
+  })
+
   it('draws a fenced C with inner blocks inside its mouth and a nested C inside that', () => {
     const content = [
       '```scratch',

@@ -21,6 +21,7 @@ const FOOTER_H = 13
 const C_MIN_W = 185
 const ROOT_GAP = 9
 const C_CHILD_X = 14
+const C_ARM_W = 88
 const OPERATOR_COLOR = '#59C059'
 const TEXT_SHADOW_OPERATORS = new Set(['operator_equals', 'operator_join', 'operator_contains'])
 const ICON_BADGE_SIZE = 24
@@ -453,85 +454,39 @@ function shapePath(shape, width, bodyH, bottomTab) {
   return stackPath(width, bodyH, { topNotch: true, bottomTab })
 }
 
-function mouthCutoutPath(x, y, w, h) {
-  const r = 4
-  const notchX = x + NOTCH_X
-  const notchW = NOTCH_W
-  const notchMidW = 13
-  const bottomY = y + h
-  return [
-    `M ${x + r} ${y}`,
-    `H ${notchX}`,
-    `c 3 0 4 ${CONNECTOR_H} 8 ${CONNECTOR_H}`,
-    `h ${notchMidW}`,
-    `c 4 0 5 -${CONNECTOR_H} 8 -${CONNECTOR_H}`,
-    `H ${x + w}`,
-    `V ${bottomY}`,
-    `H ${notchX + notchW}`,
-    `c -3 0 -4 ${CONNECTOR_H} -8 ${CONNECTOR_H}`,
-    `h -${notchMidW}`,
-    `c -4 0 -5 -${CONNECTOR_H} -8 -${CONNECTOR_H}`,
-    `H ${x + r}`,
-    `Q ${x} ${bottomY} ${x} ${bottomY - r}`,
-    `V ${y + r}`,
-    `Q ${x} ${y} ${x + r} ${y}`,
-    'Z',
-  ].join(' ')
-}
-
+// One open outline: full-width header, left spine, short arms. Nothing closes the mouth on the right.
 function cBlockPath(width, size) {
-  const outer = stackPath(width, size.bodyH, {
-    topNotch: true,
-    bottomTab: size.bottomTab,
-    roundedBottom: !size.bottomTab,
-  })
-  const mouthW = width - MOUTH_X + 2
-  const mouth1 = mouthCutoutPath(MOUTH_X, BODY_H, mouthW, size.mouthH)
-  if (!size.elseMouthH) return `${outer} ${mouth1}`
-  const mouth2Y = BODY_H + size.mouthH + ELSE_H
-  const mouth2 = mouthCutoutPath(MOUTH_X, mouth2Y, mouthW, size.elseMouthH)
-  return `${outer} ${mouth1} ${mouth2}`
-}
-
-function cBlockOuterPath(width, size) {
-  return stackPath(width, size.bodyH, {
-    topNotch: true,
-    bottomTab: size.bottomTab,
-    roundedBottom: !size.bottomTab,
-  })
-}
-
-function mouthStrokePath(x, y, w, h) {
   const r = 4
-  const notchX = x + NOTCH_X
-  const notchW = NOTCH_W
-  const notchMidW = 13
-  const bottomY = y + h
-  return [
-    `M ${x + r} ${y}`,
-    `H ${notchX}`,
-    `c 3 0 4 ${CONNECTOR_H} 8 ${CONNECTOR_H}`,
-    `h ${notchMidW}`,
-    `c 4 0 5 -${CONNECTOR_H} 8 -${CONNECTOR_H}`,
-    `H ${x + w}`,
-    `M ${x + w} ${bottomY}`,
-    `H ${notchX + notchW}`,
-    `c -3 0 -4 ${CONNECTOR_H} -8 ${CONNECTOR_H}`,
-    `h -${notchMidW}`,
-    `c -4 0 -5 -${CONNECTOR_H} -8 -${CONNECTOR_H}`,
-    `H ${x + r}`,
-    `Q ${x} ${bottomY} ${x} ${bottomY - r}`,
-    `V ${y + r}`,
-    `Q ${x} ${y} ${x + r} ${y}`,
-  ].join(' ')
-}
-
-function cBlockMouthStrokePath(width, size) {
-  const mouthW = width - MOUTH_X + 2
-  const mouth1 = mouthStrokePath(MOUTH_X, BODY_H, mouthW, size.mouthH)
-  if (!size.elseMouthH) return mouth1
-  const mouth2Y = BODY_H + size.mouthH + ELSE_H
-  return `${mouth1} ${mouthStrokePath(MOUTH_X, mouth2Y, mouthW, size.elseMouthH)}`
+  const armW = Math.min(width, C_ARM_W)
+  const dentLeft = (x) =>
+    `H ${x + NOTCH_X + NOTCH_W} c -3 0 -4 ${CONNECTOR_H} -8 ${CONNECTOR_H} h -13 c -4 0 -5 -${CONNECTOR_H} -8 -${CONNECTOR_H} H ${x + r}`
+  const dentRight = (x) =>
+    `H ${x + NOTCH_X} c 3 0 4 ${CONNECTOR_H} 8 ${CONNECTOR_H} h 14 c 4 0 5 -${CONNECTOR_H} 8 -${CONNECTOR_H}`
+  const p = [`M 5 0`, dentRight(0), `H ${width - 5} Q ${width} 0 ${width} 5`]
+  let y = BODY_H
+  p.push(`V ${y - 5} Q ${width} ${y} ${width - 5} ${y}`, dentLeft(MOUTH_X))
+  const mouths = [size.mouthH, size.elseMouthH].filter(Boolean)
+  mouths.forEach((mh, i) => {
+    const bandY = y + mh
+    p.push(`V ${bandY - r} Q ${MOUTH_X} ${bandY} ${MOUTH_X + r} ${bandY}`)
+    p.push(dentRight(MOUTH_X), `H ${armW - 5} Q ${armW} ${bandY} ${armW} ${bandY + 5}`)
+    if (i < mouths.length - 1) {
+      y = bandY + ELSE_H
+      p.push(`V ${y - 5} Q ${armW} ${y} ${armW - 5} ${y}`, dentLeft(MOUTH_X))
+    } else {
+      y = bandY + FOOTER_H
+      p.push(`V ${y - 5} Q ${armW} ${y} ${armW - 5} ${y}`)
+    }
+  })
+  if (size.bottomTab) {
+    p.push(
+      `H ${NOTCH_X + NOTCH_W} c -3 0 -4 ${CONNECTOR_H} -8 ${CONNECTOR_H} h -13 c -4 0 -5 -${CONNECTOR_H} -8 -${CONNECTOR_H} H 5`
+    )
+  } else {
+    p.push('H 5')
+  }
+  p.push(`Q 0 ${y} 0 ${y - 5} V 5 Q 0 0 5 0 Z`)
+  return p.join(' ')
 }
 
 function SlotArrow({ tone = 'light' }) {
@@ -914,19 +869,13 @@ function ScratchCBlock({ node }) {
         <path
           d={cBlockPath(size.width, size)}
           fill={outlineFor(color)}
-          fillRule="evenodd"
           opacity="0.45"
           transform="translate(0 2)"
           data-scratch-c-path="shadow"
         />
+        <path d={cBlockPath(size.width, size)} fill={color} data-scratch-c-path="fill" />
         <path
           d={cBlockPath(size.width, size)}
-          fill={color}
-          fillRule="evenodd"
-          data-scratch-c-path="fill"
-        />
-        <path
-          d={cBlockOuterPath(size.width, size)}
           fill="none"
           stroke={outlineFor(color)}
           strokeWidth="1"
@@ -934,7 +883,7 @@ function ScratchCBlock({ node }) {
           data-scratch-c-path="outer"
         />
         <path
-          d={cBlockOuterPath(size.width, size)}
+          d={cBlockPath(size.width, size)}
           fill="none"
           stroke="rgba(255,255,255,0.22)"
           strokeWidth="1"

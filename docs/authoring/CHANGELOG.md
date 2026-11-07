@@ -45,6 +45,12 @@ Entries written before 2026-09-29 are not tagged.
   band) and the closing bottom arm. Fenced `scratch` blocks are unchanged.
   - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
 
+- **Scratch C-blocks are open on the right, like real Scratch.** The mouth of a drawn `repeat`,
+  `forever`, `if` or `if else` (inline and fenced, nested too) was boxed in on the right and ran
+  to the full block width. It is now one open outline: full-width header, left spine, and short
+  bottom arms (the `else` band gets its own), with the page showing through the mouth.
+  - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
+
 - **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still
   starts open.** A 🧱 **Blocks** button above the script opens and closes it; blocks hidden under
   it are scrolled clear each time it opens. New optional lesson field `scratchPaletteClosed: true`
