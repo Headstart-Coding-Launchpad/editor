@@ -247,6 +247,34 @@ describe('Calm code screen: Topic library', () => {
     ).not.toBeInTheDocument()
     expect(typeof lastWorkspaceProps().onOpenTopicLibrary).toBe('function')
   })
+
+  it.each([
+    ['an earlier task under review', { isViewingPrev: true }],
+    ["the tutor's broadcast", { isForcedTeacherLive: true }],
+    ["the tutor's edit", { isTeacherEditing: true }],
+    ['the explainer-only presentation layout', { presenterLayout: 'explainer' }],
+  ])('stays on the task card where the code row is not shown: %s', (_name, extra) => {
+    render(<LessonTaskContent {...baseProps} cs={csAt()} {...extra} />)
+    expect(
+      within(screen.getByTestId('task-instructions')).getByRole('button', {
+        name: /Topic library/,
+      })
+    ).toBeInTheDocument()
+  })
+
+  it('stays on the task card while a cross-lesson carry holds the code', () => {
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        cs={csAt({ crossLessonCarry: { state: 'hold', taskId: 36, sourceLabel: 'Lesson 1' } })}
+      />
+    )
+    expect(
+      within(screen.getByTestId('task-instructions')).getByRole('button', {
+        name: /Topic library/,
+      })
+    ).toBeInTheDocument()
+  })
 })
 
 describe('Other modules keep the check popup', () => {
@@ -337,8 +365,8 @@ describe('Calm code screen: the hint shows in every layout', () => {
 
 describe('Calm code screen: a reference the tutor opened', () => {
   it('keeps its "Opened by your teacher" label in the What to change box and never folds on a pass', () => {
-    const tutorOpened = (extra = {}) =>
-      csAt({ supportStageReveals: { 1: { source: 'teacher' } }, ...extra })
+    // The tutor opening the Complete stage (reveal_stage_N, auto-reveal) marks the preview 'teacher'.
+    const tutorOpened = (extra = {}) => csAt({ completePreviewShown: 'teacher', ...extra })
     const { rerender } = render(<LessonTaskContent {...baseProps} cs={tutorOpened()} />)
     expect(screen.getByRole('region', { name: 'What to change' })).toHaveTextContent(
       'Opened by your teacher'
@@ -353,6 +381,29 @@ describe('Calm code screen: a reference the tutor opened', () => {
       />
     )
     expect(screen.getByLabelText(/added: circle\(90/)).toBeInTheDocument()
+  })
+
+  it("the student's own See complete code wins over a stale tutor reveal: its own label, and it folds on a pass", () => {
+    const own = (extra = {}) =>
+      csAt({
+        completePreviewShown: true,
+        supportStageReveals: { 1: { source: 'teacher' } },
+        ...extra,
+      })
+    const { rerender } = render(<LessonTaskContent {...baseProps} cs={own()} />)
+    const box = screen.getByRole('region', { name: 'What to change' })
+    expect(box).toHaveTextContent('Complete reference')
+    expect(box).not.toHaveTextContent('Opened by your teacher')
+    rerender(<LessonTaskContent {...baseProps} cs={own({ running: true })} />)
+    rerender(
+      <LessonTaskContent
+        {...baseProps}
+        cs={own({ checkPassed: true, runStatus: 'success' })}
+        displayCheckAttempted
+        displayCheckPassed
+      />
+    )
+    expect(screen.queryByLabelText(/added: circle\(90/)).not.toBeInTheDocument()
   })
 
   it('a stage shown for feedback (the check, not the tutor) keeps its label', () => {
@@ -385,6 +436,18 @@ describe('Calm code screen: when the box folds (once per task view, after a Run 
     rerender(<LessonTaskContent {...baseProps} cs={csAt({ checkFailCount: 1 })} />)
     rerender(<LessonTaskContent {...baseProps} cs={csAt({ running: true })} />)
     rerender(<LessonTaskContent {...baseProps} cs={csAt({ checkPassed: true })} />)
+    expect(screen.getByLabelText(/added: circle\(90/)).toBeInTheDocument()
+  })
+
+  it('going to another task and back opens it again (a new view of that task)', () => {
+    const taskB = { ...task, id: 37, title: 'Task B' }
+    const onA = (extra) => <LessonTaskContent {...baseProps} cs={csAt(extra)} />
+    const { rerender } = render(onA({}))
+    rerender(onA({ running: true }))
+    rerender(onA({ checkPassed: true }))
+    expect(screen.queryByLabelText(/added: circle\(90/)).not.toBeInTheDocument()
+    rerender(<LessonTaskContent {...baseProps} task={taskB} currentTaskId={37} cs={csAt()} />)
+    rerender(onA({ checkPassed: true }))
     expect(screen.getByLabelText(/added: circle\(90/)).toBeInTheDocument()
   })
 
@@ -431,6 +494,23 @@ describe('Calm code screen: the hint after the student moves on', () => {
     const hint = screen.getByTestId('task-hint')
     expect(hint).toHaveAttribute('data-tone', 'nudge')
     expect(hint).toHaveTextContent('Which command draws a circle?')
+  })
+
+  it('a brand-new fail after a pass is amber again, even with the same hint and code', () => {
+    const { rerender } = render(<LessonTaskContent {...baseProps} {...failedRun()} />)
+    rerender(<LessonTaskContent {...baseProps} {...failedRun({ code: 'circle(' })} />)
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'nudge')
+    // A pass resets checkFailCount to 0; the next fail is count 1 again.
+    rerender(
+      <LessonTaskContent
+        {...baseProps}
+        cs={csAt({ checkPassed: true, checkFailCount: 0, code: 'circle(' })}
+        displayCheckAttempted
+        displayCheckPassed
+      />
+    )
+    rerender(<LessonTaskContent {...baseProps} {...failedRun({ code: 'circle(' })} />)
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'fail')
   })
 
   it('a failed-check hint turns gentle when a new Run starts', () => {

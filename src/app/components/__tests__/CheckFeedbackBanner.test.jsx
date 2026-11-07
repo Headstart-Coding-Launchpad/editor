@@ -281,10 +281,31 @@ describe('CheckFeedbackBanner', () => {
       expect(onAsk).not.toHaveBeenCalled()
     })
 
-    it('with no tutor to ask (solo, Builder) there is no help line or button', () => {
-      render(<CheckFeedbackBanner passed={false} />)
+    // By design: the pointer shows only where the top-bar ✋ Help exists (StudentView's
+    // HelpRequestProvider). Hosts outside it (solo, Builder preview, the shared-work viewer)
+    // show no help line or button, on every module's popup.
+    it('with no tutor to ask (solo, Builder preview, shared-work viewer) there is no help line or button', () => {
+      render(<CheckFeedbackBanner passed={false} suggestion="Try again" />)
       expect(screen.queryByText(/Still stuck/i)).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /help/i })).not.toBeInTheDocument()
+    })
+
+    it('the popup still auto-dismisses at 45 seconds with its Ask for help button (unchanged)', () => {
+      vi.useFakeTimers()
+      try {
+        render(
+          <HelpRequestContext.Provider value={{ onAsk: vi.fn(), requested: false }}>
+            <CheckFeedbackBanner passed={false} />
+          </HelpRequestContext.Provider>
+        )
+        expect(screen.getByRole('button', { name: '✋ Ask for help' })).toBeInTheDocument()
+        act(() => {
+          vi.advanceTimersByTime(45000)
+        })
+        expect(screen.queryByRole('button', { name: '✋ Ask for help' })).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('does not offer help on pass', () => {
