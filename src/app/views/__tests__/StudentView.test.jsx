@@ -1452,8 +1452,14 @@ describe('StudentView', () => {
       render(<StudentView lessonId="python-1-1" />)
       await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
 
-      const needHelpBtn = screen.getByRole('button', { name: /Help requested/i })
-      expect(needHelpBtn).toHaveAttribute('aria-disabled', 'true')
+      // The top-bar Help and the calm hint's '✋ Ask for help' (Python) share one handler, so
+      // both say so and neither can be tapped again.
+      const buttons = screen.getAllByRole('button', { name: /Help requested/i })
+      expect(buttons).toHaveLength(2)
+      expect(
+        within(screen.getByTestId('task-hint')).getByRole('button', { name: /Help requested/i })
+      ).toBeInTheDocument()
+      buttons.forEach((button) => expect(button).toHaveAttribute('aria-disabled', 'true'))
     })
 
     it('the pause screen tells the student their tutor will be back, in a full sentence', async () => {

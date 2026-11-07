@@ -1,5 +1,5 @@
 import React from 'react'
-import { AskForHelpButton } from './CheckFeedbackBanner'
+import { AskForHelpButton } from './peerHelp/AskForHelpButton'
 import { useHelpRequest } from './peerHelp/helpRequestContext'
 
 /**

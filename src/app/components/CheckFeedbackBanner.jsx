@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { ASK_FOR_HELP_LABEL, HELP_REQUESTED_LABEL } from './peerHelp/helpLabel'
+import { AskForHelpButton } from './peerHelp/AskForHelpButton'
 import { useHelpRequest } from './peerHelp/helpRequestContext'
 
 // Auto-dismiss delay for the popup — long enough to read, short enough not to linger
@@ -169,25 +169,6 @@ export default function CheckFeedbackBanner({
         </button>
       )}
     </div>
-  )
-}
-
-/**
- * '✋ Ask for help': the top-bar ✋ Help's own handler (HelpRequestContext). Once asked it says
- * so and a second tap does nothing, as the top-bar button does.
- */
-export function AskForHelpButton({ help, style }) {
-  const requested = !!help.requested
-  return (
-    <button
-      type="button"
-      style={{ ...style, ...(requested ? { cursor: 'default', textDecoration: 'none' } : null) }}
-      onClick={requested ? undefined : help.onAsk}
-      aria-disabled={requested ? 'true' : undefined}
-      title={requested ? 'Your tutor knows you need help' : 'Ask your tutor for help'}
-    >
-      {requested ? HELP_REQUESTED_LABEL : ASK_FOR_HELP_LABEL}
-    </button>
   )
 }
 
