@@ -16,7 +16,10 @@ import {
   applyBlockScale,
   calmStackedGridStyle,
   calmStackedLayout,
-  listenForBlockDrags,
+  blockScaleRange,
+  blocklyZoomOptions,
+  createCalmArrival,
+  trackBlockDrags,
 } from '../calm/calmPalette.js'
 
 // A Blockly-like workspace whose blocks really move when it scrolls: a block placed at
@@ -154,34 +157,174 @@ describe('Fun moment: the script stays still when the palette opens or closes', 
   })
 })
 
-describe('a block dragged out of the palette counts as a drag (calm screen)', () => {
-  it('sees the press even when Blockly stops it bubbling up from the palette', () => {
-    const root = document.createElement('div')
-    const palette = document.createElement('div')
-    root.appendChild(palette)
-    document.body.appendChild(root)
-    palette.addEventListener('pointerdown', (event) => event.stopPropagation())
+// A press like the browser's: pointerId and isPrimary (jsdom has no PointerEvent).
+function press(type, target, { pointerId = 1, isPrimary = true } = {}) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'pointerId', { value: pointerId })
+  Object.defineProperty(event, 'isPrimary', { value: isPrimary })
+  target.dispatchEvent(event)
+}
+// A workspace root as Blockly builds it: the palette and canvas inside a .blocklySvg, a toolbar
+// button beside it, a scrollbar, and the stage.
+function blocklyRoot() {
+  const root = document.createElement('div')
+  root.innerHTML = `
+    <button data-id="toolbar">Blocks</button>
+    <input data-id="input" />
+    <canvas data-id="stage"></canvas>
+    <svg class="blocklySvg">
+      <g class="blocklyFlyout"><g class="blocklyDraggable"><rect data-id="palette-block" /></g></g>
+      <g class="blocklyBlockCanvas"><g class="blocklyDraggable"><rect data-id="script-block" /></g></g>
+      <g class="blocklyScrollbarHandle"><rect data-id="scrollbar" /></g>
+    </svg>`
+  document.body.appendChild(root)
+  const at = (id) => root.querySelector(`[data-id="${id}"]`)
+  return { root, at }
+}
+
+describe('Fun moment: a block dragged out of the palette lands where the child lets go', () => {
+  function tracked(options = {}) {
+    const { root, at } = blocklyRoot()
     const onStart = vi.fn()
     const onEnd = vi.fn()
-    const stop = listenForBlockDrags(root, { onStart, onEnd })
-    palette.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    expect(onStart).toHaveBeenCalledTimes(1)
-    document.dispatchEvent(new Event('pointerup'))
-    expect(onEnd).toHaveBeenCalledTimes(1)
-    document.dispatchEvent(new Event('pointercancel'))
-    expect(onEnd).toHaveBeenCalledTimes(2)
-    stop()
-    palette.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    document.dispatchEvent(new Event('pointerup'))
-    expect(onStart).toHaveBeenCalledTimes(1)
-    expect(onEnd).toHaveBeenCalledTimes(2)
-    root.remove()
+    const stop = trackBlockDrags(root, { onStart, onEnd, ...options })
+    const done = () => {
+      stop()
+      root.remove()
+    }
+    return { root, at, onStart, onEnd, stop, done }
+  }
+
+  it('sees the press even when Blockly stops it bubbling up from the palette', () => {
+    const t = tracked()
+    t.at('palette-block').addEventListener('pointerdown', (event) => event.stopPropagation())
+    press('pointerdown', t.at('palette-block'))
+    expect(t.onStart).toHaveBeenCalledTimes(1)
+    press('pointerup', document)
+    expect(t.onEnd).toHaveBeenCalledTimes(1)
+    t.stop()
+    press('pointerdown', t.at('palette-block'))
+    expect(t.onStart).toHaveBeenCalledTimes(1)
+    t.done()
+  })
+
+  it('a tap on a toolbar button, an input, the stage or a scrollbar is not a drag', () => {
+    const t = tracked()
+    for (const id of ['toolbar', 'input', 'stage', 'scrollbar']) {
+      press('pointerdown', t.at(id))
+      press('pointerup', document)
+    }
+    expect(t.onStart).not.toHaveBeenCalled()
+    expect(t.onEnd).not.toHaveBeenCalled()
+    t.done()
+  })
+
+  it('a second finger lifting, or a release that began elsewhere, does not end the drag', () => {
+    const t = tracked()
+    press('pointerdown', t.at('script-block'), { pointerId: 7 })
+    press('pointerdown', t.at('script-block'), { pointerId: 8, isPrimary: false })
+    press('pointerup', document, { pointerId: 8, isPrimary: false })
+    press('pointerup', document, { pointerId: 3 })
+    expect(t.onEnd).not.toHaveBeenCalled()
+    press('pointercancel', document, { pointerId: 7 })
+    expect(t.onEnd).toHaveBeenCalledTimes(1)
+    t.done()
+  })
+
+  it('a release that never arrives (in the stage frame, outside the window) never sticks', () => {
+    vi.useFakeTimers()
+    try {
+      const t = tracked({ timeoutMs: 15000 })
+      // The window loses focus.
+      press('pointerdown', t.at('script-block'))
+      window.dispatchEvent(new Event('blur'))
+      expect(t.onEnd).toHaveBeenCalledTimes(1)
+      // The next primary press ends a drag whose release was lost.
+      press('pointerdown', t.at('palette-block'))
+      press('pointerdown', t.at('toolbar'), { pointerId: 2 })
+      expect(t.onEnd).toHaveBeenCalledTimes(2)
+      // Nothing at all: the timeout, counted from the last movement of that pointer.
+      press('pointerdown', t.at('palette-block'))
+      vi.advanceTimersByTime(10000)
+      press('pointermove', document)
+      vi.advanceTimersByTime(10000)
+      expect(t.onEnd).toHaveBeenCalledTimes(2)
+      vi.advanceTimersByTime(5001)
+      expect(t.onEnd).toHaveBeenCalledTimes(3)
+      // A hidden page ends it too, and only once.
+      press('pointerdown', t.at('script-block'))
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+      delete document.visibilityState
+      press('pointerup', document)
+      expect(t.onEnd).toHaveBeenCalledTimes(4)
+      t.done()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('two workspaces on one page (Builder preview, teacher live view) never take each other’s drags', () => {
+    const a = tracked()
+    const b = tracked()
+    press('pointerdown', a.at('script-block'))
+    expect(a.onStart).toHaveBeenCalledTimes(1)
+    expect(b.onStart).not.toHaveBeenCalled()
+    press('pointerup', document)
+    expect(a.onEnd).toHaveBeenCalledTimes(1)
+    expect(b.onEnd).not.toHaveBeenCalled()
+    a.done()
+    b.done()
+  })
+})
+
+describe('the script’s one placement on arrival (calm screen)', () => {
+  it('a Blocks toggle before the placement does not skip it; after it, it ends placements', () => {
+    const arrival = createCalmArrival()
+    arrival.toggled('cat')
+    expect(arrival.wanted('cat')).toBe(true)
+    arrival.placed('cat')
+    expect(arrival.wanted('cat')).toBe(true)
+    arrival.toggled('cat')
+    expect(arrival.wanted('cat')).toBe(false)
+    expect(arrival.wanted('dog')).toBe(true)
   })
 })
 
 describe('block size on the calm screen', () => {
-  it('is 65% at most and never below 55% (Blockly clamps setScale to minScale)', () => {
+  it('is 65% at most and never below 55%; 75% to 60% elsewhere; one helper picks it', () => {
     expect(CALM_BLOCK_SCALE).toEqual({ min: 0.55, max: 0.65 })
+    expect(blockScaleRange(true)).toBe(CALM_BLOCK_SCALE)
+    expect(blockScaleRange(false)).toEqual({ min: 0.6, max: 0.75 })
+  })
+
+  it('Blockly’s zoom options come from the same range as the size', () => {
+    expect(blocklyZoomOptions(true, 0.62)).toMatchObject({
+      startScale: 0.62,
+      minScale: 0.55,
+      maxScale: 0.65,
+    })
+    expect(blocklyZoomOptions(false, 0.55).startScale).toBe(0.6)
+    expect(blocklyZoomOptions(true, 0.75).startScale).toBe(0.65)
+  })
+
+  it('calm turned on or off after the workspace was made never re-scales (and scrolls) every toggle', () => {
+    // Made outside calm (floor 0.6); calm then asks for 0.55, which Blockly clamps to 0.6.
+    const setScale = vi.fn(function (next) {
+      this.scale = Math.min(0.75, Math.max(0.6, next))
+    })
+    const ws = { scale: 0.75, setScale, options: { zoomOptions: blocklyZoomOptions(false, 0.75) } }
+    expect(applyBlockScale(ws, 0.55, { calm: true })).toBe(true)
+    expect(ws.scale).toBe(0.6)
+    for (let i = 0; i < 3; i++) expect(applyBlockScale(ws, 0.55, { calm: true })).toBe(false)
+    expect(setScale).toHaveBeenCalledTimes(1)
+    // Made on the calm screen (ceiling 0.65); calm off asks for 0.75.
+    const calmWs = {
+      scale: 0.65,
+      setScale: vi.fn(),
+      options: { zoomOptions: blocklyZoomOptions(true, 0.65) },
+    }
+    expect(applyBlockScale(calmWs, 0.75, { calm: true })).toBe(false)
   })
 })
 
@@ -330,18 +473,36 @@ describe('calm Scratch layout rules', () => {
   })
 
   it('caps the explainer beside the pinned stage and keeps the Blocks pane at least 360px tall', () => {
-    // 768x1024 portrait tablet: the workspace is about 820px tall.
-    const style = calmStackedGridStyle(820, { aside: true })
-    expect(style.gridTemplateRows).toBe('auto minmax(360px, 1fr)')
-    const { asideMaxHeight, blocksMinHeight } = calmStackedLayout(820)
-    expect(asideMaxHeight).toBe(Math.round(820 * 0.35))
-    expect(blocksMinHeight).toBe(360)
-    // Never below 140px for the card, and a short workspace keeps a share for the blocks.
-    expect(calmStackedLayout(300).asideMaxHeight).toBe(140)
-    expect(calmStackedLayout(300).blocksMinHeight).toBeLessThan(300 - 140)
-    // Not measured yet: no cap, no minimum.
+    // 768x1024 portrait tablet: the workspace is about 820px tall and 736px wide.
+    const layout = calmStackedLayout(820, { width: 736 })
+    expect(layout.asideMaxHeight).toBe(Math.round(820 * 0.35))
+    expect(layout.blocksMinHeight).toBe(360)
+    expect(calmStackedGridStyle(layout, { aside: true }).gridTemplateRows).toBe(
+      'auto minmax(360px, 1fr)'
+    )
+    // Never below 140px for the card. Not measured yet: no cap, no minimum.
+    expect(calmStackedLayout(300, { width: 736 }).asideMaxHeight).toBe(140)
     expect(calmStackedLayout(0)).toEqual({ asideMaxHeight: null, blocksMinHeight: 0 })
-    expect(calmStackedGridStyle(820, { aside: false }).gridTemplateAreas).toBe('"stage" "blocks"')
+    expect(calmStackedGridStyle(layout, { aside: false }).gridTemplateAreas).toBe(
+      '"stage" "blocks"'
+    )
+  })
+
+  it.each([500, 600, 768, 1024])(
+    'at %ipx tall the stage row, the gap and the Blocks minimum fit the workspace',
+    (height) => {
+      const width = 736
+      const { asideMaxHeight, blocksMinHeight } = calmStackedLayout(height, { width })
+      const stageRow = Math.round(360 * calmStackedStageScale(width)) + 52
+      const topRow = Math.max(stageRow, asideMaxHeight)
+      expect(topRow + 10 + blocksMinHeight).toBeLessThanOrEqual(height)
+      expect(blocksMinHeight).toBeGreaterThanOrEqual(120)
+      expect(blocksMinHeight).toBeLessThanOrEqual(360)
+    }
+  )
+
+  it('keeps a 120px floor for the blocks when nothing fits', () => {
+    expect(calmStackedLayout(300, { width: 736 }).blocksMinHeight).toBe(120)
   })
 
   it('pins a stage about 300px wide in the stacked (portrait) layout', () => {

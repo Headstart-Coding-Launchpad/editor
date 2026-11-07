@@ -207,22 +207,43 @@ export function calmExplainerWidth(panelWidth) {
   return Math.max(220, Math.min(320, Math.round((panelWidth || 0) * 0.24)))
 }
 
-// The stacked layout's rows (`height`: the workspace's measured height). The explainer column
-// beside the pinned stage is capped at 35% of the height (never below 140px) and its card scrolls
-// inside, and the Blocks pane below keeps at least 360px (or half a short workspace). A 14-step
-// card with a picture once grew the top row until the Blocks pane was 2px tall at 768x1024.
+// The pinned stage in the stacked layout: about 44% of the width, at most 0.65 (312x234).
+const STAGE_W = 480
+const STAGE_H = 360
+const STACKED_STAGE_MAX = 0.65
+const STACKED_STAGE_MIN = 0.35
+export function calmStackedStageScale(width) {
+  const scale = ((width || 0) * 0.44) / (STAGE_W + 2)
+  return Math.max(STACKED_STAGE_MIN, Math.min(STACKED_STAGE_MAX, scale))
+}
+
+// The stacked layout's rows, worked out ONCE (LessonTaskContent, from the task panel's measured
+// size) and handed to the workspace (`calm.layout`), so the card's fold threshold and the cap on
+// its column are the same number. The explainer column beside the pinned stage is capped at 35%
+// of the height (never below 140px) and its card scrolls inside. The Blocks pane below keeps up to
+// 360px: never more than what is left under the top row (the stage, about 234px plus its toolbar,
+// or the capped card if taller) and the gap, never below 120px. A 14-step card with a picture once
+// grew the top row until the Blocks pane was 2px tall at 768x1024; a fixed 360px minimum overflowed
+// any workspace under about 600px tall.
 const STACKED_ASIDE_SHARE = 0.35
 const STACKED_ASIDE_MIN = 140
-const STACKED_BLOCKS_MIN = 360
-export function calmStackedLayout(height) {
+const STACKED_BLOCKS_MAX_MIN = 360
+const STACKED_BLOCKS_FLOOR = 120
+const STACKED_GAP = 10
+const STACKED_STAGE_CHROME = 52
+export function calmStackedLayout(height, { width = 0 } = {}) {
   if (!(height > 0)) return { asideMaxHeight: null, blocksMinHeight: 0 }
+  const stageRow = Math.round(STAGE_H * calmStackedStageScale(width)) + STACKED_STAGE_CHROME
+  const asideMaxHeight = Math.max(STACKED_ASIDE_MIN, Math.round(height * STACKED_ASIDE_SHARE))
+  const topRow = Math.max(stageRow, asideMaxHeight)
+  const room = height - topRow - STACKED_GAP
   return {
-    asideMaxHeight: Math.max(STACKED_ASIDE_MIN, Math.round(height * STACKED_ASIDE_SHARE)),
-    blocksMinHeight: Math.min(STACKED_BLOCKS_MIN, Math.round(height * 0.5)),
+    asideMaxHeight,
+    blocksMinHeight: Math.max(STACKED_BLOCKS_FLOOR, Math.min(STACKED_BLOCKS_MAX_MIN, room)),
   }
 }
-export function calmStackedGridStyle(height, { aside }) {
-  const { blocksMinHeight } = calmStackedLayout(height)
+export function calmStackedGridStyle(layout, { aside }) {
+  const blocksMinHeight = layout?.blocksMinHeight ?? 0
   return {
     display: 'grid',
     gridTemplateColumns: aside ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
@@ -232,49 +253,140 @@ export function calmStackedGridStyle(height, { aside }) {
     minWidth: 0,
     minHeight: 0,
     height: '100%',
-    gap: 10,
+    gap: STACKED_GAP,
     position: 'relative',
   }
 }
 
-// Block size on the calm screen: 65% at most (75% elsewhere), so blocks and the open palette are
-// smaller and the palette tidier (350px wide at 75%, about 306px at 65% at 1366). Blockly clamps
-// setScale to the workspace's minScale, so the zoom options use the same floor.
-export const CALM_BLOCK_SCALE = { min: 0.55, max: 0.65 }
+// Block size: 65% at most on the calm screen (55% at least), 75% elsewhere (60% at least), so on
+// the calm screen blocks and the open palette are smaller and the palette tidier (350px wide at
+// 75%, about 306px at 65% at 1366). The ONE place the range is chosen: the size, Blockly's zoom
+// options and the unchanged-size check all read it.
+export const CALM_BLOCK_SCALE = Object.freeze({ min: 0.55, max: 0.65 })
+export const SCRATCH_BLOCK_SCALE = Object.freeze({ min: 0.6, max: 0.75 })
+export function blockScaleRange(calm) {
+  return calm ? CALM_BLOCK_SCALE : SCRATCH_BLOCK_SCALE
+}
+function clampScale(scale, { min, max }) {
+  return Math.min(max, Math.max(min, scale))
+}
+// Blockly's zoom options for a new workspace: start, floor and ceiling from the same range.
+export function blocklyZoomOptions(calm, scale) {
+  const range = blockScaleRange(calm)
+  const startScale = clampScale(Number.isFinite(scale) ? scale : range.max, range)
+  return { controls: false, wheel: false, startScale, minScale: range.min, maxScale: range.max }
+}
 
 // Applies the block size to a workspace. Blockly's setScale scrolls the canvas even when the size
 // is unchanged (it re-centres the view): on the calm screen, where every palette open or close
 // re-applies the size, that moved the script about 105px on screen each time. There it is only
-// set when it really changes (a resize); elsewhere it is set every time, as before.
+// set when it really changes (a resize); elsewhere it is set every time, as before. "Changes" is
+// judged against the size Blockly would really give (it clamps setScale to the workspace's own
+// zoom options), so a workspace made with another range never re-scales, and scrolls, forever.
 export function applyBlockScale(ws, scale, { calm = false } = {}) {
   if (!ws?.setScale) return false
-  if (calm && Math.abs((ws.scale ?? 0) - scale) < 0.001) return false
+  if (calm) {
+    const zoom = ws.options?.zoomOptions
+    const min = Number.isFinite(zoom?.minScale) ? zoom.minScale : -Infinity
+    const max = Number.isFinite(zoom?.maxScale) ? zoom.maxScale : Infinity
+    if (Math.abs((ws.scale ?? 0) - clampScale(scale, { min, max })) < 0.001) return false
+  }
   ws.setScale(scale)
   return true
 }
 
-// Notes when a press starts and ends anywhere in `root`. Capture phase: Blockly stops a press on
-// the palette from bubbling, so a bubbling listener never saw a block dragged out of it, and a
-// palette toggled during that drag scrolled the canvas under the finger (the block landed about
-// 160px from where it was let go). The release is heard in the capture phase too. Returns the
-// cleanup.
-export function listenForBlockDrags(root, { onStart, onEnd }) {
+/**
+ * Calm screen: knows when a block (or the canvas) is being dragged in ONE workspace (`root`), so
+ * palette and size changes wait for the drop. Capture phase, since Blockly stops a press on the
+ * palette from bubbling (a palette toggled during that drag scrolled the canvas under the finger,
+ * and the block landed about 160px from where it was let go). Narrow and self-healing:
+ * - only a press on Blockly's palette or canvas inside this root starts a drag (not a toolbar
+ *   button, an input, a scrollbar or the stage);
+ * - only that pointer's release or cancel ends it (a second finger lifting does not);
+ * - it also ends, so it can never stick, when the window loses focus or is hidden, on the next
+ *   primary press (the release was lost: in the stage frame, outside the window), and after
+ *   `timeoutMs` with no movement of that pointer.
+ * `onEnd` runs once per drag. Returns the cleanup.
+ */
+const BLOCKLY_DRAG_SURFACE = '.blocklyFlyout, .blocklyBlockCanvas, .blocklyDraggable, .blocklySvg'
+const BLOCKLY_NOT_A_DRAG = '.blocklyScrollbarHandle, .blocklyScrollbarBackground'
+export const BLOCK_DRAG_TIMEOUT_MS = 15000
+export function trackBlockDrags(root, { onStart, onEnd, timeoutMs = BLOCK_DRAG_TIMEOUT_MS }) {
   if (!root) return () => {}
-  root.addEventListener('pointerdown', onStart, true)
-  document.addEventListener('pointerup', onEnd, true)
-  document.addEventListener('pointercancel', onEnd, true)
+  let activePointer = null
+  let timer = 0
+  function end() {
+    if (activePointer === null) return
+    activePointer = null
+    clearTimeout(timer)
+    onEnd?.()
+  }
+  const armTimer = () => {
+    clearTimeout(timer)
+    timer = setTimeout(end, timeoutMs)
+  }
+  const pointerOf = (event) => event.pointerId ?? 'pointer'
+  const isDragSurface = (target) => {
+    if (!target?.closest || target.closest(BLOCKLY_NOT_A_DRAG)) return false
+    const surface = target.closest(BLOCKLY_DRAG_SURFACE)
+    return !!surface && root.contains(surface)
+  }
+  const onDown = (event) => {
+    if (activePointer !== null) {
+      // Another finger joining the drag is not a new drag; a new primary press means the last
+      // release was lost.
+      if (event.isPrimary === false) return
+      end()
+    }
+    if (!isDragSurface(event.target)) return
+    activePointer = pointerOf(event)
+    armTimer()
+    onStart?.()
+  }
+  const isActivePointer = (event) => activePointer !== null && pointerOf(event) === activePointer
+  const onRelease = (event) => {
+    if (isActivePointer(event)) end()
+  }
+  const onMove = (event) => {
+    if (isActivePointer(event)) armTimer()
+  }
+  const onHidden = () => {
+    if (document.visibilityState === 'hidden') end()
+  }
+  root.addEventListener('pointerdown', onDown, true)
+  document.addEventListener('pointerup', onRelease, true)
+  document.addEventListener('pointercancel', onRelease, true)
+  document.addEventListener('pointermove', onMove, true)
+  document.addEventListener('visibilitychange', onHidden)
+  window.addEventListener('blur', end)
   return () => {
-    root.removeEventListener('pointerdown', onStart, true)
-    document.removeEventListener('pointerup', onEnd, true)
-    document.removeEventListener('pointercancel', onEnd, true)
+    clearTimeout(timer)
+    activePointer = null
+    root.removeEventListener('pointerdown', onDown, true)
+    document.removeEventListener('pointerup', onRelease, true)
+    document.removeEventListener('pointercancel', onRelease, true)
+    document.removeEventListener('pointermove', onMove, true)
+    document.removeEventListener('visibilitychange', onHidden)
+    window.removeEventListener('blur', end)
   }
 }
 
-// The pinned stage in the stacked layout: about 44% of the width, at most 0.65 (312x234).
-const STAGE_W = 480
-const STACKED_STAGE_MAX = 0.65
-const STACKED_STAGE_MIN = 0.35
-export function calmStackedStageScale(width) {
-  const scale = ((width || 0) * 0.44) / (STAGE_W + 2)
-  return Math.max(STACKED_STAGE_MIN, Math.min(STACKED_STAGE_MAX, scale))
+/**
+ * Calm screen: whether a sprite's script still gets its one placement at the left of the canvas
+ * (palette closed, canvas not touched). The child's Blocks toggle stops later placements only once
+ * that placement has happened: a toggle before it (the palette opened at once) used to skip it,
+ * leaving the script off the left edge or far to the right after the close.
+ */
+export function createCalmArrival() {
+  const placed = new Set()
+  const settled = new Set()
+  return {
+    wanted: (id) => !settled.has(id),
+    placed: (id) => {
+      placed.add(id)
+    },
+    toggled: (id) => {
+      if (placed.has(id)) settled.add(id)
+    },
+  }
 }

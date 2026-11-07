@@ -74,15 +74,17 @@ import { keyScratchSpriteStates } from './jsonWorkspace.js'
 import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
 import {
-  CALM_BLOCK_SCALE,
   applyBlockScale,
+  blockScaleRange,
+  blocklyZoomOptions,
   calmFoldsSpriteProps,
   calmPaletteFollowUp,
   calmStackedGridStyle,
   calmStackedLayout,
+  createCalmArrival,
   createCalmDragEndStep,
   calmStackedStageScale,
-  listenForBlockDrags,
+  trackBlockDrags,
   createPaletteCategoryMemory,
   openPaletteReveal,
   placeScriptOnArrival,
@@ -155,13 +157,8 @@ const SCRATCH_WATCH_PANEL_TABS_SURFACE = 'scratch_watch_panel'
 // were removed as confusing) — scale is purely a function of available space, continuously
 // recalculated (see computeBlockScale). MAX matches the old fixed default scale, so a wide
 // screen looks exactly as before; MIN is a readability floor — below it we lean on the
-// flyout-collapse/compact-tab mechanisms instead of shrinking blocks further. The calm screen
-// uses its own, smaller range (CALM_BLOCK_SCALE: 65% down to 55%).
-const BLOCK_SCALE_MAX = 0.75
-const BLOCK_SCALE_MIN = 0.6
-function blockScaleRange(calm) {
-  return calm ? CALM_BLOCK_SCALE : { min: BLOCK_SCALE_MIN, max: BLOCK_SCALE_MAX }
-}
+// flyout-collapse/compact-tab mechanisms instead of shrinking blocks further. The range (75% to
+// 60%; the calm screen's 65% to 55%) is chosen in one place, blockScaleRange (calmPalette.js).
 
 // Continuous, not tiered: full size whenever the container is at/above the same 1000×600
 // "wide" reference point `compact` uses, interpolating down to the floor as it shrinks
@@ -1276,6 +1273,11 @@ export default function ScratchWorkspace({
   const stageToolbarRef = useRef(null)
   const rootRef = useRef(null)
   const [rootSizeRef, rootSize] = useElementSize()
+  // The stacked layout's rows (calm, portrait): worked out once by LessonTaskContent
+  // (`calm.layout`), so the explainer cap here and its card's fold threshold are one number. Only
+  // a caller without it falls back to this workspace's own size.
+  const calmStackedLayoutNow =
+    calm?.layout ?? calmStackedLayout(rootSize.height, { width: rootSize.width })
   const setRootNode = useCallback(
     (node) => {
       rootRef.current = node
@@ -1985,13 +1987,8 @@ export default function ScratchWorkspace({
       // recalculating from container size is exactly the "auto behavior fights a manual
       // choice" problem the compact-tab rework above was built to avoid. The wheel now
       // pans instead, since it no longer has a zoom job to do.
-      zoom: {
-        controls: false,
-        wheel: false,
-        startScale: blockScaleRef.current,
-        minScale: blockScaleRange(!!calmRef.current).min,
-        maxScale: blockScaleRange(!!calmRef.current).max,
-      },
+      // Start, floor and ceiling from the same range as blockScaleRef (blockScaleRange).
+      zoom: blocklyZoomOptions(!!calmRef.current, blockScaleRef.current),
       move: { scrollbars: true, drag: true, wheel: true },
       trashcan: true,
       readOnly,
@@ -2193,6 +2190,7 @@ export default function ScratchWorkspace({
   // Calm screen, palette closed, canvas not touched yet: one placement of the script at the left
   // of the canvas once the resizes of arrival (or a sprite switch) have settled.
   const arrivalTimerRef = useRef(0)
+  const [calmArrival] = useState(createCalmArrival)
   const scheduleArrivalPlacementRef = useRef(null)
   scheduleArrivalPlacementRef.current = () => {
     clearTimeout(arrivalTimerRef.current)
@@ -2200,9 +2198,12 @@ export default function ScratchWorkspace({
       const id = selectedSpriteId
       const ws = workspaceRefs.current[id]
       if (!ws || !calmRef.current || !flyoutCollapsedRef.current) return
-      if (workspaceTouchedRef.current.has(id) || blockDragActiveRef.current) return
+      if (!calmArrival.wanted(id) || workspaceTouchedRef.current.has(id)) return
+      // Mid-drag: tried again when the drag ends (the drag tracker's onEnd).
+      if (blockDragActiveRef.current) return
       try {
         placeScriptOnArrival(ws, blocksDivRefs.current[id])
+        calmArrival.placed(id)
       } catch {}
     }, ARRIVAL_SETTLE_MS)
   }
@@ -2223,10 +2224,11 @@ export default function ScratchWorkspace({
     if (!flyoutCollapsed) {
       paletteMemory().remember(topFlyoutCategory(workspaceRefs.current[selectedSpriteId]))
     }
-    // From the child's first toggle the script stays where it is on screen: no arrival
-    // placement after a close (it moved the script back left), only the open's reveal of blocks
-    // that would be hidden under the palette.
-    workspaceTouchedRef.current.add(selectedSpriteId)
+    // Once the script has had its arrival placement, the child's toggle keeps it where it is on
+    // screen: no placement after a close (it moved the script back left), only the open's reveal
+    // of blocks that would be hidden under the palette. A toggle before that placement (the
+    // palette opened at once) leaves it owed, so the close still places the script.
+    calmArrival.toggled(selectedSpriteId)
     setFlyoutCollapsed((collapsed) => !collapsed)
   }
 
@@ -2500,16 +2502,35 @@ export default function ScratchWorkspace({
     const onUp = () => {
       blockDragActiveRef.current = false
       runPendingRecalc()
-      // A palette opened or closed mid-drag (calm screen, any number of times) gets the reveal or
-      // the close fixups for the state it ends in, once the block is let go.
-      const step = pendingCalmStep.take({ open: !flyoutCollapsedRef.current })
-      if (step) requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
     }
 
-    // Capture phase: a block dragged out of the palette counts too (Blockly stops that press
-    // from bubbling).
-    return listenForBlockDrags(el, { onStart: onDown, onEnd: onUp })
-  }, [resizeBlocklyWorkspaces, pendingCalmStep])
+    if (!calmOn) {
+      // Outside the calm screen, exactly as before: any press in the root, released anywhere.
+      el.addEventListener('pointerdown', onDown)
+      document.addEventListener('pointerup', onUp)
+      document.addEventListener('pointercancel', onUp)
+      return () => {
+        el.removeEventListener('pointerdown', onDown)
+        document.removeEventListener('pointerup', onUp)
+        document.removeEventListener('pointercancel', onUp)
+      }
+    }
+    // Calm screen: only a press on THIS workspace's palette or canvas (capture phase, so a block
+    // dragged out of the palette counts though Blockly stops that press bubbling), ended by that
+    // pointer's release or by the fail-safes in trackBlockDrags, so it can never stick.
+    return trackBlockDrags(el, {
+      onStart: onDown,
+      onEnd: () => {
+        onUp()
+        // A palette opened or closed mid-drag (any number of times) gets the reveal or the close
+        // fixups for the state it ends in, once the block is let go; an arrival placement that
+        // waited for the drop runs too.
+        const step = pendingCalmStep.take({ open: !flyoutCollapsedRef.current })
+        if (step) requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
+        else scheduleArrivalPlacementRef.current?.()
+      },
+    })
+  }, [resizeBlocklyWorkspaces, pendingCalmStep, calmOn])
 
   // ── Signal factory ───────────────────────────────────────────────────────────
   const createSignal = useCallback(() => {
@@ -3631,7 +3652,7 @@ export default function ScratchWorkspace({
         hideStage
           ? s.rootColumn
           : calmStacked
-            ? calmStackedGridStyle(rootSize.height, { aside: !!calm.aside })
+            ? calmStackedGridStyle(calmStackedLayoutNow, { aside: !!calm.aside })
             : compact
               ? s.rootCompact
               : s.root
@@ -4133,7 +4154,7 @@ export default function ScratchWorkspace({
           style={{
             ...s.calmStackedAside,
             // Capped (the card scrolls inside), so a long card never squeezes the blocks.
-            maxHeight: calmStackedLayout(rootSize.height).asideMaxHeight ?? undefined,
+            maxHeight: calmStackedLayoutNow.asideMaxHeight ?? undefined,
           }}
         >
           {calm.aside}
