@@ -153,7 +153,10 @@ export default function CheckFeedbackBanner({
         </div>
       )}
       {/* Help is offered for a failed check, never on the tutor's own hint (they are already
-          helping) or a pass. */}
+          helping) or a pass. By design only where the top-bar ✋ Help exists (StudentView's
+          HelpRequestProvider): hosts outside it (solo, Builder preview, the shared-work viewer)
+          show no help pointer at all, and a popup's button goes with it at the 45s auto-dismiss,
+          as the top-bar button stays. */}
       {!passed && !fromTutor && help && <AskForHelpButton help={help} style={actionStyle} />}
       {docked && fromTutor && !passed && onDismiss && (
         <button type="button" style={actionStyle} onClick={onDismiss}>

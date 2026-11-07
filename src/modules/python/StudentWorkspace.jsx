@@ -3,7 +3,6 @@ import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { BlocksButton, EmojiButton } from './EditorToolButtons'
 import { taskKeyCode } from './keyRow.js'
-import pythonDefinition from './definition.js'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -149,8 +148,9 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
-  // The calm screen needs both the module's capability and a host that supplies its pieces.
-  const calm = !!pythonDefinition.capabilities?.calmCodeScreen && !!whatToChange
+  // Calm screen: only the calm host (LessonTaskContent, on capabilities.calmCodeScreen) passes
+  // `whatToChange`, so its presence is the switch (no import of this module's definition here).
+  const calm = !!whatToChange
   const showCopyCode =
     typeof task?.copyCode === 'string' &&
     !!task.copyCode.trim() &&

@@ -1593,7 +1593,8 @@ export function useStudentCodeState({
       const stage = task.codeStages?.[stageIndex]
       if (getStageRole(stage) === 'support') handleRevealSupportStage(stageIndex, 'teacher')
       else if (getStageRole(stage) === 'complete') {
-        setCompletePreviewShown(true)
+        // 'teacher': the tutor opened it (the calm screen labels it and never folds it away).
+        setCompletePreviewShown('teacher')
         badgeSignals.reportCompleteShown(currentTaskId, 'preview')
       }
       return
@@ -3419,7 +3420,7 @@ export function useStudentCodeState({
           stageLabel: completeStage.stage.label || 'Complete',
         }
       )
-      setCompletePreviewShown(true)
+      setCompletePreviewShown('teacher')
       return
     }
     const toReveal = mode === 'first' ? getRevealableStages(task).slice(0, 1) : supportStages

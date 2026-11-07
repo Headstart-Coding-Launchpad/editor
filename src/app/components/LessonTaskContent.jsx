@@ -328,9 +328,12 @@ export default function LessonTaskContent({
   // Per task view: whether a Run has started here, and whether the one auto-fold has happened.
   const calmFoldRef = useRef({ taskKey: calmTaskKey, ran: false, autoFolded: false })
   const lastCalmPassedRef = useRef({ taskKey: calmTaskKey, passed: calmRunPassed })
+  // A new task view starts both halves of the fold state together (the auto-fold record and the
+  // folded box), so going A -> B -> A opens A again rather than showing a stale fold.
   useEffect(() => {
     if (calmFoldRef.current.taskKey !== calmTaskKey) {
       calmFoldRef.current = { taskKey: calmTaskKey, ran: false, autoFolded: false }
+      setWhatToChangeFoldedFor(null)
     }
     if (calmRunning) calmFoldRef.current.ran = true
   }, [calmTaskKey, calmRunning])
@@ -348,12 +351,22 @@ export default function LessonTaskContent({
     setWhatToChangeFoldedFor((current) => (current === calmTaskKey ? null : calmTaskKey))
   }
   // The Topic library chip moves to the code row (calm screen, side explainer): a tap opens the
-  // explainer if it is folded away, then asks its library to open (libraryRequest).
+  // explainer if it is folded away, then asks its library to open (libraryRequest). Only where
+  // that row actually renders (the module's StudentWorkspace, with its editable header: not an
+  // earlier task, a broadcast, the tutor's edit, a carry hold or the explainer-only layout);
+  // otherwise the chip stays on the task card, so it is never missing.
   const [libraryRequest, setLibraryRequest] = useState(0)
   const libraryInCodeRow =
     calmScreen &&
     useSideExplainer &&
     presenterLayout !== 'code' &&
+    presenterLayout !== 'explainer' &&
+    !isViewingPrev &&
+    !isForcedTeacherLive &&
+    !isTeacherEditing &&
+    !carryHold &&
+    !isActivityTask &&
+    !ModuleActivityWorkspace &&
     !hasSandboxExplainer &&
     !showsCompleteCode &&
     (moduleCaps?.topicLibrary ?? true)
@@ -535,13 +548,14 @@ export default function LessonTaskContent({
           ? 'live'
           : 'support'
     const reveal =
+      kind === 'support' ? (cs.supportStageReveals?.[activeSupportStage?.index] ?? null) : null
+    // The Complete preview says who opened it this time ('teacher' from the tutor's reveal or
+    // auto-reveal, true from the student's own See complete code), so a stale tutor reveal
+    // recorded on the stage's index never relabels the student's own preview.
+    const openedByTutor =
       kind === 'complete'
-        ? // A Complete stage the tutor opened for the student records its source on its index.
-          (cs.supportStageReveals?.[getCompleteStage(task)?.index] ?? null)
-        : kind === 'support'
-          ? (cs.supportStageReveals?.[activeSupportStage?.index] ?? null)
-          : null
-    const openedByTutor = reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
+        ? cs.completePreviewShown === 'teacher'
+        : reveal?.source === 'teacher' || reveal?.source === 'teacher-auto'
     const sourceLabel =
       kind === 'complete'
         ? openedByTutor
@@ -732,7 +746,7 @@ export default function LessonTaskContent({
       !!sentHintText)
   const hintToneNow = !shouldShowFeedbackBanner
     ? 'nudge'
-    : sentHintText && !bannerPassed
+    : sentHintText
       ? 'tutor'
       : bannerPassed
         ? 'pass'
@@ -744,9 +758,13 @@ export default function LessonTaskContent({
     calmHintDocked && hintToneNow === 'fail'
       ? `${currentTaskId}|${cs.checkFailCount ?? ''}|${displayCheckSuggestion ?? ''}|${cs.offeredSupportStageIndex ?? ''}`
       : null
+  // The key is not unique per fail (checkFailCount goes back to 0 on a pass and on Reset Code), so
+  // the noted fail is forgotten as soon as no fail shows: the next fail is new, and amber.
   const [failSeen, setFailSeen] = useState(null)
   if (calmFailKey != null && failSeen?.key !== calmFailKey) {
     setFailSeen({ key: calmFailKey, code: cs.code })
+  } else if (calmFailKey == null && failSeen != null) {
+    setFailSeen(null)
   }
   const failSettled =
     calmFailKey != null &&
@@ -1100,7 +1118,7 @@ export default function LessonTaskContent({
   // the wrapper in and out would remount the workspace below (CodeMirror's focus, cursor and
   // scroll, More keys, slow-mo, the output tab) whenever the explainer folds or the hint changes.
   const leftPane = calmScreen ? (
-    <div style={s.calmLeftColumn}>
+    <div style={s.calmColumn}>
       {taskExplainer}
       {calmHintSlot === 'left' && hintBox}
     </div>
@@ -1108,7 +1126,7 @@ export default function LessonTaskContent({
     taskExplainer
   )
   const editorPane = calmScreen ? (
-    <div style={s.calmEditorColumn}>
+    <div style={s.calmColumn}>
       {editorArea}
       {calmHintSlot === 'editor' && hintBox}
     </div>
@@ -1373,9 +1391,9 @@ const s = {
     alignSelf: 'auto',
     color: '#fff',
   },
-  // The calm screen's left column: the task card, then the hint at the bottom (TaskHintBox),
-  // capped at about half the column and scrolling inside.
-  calmLeftColumn: {
+  // The calm screen's two columns (task card or editor, then the docked hint, TaskHintBox): one
+  // style for both. In the left column the hint sits at the bottom, capped at about half.
+  calmColumn: {
     flex: 1,
     minWidth: 0,
     minHeight: 0,
@@ -1385,15 +1403,6 @@ const s = {
     overflow: 'hidden',
   },
   hintInLeftColumn: { marginTop: 'auto', maxHeight: '50%' },
-  calmEditorColumn: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    overflow: 'hidden',
-  },
   hintBelowEditor: { maxHeight: '30vh' },
   fluidWorkspace: {
     flex: '1 1 auto',

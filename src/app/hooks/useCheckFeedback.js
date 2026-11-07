@@ -8,6 +8,7 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
   const [checkFailCount, setCheckFailCount] = useState(0)
   const [testResults, setTestResults] = useState(null)
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
+  // false, true (the student's own See complete code) or 'teacher' (the tutor opened it).
   const [completePreviewShown, setCompletePreviewShown] = useState(false)
   const [stagePromptAccepted, setStagePromptAccepted] = useState(false)
   // The tutor's "Send hint" text for this task ({ text, at }), shown on the hint banner. It sets
