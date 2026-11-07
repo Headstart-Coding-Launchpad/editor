@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 /**
  * The calm code screen's one "What to change" box above the editor (Python): the Type this out
@@ -8,14 +8,23 @@ import React from 'react'
  *
  * `headerAction`: a control at the right of the open header ("Show all the code").
  * `preview`: the folded line's code (the first added line), or ''.
+ * `sourceLabel`: where it came from, small in the header ("Opened by your teacher"), or none.
+ * With `folded` left undefined the box keeps its own fold (open at first, changed only by a tap):
+ * a reference the tutor put there never folds with the student's pass.
  */
 export default function WhatToChangeBox({
-  folded = false,
-  onToggle,
+  folded: foldedProp,
+  onToggle: onToggleProp,
   preview = '',
   headerAction = null,
+  sourceLabel = '',
   children,
 }) {
+  const [ownFolded, setOwnFolded] = useState(false)
+  const controlled = foldedProp !== undefined
+  const folded = controlled ? !!foldedProp : ownFolded
+  const onToggle = controlled ? onToggleProp : () => setOwnFolded((value) => !value)
+  const source = sourceLabel ? <span style={s.source}>{sourceLabel}</span> : null
   if (folded) {
     return (
       <section style={s.box} aria-label="What to change">
@@ -31,6 +40,7 @@ export default function WhatToChangeBox({
           </span>
           <span style={s.foldedTitle}>Show what to change</span>
           {preview && <span style={s.preview}>+ {preview}</span>}
+          {source}
         </button>
       </section>
     )
@@ -56,6 +66,7 @@ export default function WhatToChangeBox({
             ▾
           </span>
           What to change
+          {source}
         </button>
         {headerAction}
       </div>
@@ -124,6 +135,15 @@ const s = {
     cursor: 'pointer',
   },
   foldedTitle: { flexShrink: 0 },
+  // As the full reference panel's source line (SupportStagePanel): small, after the title.
+  source: {
+    marginLeft: 'auto',
+    flexShrink: 0,
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#1d4ed8',
+    whiteSpace: 'nowrap',
+  },
   chevron: { width: 14, flexShrink: 0, color: '#1d4ed8', fontSize: 12 },
   preview: {
     minWidth: 0,

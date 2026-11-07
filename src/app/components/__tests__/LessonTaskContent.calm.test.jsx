@@ -355,16 +355,16 @@ describe('Calm code screen: a reference the tutor opened', () => {
     expect(screen.getByLabelText(/added: circle\(90/)).toBeInTheDocument()
   })
 
-  it('a stage shown for feedback keeps its label and stays open after a pass', () => {
-    const shown = (extra = {}) =>
-      csAt({ completePreviewShown: false, targetedPreviewStageIndex: 1, ...extra })
-    const { rerender } = render(<LessonTaskContent {...baseProps} cs={shown()} />)
+  it('a stage shown for feedback (the check, not the tutor) keeps its label', () => {
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        cs={csAt({ completePreviewShown: false, targetedPreviewStageIndex: 1 })}
+      />
+    )
     expect(screen.getByRole('region', { name: 'What to change' })).toHaveTextContent(
       'Shown for your feedback'
     )
-    rerender(<LessonTaskContent {...baseProps} cs={shown({ running: true })} />)
-    rerender(<LessonTaskContent {...baseProps} cs={shown({ checkPassed: true })} />)
-    expect(screen.getByLabelText(/added: circle\(90/)).toBeInTheDocument()
   })
 })
 

@@ -106,9 +106,10 @@ export default function SupportStagePanel({
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
   // The calm code screen (Python): a change view shows in the one "What to change" box
-  // (WhatToChangeBox), `folded` to one line after a passing Run, `onToggleFolded` on a tap.
+  // (WhatToChangeBox), `folded` to one line after a passing Run, `onToggleFolded` on a tap. Left
+  // undefined (a reference the tutor put there), the box keeps its own fold, changed only by a tap.
   calm = false,
-  folded = false,
+  folded,
   onToggleFolded,
 }) {
   const text = stageToText(stage, lessonType)
@@ -178,6 +179,9 @@ export default function SupportStagePanel({
         folded={folded}
         onToggle={onToggleFolded}
         preview={preview}
+        // Where it came from ("Live from your teacher's screen", "Opened by your teacher"...), as
+        // the full panel says it.
+        sourceLabel={sourceLabel}
         headerAction={
           canShowChanges ? (
             <button

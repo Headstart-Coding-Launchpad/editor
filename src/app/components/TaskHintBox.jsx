@@ -6,8 +6,12 @@ import { useHelpRequest } from './peerHelp/helpRequestContext'
  * The calm code screen's hint (Python; LessonTaskContent): always in view, docked under the task
  * card (or under the editor on a narrow layout), never a popup. Before a check result it is a
  * gentle nudge; once there is one it shows the docked CheckFeedbackBanner (`banner`): amber with
- * the specific hint after a failed Run, green after a pass, blue for the tutor's sent hint. Its
- * height is capped by `style` and it scrolls inside.
+ * the specific hint after a failed Run, green after a pass, blue for the tutor's sent hint. It is
+ * never dismissed on its own: a failed check's hint turns gentle (blue, tone 'nudge', the hint
+ * still readable) once the code changes or a new Run starts; the tutor's hint stays until the next
+ * check or the student's "Got it". Its height is capped by `style` and it scrolls inside.
+ * '✋ Ask for help' shows on the nudge and a failed check, only with a tutor to ask, never on the
+ * tutor's own hint.
  *
  * `tone`: 'nudge' | 'fail' | 'pass' | 'tutor', for its colour and data-tone.
  */
