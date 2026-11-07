@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
-import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
-import EmojiPickerButton from '../../shared/EmojiPickerButton'
+import { BlocksButton, EmojiButton } from './EditorToolButtons'
 import { taskKeyCode } from './keyRow.js'
+import pythonDefinition from './definition.js'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -91,7 +91,9 @@ export default function StudentWorkspace({
   arrangeReady = true,
   // The calm code screen (LessonTaskContent, capabilities.calmCodeScreen): the Type this out
   // box's fold, `{ folded, onToggle, hideCopyCode }` (hideCopyCode while the Complete stage's
-  // change view shows the same lines above), and the code row's Topic library chip.
+  // change view shows the same lines above), and the code row's Topic library chip. Only that
+  // host passes `whatToChange`; without it (the teacher's view, Builder, shared work) this
+  // workspace keeps the editor's own toolbar and the Type this out panel.
   whatToChange = null,
   onOpenTopicLibrary,
 }) {
@@ -147,14 +149,18 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
+  // The calm screen needs both the module's capability and a host that supplies its pieces.
+  const calm = !!pythonDefinition.capabilities?.calmCodeScreen && !!whatToChange
   const showCopyCode =
-    typeof task?.copyCode === 'string' && !!task.copyCode.trim() && !whatToChange?.hideCopyCode
-  // The code row (calm screen): Code · 😊 · Topic library · Blocks · Reset Code · Run. The Emoji
-  // button types into the editor through editorApiRef; Blocks is this device's setting
-  // (useBlockGuidesOn), hidden for a task with showBlocks: false.
+    typeof task?.copyCode === 'string' &&
+    !!task.copyCode.trim() &&
+    !(calm && whatToChange.hideCopyCode)
+  // The code row (calm screen): Code, Emoji, Topic library, Blocks, Reset Code, Run Tests, Run.
+  // The Emoji button types into the editor through editorApiRef; Blocks is this device's setting
+  // (useBlockGuidesOn), hidden for a task with showBlocks: false. Off the calm screen those two
+  // stay in the editor's own toolbar (the same EditorToolButtons).
   const editorApiRef = useRef(null)
   const showBlocks = taskShowsBlocks(task)
-  const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
   const [codeRowRef, codeRowSize] = useElementSize()
   const codeRowUnder = (limit) => codeRowSize.width > 0 && codeRowSize.width < limit
   const resetLabel = codeRowUnder(CODE_ROW_SHORT_RESET) ? 'Reset' : 'Reset Code'
@@ -424,16 +430,18 @@ export default function StudentWorkspace({
           after={task.copyAfter}
           before={task.copyBefore}
           starter={starterCodeOf(task)}
-          calm
-          folded={!!whatToChange?.folded}
-          onToggleFolded={whatToChange?.onToggle}
+          calm={calm}
+          folded={calm && !!whatToChange.folded}
+          onToggleFolded={calm ? whatToChange.onToggle : undefined}
         />
       )}
       {showEditableHeader && (
         <div
           ref={codeRowRef}
           style={s.editorHeader}
-          className="ui-tabs ui-tabs--editor"
+          // ui-tabs--code-row (src/index.css) gives the row its spacing: .ui-tabs--editor sets
+          // padding and margin with !important, which inline styles cannot beat.
+          className="ui-tabs ui-tabs--editor ui-tabs--code-row"
           role="group"
           aria-label="Code"
         >
@@ -442,11 +450,13 @@ export default function StudentWorkspace({
               Code
             </span>
           )}
-          <EmojiPickerButton
-            size={44}
-            onInsert={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
-          />
-          {onOpenTopicLibrary && (
+          {calm && (
+            <EmojiButton
+              size={44}
+              insert={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
+            />
+          )}
+          {calm && onOpenTopicLibrary && (
             <button
               type="button"
               style={s.libraryChip}
@@ -458,24 +468,13 @@ export default function StudentWorkspace({
             </button>
           )}
           <div style={s.editorActions}>
-            {showBlocks && (
-              <button
-                type="button"
-                style={{ ...s.rowBtn, ...(blockGuidesOn ? s.rowBtnOn : null) }}
-                aria-pressed={blockGuidesOn}
-                aria-label="Blocks"
-                title={
-                  blockGuidesOn
-                    ? 'Hide the coloured brackets that show which lines belong to each block'
-                    : 'Show coloured brackets for which lines belong to each block'
-                }
-                onClick={() => setBlockGuidesOn(!blockGuidesOn)}
-              >
-                <span aria-hidden="true" style={s.blocksIcon}>
-                  ⎣
-                </span>
-                {!codeRowCompact && 'Blocks'}
-              </button>
+            {calm && showBlocks && (
+              <BlocksButton
+                style={s.rowBtn}
+                onStyle={s.rowBtnOn}
+                iconStyle={s.blocksIcon}
+                showLabel={!codeRowCompact}
+              />
             )}
             <button
               type="button"
@@ -496,6 +495,17 @@ export default function StudentWorkspace({
               </button>
             ) : (
               <>
+                {/* Run Tests sits before Run, so Run is always the last control in the row. */}
+                {task?.tests?.length > 0 && (
+                  <button
+                    className="btn-primary"
+                    style={s.primaryBtn}
+                    onClick={handleRunTestsClick}
+                    disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
+                  >
+                    {cs.runningTests ? 'Running tests...' : 'Run Tests'}
+                  </button>
+                )}
                 <button
                   className={cs.running || cs.runningTests ? 'btn-danger' : 'btn-primary'}
                   style={s.primaryBtn}
@@ -523,20 +533,16 @@ export default function StudentWorkspace({
                     'Run'
                   )}
                 </button>
-                {task?.tests?.length > 0 && (
-                  <button
-                    className="btn-primary"
-                    style={s.primaryBtn}
-                    onClick={handleRunTestsClick}
-                    disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
-                  >
-                    {cs.runningTests ? 'Running tests...' : 'Run Tests'}
-                  </button>
-                )}
-                {!cs.running && <PredictRunLockNote lock={runLock} onReveal={revealTags} />}
               </>
             )}
           </div>
+        </div>
+      )}
+      {/* Predict mode's lock note: its own line under the code row, so the row stays one row
+          with Run at its end. */}
+      {showEditableHeader && task?.interactionMode !== 'submit' && !cs.running && runLock && (
+        <div style={s.runLockLine}>
+          <PredictRunLockNote lock={runLock} onReveal={revealTags} />
         </div>
       )}
       {slowMoShown && (showEditableHeader || slowMoView) && (
@@ -561,7 +567,7 @@ export default function StudentWorkspace({
         />
       )}
       <PythonEditor
-        calm
+        calm={calm}
         keyCode={keyCode}
         editorApiRef={editorApiRef}
         code={code}
@@ -912,16 +918,15 @@ const s = {
     borderRadius: 6,
     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
   },
-  // The code row: one row of 44px controls, Run filled and at the right end.
+  // The code row: one row of 44px controls, Run filled and at the right end. Its padding, margin
+  // and gap are in .ui-tabs--code-row (src/index.css), past .ui-tabs--editor's !important ones.
   editorHeader: {
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    padding: '4px 4px 4px 0',
-    marginBottom: 4,
     minWidth: 0,
   },
+  runLockLine: { display: 'flex', justifyContent: 'flex-end', padding: '0 4px 4px' },
   editorTitle: {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,

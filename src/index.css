@@ -329,6 +329,15 @@ select {
   box-shadow: none !important;
 }
 
+/* The Python code row (src/modules/python/StudentWorkspace.jsx): one row of 44px controls with
+   Run at the right end. Its spacing lives here because .ui-tabs--editor's !important padding and
+   margin beat inline styles. */
+.ui-tabs--editor.ui-tabs--code-row {
+  gap: 8px !important;
+  padding: 4px 4px 4px 0 !important;
+  margin-bottom: 4px !important;
+}
+
 .ui-tab,
 [role='tab'] {
   border: 0 !important;

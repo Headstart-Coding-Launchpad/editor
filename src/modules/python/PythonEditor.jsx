@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
-import EmojiPickerButton from '../../shared/EmojiPickerButton'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
+import { BlocksButton, EmojiButton } from './EditorToolButtons'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
 import { describeRunCount } from '../../shared/runCounts.js'
 import { PYTHON_KEY_ROW, pythonKeyRows } from './keyRow.js'
@@ -54,9 +54,10 @@ export default function PythonEditor({
   // Run-count boxes and counts on #@count lines (src/shared/runCountsEditor.js): getRunCountWidgets'
   // `{ mode, readOnly, marks }` plus `onChange` / `onCommit`, or null.
   runCounts = null,
-  // The calm code screen (Python StudentWorkspace): the Emoji, Keys and Blocks buttons live in
-  // the workspace's code row instead, and touch screens get one row of main keys, chosen from
-  // `keyCode` (the task's code, taskKeyCode), with "More keys" opening the rest.
+  // The calm code screen (Python StudentWorkspace, only inside the calm host): the Emoji and
+  // Blocks buttons live in the workspace's code row instead (the same EditorToolButtons), and
+  // touch screens get one row of main keys, chosen from `keyCode` (the task's code,
+  // taskKeyCode), with "More keys" opening the rest. Off, this editor keeps its own toolbar.
   calm = false,
   keyCode = '',
   // Filled with `{ insertAtCursor }` so the code row's Emoji button can type into this editor.
@@ -79,7 +80,7 @@ export default function PythonEditor({
   const isTouchDevice = useIsTouchDevice()
   const showSymbolButtons = isTouchDevice && !readOnly
   const showEmojiButton = !readOnly
-  const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
+  const [blockGuidesOn] = useBlockGuidesOn()
   // Non-touch: one "Keys" button folds the emoji key away. Touch (request #125): the symbol row is
   // always showing with the emoji key at its end, so there is no Keys button.
   const [keysOpen, setKeysOpen] = useState(false)
@@ -131,32 +132,17 @@ export default function PythonEditor({
               )}
               {showSymbolButtons && PYTHON_KEY_ROW.map(({ symbol }) => renderKey(symbol))}
               {showEmojiButton && (touchKeys || keysOpen) && (
-                <EmojiPickerButton
+                <EmojiButton
                   size={touchKeys ? TOUCH_KEY : undefined}
-                  onInsert={(emoji) => editorRef.current?.insertAtCursor(emoji)}
+                  insert={(emoji) => editorRef.current?.insertAtCursor(emoji)}
                 />
               )}
               {showBlocks && (
-                <button
-                  type="button"
-                  style={{
-                    ...s.blocksBtn,
-                    ...(touchKeys ? s.touchKey : null),
-                    ...(blockGuidesOn ? s.blocksBtnOn : null),
-                  }}
-                  aria-pressed={blockGuidesOn}
-                  title={
-                    blockGuidesOn
-                      ? 'Hide the coloured brackets that show which lines belong to each block'
-                      : 'Show coloured brackets for which lines belong to each block'
-                  }
-                  onClick={() => setBlockGuidesOn(!blockGuidesOn)}
-                >
-                  <span aria-hidden="true" style={s.blocksIcon}>
-                    ⎣
-                  </span>
-                  Blocks
-                </button>
+                <BlocksButton
+                  style={{ ...s.blocksBtn, ...(touchKeys ? s.touchKey : null) }}
+                  onStyle={s.blocksBtnOn}
+                  iconStyle={s.blocksIcon}
+                />
               )}
             </div>
           )}
