@@ -42,6 +42,7 @@ import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scra
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
+  calmStackedLayout,
   paletteStartsOpen,
   createPaletteCategoryMemory,
 } from '../../modules/scratch/calm/calmPalette.js'
@@ -346,6 +347,16 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
+  // Stacked, a card too tall for its capped space beside the stage starts folded on the task's
+  // first view (ExplainerPanel foldIfTallerThan), never again once a tutor's force reopened it.
+  const [calmFoldBase, setCalmFoldBase] = useState({ task: task?.id, openings: 0 })
+  if (calmFoldBase.task !== task?.id) {
+    setCalmFoldBase({ task: task?.id, openings: calmExplainerOpenings })
+  }
+  const calmFoldIfTallerThan =
+    calmStacked && calmFoldBase.task === task?.id && calmFoldBase.openings === calmExplainerOpenings
+      ? calmStackedLayout(taskPanelSize.height).asideMaxHeight
+      : null
   // The calm palette's last category, for this view (ScratchWorkspace `calm.categoryMemory`).
   const [paletteCategoryMemory] = useState(createPaletteCategoryMemory)
 
@@ -714,6 +725,7 @@ export default function LessonTaskContent({
         titleEndInset={useSideExplainer && !calmScratch ? SIDE_COLLAPSE_INSET : 0}
         // The calm card collapses to its one-line title strip (never a rail or a tab).
         collapsible={!useSideExplainer || calmScratch}
+        foldIfTallerThan={calmScratch ? calmFoldIfTallerThan : null}
         markdownTextScale={useSideExplainer ? 1.08 : 1}
         onCollapsedChange={
           !useSideExplainer || calmScratch ? setAccordionExplainerCollapsed : undefined

@@ -205,3 +205,77 @@ describe('ExplainerPanel first-view entrance', () => {
     expect(panelOf(container)).toHaveClass('motion-drop-in')
   })
 })
+
+// The calm Scratch screen, stacked (portrait tablet): a card that would not fit its capped space
+// beside the stage starts folded to its title strip, so the blocks keep their room.
+describe('ExplainerPanel foldIfTallerThan', () => {
+  function withContentHeight(height) {
+    return vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function () {
+      return this.dataset?.explainerContent != null ? height : 0
+    })
+  }
+
+  it('starts folded when the card is taller than the cap; a tap opens it and it stays open', () => {
+    const spy = withContentHeight(900)
+    const onCollapsedChange = vi.fn()
+    const { rerender } = render(
+      <ExplainerPanel
+        title="Build a walking cat"
+        content="Fourteen steps"
+        fill
+        foldIfTallerThan={287}
+        onCollapsedChange={onCollapsedChange}
+      />
+    )
+    const strip = screen.getByRole('button', { name: /Build a walking cat/ })
+    expect(strip).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('markdown')).not.toBeInTheDocument()
+    // The tutor's student list hears that the card is folded.
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(true)
+    fireEvent.click(strip)
+    expect(strip).toHaveAttribute('aria-expanded', 'true')
+    rerender(
+      <ExplainerPanel
+        title="Build a walking cat"
+        content="Fourteen steps"
+        fill
+        foldIfTallerThan={250}
+        onCollapsedChange={onCollapsedChange}
+      />
+    )
+    expect(strip).toHaveAttribute('aria-expanded', 'true')
+    spy.mockRestore()
+  })
+
+  it('leaves a card that fits open', () => {
+    const spy = withContentHeight(120)
+    render(<ExplainerPanel title="Short" content="Two lines" fill foldIfTallerThan={287} />)
+    expect(screen.getByRole('button', { name: /Short/ })).toHaveAttribute('aria-expanded', 'true')
+    spy.mockRestore()
+  })
+
+  it('folds once a picture loads and makes the card too tall', () => {
+    let height = 200
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? height : 0
+      })
+    render(<ExplainerPanel title="Pic" content="With a picture" fill foldIfTallerThan={287} />)
+    const strip = screen.getByRole('button', { name: /Pic/ })
+    expect(strip).toHaveAttribute('aria-expanded', 'true')
+    height = 500
+    const img = document.createElement('img')
+    screen.getByTestId('markdown').appendChild(img)
+    fireEvent.load(img)
+    expect(strip).toHaveAttribute('aria-expanded', 'false')
+    spy.mockRestore()
+  })
+
+  it('never folds without the prop', () => {
+    const spy = withContentHeight(900)
+    render(<ExplainerPanel title="Python" content="Long" fill />)
+    expect(screen.getByRole('button', { name: /Python/ })).toHaveAttribute('aria-expanded', 'true')
+    spy.mockRestore()
+  })
+})

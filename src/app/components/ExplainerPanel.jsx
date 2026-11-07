@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { firstViewKey, useFirstView } from '../../shared/motion'
 import InkSurface from '../liveInk/InkSurface'
@@ -37,6 +37,10 @@ export default function ExplainerPanel({
   // Room (px) to keep clear at the right of the title bar for a control laid over it (the side
   // explainer's collapse arrow), so a long title wraps before it rather than running under it.
   titleEndInset = 0,
+  // A height (px) the card has room for: on its first view a card taller than this (title + text,
+  // measured again as pictures load) starts folded to its title strip, once. Never after the
+  // student taps the strip. Null never folds. (The calm Scratch screen, stacked beside the stage.)
+  foldIfTallerThan = null,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -69,6 +73,28 @@ export default function ExplainerPanel({
   useEffect(() => {
     if (collapsible) onCollapsedChange?.(collapsed)
   }, [collapsible, collapsed, onCollapsedChange])
+
+  // Armed until it has folded the card once or the student has tapped the strip.
+  const autoFoldArmedRef = useRef(true)
+  const checkAutoFold = useCallback(() => {
+    if (!autoFoldArmedRef.current || !collapsible || !(foldIfTallerThan > 0)) return
+    const el = contentRef.current
+    if (!el) return
+    const titleHeight = panelRef.current?.firstElementChild?.offsetHeight ?? 0
+    if (el.scrollHeight + titleHeight > foldIfTallerThan) {
+      autoFoldArmedRef.current = false
+      setCollapsed(true)
+    }
+  }, [collapsible, foldIfTallerThan])
+  useLayoutEffect(() => {
+    if (isCollapsed) return undefined
+    checkAutoFold()
+    const el = contentRef.current
+    if (!el || !(foldIfTallerThan > 0)) return undefined
+    // A picture loading makes the card taller (load does not bubble: heard in the capture phase).
+    el.addEventListener('load', checkAutoFold, true)
+    return () => el.removeEventListener('load', checkAutoFold, true)
+  }, [checkAutoFold, content, isCollapsed, foldIfTallerThan])
 
   const updateScrollState = useCallback(() => {
     const el = contentRef.current
@@ -125,6 +151,7 @@ export default function ExplainerPanel({
           className={highlighted ? 'pane-highlight-pulse' : undefined}
           style={titleBarStyle}
           onClick={() => {
+            autoFoldArmedRef.current = false
             setEntrance((current) => ({ ...current, over: true }))
             setCollapsed((c) => !c)
           }}
@@ -150,6 +177,7 @@ export default function ExplainerPanel({
         >
           <div
             ref={contentRef}
+            data-explainer-content=""
             style={{
               ...s.content,
               ...(fill ? s.contentFill : {}),

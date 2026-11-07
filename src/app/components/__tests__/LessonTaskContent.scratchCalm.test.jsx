@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../modules/registry', () => ({
   getLessonModule: vi.fn(),
@@ -102,6 +102,48 @@ describe('calm Scratch: the explainer stays in view while building', () => {
     expect(within(aside).getByText('Make the cat say Hello! 🎉')).toBeVisible()
     // Only one copy of the explainer on screen.
     expect(screen.getAllByText('Make the cat say Hello! 🎉')).toHaveLength(1)
+  })
+
+  describe('a long card on a portrait tablet', () => {
+    let spy
+    beforeEach(() => {
+      // The card's text is 900px tall: more than its share beside the pinned stage.
+      spy = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function () {
+        return this.dataset?.explainerContent != null ? 900 : 0
+      })
+    })
+    afterEach(() => spy.mockRestore())
+
+    it('starts folded to its title strip so the blocks keep their room; the tutor sees it folded', async () => {
+      const user = userEvent.setup()
+      panelWidth(736, 820)
+      const onVisiblePanesChange = vi.fn()
+      render(<LessonTaskContent {...baseProps} onVisiblePanesChange={onVisiblePanesChange} />)
+      expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+      expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['blocks', 'stage'])
+      // One tap opens it (it then scrolls inside its capped space) and it stays open.
+      await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+      expect(screen.getByText('Make the cat say Hello! 🎉')).toBeVisible()
+    })
+
+    it('a tutor forcing "instructions" opens it and it is not folded again', () => {
+      panelWidth(736, 820)
+      const { rerender } = render(<LessonTaskContent {...baseProps} />)
+      expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+      rerender(
+        <LessonTaskContent
+          {...baseProps}
+          forcedPaneCommand={{ mode: 'force', panes: ['instructions'], pushedAt: 9 }}
+        />
+      )
+      expect(screen.getByText('Make the cat say Hello! 🎉')).toBeVisible()
+    })
+
+    it('beside the blocks (laptop) it stays open and scrolls inside the column', () => {
+      panelWidth(1334, 700)
+      render(<LessonTaskContent {...baseProps} />)
+      expect(screen.getByText('Make the cat say Hello! 🎉')).toBeVisible()
+    })
   })
 
   it('keeps the emojis in the title and the explainer', () => {

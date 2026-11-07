@@ -207,6 +207,69 @@ export function calmExplainerWidth(panelWidth) {
   return Math.max(220, Math.min(320, Math.round((panelWidth || 0) * 0.24)))
 }
 
+// The stacked layout's rows (`height`: the workspace's measured height). The explainer column
+// beside the pinned stage is capped at 35% of the height (never below 140px) and its card scrolls
+// inside, and the Blocks pane below keeps at least 360px (or half a short workspace). A 14-step
+// card with a picture once grew the top row until the Blocks pane was 2px tall at 768x1024.
+const STACKED_ASIDE_SHARE = 0.35
+const STACKED_ASIDE_MIN = 140
+const STACKED_BLOCKS_MIN = 360
+export function calmStackedLayout(height) {
+  if (!(height > 0)) return { asideMaxHeight: null, blocksMinHeight: 0 }
+  return {
+    asideMaxHeight: Math.max(STACKED_ASIDE_MIN, Math.round(height * STACKED_ASIDE_SHARE)),
+    blocksMinHeight: Math.min(STACKED_BLOCKS_MIN, Math.round(height * 0.5)),
+  }
+}
+export function calmStackedGridStyle(height, { aside }) {
+  const { blocksMinHeight } = calmStackedLayout(height)
+  return {
+    display: 'grid',
+    gridTemplateColumns: aside ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
+    gridTemplateRows: `auto minmax(${blocksMinHeight}px, 1fr)`,
+    gridTemplateAreas: aside ? '"stage aside" "blocks blocks"' : '"stage" "blocks"',
+    flex: '1 1 auto',
+    minWidth: 0,
+    minHeight: 0,
+    height: '100%',
+    gap: 10,
+    position: 'relative',
+  }
+}
+
+// Block size on the calm screen: 65% at most (75% elsewhere), so blocks and the open palette are
+// smaller and the palette tidier (350px wide at 75%, about 306px at 65% at 1366). Blockly clamps
+// setScale to the workspace's minScale, so the zoom options use the same floor.
+export const CALM_BLOCK_SCALE = { min: 0.55, max: 0.65 }
+
+// Applies the block size to a workspace. Blockly's setScale scrolls the canvas even when the size
+// is unchanged (it re-centres the view): on the calm screen, where every palette open or close
+// re-applies the size, that moved the script about 105px on screen each time. There it is only
+// set when it really changes (a resize); elsewhere it is set every time, as before.
+export function applyBlockScale(ws, scale, { calm = false } = {}) {
+  if (!ws?.setScale) return false
+  if (calm && Math.abs((ws.scale ?? 0) - scale) < 0.001) return false
+  ws.setScale(scale)
+  return true
+}
+
+// Notes when a press starts and ends anywhere in `root`. Capture phase: Blockly stops a press on
+// the palette from bubbling, so a bubbling listener never saw a block dragged out of it, and a
+// palette toggled during that drag scrolled the canvas under the finger (the block landed about
+// 160px from where it was let go). The release is heard in the capture phase too. Returns the
+// cleanup.
+export function listenForBlockDrags(root, { onStart, onEnd }) {
+  if (!root) return () => {}
+  root.addEventListener('pointerdown', onStart, true)
+  document.addEventListener('pointerup', onEnd, true)
+  document.addEventListener('pointercancel', onEnd, true)
+  return () => {
+    root.removeEventListener('pointerdown', onStart, true)
+    document.removeEventListener('pointerup', onEnd, true)
+    document.removeEventListener('pointercancel', onEnd, true)
+  }
+}
+
 // The pinned stage in the stacked layout: about 44% of the width, at most 0.65 (312x234).
 const STAGE_W = 480
 const STACKED_STAGE_MAX = 0.65

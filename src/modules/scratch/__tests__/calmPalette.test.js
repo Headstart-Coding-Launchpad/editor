@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
@@ -12,6 +12,11 @@ import {
   paletteStartsOpen,
   placeScriptOnArrival,
   topFlyoutCategory,
+  CALM_BLOCK_SCALE,
+  applyBlockScale,
+  calmStackedGridStyle,
+  calmStackedLayout,
+  listenForBlockDrags,
 } from '../calm/calmPalette.js'
 
 // A Blockly-like workspace whose blocks really move when it scrolls: a block placed at
@@ -113,6 +118,70 @@ describe('Fun moment: opening the Blocks palette never hides the child’s scrip
     near.div.getBoundingClientRect = () => ({ left: 0, right: 500, width: 500 })
     expect(placeScriptOnArrival(near.ws, near.div)).toBe(false)
     expect(near.lefts()).toEqual([40])
+  })
+})
+
+describe('Fun moment: the script stays still when the palette opens or closes', () => {
+  // Blockly's setScale scrolls the canvas even when the scale is unchanged (it re-centres the
+  // view), which is what moved the script about 105px on every palette toggle at 1366.
+  function blocklyLike(blockXs, scale) {
+    const fake = fakeWorkspace(blockXs)
+    fake.ws.scale = scale
+    fake.ws.setScale = vi.fn(function (next) {
+      this.scale = next
+      this.scroll(this.scrollX - 105, this.scrollY)
+    })
+    return fake
+  }
+
+  it('re-applying the same block size after a toggle leaves the script where it was', () => {
+    const { ws, lefts } = blocklyLike([715], CALM_BLOCK_SCALE.max)
+    applyBlockScale(ws, CALM_BLOCK_SCALE.max, { calm: true })
+    expect(ws.setScale).not.toHaveBeenCalled()
+    expect(lefts()).toEqual([715])
+  })
+
+  it('a real size change (the window resized) still re-scales', () => {
+    const { ws } = blocklyLike([715], CALM_BLOCK_SCALE.max)
+    applyBlockScale(ws, CALM_BLOCK_SCALE.min, { calm: true })
+    expect(ws.setScale).toHaveBeenCalledWith(CALM_BLOCK_SCALE.min)
+  })
+
+  it('outside the calm screen the old always-re-scale path is unchanged', () => {
+    const { ws } = blocklyLike([715], 0.75)
+    applyBlockScale(ws, 0.75)
+    expect(ws.setScale).toHaveBeenCalledWith(0.75)
+  })
+})
+
+describe('a block dragged out of the palette counts as a drag (calm screen)', () => {
+  it('sees the press even when Blockly stops it bubbling up from the palette', () => {
+    const root = document.createElement('div')
+    const palette = document.createElement('div')
+    root.appendChild(palette)
+    document.body.appendChild(root)
+    palette.addEventListener('pointerdown', (event) => event.stopPropagation())
+    const onStart = vi.fn()
+    const onEnd = vi.fn()
+    const stop = listenForBlockDrags(root, { onStart, onEnd })
+    palette.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(onStart).toHaveBeenCalledTimes(1)
+    document.dispatchEvent(new Event('pointerup'))
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    document.dispatchEvent(new Event('pointercancel'))
+    expect(onEnd).toHaveBeenCalledTimes(2)
+    stop()
+    palette.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    document.dispatchEvent(new Event('pointerup'))
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(onEnd).toHaveBeenCalledTimes(2)
+    root.remove()
+  })
+})
+
+describe('block size on the calm screen', () => {
+  it('is 65% at most and never below 55% (Blockly clamps setScale to minScale)', () => {
+    expect(CALM_BLOCK_SCALE).toEqual({ min: 0.55, max: 0.65 })
   })
 })
 
@@ -258,6 +327,21 @@ describe('calm Scratch layout rules', () => {
     expect(calmExplainerWidth(992)).toBeGreaterThanOrEqual(220)
     expect(calmExplainerWidth(992)).toBeLessThan(260)
     expect(calmExplainerWidth(500)).toBe(220)
+  })
+
+  it('caps the explainer beside the pinned stage and keeps the Blocks pane at least 360px tall', () => {
+    // 768x1024 portrait tablet: the workspace is about 820px tall.
+    const style = calmStackedGridStyle(820, { aside: true })
+    expect(style.gridTemplateRows).toBe('auto minmax(360px, 1fr)')
+    const { asideMaxHeight, blocksMinHeight } = calmStackedLayout(820)
+    expect(asideMaxHeight).toBe(Math.round(820 * 0.35))
+    expect(blocksMinHeight).toBe(360)
+    // Never below 140px for the card, and a short workspace keeps a share for the blocks.
+    expect(calmStackedLayout(300).asideMaxHeight).toBe(140)
+    expect(calmStackedLayout(300).blocksMinHeight).toBeLessThan(300 - 140)
+    // Not measured yet: no cap, no minimum.
+    expect(calmStackedLayout(0)).toEqual({ asideMaxHeight: null, blocksMinHeight: 0 })
+    expect(calmStackedGridStyle(820, { aside: false }).gridTemplateAreas).toBe('"stage" "blocks"')
   })
 
   it('pins a stage about 300px wide in the stacked (portrait) layout', () => {
