@@ -52,8 +52,11 @@ import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 const PYTHON_SPLIT = 58
 // An edit from the student's own typing in the editor (cs.handleCodeChange's origin, request 131).
 const EDITOR_EDIT = { origin: 'editor' }
-// The code row is 44px tall; under this width Reset Code says just "Reset".
+// The code row stays one row of 44px controls: under these widths (px) Reset Code says "Reset",
+// then Topic library says "Topics" and Blocks shows only its bracket, then the Code label goes.
 const CODE_ROW_SHORT_RESET = 560
+const CODE_ROW_COMPACT = 500
+const CODE_ROW_TIGHT = 440
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -153,8 +156,10 @@ export default function StudentWorkspace({
   const showBlocks = taskShowsBlocks(task)
   const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
   const [codeRowRef, codeRowSize] = useElementSize()
-  const resetLabel =
-    codeRowSize.width > 0 && codeRowSize.width < CODE_ROW_SHORT_RESET ? 'Reset' : 'Reset Code'
+  const codeRowUnder = (limit) => codeRowSize.width > 0 && codeRowSize.width < limit
+  const resetLabel = codeRowUnder(CODE_ROW_SHORT_RESET) ? 'Reset' : 'Reset Code'
+  const codeRowCompact = codeRowUnder(CODE_ROW_COMPACT)
+  const codeRowTight = codeRowUnder(CODE_ROW_TIGHT)
   const keyCode = useMemo(() => taskKeyCode(task), [task])
 
   // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
@@ -432,16 +437,24 @@ export default function StudentWorkspace({
           role="group"
           aria-label="Code"
         >
-          <span style={s.editorTitle} aria-hidden="true">
-            Code
-          </span>
+          {!codeRowTight && (
+            <span style={s.editorTitle} aria-hidden="true">
+              Code
+            </span>
+          )}
           <EmojiPickerButton
             size={44}
             onInsert={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
           />
           {onOpenTopicLibrary && (
-            <button type="button" style={s.libraryChip} onClick={onOpenTopicLibrary}>
-              <span aria-hidden="true">📚 </span>Topic library
+            <button
+              type="button"
+              style={s.libraryChip}
+              onClick={onOpenTopicLibrary}
+              aria-label="Topic library"
+            >
+              <span aria-hidden="true">📚 </span>
+              {codeRowCompact ? 'Topics' : 'Topic library'}
             </button>
           )}
           <div style={s.editorActions}>
@@ -450,6 +463,7 @@ export default function StudentWorkspace({
                 type="button"
                 style={{ ...s.rowBtn, ...(blockGuidesOn ? s.rowBtnOn : null) }}
                 aria-pressed={blockGuidesOn}
+                aria-label="Blocks"
                 title={
                   blockGuidesOn
                     ? 'Hide the coloured brackets that show which lines belong to each block'
@@ -460,7 +474,7 @@ export default function StudentWorkspace({
                 <span aria-hidden="true" style={s.blocksIcon}>
                   ⎣
                 </span>
-                Blocks
+                {!codeRowCompact && 'Blocks'}
               </button>
             )}
             <button
@@ -920,12 +934,12 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 8,
+    paddingLeft: 4,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
     minWidth: 0,
   },
-  primaryBtn: { padding: '0 22px', fontSize: 16, flexShrink: 0, minHeight: 44, minWidth: 84 },
+  primaryBtn: { padding: '0 18px', fontSize: 16, flexShrink: 0, minHeight: 44, minWidth: 84 },
   rowBtn: {
     minHeight: 44,
     padding: '0 12px',

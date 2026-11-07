@@ -54,6 +54,8 @@ A Complete stage usually differs from the student's code by a line or two, but i
 
 The Copy code panel can use the same look: `copyAfter: "size -= step"` (or `copyBefore` for a change at the top) shows that line dimmed, then the `copyCode` lines in green with `+`. A typed line that only extends the place line itself, or the starter line right next to it on the typed side (just after a `copyAfter` line, just before a `copyBefore` line), shows only the extension, as in the change view; any other line stays all green. The starter is the task's Starter stage, else `starterCode`. Write the line exactly as it is in the starter (spaces at the start and end don't matter). `copyCode` stays an example the student types, so checks are unchanged. A tutor's own "Type this out" text drops the place line.
 
+On the student's screen (the calm code screen, Python only) the Copy code lines and a Complete stage's change view share one box titled **What to change** above the code: the change view when the Complete stage is open, else the Copy code lines, never both. It is open when the task opens and folds to one line after a passing Run (never a failed one); a tap opens it again. Name it "the *What to change* box" in lesson text. The touch key row puts the symbols this task's code uses (its complete code, code stages and `copyCode`) first, so a new symbol is one tap away.
+
 ```yaml
 copyCode: "turn += 10"
 copyAfter: "size -= step"

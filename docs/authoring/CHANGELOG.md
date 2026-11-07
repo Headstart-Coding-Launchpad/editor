@@ -39,6 +39,21 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
+- **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
+  stage's change view are now one box titled **What to change** above the code (never both). It
+  is open when the task opens and folds to one line ("Show what to change" and the first new
+  line) after a passing Run, never after a failed one; a tap opens it again. Lesson text that
+  names the box should say "the *What to change* box" on Python tasks (Turtle and Arcade keep
+  "⌨️ Type this out"). The check result is no longer a popup on Python: the hint sits under the
+  task card the whole time (a gentle nudge, then the check's hint in amber after a failed Run),
+  with **✋ Ask for help** in a live lesson (none in solo). Touch screens show one row of keys:
+  the symbols the task's own code uses (its complete code, code stages and `copyCode`) first,
+  then common ones, and **More keys** for the rest; a `highlight: "key:<symbol>"` on a key that
+  is under More keys rings **More keys** and opens it. The Topic library chip moves to the code
+  row. No new fields.
+  - Affects: python · Existing lessons: say "the *What to change* box" where a Python lesson
+    names the Type this out box · Resolves: none
+
 - **Python change view: only the changed part of a line.** In a Complete stage's change view (and
   its **Show all the code**), a line that only gains text is now one green row: the part already
   there dimmed, the new text green, bold and underlined, with **Add**, and no red line. A small
