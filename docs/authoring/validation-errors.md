@@ -123,6 +123,13 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … slowMo.question is over 200 characters; keep it to one short question` (warning) | The question is long for the small box it shows in. | Shorten it to one question. |
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
+| `Task … stage … show must be "full" or "change"` | A stage's `show` has another value. | Use `show: change` or remove it. |
+| `Task … stage … show: "change" works on a Complete stage only; this stage shows in full` (warning) | `show: change` on a Starter or Support stage. | Move it to the Complete stage. |
+| `Task … stage … show: "change" works in Python lessons only; it is ignored here` (warning) | `show: change` on a Turtle or Arcade Kit stage. | Remove it. |
+| `Task … copyAfter must be the text of one line of code` | `copyAfter` / `copyBefore` is empty or not a string. | Write the line as it is in the code, or remove the field. |
+| `Task … has both copyAfter and copyBefore; use one` | Both place lines are set. | Keep one. |
+| `Task … copyAfter has no copyCode to place; it is ignored` (warning) | A place line without `copyCode`. | Add `copyCode` or remove the field. |
+| `Task … copyAfter "…" is not a line of the starter code, so students may not find it` (warning) | The place line is not in the starter (tasks that carry code are not checked). | Copy the line exactly from the starter. |
 | `Task ID … is used by … and … - renumber task IDs before publishing` (warning, **Builder only**) | Two tasks share an `id`. | Renumber the task ids. |
 
 ## Composed lessons and carry-through
