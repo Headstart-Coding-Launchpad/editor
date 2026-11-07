@@ -248,7 +248,7 @@ describe('Student View Modal tidy: the fun moment', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-07T12:00:30Z'))
     render(<StudentModal {...props({}, { lastRunAt: Date.parse('2026-11-07T12:00:18Z') })} />)
-    expect(screen.getByTestId('student-modal-strip')).toHaveTextContent('Last run 12 s ago')
+    expect(screen.getByTestId('student-modal-strip')).toHaveTextContent('Last run 12s ago')
     vi.useRealTimers()
   })
 })

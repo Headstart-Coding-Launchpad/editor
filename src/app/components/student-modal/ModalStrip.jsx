@@ -91,6 +91,10 @@ export default function ModalStrip({ chips, mode = null }) {
 
   const shown = Math.min(count, chips.length)
   const hidden = chips.slice(shown)
+  const nothingHidden = hidden.length === 0 || !!mode
+  useEffect(() => {
+    if (nothingHidden) setOverflowOpen(false)
+  }, [nothingHidden])
 
   return (
     <div style={s.strip} data-testid="student-modal-strip">

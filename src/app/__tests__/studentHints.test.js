@@ -189,8 +189,19 @@ describe('summariseCommonHints', () => {
       on('f', 'Only me'),
     ]
     expect(summariseCommonHints(students, 1)).toEqual([
-      { group: 'hint:use quotes', text: 'Use quotes', studentIds: ['a', 'b', 'c'] },
-      { group: 'hint:indent the loop', text: 'Indent the loop', studentIds: ['d', 'e'] },
+      // `markdown`: the first student's hint as written, for the modal's Hint caret.
+      {
+        group: 'hint:use quotes',
+        text: 'Use quotes',
+        markdown: 'Use **quotes**',
+        studentIds: ['a', 'b', 'c'],
+      },
+      {
+        group: 'hint:indent the loop',
+        text: 'Indent the loop',
+        markdown: 'Indent the loop',
+        studentIds: ['d', 'e'],
+      },
     ])
   })
 

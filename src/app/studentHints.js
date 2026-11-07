@@ -154,7 +154,8 @@ export function hintPlainText(markdown) {
 
 /**
  * Hints shared by two or more students on the current task, most common first:
- * [{ group: 'hint:<text>', text, studentIds }]. Overrides are left out (they are the
+ * [{ group: 'hint:<text>', text, markdown, studentIds }] (`markdown`: the first student's hint as
+ * written, for sending it on unflattened). Overrides are left out (they are the
  * teacher's own words to one student, not a pattern in the class).
  */
 export function summariseCommonHints(students, currentTaskId, { minStudents = 2 } = {}) {
@@ -165,7 +166,12 @@ export function summariseCommonHints(students, currentTaskId, { minStudents = 2 
     const text = hintPlainText(hint.text)
     if (!text) continue
     const key = text.toLowerCase()
-    const entry = groups.get(key) ?? { group: `hint:${key}`, text, studentIds: [] }
+    const entry = groups.get(key) ?? {
+      group: `hint:${key}`,
+      text,
+      markdown: hint.text,
+      studentIds: [],
+    }
     entry.studentIds.push(student.anonymousId)
     groups.set(key, entry)
   }

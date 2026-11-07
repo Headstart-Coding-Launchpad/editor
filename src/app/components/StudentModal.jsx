@@ -65,6 +65,7 @@ import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import CopyCodeEditDialog from './CopyCodeEditDialog'
 import { effectiveCopyCode } from '../../shared/copyCodeOverrides'
 import { heldBadgeIds } from '../../badges/badgeDisplay'
+import { formatTimeAgo } from '../../shared/timeAgo'
 import { describeActivityDevice } from '../../activities/device.js'
 import { readStudentHint } from '../studentHints.js'
 import ModalStrip from './student-modal/ModalStrip'
@@ -78,11 +79,15 @@ const AUTO_REVEAL_OPTIONS = [
   { mode: 'solution', label: 'Solution' },
 ]
 
-// "12 s ago", "3 min ago", "1 h ago" for the strip.
-function formatAgo(seconds) {
-  if (seconds < 60) return `${seconds} s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`
-  return `${Math.floor(seconds / 3600)} h ago`
+// The strip's "▶ Last run 12s ago": its own clock, so only this chip re-renders as it ages.
+function LastRunAgo({ at }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 5000)
+    return () => clearInterval(timer)
+  }, [at])
+  return <>▶ Last run {formatTimeAgo(at, now)?.replace('Just now', 'just now')}</>
 }
 
 function getModuleDisplayState(module, raw) {
@@ -201,15 +206,6 @@ export default function StudentModal({
   const [hintPrefill, setHintPrefill] = useState('')
   // The left column (instructions, hint, Type this out) folded to a rail.
   const [leftCollapsed, setLeftCollapsed] = useState(false)
-  // A clock for the strip's "Last run 12 s ago".
-  const [now, setNow] = useState(() => Date.now())
-  const hasLastRun = typeof student.lastRunAt === 'number'
-  useEffect(() => {
-    if (!hasLastRun) return undefined
-    setNow(Date.now())
-    const timer = setInterval(() => setNow(Date.now()), 5000)
-    return () => clearInterval(timer)
-  }, [hasLastRun, student.lastRunAt])
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -802,10 +798,7 @@ export default function StudentModal({
   const openTopic = student.currentTopicId
     ? topics?.find((t) => t.id === student.currentTopicId)
     : null
-  const lastRunSeconds =
-    typeof student.lastRunAt === 'number'
-      ? Math.max(0, Math.round((now - student.lastRunAt) / 1000))
-      : null
+  const hasLastRun = typeof student.lastRunAt === 'number'
   const stripChips = [
     student.needsHelp && {
       key: 'help',
@@ -881,11 +874,11 @@ export default function StudentModal({
       content: 'Declined the stage change',
     },
     nudged && { key: 'nudged', tone: 'good', content: '✓ Nudged' },
-    lastRunSeconds != null && {
+    hasLastRun && {
       key: 'last-run',
       tone: 'muted',
       title: 'When the student last pressed Run',
-      content: `▶ Last run ${formatAgo(lastRunSeconds)}`,
+      content: <LastRunAgo at={student.lastRunAt} />,
     },
     rosterName && {
       key: 'roster',
@@ -1456,23 +1449,7 @@ export default function StudentModal({
       .map((column) => column.filter(Boolean))
       .filter((column) => column.length > 0)
 
-  const hasAnyTool =
-    hasSupport ||
-    hasRunOnStudent ||
-    hasAnswerEditItem ||
-    hasTileItem ||
-    hasMarkOverride ||
-    hasExport ||
-    hasNudge ||
-    hasGoLiveForAll ||
-    hasEdit ||
-    hasTopic ||
-    hasVideoCall ||
-    hasShare ||
-    hasFullscreen ||
-    hasFocus ||
-    hasControlHighlight ||
-    !!onDecideBadge
+  const hasAnyTool = toolColumns(() => {}).length > 0 || !!onDecideBadge
 
   // ─── Body: instructions on the left, the workspace, Output on the right ───────
   const workspaceCopyCode =
@@ -1486,6 +1463,7 @@ export default function StudentModal({
   const showLeftColumn =
     !!task &&
     !!mirror &&
+    !isSessionSandbox &&
     !isInformation &&
     !isQuizLike &&
     !isCodeArrangeTask &&
@@ -1637,7 +1615,7 @@ export default function StudentModal({
                           style={sTo.toolBtn}
                           onClick={() => {
                             close()
-                            setHintPrefill(entry.text)
+                            setHintPrefill(entry.markdown ?? entry.text)
                             setShowHintModal(true)
                           }}
                           title={`${entry.studentIds.length} students see this`}
@@ -1810,10 +1788,6 @@ export default function StudentModal({
                         >
                           🏅 Award a different badge…
                         </button>
-                        <span style={s.footerNote}>
-                          One click in the header: Award, Thumbs up, Show to class, Hint, Message,
-                          Nudge, Live.
-                        </span>
                       </div>
                     )}
                   </div>
@@ -1875,7 +1849,7 @@ export default function StudentModal({
           />
         ) : (
           <>
-            {!showLeftColumn && (
+            {(!showLeftColumn || leftCollapsed) && (
               <StudentHintPanel
                 student={student}
                 session={session}
