@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { MarkdownRenderer } from '../shared/markdown'
+import { TopicLibraryDialog } from '../shared/TopicLibraryView'
+import { useTopicLibrary } from '../shared/topicLibrary'
 import { unmetRequirements } from '../shared/input/index.js'
 import { useInputCapabilities } from '../shared/input/useInputCapabilities.js'
 import { getTaskActivityUi } from './registry.js'
@@ -37,9 +39,10 @@ export function UnavailableActivityNotice() {
 }
 
 // The same purple title bar as other tasks' instructions (HSC Audit 14), but with no Topic library
-// chip (Ryan, 7 Nov 2026). `topicLibrary` ({ onTopicOpen, onTopicClose, openTopicId }) still
-// opens [[topic]] links and a tutor's topic push, and reports them to the tutor, as the task
-// explainer does; without it (Builder preview, StudentModal) those opens are not reported.
+// chip (Ryan, 7 Nov 2026). [[topic]] links still open their topic; `topicLibrary`
+// ({ onTopicOpen, onTopicClose }) reports those opens to the tutor, as the task explainer does
+// (without it, in the Builder preview and StudentModal, they are not reported). A tutor's topic
+// push is not handled here but by ActivityTopicPush, which needs no header, text or link.
 function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const text = task?.explainer ?? task?.description ?? ''
   const [open, setOpen] = useState(false)
@@ -58,7 +61,6 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
               disableCopy
               onTopicOpen={topicLibrary?.onTopicOpen}
               onTopicClose={topicLibrary?.onTopicClose}
-              openTopicId={topicLibrary?.openTopicId}
             />
           </div>
           {long && (
@@ -74,6 +76,53 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
         </div>
       )}
     </section>
+  )
+}
+
+// A tutor's topic push (openTopicId, set by the tutor's "Open it") on an activity task: opens the
+// topic in the Topic library dialog and reports it to the tutor, as the code explainer's
+// MarkdownRenderer does. The topic list loads only while the dialog is open (PushedTopicDialog),
+// so it works whatever the activity's text holds, and on quizzes, which have no header.
+function ActivityTopicPush({ lessonType, openTopicId, onTopicOpen, onTopicClose }) {
+  const [shownId, setShownId] = useState(null)
+  useEffect(() => {
+    if (!openTopicId) return
+    setShownId(openTopicId)
+    onTopicOpen?.(openTopicId)
+    // openTopicId is the external trigger; only re-run when it changes (as MarkdownRenderer).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTopicId])
+  if (!shownId) return null
+  return (
+    <PushedTopicDialog
+      lessonType={lessonType}
+      topicId={shownId}
+      onTopicSelect={onTopicOpen}
+      onClose={() => {
+        setShownId(null)
+        onTopicClose?.()
+      }}
+    />
+  )
+}
+
+function PushedTopicDialog({ lessonType, topicId, onTopicSelect, onClose }) {
+  const { topics, loading, error } = useTopicLibrary(lessonType)
+  let status = null
+  if (topics.length === 0) {
+    if (loading) status = 'Loading topics...'
+    else if (error) status = "Couldn't load topics, try again."
+  }
+  return (
+    <TopicLibraryDialog
+      topics={topics}
+      initialTopicId={topicId}
+      renderMarkdown={MarkdownRenderer}
+      topicType={lessonType}
+      onClose={onClose}
+      onTopicSelect={onTopicSelect}
+      status={status}
+    />
   )
 }
 
@@ -286,15 +335,30 @@ export default function ActivityHost({
     platform: effective.platform ?? 'other',
   }
 
+  // The header handles [[topic]] links only; a tutor's push (openTopicId) is opened by
+  // ActivityTopicPush below, so it works with no header, no text and no link.
+  const linkTopics = topicLibrary
+    ? { onTopicOpen: topicLibrary.onTopicOpen, onTopicClose: topicLibrary.onTopicClose }
+    : null
+  const topicPush = (
+    <ActivityTopicPush
+      lessonType={lessonType}
+      openTopicId={topicLibrary?.openTopicId ?? null}
+      onTopicOpen={topicLibrary?.onTopicOpen}
+      onTopicClose={topicLibrary?.onTopicClose}
+    />
+  )
+
   if (blocked) {
     return (
       <div className="act-host">
-        <ActivityHeader task={task} lessonType={lessonType} topicLibrary={topicLibrary} />
+        <ActivityHeader task={task} lessonType={lessonType} topicLibrary={linkTopics} />
         <RequirementNotice
           unmet={unmet}
           fallback={fallback}
           onHaveKeyboard={() => setKeyboardOverride(true)}
         />
+        {topicPush}
       </div>
     )
   }
@@ -313,13 +377,20 @@ export default function ActivityHost({
       entranceKey={entranceKey}
       tileHighlights={shownTileHighlights}
       history={history}
-      topicLibrary={topicLibrary}
+      topicLibrary={linkTopics}
       assetsPath={assetsPath}
       lessonId={lessonId}
     />
   )
   // Quizzes have no device requirements and lay themselves out (see ActivityView).
-  if (ui?.ownsLayout) return view
+  if (ui?.ownsLayout) {
+    return (
+      <>
+        {view}
+        {topicPush}
+      </>
+    )
+  }
   return (
     <div className="act-host act-host--task" data-testid="activity-host">
       {!readOnly && ui && ui.id !== UNKNOWN_ACTIVITY_ID && (
@@ -330,6 +401,7 @@ export default function ActivityHost({
         />
       )}
       {view}
+      {topicPush}
     </div>
   )
 }
