@@ -230,7 +230,12 @@ export default function StudentWorkspace({
           )}
           {showCopyCode && (
             <div style={s.copyCode}>
-              <CopyCodePanel code={task.copyCode} language="python" />
+              <CopyCodePanel
+                code={task.copyCode}
+                language="python"
+                after={task.copyAfter}
+                before={task.copyBefore}
+              />
             </div>
           )}
           <PythonEditor

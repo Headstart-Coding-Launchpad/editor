@@ -18,7 +18,13 @@ import ReviewNotesControl from './ReviewNotesControl'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
-import { getCompleteStage, getEffectiveTaskMode, getRevealableStages } from '../../shared/taskUtils'
+import {
+  getCompleteStage,
+  getEffectiveTaskMode,
+  getRevealableStages,
+  getStarterStage,
+} from '../../shared/taskUtils'
+import { chooseChangeBase } from '../../shared/stageChange'
 import { getStageLineHints } from '../../shared/lineHints'
 import { getTaskLockSets } from '../../shared/lockedLines'
 import {
@@ -225,6 +231,9 @@ export default function LessonTaskContent({
     !isTeacherEditing &&
     !previewMode
   const [explainerCollapsed, setExplainerCollapsed] = useState(false)
+  // A Complete stage's change view is on screen (SupportStagePanel), so the load button says
+  // "Replace my code with this": the student sees only part of what it loads.
+  const [stageChangeViewShown, setStageChangeViewShown] = useState(false)
   // Tracks the explainer's own accordion collapse (used whenever `!useSideExplainer` —
   // i.e. lesson types outside SIDE_EXPLAINER_TYPES like Filesystem, and the mobile
   // fallback for every type) so its open/closed state can feed visiblePanes below just
@@ -615,6 +624,7 @@ export default function LessonTaskContent({
       }
       onPreviewCompleteCode={canOfferCompletePreview ? cs.handlePreviewCompleteCode : undefined}
       onShowCompleteCode={canOfferCompleteSolution ? cs.handleShowCompleteCode : undefined}
+      showCompleteCodeLabel={stageChangeViewShown ? 'Replace my code with this' : undefined}
       onGoPersonalSandbox={canOfferPersonalSandbox ? cs.handleEnterPersonalSandbox : undefined}
       closeIfPassed={closePassBanner}
       onPassShownChange={onPassBannerChange}
@@ -655,6 +665,13 @@ export default function LessonTaskContent({
                 : undefined
           return (
             <SupportStagePanel
+              // One panel per task and stage: the change view reads the student's code when it opens.
+              key={`${task?.id ?? ''}:${referenceStageIndex}:${referenceStage === teacherLiveReferenceStage ? 'live' : 'stage'}`}
+              changeBase={chooseChangeBase(
+                displayCode,
+                getStarterStage(task)?.stage?.code ?? task?.starterCode
+              )}
+              onChangeViewShown={setStageChangeViewShown}
               stage={referenceStage}
               lineHintsFor={lineHintsFor}
               lockSets={getTaskLockSets(task)}

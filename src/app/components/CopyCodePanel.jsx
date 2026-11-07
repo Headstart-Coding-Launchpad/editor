@@ -1,12 +1,18 @@
 import React from 'react'
 import { getCodeLanguageLabel } from '../../shared/codeLanguages'
+import { copyAnchorRows } from '../../shared/stageChange'
+import { ChangeHunk } from './ChangeLines'
 
-export default function CopyCodePanel({ code, language = 'python' }) {
+// `after` / `before`: the task's copyAfter / copyBefore, the exact text of the line the typed
+// lines go after (or, for a change at the top, before). With one, the panel shows that line
+// dimmed and the typed lines in green with +, like a Complete stage's change view.
+export default function CopyCodePanel({ code, language = 'python', after, before }) {
   const text = typeof code === 'string' ? code : ''
 
   if (!text.trim()) return null
 
   const languageLabel = getCodeLanguageLabel(language)
+  const anchored = copyAnchorRows({ code: text, after, before })
 
   return (
     <section
@@ -22,9 +28,15 @@ export default function CopyCodePanel({ code, language = 'python' }) {
             wrongly beside the instructions. Lessons can name it: the "Type this out" box. */}
         <span style={s.title}>⌨️ Type this out</span>
       </div>
-      <pre style={s.pre}>
-        <code style={s.code}>{text}</code>
-      </pre>
+      {anchored ? (
+        <div style={s.anchored}>
+          <ChangeHunk anchor={anchored.anchor} rows={anchored.rows} />
+        </div>
+      ) : (
+        <pre style={s.pre}>
+          <code style={s.code}>{text}</code>
+        </pre>
+      )}
     </section>
   )
 }
@@ -69,6 +81,7 @@ const s = {
     fontSize: 13,
     color: '#111827',
   },
+  anchored: { minHeight: 0, overflow: 'auto', padding: '8px 0' },
   code: {
     fontFamily: 'var(--font-code)',
     fontVariantLigatures: 'none',

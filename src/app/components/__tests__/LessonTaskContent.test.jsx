@@ -942,3 +942,103 @@ describe('LessonTaskContent teacher-started sandbox instructions', () => {
     expect(screen.queryByText('Lesson task explainer')).not.toBeInTheDocument()
   })
 })
+
+// Platform request 134: an opted-in Complete stage shows only its changes against the student's
+// own code, on every path that opens it (Solo's "See complete code", the tutor's send stage, a
+// targeted preview), and the load button says what it does.
+describe('LessonTaskContent Complete stage change view', () => {
+  const task = {
+    id: 7,
+    title: 'Turn it',
+    check: { type: 'code_contains', value: 'turn' },
+    codeStages: [
+      { label: 'Starter', role: 'starter', code: 'size = 100\nsize -= 5' },
+      {
+        label: 'Complete',
+        role: 'complete',
+        show: 'change',
+        code: 'size = 100\nsize -= 5\nturn += 10\nprint(size)',
+      },
+    ],
+  }
+  const props = {
+    lesson: { type: 'python' },
+    task,
+    currentTaskId: 7,
+    isSandbox: false,
+    isViewingPrev: false,
+    isForcedTeacherLive: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+  }
+
+  it("opens the Complete (Solo self-reveal or the tutor's send stage) as the change view against the student's code", () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    render(
+      <LessonTaskContent
+        {...props}
+        cs={{ inPersonalSandbox: false, completePreviewShown: true }}
+        displayCode={'size = 100\nsize -= 5\nturn += 10'}
+      />
+    )
+    const panel = screen.getByLabelText('Complete stage reference')
+    expect(within(panel).getByLabelText('unchanged anchor: turn += 10')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: print(size)')).toBeInTheDocument()
+    expect(panel).not.toHaveTextContent('size = 100')
+  })
+
+  it("uses the starter when the student's editor is empty", () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    render(
+      <LessonTaskContent
+        {...props}
+        cs={{ inPersonalSandbox: false, targetedPreviewStageIndex: 1 }}
+        displayCode=""
+      />
+    )
+    const panel = screen.getByLabelText('Complete stage reference')
+    expect(within(panel).getByLabelText('unchanged anchor: size -= 5')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: turn += 10')).toBeInTheDocument()
+  })
+
+  it('labels the load button "Replace my code with this" while the change view shows', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    render(
+      <LessonTaskContent
+        {...props}
+        cs={{
+          inPersonalSandbox: false,
+          completePreviewShown: true,
+          handleShowCompleteCode: () => {},
+        }}
+        displayCode={'size = 100\nsize -= 5'}
+        displayCheckAttempted
+        displayCheckPassed={false}
+        canOfferCompleteSolution
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Replace my code with this' })).toBeInTheDocument()
+  })
+
+  it('a Complete stage without show: change shows the whole program as before', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    const fullTask = {
+      ...task,
+      codeStages: [task.codeStages[0], { ...task.codeStages[1], show: undefined }],
+    }
+    render(
+      <LessonTaskContent
+        {...props}
+        task={fullTask}
+        cs={{ inPersonalSandbox: false, completePreviewShown: true }}
+        displayCode={'size = 100\nsize -= 5'}
+      />
+    )
+    expect(
+      screen.getByLabelText('Complete stage reference').querySelector('code').textContent
+    ).toBe('size = 100\nsize -= 5\nturn += 10\nprint(size)')
+  })
+})

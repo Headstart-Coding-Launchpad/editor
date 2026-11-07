@@ -252,7 +252,14 @@ export default function StudentWorkspace({
 
   const editor = arrangePane || (
     <div style={s.editorPane}>
-      {showCopyCode && <CopyCodePanel code={task.copyCode} language="python" />}
+      {showCopyCode && (
+        <CopyCodePanel
+          code={task.copyCode}
+          language="python"
+          after={task.copyAfter}
+          before={task.copyBefore}
+        />
+      )}
       {!readOnly && (
         <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
           <span style={s.editorTitle}>Code</span>

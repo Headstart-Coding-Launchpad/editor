@@ -1,7 +1,18 @@
-import React from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import { chooseLockedLines } from '../../shared/lockedLines'
+import { computeStageChange, stageShowsChange } from '../../shared/stageChange'
+import { ChangeHunk, FullChangeRows } from './ChangeLines'
+
+// The change view's wording (platform request 134; docs/authoring/python-tasks.md "Change view").
+const CHANGE_VIEW_TEXT = {
+  showAll: 'Show all the code',
+  showChanges: 'Show only the changes',
+  fallback:
+    'A lot changed in this step, so here is all of the code. Green lines are new, red lines go.',
+  same: 'Your code already matches this step',
+}
 
 function getLanguageLabel(lessonType) {
   return getModuleLabel(lessonType, 'stageReference') ?? 'Code'
@@ -64,8 +75,41 @@ export default function SupportStagePanel({
   lineHintsFor,
   // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
   lockSets = null,
+  // The student's code to compare with (chooseChangeBase): with it, a Complete code stage that
+  // has `show: 'change'` shows only what changes. Read once, when the panel opens (callers key
+  // the panel per task and stage), so the view holds still while the student types.
+  changeBase = null,
+  // Told whether the change view (not the whole program) is on screen, for the load button's words.
+  onChangeViewShown,
 }) {
   const text = stageToText(stage, lessonType)
+  const [openedBase] = useState(changeBase)
+  const showsChange =
+    revealed &&
+    typeof openedBase === 'string' &&
+    stageShowsChange(stage) &&
+    getModuleDefinition(lessonType)?.capabilities?.sandboxState === 'code'
+  const change = useMemo(
+    () => (showsChange ? computeStageChange(openedBase, stage.code) : null),
+    [showsChange, openedBase, stage?.code]
+  )
+  // 'auto' follows the change (the changes, or the whole program when too much changed);
+  // 'all' / 'changes' are the student's own choice from the toggle.
+  const [view, setView] = useState('auto')
+  const canShowChanges = !!change && !(change.kind === 'fallback' && change.reason === 'no-anchor')
+  const shownView = !change
+    ? null
+    : view === 'all' || (view === 'auto' && change.kind === 'fallback') || !canShowChanges
+      ? 'all'
+      : 'changes'
+  const changeViewShown = shownView === 'changes'
+  const onChangeViewShownRef = useRef(onChangeViewShown)
+  onChangeViewShownRef.current = onChangeViewShown
+  useEffect(() => {
+    onChangeViewShownRef.current?.(changeViewShown)
+  }, [changeViewShown])
+  useEffect(() => () => onChangeViewShownRef.current?.(false), [])
+
   if (!revealed || !text.trim()) return null
   const hintsByLine = stageHintsByLine(stage, lessonType, lineHintsFor)
   const lockedIndexes =
@@ -93,8 +137,32 @@ export default function SupportStagePanel({
           <span style={s.title}>{title}</span>
           {sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
+        {change && canShowChanges && (
+          <button
+            type="button"
+            style={s.toggle}
+            onClick={() => setView(shownView === 'all' ? 'changes' : 'all')}
+          >
+            {shownView === 'all' ? CHANGE_VIEW_TEXT.showChanges : CHANGE_VIEW_TEXT.showAll}
+          </button>
+        )}
       </div>
-      {stageReferenceFor(lessonType)?.markdown ? (
+      {change ? (
+        <div style={s.changeBody} data-testid="stage-change-view">
+          {shownView === 'all' ? (
+            <>
+              {view === 'auto' && change.kind === 'fallback' && (
+                <p style={s.changeNote}>{CHANGE_VIEW_TEXT.fallback}</p>
+              )}
+              <FullChangeRows rows={change.fullRows} />
+            </>
+          ) : change.kind === 'same' ? (
+            <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
+          ) : (
+            change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
+          )}
+        </div>
+      ) : stageReferenceFor(lessonType)?.markdown ? (
         <div style={s.markdown}>
           <MarkdownRenderer content={text} topicType={lessonType} disableCopy />
         </div>
@@ -199,6 +267,37 @@ const s = {
     fontFeatureSettings: '"liga" 0, "calt" 0',
   },
   markdown: { overflow: 'auto', padding: '10px 12px', background: '#f8fafc' },
+  // The panel's own maxHeight caps it; the changes scroll inside, so a tablet keeps the editor.
+  changeBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    minHeight: 0,
+    overflow: 'auto',
+    padding: '8px 0',
+    background: '#f8fafc',
+    userSelect: 'none',
+  },
+  changeNote: {
+    margin: '0 12px',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    color: '#1e3a8a',
+    lineHeight: 1.4,
+  },
+  toggle: {
+    flexShrink: 0,
+    minHeight: 44,
+    padding: '0 14px',
+    border: '1px solid #93c5fd',
+    borderRadius: 8,
+    background: '#ffffff',
+    color: '#1d4ed8',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: '0.86rem',
+    cursor: 'pointer',
+  },
   lockedTag: {
     marginLeft: '1.2em',
     color: '#475569',

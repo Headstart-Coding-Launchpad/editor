@@ -22,7 +22,10 @@ export function applyCopyCodeOverrides(lesson, classOverrides, studentOverrides)
       return { ...task, subtasks: task.subtasks.map(patch) }
     }
     const text = effectiveCopyCode(task, classOverrides, studentOverrides)
-    return text === task?.copyCode ? task : { ...task, copyCode: text }
+    if (text === task?.copyCode) return task
+    // The lesson's copyAfter / copyBefore name a line for the lesson's own text, not the tutor's.
+    const { copyAfter: _after, copyBefore: _before, ...rest } = task
+    return { ...rest, copyCode: text }
   }
   return { ...lesson, tasks: (lesson.tasks ?? []).map(patch) }
 }

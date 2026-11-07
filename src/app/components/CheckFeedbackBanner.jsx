@@ -16,6 +16,9 @@ export default function CheckFeedbackBanner({
   stageActionConfirm,
   onPreviewCompleteCode,
   onShowCompleteCode,
+  // The load button's words: a Complete stage's change view shows only part of the code, so
+  // there it reads "Replace my code with this" (it still loads the whole stage).
+  showCompleteCodeLabel = 'Load complete code into my editor',
   onGoPersonalSandbox,
   // The tutor's own "Send hint": a calm 💡 note from the tutor, not a failed check.
   fromTutor = false,
@@ -122,7 +125,7 @@ export default function CheckFeedbackBanner({
         <div style={s.actionRow}>
           <span style={s.completePrompt}>Ready to use it?</span>
           <button type="button" style={s.actionLink} onClick={onShowCompleteCode}>
-            Load complete code into my editor
+            {showCompleteCodeLabel}
           </button>
         </div>
       )}
