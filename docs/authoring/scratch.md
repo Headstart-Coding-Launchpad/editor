@@ -508,11 +508,17 @@ Scratch tasks open on a calm screen, the same at every screen size:
 - **The block palette starts closed** behind a 🧱 **Blocks** button above the script area. Only
   that button opens or closes it: dropping blocks, tapping the stage or the script leaves it open.
   Every time it opens, any block hidden under it is scrolled clear, and it goes back to the
-  category the student last had (this page visit only). Write "Tap **Blocks**, then drag…" when
+  category the student last had (this page visit only). Opening or closing it never moves the
+  script on screen unless the open palette would cover it. Write "Tap **Blocks**, then drag…" when
   an explainer sends the student to the palette.
+- **Blocks are drawn at 65%** (55% at the smallest), smaller than the 75% elsewhere, so the open
+  palette is narrower (about 306px instead of 350px at 1366) and leaves more script area.
 - **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
   tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
-  one-line title, never behind a tab, and a long explainer scrolls inside the card. Turning a
+  one-line title, never behind a tab, and a long explainer scrolls inside the card. On a
+  portrait tablet the card gets at most about a third of the height (the blocks keep at least
+  360px), and a card taller than that starts folded to its title on the task's first view (one tap
+  opens it). Keep explainers short for portrait tablets. Turning a
   tablet round keeps the card as it was (folded or open, scrolled where it was). Each new task
   opens its card. There is no "Task N of N+1" explainer slide.
 - **The hint is docked under the card** (the same hint box as the calm Python screen): a nudge

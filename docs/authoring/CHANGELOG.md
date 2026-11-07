@@ -50,6 +50,10 @@ Entries written before 2026-09-29 are not tagged.
   **More** unless a check (including `feedbackChecks` / `incorrectChecks`) reads a sprite
   property. New optional lesson field `scratchPaletteOpen` (Builder: Lesson Details, **Keep the
   block palette open for this lesson**) starts the palette open for a lesson that relies on it.
+  Blocks (and the palette) are drawn at 65% on the calm screen (75% elsewhere), and opening or
+  closing the palette leaves the script where it is unless the palette would cover it. On a
+  portrait tablet the card takes at most about a third of the height and a card taller than that
+  starts folded to its title on the task's first view: keep explainers short.
   See [scratch.md](scratch.md#calm-screen).
   - Affects: scratch, lesson (`scratchPaletteOpen`) · Existing lessons: palette now starts closed; reword explainers that point at an open palette ("tap Blocks, then drag"), or set `scratchPaletteOpen: true` · Resolves: none
 \n- **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
