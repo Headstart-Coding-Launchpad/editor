@@ -93,7 +93,7 @@ export function ChangeHunk({ anchor = null, rows = [], indent = null }) {
 /** The whole program, every line marked (the fall-back and "Show all the code"). */
 export function FullChangeRows({ rows }) {
   return (
-    <div role="list" style={s.hunk}>
+    <div role="list">
       {rows.map((row, index) => (
         <ChangeRow key={index} type={row.type} text={row.text} />
       ))}
