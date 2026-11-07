@@ -943,6 +943,57 @@ describe('LessonTaskContent teacher-started sandbox instructions', () => {
   })
 })
 
+// Ryan, 7 Nov 2026: activities (keyboard, binary, quizzes...) have no Topic library chip in their
+// header; code lessons keep theirs.
+describe('LessonTaskContent Topic library chip', () => {
+  const props = {
+    lesson: { type: 'python' },
+    cs: { inPersonalSandbox: false, activity: null },
+    currentTaskId: 1,
+    isSandbox: false,
+    isViewingPrev: false,
+    isForcedTeacherLive: false,
+    isMobile: false,
+    isQuizTask: false,
+    isAutoEvaluatedQuiz: false,
+    isInformationTask: false,
+    isTeacherEditing: false,
+    onTopicOpen: vi.fn(),
+    onTopicClose: vi.fn(),
+    openTopicId: null,
+  }
+
+  it('an activity header shows no Topic library chip', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const task = {
+      id: 1,
+      title: 'Make 5',
+      description: 'Turn bits **on** to make the number.',
+      taskType: 'activity',
+      activityType: 'binary',
+      mode: 'make_number',
+      bits: 4,
+      items: [{ id: 'a', target: 5 }],
+    }
+
+    render(<LessonTaskContent {...props} task={task} isActivityTask />)
+
+    expect(screen.getByRole('heading', { name: 'Make 5' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Topic library|Loading library/ })).toBeNull()
+  })
+
+  it('a code task explainer still shows the Topic library chip', () => {
+    getLessonModule.mockReturnValue(PYTHON_MODULE)
+    useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
+    const task = { id: 1, title: 'Say hello', explainer: 'Print a greeting.' }
+
+    render(<LessonTaskContent {...props} task={task} />)
+
+    expect(screen.getByRole('button', { name: /Topic library|Loading library/ })).toBeInTheDocument()
+  })
+})
+
 // Platform request 134: an opted-in Complete stage shows only its changes against the student's
 // own code, on every path that opens it (Solo's "See complete code", the tutor's send stage, a
 // targeted preview), and the load button says what it does.
