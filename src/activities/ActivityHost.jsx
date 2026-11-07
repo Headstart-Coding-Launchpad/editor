@@ -36,9 +36,10 @@ export function UnavailableActivityNotice() {
   )
 }
 
-// The same purple title bar and Topic library chip as other tasks' instructions (HSC Audit 14).
-// `topicLibrary` ({ onTopicOpen, onTopicClose, openTopicId }) reports opens to the tutor, as the
-// task explainer does; without it (Builder preview, StudentModal) there is no chip.
+// The same purple title bar as other tasks' instructions (HSC Audit 14). `topicLibrary`
+// ({ onTopicOpen, onTopicClose, openTopicId }) wires [[topic]] links, a tutor's topic push and
+// reports to the tutor, as the task explainer does; the Topic library chip itself is hidden
+// (libraryButton={false}, Ryan, 7 Nov 2026). With no title or text there is no header, as before.
 function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const text = task?.explainer ?? task?.description ?? ''
   const [open, setOpen] = useState(false)
@@ -56,6 +57,7 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
               topicType={lessonType ?? null}
               disableCopy
               showLibrary={!!topicLibrary}
+              libraryButton={false}
               onTopicOpen={topicLibrary?.onTopicOpen}
               onTopicClose={topicLibrary?.onTopicClose}
               openTopicId={topicLibrary?.openTopicId}
@@ -110,7 +112,7 @@ export function ActivityView({
   // {anonymousId}, src/shared/typingHistory.js), for activities with `history` hooks; null when
   // there is none.
   history = null,
-  // { onTopicOpen, onTopicClose, openTopicId }: shows the header's Topic library chip.
+  // { onTopicOpen, onTopicClose, openTopicId }: the header's topic links and tutor topic pushes.
   topicLibrary = null,
   // The lesson's resolved assets base URL (resolveAssetsPath(lesson.assetsPath)), for activities
   // that show lesson pictures by relative path (Real or AI).

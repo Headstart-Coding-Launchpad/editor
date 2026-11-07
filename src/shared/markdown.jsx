@@ -621,9 +621,11 @@ export function MarkdownRenderer({
   inheritColor = false,
   topicType = null,
   showLibrary = false,
-  // With showLibrary: whether the floating "Topic library" chip shows (the calm code screen has
-  // its own in the code row), and a request count from that chip (0: none) to open the library,
-  // cleared through onLibraryRequestHandled.
+  // With showLibrary: false hides only the floating "Topic library" button; everything
+  // showLibrary turns on (the topic list, [[topic]] links, the dialog, openTopicId pushes and
+  // tutor reports) stays. Activity headers pass false (Ryan, 7 Nov 2026); the calm code screen
+  // has its own chip in the code row, whose request count (0: none) opens the library through
+  // libraryRequest, cleared through onLibraryRequestHandled.
   libraryButton = true,
   libraryRequest = 0,
   onLibraryRequestHandled,
