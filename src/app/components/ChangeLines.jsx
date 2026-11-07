@@ -11,16 +11,28 @@ const ROW_KINDS = {
   anchor: { sign: '', tag: null, label: 'unchanged anchor' },
 }
 
-function ChangeRow({ type, text, tag }) {
+// `locked` / `hint`: the stage's lock tag and author line hint (the whole-program rows only).
+function ChangeRow({ type, text, tag, locked = false, hint = null }) {
   const kind = ROW_KINDS[type] ?? ROW_KINDS.same
   const shownTag = tag ?? kind.tag
+  const label = `${kind.label}: ${text.trim()}${locked ? ', locked' : ''}${hint ? `, hint: ${hint}` : ''}`
   return (
-    <div role="listitem" aria-label={`${kind.label}: ${text.trim()}`} style={s.row(type)}>
+    <div role="listitem" aria-label={label} style={s.row(type)}>
       <span aria-hidden="true" style={s.sign(type)}>
         {kind.sign}
       </span>
       <span aria-hidden="true" style={s.text(type)}>
         {text === '' ? ' ' : text}
+        {locked && (
+          <span style={s.lockedTag} title="Locked line">
+            🔒 Locked
+          </span>
+        )}
+        {hint && (
+          <span style={s.lineHint} title={hint}>
+            {hint}
+          </span>
+        )}
       </span>
       {shownTag ? (
         <span aria-hidden="true" style={s.tag(type)}>
@@ -90,12 +102,19 @@ export function ChangeHunk({ anchor = null, rows = [], indent = null }) {
   )
 }
 
-/** The whole program, every line marked (the fall-back and "Show all the code"). */
+/** The whole program, every line marked (the fall-back and "Show all the code"), with any lock
+ * tags and line hints (rows' `locked` / `hint`). */
 export function FullChangeRows({ rows }) {
   return (
     <div role="list">
       {rows.map((row, index) => (
-        <ChangeRow key={index} type={row.type} text={row.text} />
+        <ChangeRow
+          key={index}
+          type={row.type}
+          text={row.text}
+          locked={!!row.locked}
+          hint={row.hint ?? null}
+        />
       ))}
     </div>
   )
@@ -149,6 +168,22 @@ const s = {
       ? { color: '#1d4ed8', background: '#dbeafe' }
       : { color: '#ffffff', background: ROW_COLOURS[type]?.tag }),
   }),
+  // As SupportStagePanel's whole-program view writes them.
+  lockedTag: {
+    marginLeft: '1.2em',
+    color: '#475569',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85em',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  lineHint: {
+    marginLeft: '1.5em',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.92em',
+  },
   indentNote: {
     margin: '0 10px',
     padding: '6px 0 6px',

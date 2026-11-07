@@ -87,6 +87,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // `typing` measures (useStudentTypingStats; python, turtle, html)
   'previewInspector', // a task's `inspector` field adds the HTML Inspector to the preview
   // (src/modules/html/inspector; html)
+  'stageChangeView', // a Complete code stage with `show: 'change'` shows only what changes against
+  // the student's code (src/shared/stageChange.js, SupportStagePanel; python)
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete

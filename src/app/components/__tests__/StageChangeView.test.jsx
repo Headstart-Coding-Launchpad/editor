@@ -173,7 +173,12 @@ describe('Complete stage change view', () => {
       />
     )
     rerender(
-      <SupportStagePanel stage={completeStage()} lessonType="python" revealed changeBase={COMPLETE} />
+      <SupportStagePanel
+        stage={completeStage()}
+        lessonType="python"
+        revealed
+        changeBase={COMPLETE}
+      />
     )
     expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
   })
@@ -194,7 +199,7 @@ describe('Complete stage change view', () => {
     ).toHaveTextContent('Turn a bit more each time')
   })
 
-  it('the fall-back keeps hints on the right lines when the student\'s removed lines sit between', () => {
+  it("the fall-back keeps hints on the right lines when the student's removed lines sit between", () => {
     renderPanel({
       changeBase: 'old = 1\nsize = 100',
       lineHintsFor: () => [{ line: 5, text: 'Show it' }],

@@ -108,6 +108,8 @@ export default defineModule({
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
     sideQuests: true,
+    // A Complete stage's `show: 'change'` shows only the changes (src/shared/stageChange.js).
+    stageChangeView: true,
     // A task's `scrub` (src/shared/scrub/): a scrubbed value re-runs live only in programs that
     // draw on the Python Stage (import stage) and never ask for input().
     scrub: { liveRerun: 'preview', needsImport: 'stage', inputCall: 'input' },
@@ -313,6 +315,7 @@ export default defineModule({
     warnCompleteCode(task, n, warnings)
     validateShowVariables(task, n, errors, warnings)
     validateRunCounts(task, n, errors, warnings)
+    // changeView: this module's capabilities.stageChangeView (the panel's runtime gate).
     validateStageChange(task, n, errors, warnings, { changeView: true })
     validateStageTarget(task, n, errors, warnings)
     validateScrub(task, n, errors, warnings, {

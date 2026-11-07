@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import { chooseLockedLines } from '../../shared/lockedLines'
-import { computeStageChange, stageShowsChange } from '../../shared/stageChange'
+import {
+  cleanCodeLineIndexes,
+  computeStageChange,
+  stageShowsChange,
+} from '../../shared/stageChange'
 import { ChangeHunk, FullChangeRows } from './ChangeLines'
 
 // The change view's wording (platform request 134; docs/authoring/python-tasks.md "Change view").
@@ -67,6 +71,22 @@ export function stageHintsByLine(stage, lessonType, lineHintsFor) {
   return byLine
 }
 
+// The whole-program rows with the Complete's lock tags and author line hints: each row but a
+// removed one is the next cleaned Complete line, placed in the stage code by cleanCodeLineIndexes.
+function withLineNotes(rows, code, lockedIndexes, hintsByLine) {
+  if (!lockedIndexes.size && !hintsByLine.size) return rows
+  const places = cleanCodeLineIndexes(code)
+  let next = 0
+  return rows.map((row) => {
+    if (row.type === 'remove') return row
+    const index = places[next]
+    next += 1
+    const locked = lockedIndexes.has(index)
+    const hint = hintsByLine.get(index) ?? null
+    return locked || hint ? { ...row, locked, hint } : row
+  })
+}
+
 export default function SupportStagePanel({
   stage,
   lessonType,
@@ -76,33 +96,33 @@ export default function SupportStagePanel({
   // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
   lockSets = null,
   // The student's code to compare with (chooseChangeBase): with it, a Complete code stage that
-  // has `show: 'change'` shows only what changes. Read once, when the panel opens (callers key
-  // the panel per task and stage), so the view holds still while the student types.
+  // has `show: 'change'` shows only what changes (modules with capabilities.stageChangeView,
+  // Python). Read once, when the stage is first revealed, so the view holds still while the
+  // student types; callers key the panel per task and stage, and remount it after "Replace my
+  // code with this" so it compares with the replaced code.
   changeBase = null,
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
 }) {
   const text = stageToText(stage, lessonType)
-  const [openedBase] = useState(changeBase)
+  // The base is read when the stage is first revealed (a panel can mount hidden), then held.
+  const [openedBase, setOpenedBase] = useState(() => (revealed ? changeBase : undefined))
+  if (revealed && openedBase === undefined) setOpenedBase(changeBase)
+  const base = openedBase === undefined ? (revealed ? changeBase : null) : openedBase
   const showsChange =
     revealed &&
-    typeof openedBase === 'string' &&
+    typeof base === 'string' &&
     stageShowsChange(stage) &&
-    getModuleDefinition(lessonType)?.capabilities?.sandboxState === 'code'
+    !!getModuleDefinition(lessonType)?.capabilities?.stageChangeView
   const change = useMemo(
-    () => (showsChange ? computeStageChange(openedBase, stage.code) : null),
-    [showsChange, openedBase, stage?.code]
+    () => (showsChange ? computeStageChange(base, stage.code) : null),
+    [showsChange, base, stage?.code]
   )
-  // 'auto' follows the change (the changes, or the whole program when too much changed);
-  // 'all' / 'changes' are the student's own choice from the toggle.
-  const [view, setView] = useState('auto')
-  const canShowChanges = !!change && !(change.kind === 'fallback' && change.reason === 'no-anchor')
-  const shownView = !change
-    ? null
-    : view === 'all' || (view === 'auto' && change.kind === 'fallback') || !canShowChanges
-      ? 'all'
-      : 'changes'
-  const changeViewShown = shownView === 'changes'
+  // Only real changes ('changes') can be shown on their own; a fall-back always shows the whole
+  // program, and 'same' just says so. `view` is the student's choice from the toggle.
+  const [view, setView] = useState('changes')
+  const canShowChanges = change?.kind === 'changes'
+  const changeViewShown = change?.kind === 'same' || (canShowChanges && view === 'changes')
   const onChangeViewShownRef = useRef(onChangeViewShown)
   onChangeViewShownRef.current = onChangeViewShown
   useEffect(() => {
@@ -137,29 +157,33 @@ export default function SupportStagePanel({
           <span style={s.title}>{title}</span>
           {sourceLabel && <span style={s.source}>{sourceLabel}</span>}
         </div>
-        {change && canShowChanges && (
+        {canShowChanges && (
           <button
             type="button"
             style={s.toggle}
-            onClick={() => setView(shownView === 'all' ? 'changes' : 'all')}
+            onClick={() => setView(view === 'all' ? 'changes' : 'all')}
           >
-            {shownView === 'all' ? CHANGE_VIEW_TEXT.showChanges : CHANGE_VIEW_TEXT.showAll}
+            {view === 'all' ? CHANGE_VIEW_TEXT.showChanges : CHANGE_VIEW_TEXT.showAll}
           </button>
         )}
       </div>
       {change ? (
         <div style={s.changeBody} data-testid="stage-change-view">
-          {shownView === 'all' ? (
+          {change.kind === 'same' ? (
+            <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
+          ) : change.kind === 'changes' && view === 'changes' ? (
+            // The changes on their own carry no lock tags or line hints (they name lines by
+            // text); "Show all the code" has both.
+            change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
+          ) : (
             <>
-              {view === 'auto' && change.kind === 'fallback' && (
+              {change.kind === 'fallback' && (
                 <p style={s.changeNote}>{CHANGE_VIEW_TEXT.fallback}</p>
               )}
-              <FullChangeRows rows={change.fullRows} />
+              <FullChangeRows
+                rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
+              />
             </>
-          ) : change.kind === 'same' ? (
-            <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
-          ) : (
-            change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
           )}
         </div>
       ) : stageReferenceFor(lessonType)?.markdown ? (

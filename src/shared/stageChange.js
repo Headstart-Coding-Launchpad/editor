@@ -42,6 +42,16 @@ export function cleanCodeLines(code) {
     .map((line) => line.replace(/\s+$/, ''))
 }
 
+/** The line indexes (0-based, in `code`) of the lines cleanCodeLines keeps, in order. */
+export function cleanCodeLineIndexes(code) {
+  if (typeof code !== 'string' || code === '') return []
+  const indexes = []
+  code.split(/\r?\n/).forEach((line, index) => {
+    if (!isMarkerLine(line)) indexes.push(index)
+  })
+  return indexes
+}
+
 function indentWidth(line) {
   let width = 0
   for (const ch of line) {
@@ -170,9 +180,10 @@ function indentNote(lines) {
  * - kind 'changes': `hunks`, each { anchor: { lines, position: 'after'|'before' } | null,
  *   rows: [{ type: 'add'|'remove', text }], indent: { lines, direction, spaces } | null }.
  * - kind 'fallback' (with `reason`: 'most' | 'many' | 'big-add' | 'no-anchor'): show the whole
- *   program instead.
+ *   program instead; `hunks` is [].
  * `fullRows` (always): the whole Complete as [{ type: 'same'|'add'|'remove'|'indent', text }],
- * removed lines in place, for the fall-back and "Show all the code".
+ * removed lines in place, for the fall-back and "Show all the code". Its rows other than
+ * 'remove' are the Complete's cleaned lines in order (cleanCodeLineIndexes gives their places).
  */
 export function computeStageChange(baseCode, targetCode) {
   const toItems = (code) =>
@@ -262,19 +273,23 @@ export function computeStageChange(baseCode, targetCode) {
     return { hunk: { anchor, rows, indent }, adds: adds.length, needsAnchor }
   })
 
-  const plain = hunks.map(({ hunk }) => hunk)
+  // A fall-back shows only the whole program (`fullRows`), so it has no hunks: a hunk there
+  // could be a new line with no place.
   if (targetItems.length && changedTarget / targetItems.length > CHANGE_LIMITS.maxChangedShare) {
-    return result('fallback', plain, 'most')
+    return result('fallback', [], 'most')
   }
-  if (!targetItems.length && baseItems.length) return result('fallback', plain, 'most')
-  if (hunks.length > CHANGE_LIMITS.maxHunks) return result('fallback', plain, 'many')
+  if (!targetItems.length && baseItems.length) return result('fallback', [], 'most')
+  if (hunks.length > CHANGE_LIMITS.maxHunks) return result('fallback', [], 'many')
   if (hunks.some(({ adds }) => adds > CHANGE_LIMITS.maxAddedBlock)) {
-    return result('fallback', plain, 'big-add')
+    return result('fallback', [], 'big-add')
   }
   if (hunks.some(({ hunk, needsAnchor }) => needsAnchor && !hunk.anchor)) {
-    return result('fallback', plain, 'no-anchor')
+    return result('fallback', [], 'no-anchor')
   }
-  return result('changes', plain)
+  return result(
+    'changes',
+    hunks.map(({ hunk }) => hunk)
+  )
 }
 
 /**
