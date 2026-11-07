@@ -140,10 +140,12 @@ export default function LessonMetaPanel({
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const levelRef = getLessonLevelRef(lesson)
   // The calm Scratch screen's palette opt-out (scratchPaletteOpen), offered where the lesson has a
-  // module with that screen (a Scratch lesson, or a composed lesson with a Scratch module).
+  // module with that screen (a Scratch lesson, or a composed lesson with a Scratch module), and
+  // wherever the field is set, so a stale value can still be cleared.
   const hasCalmScratch = [lesson.type, ...getComposedModuleTypes(lesson)].some(
     (type) => !!getModuleDefinition(type)?.capabilities?.calmScratch
   )
+  const showsPaletteOption = hasCalmScratch || lesson.scratchPaletteOpen != null
   const legacyLevel = levelTitleFromLesson(lesson, levels)
 
   return (
@@ -229,7 +231,7 @@ export default function LessonMetaPanel({
           </label>
         </Field>
 
-        {hasCalmScratch && (
+        {showsPaletteOption && (
           <Field
             label="Scratch block palette"
             hint="Scratch tasks start with the block palette closed behind a Blocks button (students tap Blocks, then drag). Tick this only for a lesson whose explainers need the palette already open."
@@ -247,7 +249,14 @@ export default function LessonMetaPanel({
               <input
                 type="checkbox"
                 checked={lesson.scratchPaletteOpen === true}
-                onChange={(e) => set('scratchPaletteOpen', e.target.checked ? true : null)}
+                onChange={(e) => {
+                  const keepOpen = e.target.checked
+                  // Unticking removes the key (never a stored null), so an export has no diff.
+                  onUpdate((prev) => {
+                    const { scratchPaletteOpen: _cleared, ...rest } = prev
+                    return keepOpen ? { ...prev, scratchPaletteOpen: true } : rest
+                  })
+                }}
               />
               Keep the block palette open for this lesson
             </label>

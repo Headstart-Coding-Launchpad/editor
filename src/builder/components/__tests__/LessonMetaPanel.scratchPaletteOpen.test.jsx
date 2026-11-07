@@ -61,10 +61,22 @@ describe('LessonMetaPanel scratchPaletteOpen checkbox', () => {
     expect(getLesson().scratchPaletteOpen).toBe(true)
   })
 
-  it('clears to null when unticked, so a save removes it (as with Lesson number)', () => {
+  it('removes the key when unticked (no null left behind to show up in an export diff)', () => {
     const { getLesson } = renderPanel({ ...scratchLesson, scratchPaletteOpen: true })
     fireEvent.click(screen.getByRole('checkbox', { name: LABEL }))
-    expect(getLesson().scratchPaletteOpen).toBeNull()
+    expect('scratchPaletteOpen' in getLesson()).toBe(false)
+  })
+
+  it('still shows a stale field on a lesson with no Scratch, so it can be cleared', () => {
+    const { getLesson } = renderPanel({
+      ...scratchLesson,
+      type: 'python',
+      scratchPaletteOpen: true,
+    })
+    const box = screen.getByRole('checkbox', { name: LABEL })
+    expect(box).toBeChecked()
+    fireEvent.click(box)
+    expect('scratchPaletteOpen' in getLesson()).toBe(false)
   })
 
   it('is offered on a composed lesson with a Scratch module', () => {
