@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 // The tutor's text box to one student. Default: a pop-up message. `variant="hint"` is "Send hint":
 // the same box, but the text goes onto the student's hint banner (no pass/fail change).
@@ -8,9 +8,14 @@ export default function MessageCompose({
   isOpen,
   onClose,
   variant = 'message',
+  // Text to start from when the box opens (the modal's Hint menu: a hint the class is seeing).
+  initialText = '',
 }) {
   const isHint = variant === 'hint'
   const [text, setText] = useState('')
+  useEffect(() => {
+    if (isOpen && initialText) setText(initialText)
+  }, [isOpen, initialText])
 
   function handleSend() {
     const trimmed = text.trim()

@@ -24,6 +24,10 @@ export const UNDO_MS = 6000
  * @param {Function} [props.onRevokeBadge] useSession's revokeBadge
  * @param {Function} [props.onOpenPicker] opens BadgeAwardDialog when nothing is suggested
  * @param {'card'|'header'} [props.variant]
+ * @param {boolean} [props.showOther] header: the "Other…" picker button beside a suggestion
+ *   (false where the picker has its own entry, as in the StudentModal's Tools menu)
+ * @param {object} [props.headerStyle] header: style laid over the header button(s)
+ * @param {string} [props.headerClassName] header: class for the header button(s)
  */
 export default function OneTapAwardButton({
   student,
@@ -35,7 +39,11 @@ export default function OneTapAwardButton({
   onRevokeBadge,
   onOpenPicker,
   variant = 'card',
+  showOther = true,
+  headerStyle = null,
+  headerClassName = 'btn-secondary',
 }) {
+  const headerBtn = headerStyle ? { ...s.headerBtn, ...headerStyle } : s.headerBtn
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState(null)
   const timer = useRef(null)
@@ -109,8 +117,8 @@ export default function OneTapAwardButton({
     button = (
       <button
         type="button"
-        className={isCard ? undefined : 'btn-secondary'}
-        style={isCard ? { ...s.cardBtn, ...(touch ? s.touchMin : null) } : s.headerBtn}
+        className={isCard ? undefined : headerClassName}
+        style={isCard ? { ...s.cardBtn, ...(touch ? s.touchMin : null) } : headerBtn}
         disabled={busy}
         aria-label={why ? `${label}. ${why}` : label}
         title={why ? `${label}\n${why}` : label}
@@ -124,7 +132,7 @@ export default function OneTapAwardButton({
         <span style={s.btnText}>{busy ? 'Awarding…' : `Award ${top.badge.title}`}</span>
       </button>
     )
-    if (!isCard && onOpenPicker) {
+    if (!isCard && onOpenPicker && showOther) {
       // The one-tap button awards at once, so give the teacher a way into the picker to choose
       // a different badge without awarding the suggested one.
       button = (
@@ -132,8 +140,8 @@ export default function OneTapAwardButton({
           {button}
           <button
             type="button"
-            className="btn-secondary"
-            style={s.headerBtn}
+            className={headerClassName}
+            style={headerBtn}
             aria-label={`Choose a different badge for ${student.displayName}`}
             title="Choose a different badge"
             data-testid="award-other-badge"
@@ -148,8 +156,8 @@ export default function OneTapAwardButton({
     button = (
       <button
         type="button"
-        className="btn-secondary"
-        style={s.headerBtn}
+        className={headerClassName}
+        style={headerBtn}
         data-testid="one-tap-award"
         onClick={onOpenPicker}
       >

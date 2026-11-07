@@ -94,6 +94,7 @@ describe('Student View Modal tidy: the fun moment', () => {
         onNudge: vi.fn(),
         onOverrideCheck: vi.fn(),
         onRequestFullscreen: vi.fn(),
+        onRemoteRun: vi.fn(),
         rosterName: 'Jordan P.',
       },
       {
@@ -177,9 +178,7 @@ describe('Student View Modal tidy: the fun moment', () => {
   })
 
   it('shows Scratch like the student sees it: blocks and Stage side by side, not tabs', () => {
-    render(
-      <StudentModal {...props({ lesson: SCRATCH_LESSON, session: { currentTaskId: 1 } })} />
-    )
+    render(<StudentModal {...props({ lesson: SCRATCH_LESSON, session: { currentTaskId: 1 } })} />)
     expect(screen.getByTestId('scratch-workspace')).toHaveAttribute('data-compact', 'false')
     expect(screen.getByTestId('student-modal-left')).toHaveTextContent('Make the cat move')
   })
@@ -236,7 +235,7 @@ describe('Student View Modal tidy: the fun moment', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'More hints' }))
     fireEvent.click(screen.getByRole('button', { name: /Remember the quotes/ }))
-    expect(screen.getByRole('textbox')).toHaveValue('Remember the quotes')
+    expect(screen.getByPlaceholderText(/Look at line 3/)).toHaveValue('Remember the quotes')
     fireEvent.click(screen.getByRole('button', { name: 'Send hint' }))
     expect(onSendHint).toHaveBeenCalledWith('student-1', 'Remember the quotes', 2)
 

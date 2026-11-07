@@ -990,6 +990,9 @@ export default function ScratchWorkspace({
   prebuiltStacks = null, // Visual stack snippets merged for current tab
   respectStudentEditable = false,
   forceCompact = false,
+  // The tutor's "watch one student" view when it is allowed to lay out wide (StudentModal on a
+  // PC screen): keeps its own remembered Blocks/Stage tab, like forceCompact does.
+  watchView = false,
   onVisiblePanesChange = null,
   highlightedPanes = null,
   forcedPane = null,
@@ -1183,9 +1186,8 @@ export default function ScratchWorkspace({
     )
   }
 
-  const activePaneSurface = forceCompact
-    ? SCRATCH_WATCH_PANEL_TABS_SURFACE
-    : SCRATCH_PANEL_TABS_SURFACE
+  const activePaneSurface =
+    forceCompact || watchView ? SCRATCH_WATCH_PANEL_TABS_SURFACE : SCRATCH_PANEL_TABS_SURFACE
 
   function handleActivePaneChange(id) {
     setActivePane(id)
