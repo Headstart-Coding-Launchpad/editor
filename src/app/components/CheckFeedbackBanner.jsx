@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
-import { HELP_BUTTON_LABEL } from './peerHelp/helpLabel'
+import {
+  ASK_FOR_HELP_LABEL,
+  HELP_REQUESTED_LABEL,
+  useHelpRequest,
+} from './peerHelp/helpRequestContext'
 
 // Auto-dismiss delay for the popup — long enough to read, short enough not to linger
 // and block the workspace behind it once a student has moved on.
@@ -28,23 +32,31 @@ export default function CheckFeedbackBanner({
   // Told whether a pass banner is on screen (true), or has gone (false: closed, timed out,
   // unmounted), so the bonus quest card can wait for it.
   onPassShownChange,
+  // The calm code screen's hint beside the task (TaskHintBox): in the page, not floating, with no
+  // close button or timer, 16px text and buttons for its actions. It never covers anything, so it
+  // never holds up the bonus quest card (onPassShownChange says false).
+  docked = false,
 }) {
   const hint = String(suggestion ?? '').trim()
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissedState, setDismissed] = useState(false)
+  const dismissed = docked ? false : dismissedState
+  // The top-bar ✋ Help's own handler, only where that button shows (a tutor to ask).
+  const help = useHelpRequest()
 
   // Callers remount this component (via a `key` tied to the check result) whenever a new
   // check/stage event actually happens, so this timer — and any earlier dismissal — is
   // naturally reset for a genuinely new popup rather than carried over from a stale one.
   useEffect(() => {
+    if (docked) return undefined
     const timer = setTimeout(() => setDismissed(true), AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [])
+  }, [docked])
 
   useEffect(() => {
     if (closeIfPassed && passed) setDismissed(true)
   }, [closeIfPassed, passed])
 
-  const passShown = !!passed && !fromTutor && !dismissed
+  const passShown = !docked && !!passed && !fromTutor && !dismissed
   const onPassShownChangeRef = useRef(onPassShownChange)
   onPassShownChangeRef.current = onPassShownChange
   useEffect(() => {
@@ -54,22 +66,30 @@ export default function CheckFeedbackBanner({
 
   if (dismissed) return null
 
+  const actionStyle = docked ? s.dockedAction : s.actionLink
   // Motion: a fail banner wobbles each time it appears; a pass banner pops in while its ✓ spins
   // once. Callers remount this per check (see above), which replays the one-shot class.
+  const motionClass = passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'
   return (
     <div
-      className={`check-feedback-popup ${passed || fromTutor ? 'motion-pop-in' : 'motion-wobble'}`}
-      style={{ ...s.banner, ...(passed ? s.pass : fromTutor ? s.tutor : s.fail) }}
+      className={docked ? motionClass : `check-feedback-popup ${motionClass}`}
+      style={{
+        ...s.banner,
+        ...(docked ? s.docked : null),
+        ...(passed ? s.pass : fromTutor ? s.tutor : s.fail),
+      }}
       role="status"
     >
-      <button
-        type="button"
-        style={s.closeBtn}
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
-      >
-        ×
-      </button>
+      {!docked && (
+        <button
+          type="button"
+          style={s.closeBtn}
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      )}
       <div style={s.row}>
         <span
           className={passed ? 'motion-spin-once' : undefined}
@@ -101,10 +121,10 @@ export default function CheckFeedbackBanner({
       </div>
       {!passed && onShowCodeStage && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Want a hint?</span>
+          {!docked && <span style={s.completePrompt}>Want a hint?</span>}
           <button
             type="button"
-            style={s.actionLink}
+            style={actionStyle}
             onClick={() => {
               if (!stageActionConfirm || window.confirm(stageActionConfirm)) onShowCodeStage()
             }}
@@ -115,31 +135,46 @@ export default function CheckFeedbackBanner({
       )}
       {!passed && onPreviewCompleteCode && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Want to see the complete code?</span>
-          <button type="button" style={s.actionLink} onClick={onPreviewCompleteCode}>
+          {!docked && <span style={s.completePrompt}>Want to see the complete code?</span>}
+          <button type="button" style={actionStyle} onClick={onPreviewCompleteCode}>
             See complete code
           </button>
         </div>
       )}
       {!passed && onShowCompleteCode && (
         <div style={s.actionRow}>
-          <span style={s.completePrompt}>Ready to use it?</span>
-          <button type="button" style={s.actionLink} onClick={onShowCompleteCode}>
+          {!docked && <span style={s.completePrompt}>Ready to use it?</span>}
+          <button type="button" style={actionStyle} onClick={onShowCompleteCode}>
             {showCompleteCodeLabel}
           </button>
         </div>
       )}
-      {!passed && (
-        <span style={s.helpNote}>
-          Still stuck? Tap “{HELP_BUTTON_LABEL}” at the top of the page.
-        </span>
-      )}
+      {!passed && help && <AskForHelpButton help={help} style={actionStyle} />}
       {passed && onGoPersonalSandbox && (
         <button type="button" style={s.sandboxLink} onClick={onGoPersonalSandbox}>
           Test further in Personal Sandbox
         </button>
       )}
     </div>
+  )
+}
+
+/**
+ * '✋ Ask for help': the top-bar ✋ Help's own handler (HelpRequestContext). Once asked it says
+ * so and a second tap does nothing, as the top-bar button does.
+ */
+export function AskForHelpButton({ help, style }) {
+  const requested = !!help.requested
+  return (
+    <button
+      type="button"
+      style={{ ...style, ...(requested ? { cursor: 'default', textDecoration: 'none' } : null) }}
+      onClick={requested ? undefined : help.onAsk}
+      aria-disabled={requested ? 'true' : undefined}
+      title={requested ? 'Your tutor knows you need help' : 'Ask your tutor for help'}
+    >
+      {requested ? HELP_REQUESTED_LABEL : ASK_FOR_HELP_LABEL}
+    </button>
   )
 }
 
@@ -158,6 +193,31 @@ const s = {
     boxShadow: '0 12px 32px rgba(15,23,42,0.2)',
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
+  },
+  // In the page beside the task (TaskHintBox), not floating: no shadow, room for 16px text.
+  docked: {
+    position: 'relative',
+    padding: '12px 14px',
+    borderRadius: 10,
+    boxShadow: 'none',
+    fontSize: 16,
+    fontWeight: 600,
+    lineHeight: 1.35,
+  },
+  dockedAction: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    padding: '6px 12px',
+    border: '1px solid currentColor',
+    borderRadius: 8,
+    background: '#fff',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 14,
+    color: 'inherit',
+    cursor: 'pointer',
+    textAlign: 'center',
+    lineHeight: 1.2,
   },
   pass: {
     background: '#dcfce7',
@@ -253,12 +313,5 @@ const s = {
     cursor: 'pointer',
     textDecoration: 'underline',
     textUnderlineOffset: 3,
-  },
-  helpNote: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.8rem',
-    color: '#92400e',
-    opacity: 0.85,
   },
 }

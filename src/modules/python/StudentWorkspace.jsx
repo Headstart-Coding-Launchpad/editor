@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
+import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
+import EmojiPickerButton from '../../shared/EmojiPickerButton'
+import { taskKeyCode } from './keyRow.js'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -49,6 +52,8 @@ import PuzzleBar from '../../shared/puzzle/PuzzleBar.jsx'
 const PYTHON_SPLIT = 58
 // An edit from the student's own typing in the editor (cs.handleCodeChange's origin, request 131).
 const EDITOR_EDIT = { origin: 'editor' }
+// The code row is 44px tall; under this width Reset Code says just "Reset".
+const CODE_ROW_SHORT_RESET = 560
 
 export default function StudentWorkspace({
   task: lessonTask,
@@ -81,6 +86,11 @@ export default function StudentWorkspace({
   // Stage, name tags, slow-mo and console are this workspace's own, and open from the start.
   arrangeBoard = null,
   arrangeReady = true,
+  // The calm code screen (LessonTaskContent, capabilities.calmCodeScreen): the Type this out
+  // box's fold, `{ folded, onToggle, hideCopyCode }` (hideCopyCode while the Complete stage's
+  // change view shows the same lines above), and the code row's Topic library chip.
+  whatToChange = null,
+  onOpenTopicLibrary,
 }) {
   // A task with a name-tag panel (showVariables) opens with the output side showing, so the
   // student can predict before the first Run; so does one with a Stage target to draw over, and
@@ -134,7 +144,18 @@ export default function StudentWorkspace({
   const shouldShowOutput =
     task?.interactionMode !== 'submit' || isForcedTeacherLive || isTeacherEditing || isViewingPrev
 
-  const showCopyCode = typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+  const showCopyCode =
+    typeof task?.copyCode === 'string' && !!task.copyCode.trim() && !whatToChange?.hideCopyCode
+  // The code row (calm screen): Code · 😊 · Topic library · Blocks · Reset Code · Run. The Emoji
+  // button types into the editor through editorApiRef; Blocks is this device's setting
+  // (useBlockGuidesOn), hidden for a task with showBlocks: false.
+  const editorApiRef = useRef(null)
+  const showBlocks = taskShowsBlocks(task)
+  const [blockGuidesOn, setBlockGuidesOn] = useBlockGuidesOn()
+  const [codeRowRef, codeRowSize] = useElementSize()
+  const resetLabel =
+    codeRowSize.width > 0 && codeRowSize.width < CODE_ROW_SHORT_RESET ? 'Reset' : 'Reset Code'
+  const keyCode = useMemo(() => taskKeyCode(task), [task])
 
   // Slow-mo (task.slowMo, ./slowMo/): record the run, then play it back line by line. A Go Live
   // viewer follows the presenter's playback.
@@ -398,12 +419,63 @@ export default function StudentWorkspace({
           after={task.copyAfter}
           before={task.copyBefore}
           starter={starterCodeOf(task)}
+          calm
+          folded={!!whatToChange?.folded}
+          onToggleFolded={whatToChange?.onToggle}
         />
       )}
       {showEditableHeader && (
-        <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
-          <span style={s.editorTitle}>Code</span>
+        <div
+          ref={codeRowRef}
+          style={s.editorHeader}
+          className="ui-tabs ui-tabs--editor"
+          role="group"
+          aria-label="Code"
+        >
+          <span style={s.editorTitle} aria-hidden="true">
+            Code
+          </span>
+          <EmojiPickerButton
+            size={44}
+            onInsert={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
+          />
+          {onOpenTopicLibrary && (
+            <button type="button" style={s.libraryChip} onClick={onOpenTopicLibrary}>
+              <span aria-hidden="true">📚 </span>Topic library
+            </button>
+          )}
           <div style={s.editorActions}>
+            {showBlocks && (
+              <button
+                type="button"
+                style={{ ...s.rowBtn, ...(blockGuidesOn ? s.rowBtnOn : null) }}
+                aria-pressed={blockGuidesOn}
+                title={
+                  blockGuidesOn
+                    ? 'Hide the coloured brackets that show which lines belong to each block'
+                    : 'Show coloured brackets for which lines belong to each block'
+                }
+                onClick={() => setBlockGuidesOn(!blockGuidesOn)}
+              >
+                <span aria-hidden="true" style={s.blocksIcon}>
+                  ⎣
+                </span>
+                Blocks
+              </button>
+            )}
+            <button
+              type="button"
+              style={s.rowBtn}
+              onClick={cs.handleResetCode}
+              disabled={cs.running}
+              title={
+                inSandbox
+                  ? 'Reset code to the sandbox starter code'
+                  : 'Reset code to the starter code for this task'
+              }
+            >
+              {resetLabel}
+            </button>
             {task?.interactionMode === 'submit' ? (
               <button className="btn-primary" style={s.primaryBtn} onClick={cs.handleSubmit}>
                 Submit
@@ -450,19 +522,6 @@ export default function StudentWorkspace({
                 {!cs.running && <PredictRunLockNote lock={runLock} onReveal={revealTags} />}
               </>
             )}
-            <button
-              className="btn-ghost-outline"
-              style={s.resetBtn}
-              onClick={cs.handleResetCode}
-              disabled={cs.running}
-              title={
-                inSandbox
-                  ? 'Reset code to the sandbox starter code'
-                  : 'Reset code to the starter code for this task'
-              }
-            >
-              Reset Code
-            </button>
           </div>
         </div>
       )}
@@ -488,6 +547,9 @@ export default function StudentWorkspace({
         />
       )}
       <PythonEditor
+        calm
+        keyCode={keyCode}
+        editorApiRef={editorApiRef}
         code={code}
         readOnly={readOnly}
         // Only the editor's own user edits (typing, scrubbing; CodeEditor's userEdit) may tick a
@@ -836,13 +898,22 @@ const s = {
     borderRadius: 6,
     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
   },
-  editorHeader: { flexShrink: 0 },
+  // The code row: one row of 44px controls, Run filled and at the right end.
+  editorHeader: {
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '4px 4px 4px 0',
+    marginBottom: 4,
+    minWidth: 0,
+  },
   editorTitle: {
     fontFamily: 'var(--font-body)',
     fontWeight: 700,
     fontSize: '0.86rem',
     color: 'var(--colour-primary)',
-    padding: '0 10px',
+    padding: '0 2px 0 10px',
   },
   editorActions: {
     marginLeft: 'auto',
@@ -851,19 +922,44 @@ const s = {
     gap: 8,
     paddingLeft: 8,
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    minWidth: 0,
   },
-  primaryBtn: { padding: '10px 28px', fontSize: 16, flexShrink: 0, minHeight: 44 },
-  resetBtn: {
-    fontSize: 12,
-    padding: '5px 10px',
-    marginLeft: 16,
-    color: '#6b7280',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    background: '#fff',
-    cursor: 'pointer',
+  primaryBtn: { padding: '0 22px', fontSize: 16, flexShrink: 0, minHeight: 44, minWidth: 84 },
+  rowBtn: {
+    minHeight: 44,
+    padding: '0 12px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
     fontFamily: 'var(--font-body)',
+    fontSize: 13,
     fontWeight: 600,
+    color: 'var(--colour-primary)',
+    background: '#fff',
+    border: '1px solid #cdbdec',
+    borderRadius: 8,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  rowBtnOn: { background: '#f0eafa', borderColor: '#d8c4f5' },
+  blocksIcon: {
+    fontFamily: "'JetBrains Mono', monospace",
+    color: '#7c3aed',
+    fontWeight: 700,
+  },
+  libraryChip: {
+    minHeight: 44,
+    padding: '0 14px',
+    borderRadius: 999,
+    border: '1px solid #ded1f3',
+    background: '#f7f2ff',
+    color: 'var(--colour-primary)',
+    fontFamily: 'var(--font-body)',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   submitBanner: {
     display: 'flex',

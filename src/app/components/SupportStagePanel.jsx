@@ -8,6 +8,8 @@ import {
   stageShowsChange,
 } from '../../shared/stageChange'
 import { ChangeHunk, FullChangeRows } from './ChangeLines'
+import WhatToChangeBox from './WhatToChangeBox'
+import { firstAddedLine, whatToChangeLinkStyle } from './whatToChange'
 
 // The change view's wording (platform request 134; docs/authoring/python-tasks.md "Change view").
 const CHANGE_VIEW_TEXT = {
@@ -103,6 +105,11 @@ export default function SupportStagePanel({
   changeBase = null,
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
+  // The calm code screen (Python): a change view shows in the one "What to change" box
+  // (WhatToChangeBox), `folded` to one line after a passing Run, `onToggleFolded` on a tap.
+  calm = false,
+  folded = false,
+  onToggleFolded,
 }) {
   const text = stageToText(stage, lessonType)
   // The base is read when the stage is first revealed (a panel can mount hidden), then held.
@@ -142,6 +149,61 @@ export default function SupportStagePanel({
   const title = stage?.label || 'Stage reference'
   const languageLabel = getLanguageLabel(lessonType)
 
+  const changeRows = change ? (
+    change.kind === 'same' ? (
+      <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
+    ) : change.kind === 'changes' && view === 'changes' ? (
+      // The changes on their own carry no lock tags or line hints (they name lines by
+      // text); "Show all the code" has both.
+      change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
+    ) : (
+      <>
+        {change.kind === 'fallback' && <p style={s.changeNote}>{CHANGE_VIEW_TEXT.fallback}</p>}
+        <FullChangeRows
+          rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
+        />
+      </>
+    )
+  ) : null
+
+  if (calm && change) {
+    const preview =
+      change.kind === 'changes'
+        ? firstAddedLine(change.hunks.flatMap((hunk) => hunk.rows ?? []))
+        : change.kind === 'fallback'
+          ? firstAddedLine(change.fullRows)
+          : ''
+    return (
+      <WhatToChangeBox
+        folded={folded}
+        onToggle={onToggleFolded}
+        preview={preview}
+        headerAction={
+          canShowChanges ? (
+            <button
+              type="button"
+              style={whatToChangeLinkStyle}
+              onClick={() => setView(view === 'all' ? 'changes' : 'all')}
+            >
+              {view === 'all' ? CHANGE_VIEW_TEXT.showChanges : CHANGE_VIEW_TEXT.showAll}
+            </button>
+          ) : null
+        }
+      >
+        {/* Named for the stage, as the full panel is, so the view reads the same to a screen
+            reader and to the tests that find it. */}
+        <div
+          role="group"
+          aria-label={`${title} stage reference`}
+          data-testid="stage-change-view"
+          style={s.calmChangeBody}
+        >
+          {changeRows}
+        </div>
+      </WhatToChangeBox>
+    )
+  }
+
   return (
     <section
       style={s.panel}
@@ -169,22 +231,7 @@ export default function SupportStagePanel({
       </div>
       {change ? (
         <div style={s.changeBody} data-testid="stage-change-view">
-          {change.kind === 'same' ? (
-            <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
-          ) : change.kind === 'changes' && view === 'changes' ? (
-            // The changes on their own carry no lock tags or line hints (they name lines by
-            // text); "Show all the code" has both.
-            change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
-          ) : (
-            <>
-              {change.kind === 'fallback' && (
-                <p style={s.changeNote}>{CHANGE_VIEW_TEXT.fallback}</p>
-              )}
-              <FullChangeRows
-                rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
-              />
-            </>
-          )}
+          {changeRows}
         </div>
       ) : stageReferenceFor(lessonType)?.markdown ? (
         <div style={s.markdown}>
@@ -302,6 +349,7 @@ const s = {
     background: '#f8fafc',
     userSelect: 'none',
   },
+  calmChangeBody: { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
   changeNote: {
     margin: '0 12px',
     fontFamily: 'var(--font-body)',

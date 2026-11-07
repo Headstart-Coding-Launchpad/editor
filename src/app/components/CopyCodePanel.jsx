@@ -2,13 +2,26 @@ import React, { useMemo } from 'react'
 import { getCodeLanguageLabel } from '../../shared/codeLanguages'
 import { copyAnchorRows } from '../../shared/stageChange'
 import { ChangeHunk } from './ChangeLines'
+import WhatToChangeBox from './WhatToChangeBox'
+import { firstAddedLine } from './whatToChange'
 
 // `after` / `before`: the task's copyAfter / copyBefore, the exact text of the line the typed
 // lines go after (or, for a change at the top, before). With one, the panel shows that line
 // dimmed and the typed lines in green with +, like a Complete stage's change view. `starter`: the
 // task's starter code (starterCodeOf); a typed line that only extends one of its lines shows only
 // the extension (request 135).
-export default function CopyCodePanel({ code, language = 'python', after, before, starter }) {
+// `calm` (the Python calm code screen): the lines show in the one "What to change" box
+// (WhatToChangeBox), `folded` to one line after a passing Run, `onToggleFolded` on a tap.
+export default function CopyCodePanel({
+  code,
+  language = 'python',
+  after,
+  before,
+  starter,
+  calm = false,
+  folded = false,
+  onToggleFolded,
+}) {
   const text = typeof code === 'string' ? code : ''
   const anchored = useMemo(
     () => copyAnchorRows({ code: text, after, before, starter }),
@@ -18,6 +31,23 @@ export default function CopyCodePanel({ code, language = 'python', after, before
   if (!text.trim()) return null
 
   const languageLabel = getCodeLanguageLabel(language)
+
+  if (calm) {
+    const preview = anchored
+      ? firstAddedLine(anchored.rows)
+      : (text.split('\n').find((line) => line.trim()) ?? '').trim()
+    return (
+      <WhatToChangeBox folded={folded} onToggle={onToggleFolded} preview={preview}>
+        {anchored ? (
+          <ChangeHunk anchor={anchored.anchor} rows={anchored.rows} />
+        ) : (
+          <pre style={s.calmPre}>
+            <code style={s.code}>{text}</code>
+          </pre>
+        )}
+      </WhatToChangeBox>
+    )
+  }
 
   return (
     <section
@@ -84,6 +114,15 @@ const s = {
     whiteSpace: 'pre',
     lineHeight: 1.55,
     fontSize: 13,
+    color: '#111827',
+  },
+  calmPre: {
+    margin: 0,
+    padding: '4px 12px',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    lineHeight: 1.55,
+    fontSize: 14,
     color: '#111827',
   },
   anchored: { minHeight: 0, overflow: 'auto', padding: '8px 0' },

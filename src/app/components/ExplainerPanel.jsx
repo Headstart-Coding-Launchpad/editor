@@ -11,6 +11,12 @@ export default function ExplainerPanel({
   markdownTextScale = 1,
   topicType = null,
   showLibrary = true,
+  // The calm code screen moves the Topic library chip to the workspace's code row: the chip here
+  // hides (`libraryButton` false) and the row asks the library to open through `libraryRequest`
+  // (a count; 0 is none), cleared with `onLibraryRequestHandled`.
+  libraryButton = true,
+  libraryRequest = 0,
+  onLibraryRequestHandled,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -156,6 +162,9 @@ export default function ExplainerPanel({
                 textScale={markdownTextScale}
                 topicType={topicType}
                 showLibrary={showLibrary}
+                libraryButton={libraryButton}
+                libraryRequest={libraryRequest}
+                onLibraryRequestHandled={onLibraryRequestHandled}
                 onTopicOpen={onTopicOpen}
                 onTopicClose={onTopicClose}
                 openTopicId={openTopicId}
@@ -202,6 +211,7 @@ export default function ExplainerPanel({
                 textScale={markdownTextScale}
                 topicType={topicType}
                 showLibrary={showLibrary}
+                libraryButton={libraryButton}
                 onTopicOpen={onTopicOpen}
                 onTopicClose={onTopicClose}
                 openTopicId={openTopicId}

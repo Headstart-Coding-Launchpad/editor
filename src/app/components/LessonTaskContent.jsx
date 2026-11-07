@@ -18,13 +18,14 @@ import ReviewNotesControl from './ReviewNotesControl'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
+import TaskHintBox from './TaskHintBox'
 import {
   getCompleteStage,
   getEffectiveTaskMode,
   getRevealableStages,
   getStarterStage,
 } from '../../shared/taskUtils'
-import { chooseChangeBase } from '../../shared/stageChange'
+import { chooseChangeBase, stageShowsChange } from '../../shared/stageChange'
 import { getStageLineHints } from '../../shared/lineHints'
 import { getTaskLockSets } from '../../shared/lockedLines'
 import {
@@ -273,6 +274,10 @@ export default function LessonTaskContent({
   // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
   // Blocks/Stage panes reported through the dedicated scratchCodePanes state below.
   const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
+  // The calm code screen (capabilities.calmCodeScreen; Python): one "What to change" box that
+  // folds after a passing Run, the hint docked beside the task, and the Topic library chip in the
+  // workspace's code row. Other modules keep the check popup and their own panels.
+  const calmScreen = !!moduleCaps?.calmCodeScreen
   const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
   // Width-only: giving Code its own tab doesn't add height (explainer and code already
@@ -307,6 +312,41 @@ export default function LessonTaskContent({
     (isSandbox ||
       (!isQuizLike && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
+
+  // The "What to change" box (calm screen) is open on a task's first view and folds to one line
+  // when a Run passes (a task with a check or tests: the check passing; otherwise a Run without an
+  // error), never after a failed one. A tap folds or reopens it. Remembered per task for this
+  // view only: a pass seen on arrival (a task passed before) does not fold it.
+  const calmTaskKey = String(task?.id ?? '')
+  const [whatToChangeFoldedFor, setWhatToChangeFoldedFor] = useState(null)
+  const whatToChangeFolded = calmScreen && whatToChangeFoldedFor === calmTaskKey
+  const calmRunPassed =
+    task?.check || task?.tests?.length > 0 ? !!cs.checkPassed : cs.runStatus === 'success'
+  const lastCalmRunRef = useRef({ taskKey: calmTaskKey, passed: calmRunPassed })
+  useEffect(() => {
+    const last = lastCalmRunRef.current
+    if (calmScreen && last.taskKey === calmTaskKey && !last.passed && calmRunPassed) {
+      setWhatToChangeFoldedFor(calmTaskKey)
+    }
+    lastCalmRunRef.current = { taskKey: calmTaskKey, passed: calmRunPassed }
+  }, [calmScreen, calmTaskKey, calmRunPassed])
+  function toggleWhatToChange() {
+    setWhatToChangeFoldedFor((current) => (current === calmTaskKey ? null : calmTaskKey))
+  }
+  // The Topic library chip moves to the code row (calm screen, side explainer): a tap opens the
+  // explainer if it is folded away, then asks its library to open (libraryRequest).
+  const [libraryRequest, setLibraryRequest] = useState(0)
+  const libraryInCodeRow =
+    calmScreen &&
+    useSideExplainer &&
+    presenterLayout !== 'code' &&
+    !hasSandboxExplainer &&
+    !showsCompleteCode &&
+    (moduleCaps?.topicLibrary ?? true)
+  function openTopicLibrary() {
+    setExplainerCollapsed(false)
+    setLibraryRequest((count) => count + 1)
+  }
 
   // What's actually on screen right now, for the teacher's student list — see the
   // `scratchCodePanes` comment above for why Scratch and the other modules compute this
@@ -466,6 +506,24 @@ export default function LessonTaskContent({
     targetedReferenceStage ??
     teacherLiveReferenceStage ??
     activeSupportStage
+  // The stage the reference panel shows, and whether it is a change view (a revealed Complete
+  // stage with `show: 'change'`): on the calm screen that one box takes the Type this out's place.
+  const shownReferenceStage =
+    completeReferenceStage ??
+    targetedReferenceStage ??
+    teacherLiveReferenceStage ??
+    activeSupportStage?.stage ??
+    null
+  const shownReferenceRevealed =
+    completeReferenceStage || targetedReferenceStage || teacherLiveReferenceStage
+      ? true
+      : !!cs.supportStageReveals?.[activeSupportStage?.index]
+  const changeViewOnScreen =
+    calmScreen &&
+    !!shownReferenceStage &&
+    shownReferenceRevealed &&
+    !!moduleCaps?.stageChangeView &&
+    stageShowsChange(shownReferenceStage)
   const targetedOfferStage = cs.targetedStageOffer
     ? (task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null)
     : null
@@ -531,6 +589,9 @@ export default function LessonTaskContent({
         }
         topicType={lesson.type}
         showLibrary={moduleCaps?.topicLibrary ?? true}
+        libraryButton={!libraryInCodeRow}
+        libraryRequest={libraryInCodeRow ? libraryRequest : 0}
+        onLibraryRequestHandled={() => setLibraryRequest(0)}
         onTopicOpen={onTopicOpen}
         onTopicClose={onTopicClose}
         openTopicId={openTopicId}
@@ -569,6 +630,24 @@ export default function LessonTaskContent({
     !isQuizTask &&
     displayCheckPassed &&
     getActivityDefinition(getActivityId(task))?.quietPass === true
+  // The calm screen's hint, docked beside the task in place of the popup, on the student's own
+  // code task (not a broadcast, an earlier task, the tutor's edit, a sandbox or a Code Arrange
+  // board, which keep the popup or none).
+  const calmHintShown =
+    calmScreen &&
+    !isSandbox &&
+    !cs.inPersonalSandbox &&
+    !isForcedTeacherLive &&
+    !isViewingPrev &&
+    !isTeacherEditing &&
+    !isQuizLike &&
+    !isInformationTask &&
+    !isViewingExplainerSlide &&
+    !isViewingCompletionScreen &&
+    !isCodeArrangeTask &&
+    !carryHold
+  const bannerPassed =
+    cs.offeredSupportStageIndex != null || sentHintText ? false : !!displayCheckPassed
   const shouldShowFeedbackBanner =
     !quietActivityPass &&
     !cs.stagePromptAccepted &&
@@ -585,7 +664,8 @@ export default function LessonTaskContent({
       // only when a genuinely new check/stage event happens, not on every unrelated
       // re-render of this component.
       key={`${currentTaskId}-${displayCheckPassed}-${cs.checkFailCount}-${cs.offeredSupportStageIndex}-${cs.teacherHint?.at ?? ''}`}
-      passed={cs.offeredSupportStageIndex != null || sentHintText ? false : displayCheckPassed}
+      passed={bannerPassed}
+      docked={calmHintShown}
       failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
       successMessage={
         isActivityTask && !isQuizTask
@@ -646,6 +726,33 @@ export default function LessonTaskContent({
     />
   ) : null
 
+  const hintTone = !feedbackBanner
+    ? 'nudge'
+    : sentHintText && !bannerPassed
+      ? 'tutor'
+      : bannerPassed
+        ? 'pass'
+        : 'fail'
+  const hasGreenLine =
+    changeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
+  const hintNudge =
+    task?.interactionMode === 'submit'
+      ? 'Have a go, then tap Submit.'
+      : hasGreenLine
+        ? 'Stuck? Look at the green line, then tap Run to try it.'
+        : 'Have a go, then tap Run to see what happens.'
+  // Under the task card while the side explainer is open; otherwise under the editor.
+  const hintInLeftColumn =
+    useSideExplainer && !explainerCollapsed && showExplainerPane && !isFixedExplainerLesson
+  const hintBox = calmHintShown ? (
+    <TaskHintBox
+      banner={feedbackBanner}
+      tone={hintTone}
+      nudge={hintNudge}
+      style={hintInLeftColumn ? s.hintInLeftColumn : s.hintBelowEditor}
+    />
+  ) : null
+
   const workspaceContent = (
     <>
       {displayedReferenceStage &&
@@ -696,6 +803,9 @@ export default function LessonTaskContent({
                 )
               }
               stage={referenceStage}
+              calm={calmScreen}
+              folded={whatToChangeFolded}
+              onToggleFolded={toggleWhatToChange}
               lineHintsFor={lineHintsFor}
               lockSets={getTaskLockSets(task)}
               lessonType={lesson.type}
@@ -842,6 +952,16 @@ export default function LessonTaskContent({
           }
           highlightedPanes={highlightedPanes}
           forcedPaneCommand={forcedPaneCommand}
+          whatToChange={
+            calmScreen
+              ? {
+                  folded: whatToChangeFolded,
+                  onToggle: toggleWhatToChange,
+                  hideCopyCode: changeViewOnScreen,
+                }
+              : undefined
+          }
+          onOpenTopicLibrary={libraryInCodeRow ? openTopicLibrary : undefined}
         />
       ) : (
         <Banner accent="#dc2626" color="#991b1b" style={{ borderRadius: 8 }}>
@@ -906,6 +1026,26 @@ export default function LessonTaskContent({
     </div>
   )
 
+  // The calm hint docks under the task card (left column) or under the editor.
+  const leftPane =
+    hintBox && hintInLeftColumn ? (
+      <div style={s.calmLeftColumn}>
+        {taskExplainer}
+        {hintBox}
+      </div>
+    ) : (
+      taskExplainer
+    )
+  const editorPane =
+    hintBox && !hintInLeftColumn ? (
+      <div style={s.calmEditorColumn}>
+        {editorArea}
+        {hintBox}
+      </div>
+    ) : (
+      editorArea
+    )
+
   return (
     <TaskSlideTransition
       transitionKey={transitionKey}
@@ -937,7 +1077,7 @@ export default function LessonTaskContent({
         </Banner>
       )}
 
-      {feedbackBanner}
+      {!calmHintShown && feedbackBanner}
 
       {useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
         // Explainer and code panes are ALWAYS the same two divs, in the same tree
@@ -1027,13 +1167,13 @@ export default function LessonTaskContent({
               highlighted={instructionsHighlighted}
             />
           }
-          left={taskExplainer}
-          right={editorArea}
+          left={leftPane}
+          right={editorPane}
         />
       ) : (
         <>
           {showExplainerPane && taskExplainer}
-          {showCodePane && editorArea}
+          {showCodePane && editorPane}
         </>
       )}
     </TaskSlideTransition>
@@ -1163,6 +1303,28 @@ const s = {
     alignSelf: 'auto',
     color: '#fff',
   },
+  // The calm screen's left column: the task card, then the hint at the bottom (TaskHintBox),
+  // capped at about half the column and scrolling inside.
+  calmLeftColumn: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    overflow: 'hidden',
+  },
+  hintInLeftColumn: { marginTop: 'auto', maxHeight: '50%' },
+  calmEditorColumn: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    overflow: 'hidden',
+  },
+  hintBelowEditor: { maxHeight: '30vh' },
   fluidWorkspace: {
     flex: '1 1 auto',
     minWidth: 0,

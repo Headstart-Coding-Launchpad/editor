@@ -110,6 +110,9 @@ export default defineModule({
     sideQuests: true,
     // A Complete stage's `show: 'change'` shows only the changes (src/shared/stageChange.js).
     stageChangeView: true,
+    // The calm code screen: one "What to change" box, the hint docked beside the task, the
+    // Topic library chip in the code row (LessonTaskContent, StudentWorkspace).
+    calmCodeScreen: true,
     // A task's `scrub` (src/shared/scrub/): a scrubbed value re-runs live only in programs that
     // draw on the Python Stage (import stage) and never ask for input().
     scrub: { liveRerun: 'preview', needsImport: 'stage', inputCall: 'input' },

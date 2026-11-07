@@ -209,9 +209,10 @@ const s = {
   text: (type, inline = false) => ({
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
-    // The anchor is shown dimmed, as it is: it's already in the student's code. So is the
-    // unchanged part of an inline row (its 'same' pieces set their own colour).
-    color: type === 'anchor' ? '#64748b' : inline ? '#4b5563' : '#111827',
+    // The anchor is shown dimmed, as it is: it's already in the student's code (a slate dark
+    // enough to read easily, 7:1 on the box). So is the unchanged part of an inline row (its
+    // 'same' pieces set their own colour).
+    color: type === 'anchor' ? '#475569' : inline ? '#4b5563' : '#111827',
   }),
   // Inline pieces: words and underline or strike as well as colour. The unchanged part is a
   // darker grey than the anchor's so it reads on the green row.

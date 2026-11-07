@@ -89,6 +89,9 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // (src/modules/html/inspector; html)
   'stageChangeView', // a Complete code stage with `show: 'change'` shows only what changes against
   // the student's code (src/shared/stageChange.js, SupportStagePanel; python)
+  'calmCodeScreen', // the calm code screen (LessonTaskContent): one "What to change" box that folds
+  // after a passing Run, the hint docked beside the task instead of the check popup, and the Topic
+  // library chip in the workspace's code row (onOpenTopicLibrary); python
 ])
 // How the student reaches a task's code stages on their own (StudentView, LessonTaskContent):
 // - 'progressive' reveals support stages as read-only references and previews the complete
