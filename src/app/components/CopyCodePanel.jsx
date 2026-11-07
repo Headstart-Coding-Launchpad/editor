@@ -5,14 +5,16 @@ import { ChangeHunk } from './ChangeLines'
 
 // `after` / `before`: the task's copyAfter / copyBefore, the exact text of the line the typed
 // lines go after (or, for a change at the top, before). With one, the panel shows that line
-// dimmed and the typed lines in green with +, like a Complete stage's change view.
-export default function CopyCodePanel({ code, language = 'python', after, before }) {
+// dimmed and the typed lines in green with +, like a Complete stage's change view. `starter`: the
+// task's starter code (taskStarterCode); a typed line that only extends one of its lines shows only
+// the extension (request 135).
+export default function CopyCodePanel({ code, language = 'python', after, before, starter }) {
   const text = typeof code === 'string' ? code : ''
 
   if (!text.trim()) return null
 
   const languageLabel = getCodeLanguageLabel(language)
-  const anchored = copyAnchorRows({ code: text, after, before })
+  const anchored = copyAnchorRows({ code: text, after, before, starter })
 
   return (
     <section

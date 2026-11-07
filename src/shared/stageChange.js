@@ -24,6 +24,11 @@ export const CHANGE_LIMITS = {
   maxAddedBlock: 8,
   // Line diff size cap (base lines x Complete lines, after the common start and end are trimmed).
   maxDiffCells: 250000,
+  // Inline change (request 135): more than this share of the old or the new line's characters
+  // changed keeps the red row and the green row.
+  inlineMaxChangedShare: 0.5,
+  // A changed line with this many separate changes or more keeps the red and green rows.
+  inlineMaxChanges: 3,
 }
 
 const TAB_WIDTH = 4
@@ -292,12 +297,137 @@ export function computeStageChange(baseCode, targetCode) {
   )
 }
 
+// ---- Inline change inside a line (platform request 135) ----
+// A changed line that only gains text, or has a small swap, shows once with only the changed part
+// marked. The line is split into tokens (names, numbers, whole strings, whitespace, single
+// punctuation), the tokens are diffed, and neighbouring changed tokens make one change.
+
+const LINE_TOKEN =
+  /[\p{L}_][\p{L}\p{N}_]*|\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|\s+|[^]/gu
+
+function lineTokens(text) {
+  return text.match(LINE_TOKEN) ?? []
+}
+
+/**
+ * The change from `oldLine` to `newLine` inside the line, or null when the two lines should stay a
+ * red row and a green row: the lines match (leading indent is ignored), more than about half the
+ * characters of either line changed, or there are 3 or more separate changes.
+ * Returns { kind: 'insert' | 'change', pieces: [{ type: 'same' | 'add' | 'remove', text }] }:
+ * 'insert' when the line only gains text. The pieces spell the new line (with its own indent) once
+ * the 'remove' pieces are left out; each change is its 'remove' piece, then its 'add' piece.
+ */
+export function inlineLineChange(oldLine, newLine) {
+  if (typeof oldLine !== 'string' || typeof newLine !== 'string') return null
+  const oldText = oldLine.trim()
+  const lead = newLine.match(/^\s*/)[0]
+  const newText = newLine.trim()
+  if (!oldText || !newText || oldText === newText) return null
+  const oldTokens = lineTokens(oldText)
+  const newTokens = lineTokens(newText)
+  const ops = diffKeys(oldTokens, newTokens)
+
+  const pieces = []
+  let changes = 0
+  let removed = 0
+  let added = 0
+  let group = null
+  const push = (type, text) => {
+    const last = pieces.at(-1)
+    if (last?.type === type && type === 'same') last.text += text
+    else pieces.push({ type, text })
+  }
+  const closeGroup = () => {
+    if (!group) return
+    if (group.remove) push('remove', group.remove)
+    if (group.add) push('add', group.add)
+    group = null
+  }
+  push('same', lead)
+  for (const op of ops) {
+    if (op.op === 'same') {
+      closeGroup()
+      push('same', newTokens[op.b])
+      continue
+    }
+    if (!group) {
+      group = { remove: '', add: '' }
+      changes += 1
+    }
+    if (op.op === 'remove') {
+      group.remove += oldTokens[op.a]
+      removed += oldTokens[op.a].length
+    } else {
+      group.add += newTokens[op.b]
+      added += newTokens[op.b].length
+    }
+  }
+  closeGroup()
+
+  if (!changes || changes >= CHANGE_LIMITS.inlineMaxChanges) return null
+  const share = CHANGE_LIMITS.inlineMaxChangedShare
+  if (removed / oldText.length > share || added / newText.length > share) return null
+  const kept = pieces.filter((piece) => piece.text !== '')
+  return { kind: removed === 0 ? 'insert' : 'change', pieces: kept }
+}
+
+/**
+ * Change-view rows (ChangeHunk's `rows`, or the whole-program `fullRows`) with each removed line
+ * and the new line that only extends it, or swaps a small piece of it, made one row: the new
+ * line's row, with `inline` (inlineLineChange) and type 'add' (it only gains text) or 'change'.
+ * Pairs only inside a run of removed and added rows, in order; every other row is kept as it is.
+ */
+export function pairInlineRows(rows) {
+  const out = []
+  let index = 0
+  while (index < rows.length) {
+    if (rows[index].type !== 'remove' && rows[index].type !== 'add') {
+      out.push(rows[index])
+      index += 1
+      continue
+    }
+    const run = []
+    while (index < rows.length && (rows[index].type === 'remove' || rows[index].type === 'add')) {
+      run.push(rows[index])
+      index += 1
+    }
+    const merged = new Map()
+    const dropped = new Set()
+    let lastRemove = -1
+    run.forEach((row, at) => {
+      if (row.type !== 'add') return
+      for (let r = lastRemove + 1; r < run.length; r += 1) {
+        if (run[r].type !== 'remove' || dropped.has(r)) continue
+        const inline = inlineLineChange(run[r].text, row.text)
+        if (!inline) continue
+        dropped.add(r)
+        lastRemove = r
+        merged.set(at, { ...row, type: inline.kind === 'insert' ? 'add' : 'change', inline })
+        break
+      }
+    })
+    run.forEach((row, at) => {
+      if (!dropped.has(at)) out.push(merged.get(at) ?? row)
+    })
+  }
+  return out
+}
+
+/** The code a task starts from: its first Starter stage's code, else the legacy starterCode. */
+export function taskStarterCode(task) {
+  const stage = (task?.codeStages ?? []).find((s) => getStageRole(s) === 'starter')
+  if (typeof stage?.code === 'string') return stage.code
+  return typeof task?.starterCode === 'string' ? task.starterCode : ''
+}
+
 /**
  * The Copy the Code panel's anchored look (`copyAfter` / `copyBefore`): { anchor, rows } with the
  * typed lines as adds, or null when neither field names a line (the panel looks as today).
- * `copyAfter` wins when both are set (the validator flags that).
+ * `copyAfter` wins when both are set (the validator flags that). With `starter` (the task's
+ * starter code), a typed line that only extends one starter line shows only the extension
+ * (an 'add' row with `inline`); a wholly new line stays all green.
  */
-export function copyAnchorRows({ code, after, before }) {
+export function copyAnchorRows({ code, after, before, starter = '' }) {
   const named = (value) => typeof value === 'string' && value.trim() !== ''
   const position = named(after) ? 'after' : named(before) ? 'before' : null
   if (!position) return null
@@ -306,8 +436,19 @@ export function copyAnchorRows({ code, after, before }) {
     .split(/\r?\n/)
     .map((line) => line.replace(/\s+$/, ''))
   while (typed.length && typed.at(-1) === '') typed.pop()
+  const starterLines = [...new Set(cleanCodeLines(starter).filter((line) => line.trim()))]
+  const extension = (text) => {
+    if (!text.trim()) return null
+    const found = starterLines
+      .map((line) => inlineLineChange(line, text))
+      .filter((inline) => inline?.kind === 'insert')
+    return found.length === 1 ? found[0] : null
+  }
   return {
     anchor: { lines: [anchorText], position },
-    rows: typed.map((text) => ({ type: 'add', text })),
+    rows: typed.map((text) => {
+      const inline = extension(text)
+      return inline ? { type: 'add', text, inline } : { type: 'add', text }
+    }),
   }
 }
