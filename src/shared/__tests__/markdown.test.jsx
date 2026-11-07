@@ -177,13 +177,6 @@ describe('MarkdownRenderer', () => {
     )
   })
 
-  it('draws an inline C-block pill as a compact one-line pill, with no empty mouth', () => {
-    const { container } = render(<MarkdownRenderer content="Use `scratch:repeat (10)` here." />)
-    const block = container.querySelector('[data-scratch-opcode="control_repeat"]')
-    expect(block).toHaveAttribute('data-scratch-shape', 'stack')
-    expect(block).not.toHaveAttribute('data-scratch-mouths')
-  })
-
   it('renders Scratch blocks with mouths and nested reporter/boolean shapes', () => {
     const content = [
       '```scratch',

@@ -1087,9 +1087,7 @@ function rootMarginTop(nodes, index) {
 
 export function InlineScratchBlock({ text }) {
   const info = findScratchBlock(text) ?? fallbackInfo()
-  // A C block has no inner blocks in a one-line pill: draw it as a compact stack pill, not an empty mouth.
-  const shapeOverride = info.shape === 'c' ? 'stack' : null
-  return <ScratchBlockBody text={text} info={info} inline shapeOverride={shapeOverride} />
+  return <ScratchBlockBody text={text} info={info} inline />
 }
 
 export function ScratchBlocks({ code }) {
