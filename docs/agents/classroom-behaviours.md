@@ -56,7 +56,8 @@ Load this when a task touches student/teacher classroom behaviour, live view, br
 > Scratch any more. `LessonTaskContent` keeps the explainer card (folding only to its title strip,
 > reported to the tutor as `instructions` while open) and the docked hint (`TaskHintBox`, shared with the Python calm screen) in a
 > 220-320px column beside the blocks, or, below `SCRATCH_CALM_STACK_BREAKPOINT` (880px task panel:
-> a portrait tablet), passes them to the workspace as `calm.aside`, which `ScratchWorkspace` puts
+> a portrait tablet), passes a slot for them to the workspace as `calm.aside` (one portalled DOM
+> node moves between the two, so the card and hint never remount), which `ScratchWorkspace` puts
 > beside its stage pinned above the blocks (CSS grid; the blocks and stage panes keep their tree
 > position, so Blockly is never re-injected). `ScratchWorkspace` never goes `compact` and has no
 > stage collapse, so `visiblePanes` is always `blocks` + `stage`; StudentView shows no explainer

@@ -39,15 +39,19 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-07
 
-- **Scratch: the calm screen.** Every Scratch task now opens with the block palette closed behind
-  a 🧱 **Blocks** button (only that button opens or closes it; blocks hidden under it are scrolled
-  clear each time it opens), the explainer card and a docked hint always beside the blocks (no
-  Instructions/Code or Blocks/Stage tabs, no explainer slide in Solo), Flag / Stop / Reset Stage
-  in one row, and the sprite property row and **+ Backdrop** behind **More** unless a check reads
-  a sprite property. Explainers that say "drag from the palette" should now say "Tap **Blocks**,
-  then drag…". New optional lesson field `scratchPaletteOpen: true` starts the palette open for a
-  lesson that relies on it. See [scratch.md](scratch.md#calm-screen).
-  - Affects: scratch, lesson (`scratchPaletteOpen`) · Existing lessons: no changes needed (reword explainers that point at an open palette, or set `scratchPaletteOpen: true`) · Resolves: none
+- **Scratch: the calm screen.** **Existing Scratch lessons now start with the block palette
+  CLOSED** behind a 🧱 **Blocks** button, unless the lesson sets `scratchPaletteOpen: true`. Only
+  that button opens or closes it; blocks hidden under it are scrolled clear each time it opens. An
+  explainer that says "drag from the palette" now means "tap **Blocks**, then drag": reword it to
+  "Tap **Blocks**, then drag…". The explainer card and the docked hint (the calm Python screen's
+  hint box: nudge, amber hint after a failed run, ✋ Ask for help only with a tutor there) stay
+  beside the blocks (no Instructions/Code or Blocks/Stage tabs, no explainer slide in Solo), Flag
+  / Stop / Reset Stage sit in one row, and the sprite property row and **+ Backdrop** go behind
+  **More** unless a check (including `feedbackChecks` / `incorrectChecks`) reads a sprite
+  property. New optional lesson field `scratchPaletteOpen` (Builder: Lesson Details, **Keep the
+  block palette open for this lesson**) starts the palette open for a lesson that relies on it.
+  See [scratch.md](scratch.md#calm-screen).
+  - Affects: scratch, lesson (`scratchPaletteOpen`) · Existing lessons: palette now starts closed; reword explainers that point at an open palette ("tap Blocks, then drag"), or set `scratchPaletteOpen: true` · Resolves: none
 \n- **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
   stage's change view are now one box titled **What to change** above the code (never both). It
   is open when the task opens and folds to one line ("Show what to change" and the first new

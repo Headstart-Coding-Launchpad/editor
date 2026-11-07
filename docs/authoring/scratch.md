@@ -512,18 +512,27 @@ Scratch tasks open on a calm screen, the same at every screen size:
   an explainer sends the student to the palette.
 - **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
   tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
-  one-line title, never behind a tab, and a long explainer scrolls inside the card. There is no
-  "Task N of N+1" explainer slide.
-- **The hint is docked under the card**: a nudge to try the green flag before any run, then the
-  check's hint after a failed run. "✋ Ask for help" shows only when a tutor is there (a live
-  lesson or the tutor's sandbox), never in Solo.
+  one-line title, never behind a tab, and a long explainer scrolls inside the card. Turning a
+  tablet round keeps the card as it was (folded or open, scrolled where it was). Each new task
+  opens its card. There is no "Task N of N+1" explainer slide.
+- **The hint is docked under the card** (the same hint box as the calm Python screen): a nudge
+  to try the green flag before any run, then the check's hint in amber after a failed run (it
+  goes gentle blue, still readable, once the blocks change), green after a pass, blue for the
+  tutor's sent hint (with "Got it"). "✋ Ask for help" shows only when a tutor is there (a live
+  lesson or the tutor's sandbox), never in Solo; once asked it reads "✋ Help requested". In the
+  presenter's explainer-only layout the result shows as the usual popup instead.
 - **Flag, Stop and Reset Stage** are always in one row above the stage. The sprite property row
   (x, y, direction…) and **+ Backdrop** fold behind **More** unless one of the task's checks reads
-  a sprite property (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`).
+  a sprite property (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`), in
+  `check`, `feedbackChecks` or `incorrectChecks`.
 - The Costumes and Sounds tabs still need `showCostumesTab` / `showSoundsTab`.
 
-A lesson whose explainers rely on an open palette can set `scratchPaletteOpen: true` (lesson
-level) to start it open; everything else stays calm.
+**Existing Scratch lessons now start with the palette closed.** Nothing in them needs changing to
+keep working, but an explainer that says "drag a block from the palette" now means "tap
+**Blocks**, then drag". Reword it, or, for a lesson whose explainers rely on an open palette, set
+`scratchPaletteOpen: true` (lesson level; in the Builder: Lesson Details, **Keep the block palette
+open for this lesson**) to start it open on every Scratch task of the lesson; everything else
+stays calm.
 
 ---
 

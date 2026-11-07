@@ -799,7 +799,9 @@ export default function StudentView({
   // component that needs to know the current task's real module type.
   // Only the fixed-width explainer (capabilities.fixedExplainer) tabs away like this. The calm
   // Scratch screen (capabilities.calmScratch) never hides its explainer (its card only folds to
-  // a title strip), so it has no explainer slide.
+  // a title strip), so it has no explainer slide. Today no module reaches the slide (Scratch is
+  // the only fixedExplainer module and it is calm); the slide machinery stays as the generic
+  // fixedExplainer path, with its tests, until that capability is retired.
   const rawExplainerHidden =
     phase === 'solo' &&
     !!activeModuleCaps?.fixedExplainer &&

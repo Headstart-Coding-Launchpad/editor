@@ -18,7 +18,7 @@ import {
   isComposedLesson,
   getComposedModuleTypes,
 } from '../../shared/composedLesson'
-import { getModuleAuthoring, getModuleLabel } from '../../modules/definitions'
+import { getModuleAuthoring, getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import LessonTopicSummary from './LessonTopicSummary'
 import AssetSummary from './lesson-meta/AssetSummary'
 import Field from './lesson-meta/Field'
@@ -139,6 +139,11 @@ export default function LessonMetaPanel({
     .filter((level) => level.scopeType === scope.scopeType && level.scopeId === scope.scopeId)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   const levelRef = getLessonLevelRef(lesson)
+  // The calm Scratch screen's palette opt-out (scratchPaletteOpen), offered where the lesson has a
+  // module with that screen (a Scratch lesson, or a composed lesson with a Scratch module).
+  const hasCalmScratch = [lesson.type, ...getComposedModuleTypes(lesson)].some(
+    (type) => !!getModuleDefinition(type)?.capabilities?.calmScratch
+  )
   const legacyLevel = levelTitleFromLesson(lesson, levels)
 
   return (
@@ -223,6 +228,31 @@ export default function LessonMetaPanel({
             {lesson.soloOnly ? '— live/wait option hidden' : '— live and solo both available'}
           </label>
         </Field>
+
+        {hasCalmScratch && (
+          <Field
+            label="Scratch block palette"
+            hint="Scratch tasks start with the block palette closed behind a Blocks button (students tap Blocks, then drag). Tick this only for a lesson whose explainers need the palette already open."
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                color: 'var(--colour-text)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={lesson.scratchPaletteOpen === true}
+                onChange={(e) => set('scratchPaletteOpen', e.target.checked ? true : null)}
+              />
+              Keep the block palette open for this lesson
+            </label>
+          </Field>
+        )}
 
         <Field
           label="Solo challenge companion of"

@@ -255,3 +255,85 @@ describe('calm Scratch: the hint is docked under the explainer', () => {
     expect(screen.queryByTestId('task-hint')).not.toBeInTheDocument()
   })
 })
+
+describe('calm Scratch: review fixes', () => {
+  const failedCheck = {
+    task: { ...baseProps.task, check: { type: 'block_used', opcode: 'looks_say' } },
+    displayCheckAttempted: true,
+    displayCheckPassed: false,
+    displayCheckSuggestion: 'Add a say block.',
+  }
+
+  it('in the presenter’s explainer-only layout (no dock on screen) a failed check still shows, as the popup', () => {
+    panelWidth(1334)
+    render(<LessonTaskContent {...baseProps} {...failedCheck} presenterLayout="explainer" />)
+    expect(screen.queryByTestId('task-hint')).not.toBeInTheDocument()
+    expect(document.querySelector('.check-feedback-popup')).not.toBeNull()
+    expect(screen.getByText('Add a say block.')).toBeInTheDocument()
+  })
+
+  it('keeps the card and hint mounted when the panel crosses the stacked breakpoint: folded stays folded, same element', async () => {
+    const user = userEvent.setup()
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    const card = screen.getByTestId('task-instructions')
+    const hint = screen.getByTestId('task-hint')
+    await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+    expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+
+    panelWidth(736, 960)
+    rerender(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm).toMatchObject({ stacked: true })
+    expect(within(screen.getByTestId('stacked-aside')).getByTestId('task-instructions')).toBe(card)
+    expect(screen.getByTestId('task-hint')).toBe(hint)
+    expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+
+    panelWidth(1334)
+    rerender(<LessonTaskContent {...baseProps} />)
+    expect(within(screen.getByTestId('scratch-calm-aside')).getByTestId('task-instructions')).toBe(
+      card
+    )
+    expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+  })
+
+  it('keeps a scrolled card at its scroll position when it moves between the column and the stacked slot', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    const card = screen.getByTestId('task-instructions')
+    card.scrollTop = 120
+    panelWidth(736, 960)
+    rerender(<LessonTaskContent {...baseProps} />)
+    expect(screen.getByTestId('task-instructions').scrollTop).toBe(120)
+  })
+
+  it.each([
+    ['code', ['blocks', 'stage']],
+    ['explainer', ['instructions']],
+  ])('tells the tutor only the panes that render in the presenter’s %s layout', (layout, panes) => {
+    panelWidth(1334)
+    const onVisiblePanesChange = vi.fn()
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        presenterLayout={layout}
+        onVisiblePanesChange={onVisiblePanesChange}
+      />
+    )
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(panes)
+  })
+
+  it('hands the workspace one palette-category memory for the whole view, kept across tasks', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    const memory = workspaceProps.calm.categoryMemory
+    expect(memory).toEqual(expect.objectContaining({ remember: expect.any(Function) }))
+    rerender(
+      <LessonTaskContent
+        {...baseProps}
+        task={{ id: 2, title: 'Turn', explainer: 'Turn the cat.' }}
+        currentTaskId={2}
+      />
+    )
+    expect(workspaceProps.calm.categoryMemory).toBe(memory)
+  })
+})

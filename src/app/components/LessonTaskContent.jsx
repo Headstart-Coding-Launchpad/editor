@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
@@ -42,6 +43,7 @@ import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
   paletteStartsOpen,
+  createPaletteCategoryMemory,
 } from '../../modules/scratch/calm/calmPalette.js'
 
 // Brief "your teacher changed your answer" note, shown when a teacher edits
@@ -77,6 +79,61 @@ const teacherAnswerNoticeStyle = {
 // (on its content element, below this wrapper) write the selection to the
 // clipboard themselves, so cancelling the event after it bubbles back out is
 // too late. Stopping it on the way down means CodeMirror never sees it.
+// The calm Scratch explainer column's own DOM node (see `calmAside`): created once per view.
+function useCalmAsideHost() {
+  const [host] = useState(() => {
+    if (typeof document === 'undefined') return null
+    const el = document.createElement('div')
+    Object.assign(el.style, {
+      flex: '1 1 auto',
+      minWidth: '0',
+      minHeight: '0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      overflow: 'hidden',
+    })
+    return el
+  })
+  return host
+}
+
+// Scroll positions inside the host, kept while it moves between slots (a detached node loses
+// them in a browser).
+const hostScrolls = new WeakMap()
+function saveHostScroll(host) {
+  const saved = []
+  for (const el of [host, ...host.querySelectorAll('*')]) {
+    if (el.scrollTop || el.scrollLeft) saved.push([el, el.scrollTop, el.scrollLeft])
+  }
+  hostScrolls.set(host, saved)
+}
+function restoreHostScroll(host) {
+  for (const [el, top, left] of hostScrolls.get(host) ?? []) {
+    if (!host.contains(el)) continue
+    el.scrollTop = top
+    el.scrollLeft = left
+  }
+  hostScrolls.delete(host)
+}
+
+// Where the calm Scratch explainer column shows: takes the host node while mounted.
+function CalmAsideSlot({ host, style, testId }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const slot = ref.current
+    if (!slot || !host) return undefined
+    slot.appendChild(host)
+    restoreHostScroll(host)
+    return () => {
+      if (host.parentNode !== slot) return
+      saveHostScroll(host)
+      slot.removeChild(host)
+    }
+  }, [host])
+  return <div ref={ref} data-testid={testId} style={style} />
+}
+
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
@@ -277,7 +334,11 @@ export default function LessonTaskContent({
   const moduleCaps = getModuleDefinition(lessonMod?.type ?? lesson.type)?.capabilities ?? null
   // Scratch's layout (capabilities.fixedExplainer): a fixed-width explainer column that tabs
   // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
-  // Blocks/Stage panes reported through the dedicated scratchCodePanes state below.
+  // Blocks/Stage panes reported through the dedicated scratchCodePanes state below. On the calm
+  // Scratch screen (capabilities.calmScratch) the Instructions/Code tabs and the fixed-width
+  // column below are never rendered (no other module sets fixedExplainer today); that branch is
+  // kept, with its tests, as the generic fixedExplainer path. The scratchCodePanes reporting is
+  // still live (the calm screen reports blocks + stage through it).
   const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
   // The calm code screen (capabilities.calmCodeScreen; Python): one "What to change" box that
   // folds after a passing Run, the hint docked beside the task, and the Topic library chip in the
@@ -328,6 +389,9 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
+  const calmAsideHost = useCalmAsideHost()
+  // The calm palette's last category, for this view (ScratchWorkspace `calm.categoryMemory`).
+  const [paletteCategoryMemory] = useState(createPaletteCategoryMemory)
 
   // The "What to change" box (calm screen) is open on a task's first view and folds to one line
   // ONCE per task view: on the first pass (a task with a check or tests: the check passing;
@@ -396,16 +460,21 @@ export default function LessonTaskContent({
   // differently. `hasTaskExplainer` gates this off entirely for tasks with no explainer
   // to show at all (quizzes, information tasks, sandbox), where compact/useSideExplainer
   // would otherwise report a phantom always-visible instructions pane.
-  const instructionsPaneVisible = !hasTaskExplainer
-    ? false
-    : calmScratch
-      ? !accordionExplainerCollapsed
-      : taskPanelCompact
-        ? taskPanelTab === 'instructions'
-        : useSideExplainer
-          ? !explainerCollapsed
-          : !accordionExplainerCollapsed
-  const codePaneVisible = !taskPanelCompact || taskPanelTab === 'code'
+  // The presenter's layout ('code' / 'explainer') leaves the other pane out entirely, so it is
+  // never reported as visible.
+  const showExplainerPane = presenterLayout !== 'code'
+  const showCodePane = presenterLayout !== 'explainer'
+  const instructionsPaneVisible =
+    !hasTaskExplainer || !showExplainerPane
+      ? false
+      : calmScratch
+        ? !accordionExplainerCollapsed
+        : taskPanelCompact
+          ? taskPanelTab === 'instructions'
+          : useSideExplainer
+            ? !explainerCollapsed
+            : !accordionExplainerCollapsed
+  const codePaneVisible = showCodePane && (!taskPanelCompact || taskPanelTab === 'code')
   // Information and quiz/activity tasks have no explainer/workspace panes at all (outside a
   // sandbox, which always shows the workspace). They report an explicit empty list so the
   // previous task's panes are cleared on the teacher's card rather than left behind —
@@ -478,8 +547,6 @@ export default function LessonTaskContent({
     setTaskPanelTab(id)
     saveLayoutTab(TASK_PANEL_TABS_SURFACE, id)
   }
-  const showExplainerPane = presenterLayout !== 'code'
-  const showCodePane = presenterLayout !== 'explainer'
   // Modules on the unified code-stage model show a revealed support stage as a reference.
   const supportsStageReveal = !!moduleCaps?.unifiedStages
   const activeSupportStage =
@@ -904,9 +971,12 @@ export default function LessonTaskContent({
     />
   ) : null
   // The calm Scratch explainer column (card + docked hint): at the left, or beside the pinned
-  // stage (stacked).
+  // stage (stacked). Only with the blocks on screen (the presenter's explainer-only layout shows
+  // the card on its own below). It renders into one DOM node (calmAsideHost) that moves between
+  // the two slots, so crossing SCRATCH_CALM_STACK_BREAKPOINT (a tablet turned round) never remounts
+  // the card or the hint: a folded card stays folded and a scrolled one keeps its place.
   const calmAside =
-    calmScratch && hasTaskExplainer && showExplainerPane ? (
+    calmScratch && showCodePane && hasTaskExplainer && showExplainerPane ? (
       <>
         {taskExplainer}
         {calmHintSlot === 'aside' && hintBox}
@@ -1095,7 +1165,11 @@ export default function LessonTaskContent({
             calmScratch
               ? {
                   stacked: calmStacked,
-                  aside: calmStacked ? calmAside : null,
+                  aside:
+                    calmStacked && calmAside ? (
+                      <CalmAsideSlot host={calmAsideHost} style={s.calmStackedSlot} />
+                    ) : null,
+                  categoryMemory: paletteCategoryMemory,
                   paletteStartsOpen: paletteStartsOpen(lesson),
                 }
               : undefined
@@ -1236,12 +1310,11 @@ export default function LessonTaskContent({
         <div ref={taskPanelSizeRef} style={s.scratchTaskPanelWrap}>
           <div style={s.scratchFixedSplit}>
             {calmAside && !calmStacked && (
-              <div
-                data-testid="scratch-calm-aside"
+              <CalmAsideSlot
+                host={calmAsideHost}
+                testId="scratch-calm-aside"
                 style={{ ...s.calmAsideColumn, width: calmExplainerWidth(taskPanelSize.width) }}
-              >
-                {calmAside}
-              </div>
+              />
             )}
             <div style={s.scratchCodeFlex}>{editorArea}</div>
           </div>
@@ -1343,6 +1416,9 @@ export default function LessonTaskContent({
           {showCodePane && editorPane}
         </>
       )}
+
+      {/* After the layout, so the slot has taken the host before the card's own effects run. */}
+      {calmAside && calmAsideHost ? createPortal(calmAside, calmAsideHost) : null}
     </TaskSlideTransition>
   )
 }
@@ -1470,6 +1546,14 @@ const s = {
     overflow: 'hidden',
   },
   calmHint: { maxHeight: '45%' },
+  // The stacked layout's slot beside the pinned stage (ScratchWorkspace's aside cell).
+  calmStackedSlot: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   sideExplainerShell: {
     flex: 1,
     minWidth: 0,
