@@ -1,5 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import React, { useEffect, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
@@ -20,6 +19,7 @@ import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControl
 import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import TaskHintBox from './TaskHintBox'
+import { CalmAsideSlot, useCalmAside } from './calmAside'
 import {
   getCompleteStage,
   getEffectiveTaskMode,
@@ -75,65 +75,22 @@ const teacherAnswerNoticeStyle = {
   fontWeight: 600,
 }
 
+// What a failed check is compared against to tell whether the student has changed their code since:
+// a string as is, anything else (Scratch's serialised state, a files object) by its JSON, so an
+// equal object sent again is no change.
+function codeFingerprint(code) {
+  if (code == null || typeof code === 'string') return code ?? null
+  try {
+    return JSON.stringify(code)
+  } catch {
+    return code
+  }
+}
+
 // Registered in the capture phase: CodeMirror's own copy/cut/dragstart handlers
 // (on its content element, below this wrapper) write the selection to the
 // clipboard themselves, so cancelling the event after it bubbles back out is
 // too late. Stopping it on the way down means CodeMirror never sees it.
-// The calm Scratch explainer column's own DOM node (see `calmAside`): created once per view.
-function useCalmAsideHost() {
-  const [host] = useState(() => {
-    if (typeof document === 'undefined') return null
-    const el = document.createElement('div')
-    Object.assign(el.style, {
-      flex: '1 1 auto',
-      minWidth: '0',
-      minHeight: '0',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '10px',
-      overflow: 'hidden',
-    })
-    return el
-  })
-  return host
-}
-
-// Scroll positions inside the host, kept while it moves between slots (a detached node loses
-// them in a browser).
-const hostScrolls = new WeakMap()
-function saveHostScroll(host) {
-  const saved = []
-  for (const el of [host, ...host.querySelectorAll('*')]) {
-    if (el.scrollTop || el.scrollLeft) saved.push([el, el.scrollTop, el.scrollLeft])
-  }
-  hostScrolls.set(host, saved)
-}
-function restoreHostScroll(host) {
-  for (const [el, top, left] of hostScrolls.get(host) ?? []) {
-    if (!host.contains(el)) continue
-    el.scrollTop = top
-    el.scrollLeft = left
-  }
-  hostScrolls.delete(host)
-}
-
-// Where the calm Scratch explainer column shows: takes the host node while mounted.
-function CalmAsideSlot({ host, style, testId }) {
-  const ref = useRef(null)
-  useLayoutEffect(() => {
-    const slot = ref.current
-    if (!slot || !host) return undefined
-    slot.appendChild(host)
-    restoreHostScroll(host)
-    return () => {
-      if (host.parentNode !== slot) return
-      saveHostScroll(host)
-      slot.removeChild(host)
-    }
-  }, [host])
-  return <div ref={ref} data-testid={testId} style={style} />
-}
-
 function blockClipboardEvent(event) {
   event.preventDefault()
   event.stopPropagation()
@@ -389,7 +346,6 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
-  const calmAsideHost = useCalmAsideHost()
   // The calm palette's last category, for this view (ScratchWorkspace `calm.categoryMemory`).
   const [paletteCategoryMemory] = useState(createPaletteCategoryMemory)
 
@@ -784,11 +740,9 @@ export default function LessonTaskContent({
 
   // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
-  // On the calm screen the student can put a tutor's hint away ("Got it"); it stays away until
-  // the tutor sends another (a new `at`).
-  const [dismissedTutorHintAt, setDismissedTutorHintAt] = useState(null)
-  const tutorHintPutAway = cs.teacherHint?.at != null && dismissedTutorHintAt === cs.teacherHint.at
-  const sentHintText = tutorHintPutAway ? '' : (cs.teacherHint?.text ?? '')
+  // On the calm screen the student can put a tutor's hint away ("Got it"), on this task, where the
+  // dock shows it; it stays away until the tutor sends another (a new `at`). See tutorHintPutAway.
+  const [dismissedTutorHint, setDismissedTutorHint] = useState(null)
   const quietActivityPass =
     isActivityTask &&
     !isQuizTask &&
@@ -817,10 +771,14 @@ export default function LessonTaskContent({
   // The calm Scratch hint sits under the explainer card in its column ('aside'), which renders only
   // with both the card and the blocks on screen (not the presenter's explainer-only or code-only
   // layout: there the popup shows).
+  // The column's own DOM node (calmAside.jsx). Orphaned (no slot on screen yet, e.g. the
+  // workspace still loading in the stacked layout): the card shows inline and the hint as the popup.
+  const calmAsideWanted = calmScratch && showCodePane && hasTaskExplainer && showExplainerPane
+  const calmAsideHost = useCalmAside(calmAsideWanted)
   const calmHintSlot = !calmHintShown
     ? null
     : calmScratch
-      ? hasTaskExplainer && showExplainerPane && showCodePane
+      ? calmAsideWanted && !calmAsideHost.orphaned
         ? 'aside'
         : null
       : showsSideBySide
@@ -835,6 +793,14 @@ export default function LessonTaskContent({
             ? 'left'
             : null
   const calmHintDocked = calmHintSlot != null
+  // A tutor's hint put away with "Got it" stays away only on the task it was put away on, and only
+  // in the dock: where the layout has no dock, the popup still shows it.
+  const tutorHintPutAway =
+    calmHintDocked &&
+    cs.teacherHint?.at != null &&
+    dismissedTutorHint?.at === cs.teacherHint.at &&
+    dismissedTutorHint?.taskKey === calmTaskKey
+  const sentHintText = tutorHintPutAway ? '' : (cs.teacherHint?.text ?? '')
   const bannerPassed =
     cs.offeredSupportStageIndex != null || sentHintText ? false : !!displayCheckPassed
   const shouldShowFeedbackBanner =
@@ -865,13 +831,13 @@ export default function LessonTaskContent({
   // the noted fail is forgotten as soon as no fail shows: the next fail is new, and amber.
   const [failSeen, setFailSeen] = useState(null)
   if (calmFailKey != null && failSeen?.key !== calmFailKey) {
-    setFailSeen({ key: calmFailKey, code: cs.code })
+    setFailSeen({ key: calmFailKey, code: codeFingerprint(cs.code) })
   } else if (calmFailKey == null && failSeen != null) {
     setFailSeen(null)
   }
   const failSettled =
     calmFailKey != null &&
-    (calmRunning || (failSeen?.key === calmFailKey && failSeen.code !== cs.code))
+    (calmRunning || (failSeen?.key === calmFailKey && failSeen.code !== codeFingerprint(cs.code)))
   const feedbackBanner = shouldShowFeedbackBanner ? (
     <CheckFeedbackBanner
       // Remounts (resetting the popup's own auto-dismiss timer and any manual dismissal)
@@ -883,7 +849,7 @@ export default function LessonTaskContent({
       settled={failSettled}
       onDismiss={
         calmHintDocked && cs.teacherHint?.at != null
-          ? () => setDismissedTutorHintAt(cs.teacherHint.at)
+          ? () => setDismissedTutorHint({ at: cs.teacherHint.at, taskKey: calmTaskKey })
           : undefined
       }
       failureMessage={isQuizLike ? 'Not quite right, try again.' : undefined}
@@ -975,13 +941,12 @@ export default function LessonTaskContent({
   // the card on its own below). It renders into one DOM node (calmAsideHost) that moves between
   // the two slots, so crossing SCRATCH_CALM_STACK_BREAKPOINT (a tablet turned round) never remounts
   // the card or the hint: a folded card stays folded and a scrolled one keeps its place.
-  const calmAside =
-    calmScratch && showCodePane && hasTaskExplainer && showExplainerPane ? (
-      <>
-        {taskExplainer}
-        {calmHintSlot === 'aside' && hintBox}
-      </>
-    ) : null
+  const calmAside = calmAsideWanted ? (
+    <>
+      {taskExplainer}
+      {calmHintSlot === 'aside' && hintBox}
+    </>
+  ) : null
 
   const workspaceContent = (
     <>
@@ -1167,7 +1132,7 @@ export default function LessonTaskContent({
                   stacked: calmStacked,
                   aside:
                     calmStacked && calmAside ? (
-                      <CalmAsideSlot host={calmAsideHost} style={s.calmStackedSlot} />
+                      <CalmAsideSlot aside={calmAsideHost.aside} style={s.calmStackedSlot} />
                     ) : null,
                   categoryMemory: paletteCategoryMemory,
                   paletteStartsOpen: paletteStartsOpen(lesson),
@@ -1309,13 +1274,22 @@ export default function LessonTaskContent({
         // workspace beside its pinned stage (StudentWorkspace's `calm.aside`).
         <div ref={taskPanelSizeRef} style={s.scratchTaskPanelWrap}>
           <div style={s.scratchFixedSplit}>
-            {calmAside && !calmStacked && (
+            {calmAside && !calmStacked ? (
               <CalmAsideSlot
-                host={calmAsideHost}
+                aside={calmAsideHost.aside}
                 testId="scratch-calm-aside"
                 style={{ ...s.calmAsideColumn, width: calmExplainerWidth(taskPanelSize.width) }}
               />
-            )}
+            ) : calmAside && calmAsideHost.orphaned ? (
+              // The stacked slot is not on screen (the workspace is still loading): the card shows
+              // here instead, never in a detached node.
+              <div
+                data-testid="scratch-calm-aside-inline"
+                style={{ ...s.calmAsideColumn, width: calmExplainerWidth(taskPanelSize.width) }}
+              >
+                {calmAside}
+              </div>
+            ) : null}
             <div style={s.scratchCodeFlex}>{editorArea}</div>
           </div>
         </div>
@@ -1418,7 +1392,7 @@ export default function LessonTaskContent({
       )}
 
       {/* After the layout, so the slot has taken the host before the card's own effects run. */}
-      {calmAside && calmAsideHost ? createPortal(calmAside, calmAsideHost) : null}
+      {calmAsideHost.portal(calmAside)}
     </TaskSlideTransition>
   )
 }

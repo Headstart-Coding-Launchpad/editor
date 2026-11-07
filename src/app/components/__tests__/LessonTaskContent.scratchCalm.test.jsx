@@ -322,6 +322,78 @@ describe('calm Scratch: review fixes', () => {
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(panes)
   })
 
+  it('keeps focus on the card’s fold button when the card moves to the stacked slot', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    screen.getByRole('button', { name: /Move the cat/ }).focus()
+    panelWidth(736, 960)
+    rerender(<LessonTaskContent {...baseProps} />)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Move the cat/ }))
+  })
+
+  it('with the workspace not showing its stacked slot (still loading), the card shows inline and a failed check is the popup', () => {
+    getLessonModule.mockReturnValue({
+      ...SCRATCH_MODULE,
+      StudentWorkspace: (props) => {
+        workspaceProps = props
+        return <div>Loading Scratch</div>
+      },
+    })
+    panelWidth(736, 960)
+    render(<LessonTaskContent {...baseProps} {...failedCheck} />)
+    expect(workspaceProps.calm).toMatchObject({ stacked: true })
+    expect(screen.getByText('Make the cat say Hello! 🎉')).toBeVisible()
+    expect(screen.queryByTestId('task-hint')).not.toBeInTheDocument()
+    expect(document.querySelector('.check-feedback-popup')).not.toBeNull()
+    expect(screen.getByText('Add a say block.')).toBeInTheDocument()
+  })
+
+  it('a failed check stays amber when the workspace re-sends equal (non-string) code, and settles when it really changes', () => {
+    panelWidth(1334)
+    const code = (x) => ({ sprites: { cat: { blocks: [{ opcode: 'motion_movesteps', x }] } } })
+    const { rerender } = render(
+      <LessonTaskContent {...baseProps} {...failedCheck} cs={{ ...baseProps.cs, code: code(1) }} />
+    )
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'fail')
+    rerender(
+      <LessonTaskContent {...baseProps} {...failedCheck} cs={{ ...baseProps.cs, code: code(1) }} />
+    )
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'fail')
+    rerender(
+      <LessonTaskContent {...baseProps} {...failedCheck} cs={{ ...baseProps.cs, code: code(2) }} />
+    )
+    expect(screen.getByTestId('task-hint')).toHaveAttribute('data-tone', 'nudge')
+  })
+
+  describe('the tutor’s hint, put away with Got it', () => {
+    const hint = { text: 'Try a say block.', at: 5 }
+    const withHint = (props = {}) => (
+      <LessonTaskContent {...baseProps} cs={{ ...baseProps.cs, teacherHint: hint }} {...props} />
+    )
+
+    it('is put away for that task only: on another task the same hint shows again', async () => {
+      const user = userEvent.setup()
+      panelWidth(1334)
+      const { rerender } = render(withHint())
+      await user.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(screen.queryByText('Try a say block.')).not.toBeInTheDocument()
+      rerender(
+        withHint({ task: { id: 2, title: 'Turn', explainer: 'Turn the cat.' }, currentTaskId: 2 })
+      )
+      expect(screen.getByText('Try a say block.')).toBeInTheDocument()
+    })
+
+    it('still shows as the popup where the layout has no dock', async () => {
+      const user = userEvent.setup()
+      panelWidth(1334)
+      const { rerender } = render(withHint())
+      await user.click(screen.getByRole('button', { name: 'Got it' }))
+      rerender(withHint({ presenterLayout: 'explainer' }))
+      expect(document.querySelector('.check-feedback-popup')).not.toBeNull()
+      expect(screen.getByText('Try a say block.')).toBeInTheDocument()
+    })
+  })
+
   it('hands the workspace one palette-category memory for the whole view, kept across tasks', () => {
     panelWidth(1334)
     const { rerender } = render(<LessonTaskContent {...baseProps} />)
