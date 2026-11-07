@@ -75,11 +75,12 @@ import { isScratchStillBuilding } from './stillBuilding.js'
 import { useScratchCategoryReveal } from './scratchHighlight.js'
 import {
   calmFoldsSpriteProps,
+  calmPaletteFollowUp,
   calmStackedStageScale,
+  createPaletteCategoryMemory,
   openPaletteReveal,
   placeScriptOnArrival,
   syncCanvasScroll,
-  rememberPaletteCategory,
   restorePaletteCategory,
   revealBlocksBesideFlyout,
   topFlyoutCategory,
@@ -1204,7 +1205,17 @@ export default function ScratchWorkspace({
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(
     () => !!calm && !calm.paletteStartsOpen && !readOnly
   )
-  const pendingRevealRef = useRef(false)
+  // The calm palette step still to run when a block drag ends ('reveal' after an open, 'sync'
+  // after a close; calmPaletteFollowUp), or null.
+  const pendingCalmStepRef = useRef(null)
+  // The last palette category: the student view's own memory (calm.categoryMemory), else one
+  // for this workspace.
+  const ownPaletteMemoryRef = useRef(null)
+  function paletteMemory() {
+    if (calmRef.current?.categoryMemory) return calmRef.current.categoryMemory
+    if (!ownPaletteMemoryRef.current) ownPaletteMemoryRef.current = createPaletteCategoryMemory()
+    return ownPaletteMemoryRef.current
+  }
   // Manual-only rail collapse for the stage panel in the wide (non-compact) layout — the
   // student clicks to reclaim editor space; nothing auto-toggles it. See `compact` below
   // for the separate, measurement-driven Blocks/Stage tab switcher used at narrow sizes.
@@ -2117,9 +2128,16 @@ export default function ScratchWorkspace({
         // Skip svgResize while a block is being dragged — svgResize shifts ws.scrollX
         // by the flyout width, which would make the dragged block jump away from the cursor.
         // The deferred recalc triggered on pointerup will run svgResize afterwards.
+        const followUp = calmRef.current
+          ? calmPaletteFollowUp({
+              open: !flyoutCollapsed,
+              dragging: blockDragActiveRef.current,
+            })
+          : null
         if (blockDragActiveRef.current) {
           pendingScaleRecalcRef.current = true
-          if (calmRef.current && !flyoutCollapsed) pendingRevealRef.current = true
+          // The open reveal or the close fixups run on drag end instead (pointerup below).
+          if (followUp?.onDragEnd) pendingCalmStepRef.current = followUp.onDragEnd
           return
         }
         try {
@@ -2128,29 +2146,36 @@ export default function ScratchWorkspace({
         // Calm screen: on EVERY open (not only until the first press), go back to the last
         // category and scroll any block hidden under the palette clear of it. One frame later, so
         // the toolbox refresh and resize queued by this same toggle have laid the palette out.
-        if (calmRef.current && !flyoutCollapsed) {
+        if (followUp?.now === 'reveal') {
           requestAnimationFrame(() => revealCalmPalette(selectedSpriteId))
-        } else if (calmRef.current) {
-          // Blockly redraws the canvas without the palette's offset when it hides, but scrolls
-          // with it: re-applying its own scroll keeps the two in step, so after closing, the
-          // script sits where Blockly keeps it and a later pan cannot make it jump.
-          syncCanvasScroll(ws)
-          scheduleArrivalPlacementRef.current?.()
+        } else if (followUp?.now === 'sync') {
+          syncCalmClosedCanvas(selectedSpriteId)
         }
       })
     } catch {}
+    // The calm helpers read refs and the current sprite; they need no re-run of their own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyoutCollapsed, selectedSpriteId, status])
 
   function revealCalmPalette(spriteId) {
     const ws = workspaceRefs.current[spriteId]
     if (!ws) return
     try {
-      restorePaletteCategory(ws)
+      restorePaletteCategory(ws, paletteMemory())
     } catch {}
     const result = openPaletteReveal(ws, blocksDivRefs.current[spriteId], {
       dragging: blockDragActiveRef.current,
     })
-    if (result === 'deferred') pendingRevealRef.current = true
+    if (result === 'deferred') pendingCalmStepRef.current = 'reveal'
+  }
+  // Blockly redraws the canvas without the palette's offset when it hides, but scrolls with it:
+  // re-applying its own scroll keeps the two in step, so after closing, the script sits where
+  // Blockly keeps it and a later pan cannot make it jump.
+  function syncCalmClosedCanvas(spriteId) {
+    const ws = workspaceRefs.current[spriteId]
+    if (!ws) return
+    syncCanvasScroll(ws)
+    scheduleArrivalPlacementRef.current?.()
   }
   // Calm screen, palette closed, canvas not touched yet: one placement of the script at the left
   // of the canvas once the resizes of arrival (or a sprite switch) have settled.
@@ -2169,16 +2194,20 @@ export default function ScratchWorkspace({
     }, ARRIVAL_SETTLE_MS)
   }
   useEffect(() => () => clearTimeout(arrivalTimerRef.current), [])
-  const revealCalmPaletteRef = useRef(null)
-  revealCalmPaletteRef.current = () => {
-    if (calmRef.current && !flyoutCollapsedRef.current) revealCalmPalette(selectedSpriteId)
+  // The step a palette change made during a drag left for drag end (only if the palette is still
+  // as that change left it).
+  const runPendingCalmStepRef = useRef(null)
+  runPendingCalmStepRef.current = (step) => {
+    if (!calmRef.current) return
+    if (step === 'reveal' && !flyoutCollapsedRef.current) revealCalmPalette(selectedSpriteId)
+    else if (step === 'sync' && flyoutCollapsedRef.current) syncCalmClosedCanvas(selectedSpriteId)
   }
 
   // Calm screen: the Blocks button, the only control that opens or closes the palette. Closing
   // remembers the category on screen (this page session only).
   function toggleCalmPalette() {
     if (!flyoutCollapsed) {
-      rememberPaletteCategory(topFlyoutCategory(workspaceRefs.current[selectedSpriteId]))
+      paletteMemory().remember(topFlyoutCategory(workspaceRefs.current[selectedSpriteId]))
     }
     setFlyoutCollapsed((collapsed) => !collapsed)
   }
@@ -2453,10 +2482,12 @@ export default function ScratchWorkspace({
     const onUp = () => {
       blockDragActiveRef.current = false
       runPendingRecalc()
-      // A palette opened mid-drag (calm screen) reveals once the block is let go.
-      if (pendingRevealRef.current) {
-        pendingRevealRef.current = false
-        requestAnimationFrame(() => revealCalmPaletteRef.current?.())
+      // A palette opened or closed mid-drag (calm screen) gets its reveal or its close fixups
+      // once the block is let go.
+      const step = pendingCalmStepRef.current
+      if (step) {
+        pendingCalmStepRef.current = null
+        requestAnimationFrame(() => runPendingCalmStepRef.current?.(step))
       }
     }
 
@@ -3531,8 +3562,12 @@ export default function ScratchWorkspace({
 
   const spritePanelFull = (
     <div style={s.spritePanel}>
-      {calmHasMore ? (
-        <CalmMoreFold row={spriteTileRow}>{calmMoreContents}</CalmMoreFold>
+      {/* Calm: always the same wrapper (More only hides with nothing to fold), so selecting the
+          Stage tile never remounts the tiles or forgets that More was open. */}
+      {calmOn ? (
+        <CalmMoreFold row={spriteTileRow} available={calmHasMore}>
+          {calmMoreContents}
+        </CalmMoreFold>
       ) : (
         spriteTileRow(null)
       )}

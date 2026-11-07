@@ -30,10 +30,13 @@ export function CalmPaletteToggle({ open, onToggle, highlighted = false }) {
  * "More ▾" under the stage: folds the sprite property row and + Backdrop away until tapped.
  * Remembered while the workspace stays mounted (this task), not stored. `row(button)` places the
  * More button (e.g. at the end of the sprite tile row); the folded contents open below it.
+ * `available` false (nothing to fold: the Stage tile is selected) hides the button and the
+ * contents but keeps this wrapper, the row and the open state, so switching tiles never remounts
+ * the sprite tiles or forgets that More was open.
  */
-export function CalmMoreFold({ children, label = 'More', row = null }) {
+export function CalmMoreFold({ children, label = 'More', row = null, available = true }) {
   const [open, setOpen] = useState(false)
-  const button = (
+  const button = available ? (
     <button
       type="button"
       data-testid="scratch-more"
@@ -43,11 +46,11 @@ export function CalmMoreFold({ children, label = 'More', row = null }) {
     >
       {label} <span aria-hidden="true">{open ? '▴' : '▾'}</span>
     </button>
-  )
+  ) : null
   return (
     <div style={s.moreWrap}>
       {row ? row(button) : button}
-      {open && <div style={s.morePanel}>{children}</div>}
+      {available && open && <div style={s.morePanel}>{children}</div>}
     </div>
   )
 }

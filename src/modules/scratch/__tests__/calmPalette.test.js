@@ -4,12 +4,12 @@ import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
   calmFoldsSpriteProps,
+  calmPaletteFollowUp,
   calmStackedStageScale,
+  createPaletteCategoryMemory,
   openPaletteReveal,
   paletteStartsOpen,
   placeScriptOnArrival,
-  rememberPaletteCategory,
-  rememberedPaletteCategory,
   topFlyoutCategory,
 } from '../calm/calmPalette.js'
 
@@ -151,11 +151,45 @@ describe('the palette remembers the last category for this session only', () => 
 
   it('keeps it in memory, not in localStorage', () => {
     const before = localStorage.length
-    rememberPaletteCategory('Looks')
-    expect(rememberedPaletteCategory()).toBe('Looks')
-    rememberPaletteCategory(null)
-    expect(rememberedPaletteCategory()).toBe('Looks')
+    const memory = createPaletteCategoryMemory()
+    memory.remember('Looks')
+    expect(memory.get()).toBe('Looks')
+    memory.remember(null)
+    expect(memory.get()).toBe('Looks')
     expect(localStorage.length).toBe(before)
+  })
+
+  it('holds one memory per student view: two memories never share a category', () => {
+    const first = createPaletteCategoryMemory()
+    const second = createPaletteCategoryMemory()
+    first.remember('Sound')
+    expect(second.get()).toBeNull()
+    second.remember('Motion')
+    expect(first.get()).toBe('Sound')
+  })
+})
+
+describe('after the palette opens or closes (calm screen)', () => {
+  it('runs the open reveal or the close fixups straight away when nothing is being dragged', () => {
+    expect(calmPaletteFollowUp({ open: true, dragging: false })).toEqual({
+      now: 'reveal',
+      onDragEnd: null,
+    })
+    expect(calmPaletteFollowUp({ open: false, dragging: false })).toEqual({
+      now: 'sync',
+      onDragEnd: null,
+    })
+  })
+
+  it('during a drag runs nothing now and the same step on drag end, for a close as for an open', () => {
+    expect(calmPaletteFollowUp({ open: true, dragging: true })).toEqual({
+      now: null,
+      onDragEnd: 'reveal',
+    })
+    expect(calmPaletteFollowUp({ open: false, dragging: true })).toEqual({
+      now: null,
+      onDragEnd: 'sync',
+    })
   })
 })
 
@@ -175,6 +209,19 @@ describe('calm Scratch layout rules', () => {
     expect(
       calmFoldsSpriteProps({ check: { type: 'all', checks: [{ type: 'sprite_property_delta' }] } })
     ).toBe(false)
+  })
+
+  it.each([
+    [
+      'feedbackChecks',
+      { feedbackChecks: [{ mode: 'nudge', type: 'sprite_property', property: 'x' }] },
+    ],
+    ['incorrectChecks', { incorrectChecks: { type: 'sprite_property_changed', property: 'y' } }],
+    ['a checks list', { checks: [{ type: 'sprite_property', property: 'size' }] }],
+    ['a manual check', { manualCheck: { type: 'sprite_property', property: 'direction' } }],
+    ['a stage check', { codeStages: [{ role: 'support', check: { type: 'sprite_property' } }] }],
+  ])('keeps the sprite property row out when %s reads sprite properties', (_, task) => {
+    expect(calmFoldsSpriteProps({ check: { type: 'block_used' }, ...task })).toBe(false)
   })
 
   it('stacks the stage above the blocks only on a portrait-narrow task panel', () => {

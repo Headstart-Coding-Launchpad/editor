@@ -81,4 +81,40 @@ describe('More (sprite properties and + Backdrop)', () => {
     expect(screen.getByLabelText('x')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /More/ })).toHaveAttribute('aria-expanded', 'true')
   })
+
+  it('keeps one wrapper when More has nothing to fold (the Stage tile): the row and the open state stay', async () => {
+    const user = userEvent.setup()
+    const row = (button) => (
+      <div data-testid="tile-row">
+        tiles
+        {button}
+      </div>
+    )
+    const { rerender } = render(
+      <CalmMoreFold row={row} available>
+        <span>props</span>
+      </CalmMoreFold>
+    )
+    const tileRow = screen.getByTestId('tile-row')
+    await user.click(screen.getByRole('button', { name: /More/ }))
+    expect(screen.getByText('props')).toBeInTheDocument()
+
+    rerender(
+      <CalmMoreFold row={row} available={false}>
+        <span>props</span>
+      </CalmMoreFold>
+    )
+    expect(screen.queryByRole('button', { name: /More/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('props')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tile-row')).toBe(tileRow)
+
+    rerender(
+      <CalmMoreFold row={row} available>
+        <span>props</span>
+      </CalmMoreFold>
+    )
+    expect(screen.getByTestId('tile-row')).toBe(tileRow)
+    expect(screen.getByRole('button', { name: /More/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('props')).toBeInTheDocument()
+  })
 })

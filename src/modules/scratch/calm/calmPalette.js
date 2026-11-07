@@ -87,14 +87,31 @@ export function openPaletteReveal(ws, div, { dragging = false } = {}) {
   return revealBlocksBesideFlyout(ws, div) ? 'revealed' : 'clear'
 }
 
-// The last category the child had the palette on, for this page session only (in memory, never
-// localStorage): reopening the palette, on this task or the next, goes back to it.
-let rememberedCategory = null
-export function rememberPaletteCategory(name) {
-  if (typeof name === 'string' && name.trim()) rememberedCategory = name.trim()
+// The last category the child had the palette on, in memory only (never localStorage): reopening
+// the palette, on this task or the next, goes back to it. One memory per student view
+// (LessonTaskContent holds it and hands it to the workspace as `calm.categoryMemory`), so two views
+// on one page, or two tests, never share it.
+export function createPaletteCategoryMemory() {
+  let category = null
+  return {
+    remember(name) {
+      if (typeof name === 'string' && name.trim()) category = name.trim()
+    },
+    get() {
+      return category
+    },
+  }
 }
-export function rememberedPaletteCategory() {
-  return rememberedCategory
+
+/**
+ * What follows a palette open or close on the calm screen: 'reveal' after an open (back to the
+ * remembered category, blocks scrolled clear of the palette) or 'sync' after a close (Blockly's
+ * scroll re-applied, then the script placed on arrival). Never mid-drag (a scroll then makes the
+ * dragged block jump): the same step runs when the drag ends.
+ */
+export function calmPaletteFollowUp({ open, dragging }) {
+  const step = open ? 'reveal' : 'sync'
+  return dragging ? { now: null, onDragEnd: step } : { now: step, onDragEnd: null }
 }
 
 // The category heading at (or just above) the top of the palette's view. Never throws.
@@ -118,8 +135,8 @@ export function topFlyoutCategory(workspace) {
 }
 
 // Scrolls a just-opened palette back to the remembered category (if it has that heading).
-export function restorePaletteCategory(workspace) {
-  const name = rememberedCategory
+export function restorePaletteCategory(workspace, memory) {
+  const name = memory?.get?.()
   return name ? scrollFlyoutToCategory(workspace, name) : false
 }
 
@@ -138,10 +155,26 @@ function readsSpriteProperties(check) {
   )
 }
 
+// Every place a task can hold checks: the completion check (one or a list), feedback checks and
+// their legacy alias, and any check kept on a code stage or under a manual-check field.
+function taskChecks(task) {
+  if (!task || typeof task !== 'object') return []
+  const stages = Array.isArray(task.codeStages) ? task.codeStages : []
+  return [
+    task.check,
+    task.checks,
+    task.manualCheck,
+    task.manualChecks,
+    task.feedbackChecks,
+    task.incorrectChecks,
+    ...stages.flatMap((stage) => [stage?.check, stage?.checks]),
+  ]
+}
+
 // The sprite property row (x, y, direction, size...) folds behind More unless one of the task's
 // checks reads sprite properties, where the child may need to watch them.
 export function calmFoldsSpriteProps(task) {
-  return !readsSpriteProperties(task?.check)
+  return !readsSpriteProperties(taskChecks(task))
 }
 
 // Below this task-panel width (a portrait tablet: 768px screen, ~736px panel) the stage is pinned
