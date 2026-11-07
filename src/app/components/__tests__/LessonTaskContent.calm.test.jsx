@@ -11,6 +11,12 @@ vi.mock('../../../shared/useElementSize', () => ({
   useElementSize: vi.fn(),
 }))
 
+// A loaded topic list, so the task card's chip reads "Topic library" (not "Loading library...").
+vi.mock('../../../shared/topicLibrary', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useTopicLibrary: () => ({ topics: [], allTopics: [], loading: false, error: null }),
+}))
+
 import { getLessonModule } from '../../../modules/registry'
 import { useElementSize } from '../../../shared/useElementSize'
 import LessonTaskContent from '../LessonTaskContent'

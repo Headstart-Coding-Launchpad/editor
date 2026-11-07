@@ -121,7 +121,18 @@ describe('a Python task explainer', () => {
   beforeEach(() => {
     getLessonModule.mockReturnValue({
       type: 'python',
-      StudentWorkspace: () => <div>Workspace</div>,
+      // The calm code screen puts Python's Topic library chip in the workspace's code row
+      // (onOpenTopicLibrary), as the real StudentWorkspace does.
+      StudentWorkspace: ({ onOpenTopicLibrary }) => (
+        <div>
+          Workspace
+          {onOpenTopicLibrary && (
+            <button type="button" aria-label="Topic library" onClick={onOpenTopicLibrary}>
+              📚 Topic library
+            </button>
+          )}
+        </div>
+      ),
       getLayoutStyles: () => ({}),
     })
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])

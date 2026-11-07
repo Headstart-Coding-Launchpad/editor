@@ -1,5 +1,6 @@
 import React from 'react'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -158,7 +159,7 @@ describe('Python StudentWorkspace code row stays one row', () => {
   it('has its own spacing class, and the CSS gives it real spacing', () => {
     renderWorkspace()
     expect(screen.getByRole('group', { name: 'Code' })).toHaveClass('ui-tabs--code-row')
-    const css = readFileSync(new URL('../../../index.css', import.meta.url), 'utf8')
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
     expect(css).toMatch(/\.ui-tabs--editor\.ui-tabs--code-row\s*\{[^}]*padding:[^}]*!important/)
     expect(css).toMatch(/\.ui-tabs--editor\.ui-tabs--code-row\s*\{[^}]*gap:[^}]*!important/)
   })

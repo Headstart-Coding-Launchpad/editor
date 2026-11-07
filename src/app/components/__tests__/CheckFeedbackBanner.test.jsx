@@ -406,4 +406,13 @@ describe('CheckFeedbackBanner: a hint the tutor sent', () => {
     render(<CheckFeedbackBanner passed={false} onPassShownChange={onPassShownChange} />)
     expect(onPassShownChange).not.toHaveBeenCalledWith(true)
   })
+
+  it('a docked pass (calm screen) stays in view but never holds up the bonus quest card', () => {
+    const onPassShownChange = vi.fn()
+    render(
+      <CheckFeedbackBanner passed docked closeIfPassed onPassShownChange={onPassShownChange} />
+    )
+    expect(screen.getByText('Correct!')).toBeInTheDocument()
+    expect(onPassShownChange).not.toHaveBeenCalledWith(true)
+  })
 })
