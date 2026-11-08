@@ -156,11 +156,6 @@ export default function StudentGrid({
   const [finishedOnly, setFinishedOnly] = useState(false)
   const [awardFor, setAwardFor] = useState(null)
   const [compose, setCompose] = useState(null)
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000)
-    return () => clearInterval(timer)
-  }, [])
   // Tutor-side counters, advanced from each render's data (idempotent for the same data): the
   // needsYou error-run counter, when this screen first saw help / Away, when each student was
   // last seen active (tutor clock), and the list order.
@@ -332,9 +327,13 @@ export default function StudentGrid({
       activityRef.current[id] = { raw, at: seen ? Date.now() : Math.min(Date.now(), raw) }
     }
   })
-  errorRunsRef.current = errorRuns
-  for (const key of Object.keys(seenAtRef.current)) {
-    if (!liveKeys.has(key)) delete seenAtRef.current[key]
+  // A momentary empty list (the session reloading, a reconnect) is not every student leaving:
+  // keep the counters, so help times do not restart and "I'm on it" rows stay acked.
+  if (students.length > 0) {
+    errorRunsRef.current = errorRuns
+    for (const key of Object.keys(seenAtRef.current)) {
+      if (!liveKeys.has(key)) delete seenAtRef.current[key]
+    }
   }
   const helpSince = (id) => seenAtRef.current[`${id}:help`] ?? null
   const isAcked = (id) => ackedHelp.has(`${id}:${helpSince(id)}`)
@@ -348,11 +347,17 @@ export default function StudentGrid({
   const studentsById = Object.fromEntries(students.map((st) => [st.anonymousId, st]))
   const ordered = order.ids.map((id) => studentsById[id]).filter(Boolean)
   const counts = summariseRowStates(Object.values(rowStates))
-  const sameOutput = sameOutputSummary(students)
+  // The Finished filter only applies while someone is finished: when the count drops to 0 its
+  // Show all control goes, so the filter goes with it (and is reset for next time).
+  const finishedFilterOn = finishedOnly && counts.finished > 0
+  useEffect(() => {
+    if (finishedOnly && counts.finished === 0) setFinishedOnly(false)
+  }, [finishedOnly, counts.finished])
   // Composed lessons need the task's own module (getEffectiveLessonForTask), as StudentCard does.
   const taskContext = currentTask
     ? deriveTaskContext(getEffectiveLessonForTask(lesson, currentTask), currentTask, session)
     : null
+  const sameOutput = sameOutputSummary(students, { isInformation: !!taskContext?.isInformation })
   const isCodeTask =
     !!taskContext && !taskContext.isInformation && !taskContext.isActivity && !taskContext.isQuiz
   const expandedIndex = ordered.findIndex((st) => st.anonymousId === expandedStudentId)
@@ -621,15 +626,13 @@ export default function StudentGrid({
     nudgedAway ||
     fullscreenRequested
 
-  const visibleRows = finishedOnly
-    ? ordered.filter((st) => rowStates[st.anonymousId]?.status === 'finished')
-    : ordered
-  const helpRows = finishedOnly
-    ? []
-    : visibleRows.filter((st) => order.groups[st.anonymousId] === 0)
-  const otherRows = finishedOnly
-    ? visibleRows
-    : visibleRows.filter((st) => order.groups[st.anonymousId] !== 0)
+  // Help rows always show: the Finished filter narrows only the rows under it.
+  const helpRows = ordered.filter((st) => order.groups[st.anonymousId] === 0)
+  const otherRows = ordered.filter(
+    (st) =>
+      order.groups[st.anonymousId] !== 0 &&
+      (!finishedFilterOn || rowStates[st.anonymousId]?.status === 'finished')
+  )
   const openId = openRowId && studentsById[openRowId] ? openRowId : null
 
   function renderRow(student) {
@@ -642,7 +645,6 @@ export default function StudentGrid({
         state={state}
         lesson={lesson}
         session={session}
-        now={now}
         since={state.status === 'help' ? helpSince(id) : (seenAtRef.current[`${id}:away`] ?? null)}
         activityAt={activityRef.current[id]?.at ?? null}
         helpAcked={isAcked(id)}
@@ -937,15 +939,15 @@ export default function StudentGrid({
                 <button
                   type="button"
                   style={s.finishedBtn}
-                  aria-pressed={finishedOnly}
-                  onClick={() => setFinishedOnly((v) => !v)}
+                  aria-pressed={finishedFilterOn}
+                  onClick={() => setFinishedOnly(!finishedFilterOn)}
                   title={
-                    finishedOnly
+                    finishedFilterOn
                       ? 'Show every student again'
                       : 'Show only the students who finished'
                   }
                 >
-                  {finishedOnly ? 'Show all' : 'Show'}
+                  {finishedFilterOn ? 'Show all' : 'Show'}
                 </button>
               </div>
             )}

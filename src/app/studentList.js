@@ -44,11 +44,12 @@ export function classifyStudentRow(student, { checkStatus = null, needs = null, 
   return out('online')
 }
 
-// Which block of the list the row sits in. "I'm on it" (`acked`) moves a help row down among
-// the rest, still amber.
+// Which block of the list the row sits in. A help request beats offline, so it is never buried
+// at the bottom while the header counts it. "I'm on it" (`acked`) moves a help row down among
+// the rest (or the offline rows), still amber.
 export function rowGroup(state, { acked = false } = {}) {
-  if (state?.presence === 'offline') return ROW_GROUP.offline
   if (state?.status === 'help' && !acked) return ROW_GROUP.help
+  if (state?.presence === 'offline') return ROW_GROUP.offline
   return ROW_GROUP.rest
 }
 
@@ -95,8 +96,11 @@ const lastLine = (text) =>
     .pop() ?? ''
 
 // The words the row shows for their last run: the error line when it crashed, else the last line
-// of output. '' when there is nothing.
-export function rowOutputText(student) {
+// of output. '' when there is nothing, and on an information task (no run to show).
+// The current task's output only: setTaskId (useSession.js) clears currentOutput, lastRunStatus
+// and lastRunError for every student when the class moves on, so what is left is from this task.
+export function rowOutputText(student, { isInformation = false } = {}) {
+  if (isInformation) return ''
   if (student?.lastRunStatus === 'error' && student.lastRunError) {
     return lastLine(student.lastRunError)
   }
@@ -120,12 +124,14 @@ export function ageWords(ts, now) {
 
 /**
  * The output most students share, when SAME_OUTPUT_MIN or more do: { text, count, studentIds },
- * else null. Only runs that did not crash count.
+ * else null. Only runs that did not crash count, only students online now, and never on an
+ * information task.
  */
-export function sameOutputSummary(students, { min = SAME_OUTPUT_MIN } = {}) {
+export function sameOutputSummary(students, { min = SAME_OUTPUT_MIN, isInformation = false } = {}) {
+  if (isInformation) return null
   const byText = new Map()
   for (const student of Array.isArray(students) ? students : []) {
-    if (!student?.anonymousId || student.lastRunStatus === 'error') continue
+    if (!student?.anonymousId || !student.online || student.lastRunStatus === 'error') continue
     const text = lastLine(student.currentOutput)
     if (!text) continue
     if (!byText.has(text)) byText.set(text, [])

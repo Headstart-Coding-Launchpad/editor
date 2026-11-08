@@ -129,6 +129,10 @@ describe('output text', () => {
     expect(rowOutputText({})).toBe('')
   })
 
+  it('shows nothing on an information task', () => {
+    expect(rowOutputText({ currentOutput: 'hello' }, { isInformation: true })).toBe('')
+  })
+
   it('cuts the stub to about 12 characters', () => {
     expect(outputStub('hello')).toBe('hello')
     expect(outputStub('NameError: name x is not defined')).toBe('NameError: n…')
@@ -143,7 +147,13 @@ describe('output text', () => {
 })
 
 describe('sameOutputSummary', () => {
-  const out = (id, text) => ({ anonymousId: id, currentOutput: text, lastRunStatus: 'success' })
+  const out = (id, text, extra = {}) => ({
+    anonymousId: id,
+    online: true,
+    currentOutput: text,
+    lastRunStatus: 'success',
+    ...extra,
+  })
 
   it('names an output that several students share', () => {
     const students = [out('1', 'hello'), out('2', 'hello'), out('3', 'hello'), out('4', 'hi')]
@@ -156,6 +166,30 @@ describe('sameOutputSummary', () => {
 
   it('is null when fewer than three share one', () => {
     expect(sameOutputSummary([out('1', 'hello'), out('2', 'hello')])).toBeNull()
+  })
+
+  // Review fix: an offline student's output is not what the class sees now, and an information
+  // task has no run to compare.
+  it('leaves out offline students and information tasks', () => {
+    const students = [
+      out('1', 'hello'),
+      out('2', 'hello'),
+      out('3', 'hello', { online: false }),
+      out('4', 'hello'),
+    ]
+    expect(sameOutputSummary(students)?.studentIds).toEqual(['1', '2', '4'])
+    expect(sameOutputSummary(students.slice(0, 3))).toBeNull()
+    expect(sameOutputSummary(students, { isInformation: true })).toBeNull()
+  })
+})
+
+describe('rowGroup', () => {
+  // Review fix: an offline student who asked for help still gets the amber help row on top.
+  it('lets help beat offline, and an acked help row sits among the rest', () => {
+    expect(rowGroup({ status: 'help', presence: 'offline' })).toBe(0)
+    expect(rowGroup({ status: 'help', presence: 'offline' }, { acked: true })).toBe(2)
+    expect(rowGroup({ status: 'help', presence: 'online' }, { acked: true })).toBe(1)
+    expect(rowGroup({ status: 'finished', presence: 'offline' })).toBe(2)
   })
 })
 

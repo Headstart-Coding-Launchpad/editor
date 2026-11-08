@@ -47,6 +47,17 @@ function codePaneHidden(student, { isCodeTask }) {
   return !panes.some((pane) => pane === 'code' || pane === 'blocks' || String(pane).includes('.'))
 }
 
+// The row's own clock for "2m", "idle 3m": ticks every 30 s inside each row, so the tick never
+// re-renders the whole student panel.
+function useNow(everyMs = 30000) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), everyMs)
+    return () => clearInterval(timer)
+  }, [everyMs])
+  return now
+}
+
 // True for 4 s after a new activity report lands. The value already there when the list opens
 // is not a fresh report, so it never lights every row at once.
 function useTyping(lastActivityAt) {
@@ -232,7 +243,6 @@ export default function StudentListRow({
   state,
   lesson,
   session,
-  now,
   // When this tutor screen first saw the help request / Away (for "Needs help · 2m", "Away 4m").
   since = null,
   // When the student was last seen typing, clicking or running (tutor clock).
@@ -277,7 +287,11 @@ export default function StudentListRow({
   const [nudged, setNudged] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const rowRef = useRef(null)
+  // Set once a rename is saved or cancelled, so a blur that follows Enter or Escape (the box
+  // unmounting) never saves again or saves the discarded text.
+  const renameDoneRef = useRef(true)
   const typing = useTyping(student.lastActivityAt)
+  const now = useNow()
 
   useEffect(() => {
     if (!open) setMoreOpen(false)
@@ -290,7 +304,7 @@ export default function StudentListRow({
   const supportCount = Object.keys(session?.supportRevealLog?.[id]?.[taskId] ?? {}).length
   const examplesOpened = exampleOpenCount(session, id, taskId)
   const sideQuest = activities.find((activity) => activity.kind === 'side_quest') ?? null
-  const output = rowOutputText(student)
+  const output = rowOutputText(student, { isInformation })
   const stub = outputStub(output)
   const words = rowStatusWords(state, {
     now,
@@ -334,10 +348,18 @@ export default function StudentListRow({
           ? { icon: sideQuest.icon, text: sideQuest.text }
           : null
 
-  function saveName(event) {
-    event?.preventDefault?.()
+  function startRename() {
+    setNameValue(name)
+    renameDoneRef.current = false
+    setRenaming(true)
+  }
+
+  function finishRename(save) {
+    if (renameDoneRef.current) return
+    renameDoneRef.current = true
     const next = nameValue.trim()
-    if (next && next !== name) onRename?.(id, next)
+    if (save && next && next !== name) onRename?.(id, next)
+    setNameValue(name)
     setRenaming(false)
   }
 
@@ -457,10 +479,7 @@ export default function StudentListRow({
         onRename && {
           icon: '✏️',
           label: 'Rename student',
-          onClick: () => {
-            setNameValue(name)
-            setRenaming(true)
-          },
+          onClick: startRename,
         },
         onOpenRoster &&
           (rosterUnmatched || carryWaiting) && {
@@ -562,31 +581,16 @@ export default function StudentListRow({
     >
       <span aria-hidden="true" style={{ ...s.edge, background: EDGE[state.status] }} />
       <div style={s.line}>
-        <div
-          style={s.main}
-          data-testid="row-main"
-          role={selectMode ? 'checkbox' : 'button'}
-          aria-checked={selectMode ? selected : undefined}
-          aria-expanded={selectMode ? undefined : open}
-          aria-label={
-            selectMode ? `Select ${name}` : `${name}${words.text ? `: ${words.text}` : ''}`
-          }
-          tabIndex={0}
-          onClick={activate}
-          onKeyDown={(event) => {
-            if (event.target !== event.currentTarget) return
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              activate()
-            }
-          }}
-        >
-          {marker}
-          {renaming ? (
+        {renaming ? (
+          // Outside the row's button, so clicking or typing in the box never toggles the row.
+          <div style={s.main} data-testid="row-main">
+            {marker}
             <form
-              onSubmit={saveName}
+              onSubmit={(event) => {
+                event.preventDefault()
+                finishRename(true)
+              }}
               style={s.renameForm}
-              onClick={(event) => event.stopPropagation()}
             >
               <input
                 style={s.renameInput}
@@ -594,54 +598,75 @@ export default function StudentListRow({
                 aria-label={`Rename ${name}`}
                 autoFocus
                 onChange={(event) => setNameValue(event.target.value)}
-                onBlur={saveName}
+                onBlur={() => finishRename(true)}
                 onKeyDown={(event) => {
                   event.stopPropagation()
-                  if (event.key === 'Escape') setRenaming(false)
+                  if (event.key === 'Escape') finishRename(false)
                 }}
               />
             </form>
-          ) : (
+          </div>
+        ) : (
+          <div
+            style={s.main}
+            data-testid="row-main"
+            role={selectMode ? 'checkbox' : 'button'}
+            aria-checked={selectMode ? selected : undefined}
+            aria-expanded={selectMode ? undefined : open}
+            aria-label={
+              selectMode ? `Select ${name}` : `${name}${words.text ? `: ${words.text}` : ''}`
+            }
+            tabIndex={0}
+            onClick={activate}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                activate()
+              }
+            }}
+          >
+            {marker}
             <span
               style={s.name}
               title={cardProps.rosterName ? `${name}: class list ${cardProps.rosterName}` : name}
             >
               {name}
             </span>
-          )}
-          {live && (
-            <span style={s.liveTag} title="You are watching this student live">
-              LIVE
-            </span>
-          )}
-          {glyphs.slice(0, 3).map((glyph) => (
-            <span
-              key={glyph.key}
-              style={s.glyph}
-              role="img"
-              aria-label={glyph.label}
-              title={glyph.label}
-            >
-              {glyph.icon}
-            </span>
-          ))}
-          {!showHover && (
-            <>
-              {/* A help row's status and I'm on it leave no room for a useful stub. */}
-              <span style={s.stub} title={output || undefined}>
-                {state.status === 'help' ? '' : stub}
+            {live && (
+              <span style={s.liveTag} title="You are watching this student live">
+                LIVE
               </span>
+            )}
+            {glyphs.slice(0, 3).map((glyph) => (
               <span
-                style={{ ...s.status, color: STATUS_COLOUR[state.status] }}
-                title={words.title || undefined}
-                data-testid="row-status"
+                key={glyph.key}
+                style={s.glyph}
+                role="img"
+                aria-label={glyph.label}
+                title={glyph.label}
               >
-                {words.typing ? <TypingPulse /> : words.text}
+                {glyph.icon}
               </span>
-            </>
-          )}
-          {showHover && <span style={s.stub} />}
-        </div>
+            ))}
+            {!showHover && (
+              <>
+                {/* A help row's status and I'm on it leave no room for a useful stub. */}
+                <span style={s.stub} title={output || undefined}>
+                  {state.status === 'help' ? '' : stub}
+                </span>
+                <span
+                  style={{ ...s.status, color: STATUS_COLOUR[state.status] }}
+                  title={words.title || undefined}
+                  data-testid="row-status"
+                >
+                  {words.typing ? <TypingPulse /> : words.text}
+                </span>
+              </>
+            )}
+            {showHover && <span style={s.stub} />}
+          </div>
+        )}
         {showHover && (
           <span style={s.hoverBtns}>
             {canThumbsUp && thumbsButton(true)}
@@ -751,15 +776,26 @@ export default function StudentListRow({
 function RowTooltip({ anchor, text, error }) {
   const [pos, setPos] = useState(null)
   const tipRef = useRef(null)
+  // Placed on open, and again whenever the list (or the page) scrolls or the window resizes, so
+  // it stays under its row.
   useLayoutEffect(() => {
-    const rect = anchor.current?.getBoundingClientRect()
-    if (!rect) return
-    // Above the row when there is no room below it.
-    const height = tipRef.current?.offsetHeight ?? 0
-    const below = rect.bottom + 2
-    const top =
-      height && below + height > (window.innerHeight || 768) - 8 ? rect.top - height - 2 : below
-    setPos({ top, left: rect.left + 12, width: rect.width - 24 })
+    const place = () => {
+      const rect = anchor.current?.getBoundingClientRect()
+      if (!rect) return
+      // Above the row when there is no room below it.
+      const height = tipRef.current?.offsetHeight ?? 0
+      const below = rect.bottom + 2
+      const top =
+        height && below + height > (window.innerHeight || 768) - 8 ? rect.top - height - 2 : below
+      setPos({ top, left: rect.left + 12, width: rect.width - 24 })
+    }
+    place()
+    window.addEventListener('scroll', place, true)
+    window.addEventListener('resize', place)
+    return () => {
+      window.removeEventListener('scroll', place, true)
+      window.removeEventListener('resize', place)
+    }
   }, [anchor])
   return (
     <div
