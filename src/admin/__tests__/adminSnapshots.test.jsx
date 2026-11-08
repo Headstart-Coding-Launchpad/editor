@@ -5,20 +5,36 @@ vi.mock('firebase/firestore', () => ({ onSnapshot: vi.fn() }))
 vi.mock('../../shared/firebase', () => ({ firestore: {} }))
 
 import { onSnapshot } from 'firebase/firestore'
-import { ADMIN_SNAPSHOT_LINGER_MS, resetAdminSnapshots, useAdminSnapshot } from '../adminSnapshots'
+import { renderHook } from '@testing-library/react'
+import {
+  ADMIN_SNAPSHOT_LINGER_MS,
+  resetAdminSnapshots,
+  setAdminSnapshotsUser,
+  useAdminSnapshot,
+  useLoadMore,
+} from '../adminSnapshots'
 
 let fire
 let unsubscribe
+let fires
+let unsubscribes
 
-function Names({ sourceKey = 'things', label = 'a' }) {
-  const { data, loading, error } = useAdminSnapshot(
+function Names({ sourceKey = 'things', family, label = 'a' }) {
+  const { data, loading, error, retry } = useAdminSnapshot(
     sourceKey,
     () => ({ ref: sourceKey }),
-    (snap) => snap.docs.map((d) => d.id)
+    (snap) => snap.docs.map((d) => d.id),
+    { family }
   )
-  if (error) return <p>{`${label}: error ${error}`}</p>
-  if (loading) return <p>{`${label}: loading`}</p>
-  return <p>{`${label}: ${data.join(',')}`}</p>
+  if (error)
+    return (
+      <p>
+        {`${label}: error ${error}`}
+        <button onClick={retry}>{`retry ${label}`}</button>
+      </p>
+    )
+  if (loading) return <p>{`${label}: loading${sourceKey == null ? ' (disabled)' : ''}`}</p>
+  return <p>{`${label}: ${data == null ? 'off' : data.join(',')}`}</p>
 }
 
 describe('useAdminSnapshot (one shared listener per Admin source)', () => {
@@ -27,9 +43,14 @@ describe('useAdminSnapshot (one shared listener per Admin source)', () => {
     resetAdminSnapshots()
     vi.clearAllMocks()
     unsubscribe = vi.fn()
-    onSnapshot.mockImplementation((_ref, next, onError) => {
+    fires = {}
+    unsubscribes = {}
+    onSnapshot.mockImplementation((ref, next, onError) => {
       fire = { next, onError }
-      return unsubscribe
+      fires[ref.ref] = fire
+      const stopOne = vi.fn(() => unsubscribe())
+      unsubscribes[ref.ref] = stopOne
+      return stopOne
     })
   })
 
@@ -79,8 +100,120 @@ describe('useAdminSnapshot (one shared listener per Admin source)', () => {
     expect(screen.getByText('a: error denied')).toBeInTheDocument()
   })
 
-  it('does not listen at all while the source key is null', () => {
+  it('does not listen at all while the source key is null, and is not loading', () => {
     render(<Names sourceKey={null} />)
     expect(onSnapshot).not.toHaveBeenCalled()
+    expect(screen.getByText('a: off')).toBeInTheDocument()
+  })
+
+  it("drops every cached source when a different user signs in, so they never see the last user's data", () => {
+    setAdminSnapshotsUser('tutor-a')
+    const view = render(<Names />)
+    act(() => fire.next({ docs: [{ id: 'secret' }] }))
+    view.unmount()
+
+    setAdminSnapshotsUser('tutor-a')
+    expect(unsubscribe).not.toHaveBeenCalled()
+
+    setAdminSnapshotsUser('tutor-b')
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    render(<Names />)
+    expect(screen.getByText('a: loading')).toBeInTheDocument()
+    expect(onSnapshot).toHaveBeenCalledTimes(2)
+  })
+
+  it('restarts a source a mounted panel still uses when the user changes, instead of orphaning it', async () => {
+    setAdminSnapshotsUser('tutor-a')
+    render(<Names />)
+    act(() => fire.next({ docs: [{ id: 'secret' }] }))
+    await act(async () => setAdminSnapshotsUser('tutor-b'))
+    expect(screen.getByText('a: loading')).toBeInTheDocument()
+    expect(onSnapshot).toHaveBeenCalledTimes(2)
+    act(() => fire.next({ docs: [{ id: 'mine' }] }))
+    expect(screen.getByText('a: mine')).toBeInTheDocument()
+  })
+
+  it('stops the smaller page at once when a panel moves to a bigger one (Load more)', () => {
+    const view = render(<Names sourceKey="reports:20" family="reports" />)
+    view.rerender(<Names sourceKey="reports:40" family="reports" />)
+    expect(unsubscribes['reports:20']).toHaveBeenCalledTimes(1)
+    expect(unsubscribes['reports:40']).not.toHaveBeenCalled()
+  })
+
+  it('keeps the smaller page open while another panel still uses it', () => {
+    const view = render(
+      <>
+        <Names sourceKey="reports:20" family="reports" label="a" />
+        <Names sourceKey="reports:20" family="reports" label="b" />
+      </>
+    )
+    view.rerender(
+      <>
+        <Names sourceKey="reports:40" family="reports" label="a" />
+        <Names sourceKey="reports:20" family="reports" label="b" />
+      </>
+    )
+    expect(unsubscribes['reports:20']).not.toHaveBeenCalled()
+  })
+
+  it('starts a failed source again when a new panel opens it, instead of reusing the dead one', () => {
+    render(<Names label="a" />)
+    act(() => fire.onError(new Error('denied')))
+    render(<Names label="b" />)
+    expect(onSnapshot).toHaveBeenCalledTimes(2)
+    expect(screen.getByText('a: loading')).toBeInTheDocument()
+    act(() => fire.next({ docs: [{ id: 'x' }] }))
+    expect(screen.getByText('a: x')).toBeInTheDocument()
+    expect(screen.getByText('b: x')).toBeInTheDocument()
+  })
+
+  it('Retry starts a failed source again', () => {
+    render(<Names />)
+    act(() => fire.onError(new Error('denied')))
+    act(() => screen.getByRole('button', { name: 'retry a' }).click())
+    expect(onSnapshot).toHaveBeenCalledTimes(2)
+    act(() => fire.next({ docs: [{ id: 'x' }] }))
+    expect(screen.getByText('a: x')).toBeInTheDocument()
+  })
+})
+
+describe('useLoadMore', () => {
+  const live = (data) => ({ data, loading: false, error: null })
+
+  it('offers more only when the page came back full', () => {
+    const { result, rerender } = renderHook((props) => useLoadMore(props), {
+      initialProps: { source: live([]), size: 19, count: 20, pageSize: 20 },
+    })
+    expect(result.current.hasMore).toBe(false)
+    rerender({ source: live([]), size: 20, count: 20, pageSize: 20 })
+    expect(result.current.hasMore).toBe(true)
+  })
+
+  it('keeps Load more after a deletion shrinks a full page', () => {
+    const { result, rerender } = renderHook((props) => useLoadMore(props), {
+      initialProps: { source: live([]), size: 20, count: 20, pageSize: 20 },
+    })
+    rerender({ source: live([]), size: 19, count: 20, pageSize: 20 })
+    expect(result.current.hasMore).toBe(true)
+  })
+
+  it('keeps the button (as Retry) when the bigger page fails', () => {
+    const { result, rerender } = renderHook((props) => useLoadMore(props), {
+      initialProps: { source: live([]), size: 20, count: 20, pageSize: 20 },
+    })
+    rerender({
+      source: { data: null, loading: true, error: null },
+      size: 0,
+      count: 40,
+      pageSize: 20,
+    })
+    expect(result.current).toMatchObject({ hasMore: true, failed: false })
+    rerender({
+      source: { data: null, loading: false, error: 'denied' },
+      size: 0,
+      count: 40,
+      pageSize: 20,
+    })
+    expect(result.current).toMatchObject({ hasMore: true, failed: true })
   })
 })

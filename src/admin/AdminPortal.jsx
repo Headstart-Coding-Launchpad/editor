@@ -5,6 +5,7 @@ import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import LoadingScreen from '../app/components/LoadingScreen'
 import AppVersionFooter from './AppVersionFooter'
+import { resetAdminSnapshots, setAdminSnapshotsUser } from './adminSnapshots'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
 const BadgesPanel = lazy(() => import('./BadgesPanel'))
@@ -32,6 +33,9 @@ const TABS = [
 
 export default function AdminPortal() {
   const { user } = useAuth()
+  // The shared Admin listeners (adminSnapshots.js) belong to this user: a different user drops
+  // the last one's cache. Done while rendering, before any panel subscribes.
+  setAdminSnapshotsUser(user?.uid)
   const { tab, subtab } = useParams()
   const navigate = useNavigate()
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'lessons'
@@ -43,6 +47,7 @@ export default function AdminPortal() {
   async function handleLogout() {
     try {
       await signOut(auth)
+      resetAdminSnapshots()
     } catch (err) {
       console.error('Sign out failed:', err)
     }
