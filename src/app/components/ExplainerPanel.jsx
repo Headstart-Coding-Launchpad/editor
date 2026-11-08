@@ -12,7 +12,8 @@ export default function ExplainerPanel({
   collapsible = true,
   fill = false,
   // With `fill`: take all the height the parent gives (a white card to the bottom), rather than
-  // sizing to the text. The text still scrolls inside it when it is longer (StudentModal).
+  // sizing to the text. In StudentModal the card's wrapper never shrinks below the text, so
+  // with longer text the card grows and the column around it scrolls.
   stretch = false,
   markdownTextScale = 1,
   topicType = null,

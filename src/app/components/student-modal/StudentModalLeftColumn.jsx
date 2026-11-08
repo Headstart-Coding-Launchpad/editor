@@ -42,8 +42,9 @@ export default function StudentModalLeftColumn({
           title={task?.title ?? 'Instructions'}
           content={explainer}
           collapsible={false}
-          // Fills the column and scrolls inside itself only when the text is longer: never
-          // clipped behind "show more" over empty space (sketch OK'd 8 Nov 2026).
+          // Grows to fill the column's spare height; with longer text the card keeps its
+          // full height and the column scrolls. Never clipped behind "show more" over empty
+          // space (sketch OK'd 8 Nov 2026).
           fill
           stretch
           topicType={lessonType}
