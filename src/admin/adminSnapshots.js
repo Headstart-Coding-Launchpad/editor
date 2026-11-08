@@ -22,6 +22,8 @@ export const REPORT_PAGE_SIZE = 20
 
 const IDLE = Object.freeze({ data: null, loading: true, error: null })
 // A source a panel does not need (key null): nothing to wait for.
+// Signed out: no listener (it would be refused and cache a permission error); wait for a user.
+const SIGNED_OUT = Object.freeze({ data: null, loading: false, error: null })
 const DISABLED = Object.freeze({ data: null, loading: false, error: null })
 const sources = new Map()
 // The uid the cached sources belong to; undefined until the auth watch first reports.
@@ -82,7 +84,14 @@ function emit(source, state) {
 function listen(source) {
   source.unsubscribe = onSnapshot(
     source.makeQuery(),
-    (snap) => emit(source, { data: source.mapSnapshot(snap), loading: false, error: null }),
+    (snap) => {
+      try {
+        emit(source, { data: source.mapSnapshot(snap), loading: false, error: null })
+      } catch (err) {
+        // One malformed doc must not leave every tab loading forever.
+        emit(source, { data: source.state.data, loading: false, error: err?.message ?? 'Error' })
+      }
+    },
     (err) =>
       emit(source, { data: source.state.data, loading: false, error: err?.message ?? 'Error' })
   )
@@ -104,14 +113,22 @@ export function retryAdminSnapshot(key) {
 function subscribe(key, family, makeQuery, mapSnapshot, onChange) {
   let source = sources.get(key)
   if (!source) {
-    source = { family, state: IDLE, subscribers: new Set(), timer: null, unsubscribe: null }
+    source = {
+      family,
+      state: ownerUid === null ? SIGNED_OUT : IDLE,
+      subscribers: new Set(),
+      timer: null,
+      unsubscribe: null,
+    }
     source.makeQuery = makeQuery
     source.mapSnapshot = mapSnapshot
     sources.set(key, source)
   }
   clearTimeout(source.timer)
   source.subscribers.add(onChange)
-  if (source.state.error) restart(source)
+  if (ownerUid === null) {
+    // signed out: stay idle until changeOwner starts it for the next user
+  } else if (source.state.error) restart(source)
   else if (!source.unsubscribe) listen(source)
   // Load more moves a panel to a bigger page of the same family (reports:20 -> reports:40):
   // the smaller page nobody uses any more stops now rather than lingering.

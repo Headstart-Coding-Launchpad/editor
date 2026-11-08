@@ -173,6 +173,25 @@ describe('useAdminSnapshot (one shared listener per Admin source)', () => {
     expect(screen.getByText('a: mine')).toBeInTheDocument()
   })
 
+  it('opens no listener while signed out, stays idle, and starts when a user signs in', () => {
+    watchAdminSnapshotsAuth()
+    act(() => signIn(null))
+    render(<Names />)
+    expect(onSnapshot).not.toHaveBeenCalled()
+    expect(screen.getByText('a: off')).toBeTruthy()
+    act(() => signIn('teacher-1'))
+    expect(onSnapshot).toHaveBeenCalledTimes(1)
+    act(() => fire.next({ docs: [{ id: 'x' }] }))
+    expect(screen.getByText('a: x')).toBeTruthy()
+  })
+
+  it('shows an error (not loading forever) when mapping a snapshot throws', () => {
+    render(<Names sourceKey="bad" />)
+    act(() => fires.bad.next({ docs: null }))
+    expect(screen.getByText(/a: error/)).toBeTruthy()
+    expect(screen.getByText('retry a')).toBeTruthy()
+  })
+
   it('stops the smaller page at once when a panel moves to a bigger one (Load more)', () => {
     const view = render(<Names sourceKey="reports:20" family="reports" />)
     view.rerender(<Names sourceKey="reports:40" family="reports" />)
