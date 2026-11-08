@@ -19,7 +19,10 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 vi.mock('../../../auth/useAuth', () => ({
   useAuth: () => ({ user: { uid: 't1' }, role: 'teacher' }),
 }))
-vi.mock('../../../shared/topicLibrary', () => ({ useTopicLibrary: () => ({ topics: [] }) }))
+vi.mock('../../../shared/topicLibrary', async (importOriginal) => ({
+  ...(await importOriginal()),
+  useTopicLibrary: () => ({ topics: [] }),
+}))
 vi.mock('../../hooks/useClassRoster', () => ({
   useClassRoster: () => ({ roster: [], loading: false, error: null }),
   useClassList: () => [],
@@ -225,6 +228,14 @@ describe('TeacherView Answer panel', () => {
     await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('starter'))
     act(() => fireEvent.click(screen.getByRole('button', { name: 'Answer' })))
     await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('stage_1'))
+  })
+
+  it('opens the sandbox on the sandbox work, not the answer tab', async () => {
+    await renderTeacherView(answerLesson())
+    await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('stage_1'))
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Sandbox' })))
+    await waitFor(() => expect(captured.editor.isInSandbox).toBe(true))
+    await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('starter'))
   })
 
   it('gives a quiz an Answer / Question only toggle and the class’s answers', async () => {

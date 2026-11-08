@@ -5,7 +5,7 @@ import TeacherEditorPanel from '../TeacherEditorPanel'
 import keyboard from '../../../../activities/keyboard/definition.js'
 
 vi.mock('../../../../shared/CodeEditor', () => ({
-  CodeEditor: () => <div data-testid="code-editor" />,
+  CodeEditor: ({ value }) => <div data-testid="code-editor">{value}</div>,
 }))
 
 const CODE_ARRANGE_TASK = {
@@ -210,5 +210,34 @@ describe('TeacherEditorPanel — the Answer panel', () => {
       />
     )
     expect(screen.getByTestId('teacher-expected-output')).toHaveTextContent('Hello Headstart')
+  })
+
+  it('shows the sandbox work, not the model answer, in the sandbox', () => {
+    const task = {
+      id: 3,
+      title: 'Print a greeting',
+      codeStages: [
+        { role: 'starter', code: 'print("Hello")' },
+        { role: 'complete', code: 'print("Hello Headstart")' },
+      ],
+      check: { type: 'output_equals', value: 'Hello Headstart' },
+    }
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: { type: 'python', tasks: [task] },
+          task,
+          displayTaskId: 3,
+          isInSandbox: true,
+          taskCodeStages: task.codeStages,
+          teacherCodeTab: 'stage_1',
+          activeTeacherStage: null,
+          answerTab: 'stage_1',
+          liveState: 'print("my sandbox try")',
+        })}
+      />
+    )
+    expect(screen.getByTestId('code-editor')).toHaveTextContent('print("my sandbox try")')
+    expect(screen.queryByTestId('teacher-expected-output')).not.toBeInTheDocument()
   })
 })

@@ -506,7 +506,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
 
   // The Answer panel shows the answer first: a code task opens on its model answer (the
   // Complete tab or complete stage), a quiz or activity on its answer, whenever the displayed
-  // task changes.
+  // task changes. The sandbox has no answer: entering it goes back to the starter tab (the
+  // tutor's own sandbox work).
   const displayAnswerTab = (() => {
     const shown = flattenTasks(lesson?.tasks ?? []).find(
       (t) => t.id === (previewTaskId ?? currentTaskId)
@@ -514,10 +515,11 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     if (!shown) return null
     return answerTabFor(getModuleDefinition(getEffectiveLessonForTask(lesson, shown)?.type), shown)
   })()
+  const inSandboxForTab = session?.state === 'sandbox' || sandboxStaging
   useEffect(() => {
-    setTeacherCodeTab(displayAnswerTab ?? 'starter')
+    setTeacherCodeTab(inSandboxForTab ? 'starter' : (displayAnswerTab ?? 'starter'))
     setAnswerShown(true)
-  }, [currentTaskId, previewTaskId, displayAnswerTab])
+  }, [currentTaskId, previewTaskId, displayAnswerTab, inSandboxForTab])
 
   // Fall back off the Live tab if Presentation View's broadcast for the displayed task ends
   // (window closed, task changed there, etc.) — the tab itself disappears once this happens,

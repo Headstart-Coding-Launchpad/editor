@@ -151,7 +151,9 @@ export default function TeacherEditorPanel({
     !!teacherLiveReference?.active &&
     teacherLiveReference?.taskId === task?.id
   const isLiveTab = !isInSandbox && !liveDemo && teacherCodeTab === 'live'
-  const shownTab = liveDemo ? 'starter' : teacherCodeTab
+  // The sandbox and a live demo always show the tutor's own work (liveState): there is no tab
+  // row there, and an answer tab would show the model answer (or nothing) instead.
+  const shownTab = liveDemo || isInSandbox ? 'starter' : teacherCodeTab
   const displayState = isLiveTab
     ? (teacherLiveReferenceDisplayState(teacherLiveReference, mod.type) ??
       mod.getDisplayState(task, activeTeacherStage, liveState, 'starter'))
