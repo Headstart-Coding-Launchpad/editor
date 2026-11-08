@@ -135,7 +135,7 @@ describe('StudentModal on an activity task', () => {
     const four = screen.getByRole('switch', { name: 'Bits 4 column' })
     expect(four).toHaveAttribute('aria-checked', 'true')
     expect(four).toBeDisabled()
-    const more = screen.queryByRole('button', { name: /^More/ })
+    const more = screen.queryByRole('button', { name: /^Tools/ })
     if (more) fireEvent.click(more)
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '▶ Run on student' })).not.toBeInTheDocument()
@@ -154,7 +154,7 @@ describe('StudentModal on an activity task', () => {
   it('lets the teacher edit the activity and pushes the serialised state', () => {
     const onTeacherAnswerEdit = vi.fn()
     render(<StudentModal {...modalProps({ onTeacherAnswerEdit })} />)
-    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Tools/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
     // Question 1 is already right, so the tutor's view is on question 2: make 2. (The tutor-only
     // picker can open any question; students have no in-task navigation.)
@@ -179,7 +179,7 @@ describe('StudentModal on an activity task', () => {
   it('pushes a partial edit unmarked', () => {
     const onTeacherAnswerEdit = vi.fn()
     render(<StudentModal {...modalProps({ onTeacherAnswerEdit })} />)
-    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Tools/ }))
     fireEvent.click(screen.getByRole('button', { name: '✏️ Edit answers' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 8 column' }))
     expect(onTeacherAnswerEdit).toHaveBeenLastCalledWith('student-1', {
@@ -194,7 +194,7 @@ describe('StudentModal on an activity task', () => {
       { value: 'starter', label: 'Start again' },
       { value: 'complete', label: 'Complete (show answers)' },
     ])
-    fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Tools/ }))
     expect(screen.getByText('Set stage')).toBeInTheDocument()
   })
 })
@@ -214,7 +214,7 @@ describe('Go Live restriction', () => {
       ],
     }
     render(<StudentModal {...modalProps({ lesson })} />)
-    const more = screen.queryByRole('button', { name: /^More/ })
+    const more = screen.queryByRole('button', { name: /^Tools/ })
     if (more) fireEvent.click(more)
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
   })
@@ -227,7 +227,7 @@ describe('Go Live restriction', () => {
       />
     )
     const header = screen.getByRole('dialog')
-    fireEvent.click(within(header).getByRole('button', { name: /^More/ }))
+    fireEvent.click(within(header).getByRole('button', { name: /^Tools/ }))
     fireEvent.click(
       within(header).getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )

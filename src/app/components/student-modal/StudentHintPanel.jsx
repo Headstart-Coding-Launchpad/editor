@@ -7,9 +7,14 @@ import { describeHintOffer, readHintOffer, readStudentHint } from '../../student
  * the StudentModal workspace: the same Markdown the student sees, how many times in a row
  * they have failed, and any "Want a hint?" reference offered but not opened. Unlike the
  * student's popup it does not auto-dismiss; it stays until they pass or the task changes
- * (src/app/studentHints.js).
+ * (src/app/studentHints.js). `tag` ("student is seeing this") marks it in the modal's left column.
  */
-export default function StudentHintPanel({ student, session, isSessionSandbox = false }) {
+export default function StudentHintPanel({
+  student,
+  session,
+  isSessionSandbox = false,
+  tag = null,
+}) {
   if (isSessionSandbox) return null
   const hint = readStudentHint(student, session?.currentTaskId)
   const offer = readHintOffer(student, session?.currentTaskId)
@@ -17,7 +22,12 @@ export default function StudentHintPanel({ student, session, isSessionSandbox = 
   const name = student?.displayName || 'This student'
   const isOverride = hint?.source === 'override'
   return (
-    <div style={s.panel} role="status" data-testid="student-hint-panel">
+    <div
+      style={tag ? { ...s.panel, ...s.panelTagged } : s.panel}
+      role="status"
+      data-testid="student-hint-panel"
+    >
+      {tag && <span style={s.cornerTag}>{tag}</span>}
       <span style={s.icon} aria-hidden="true">
         💬
       </span>
@@ -58,6 +68,19 @@ const s = {
     color: '#92400e',
     fontFamily: 'var(--font-body)',
     fontSize: '0.88rem',
+  },
+  // In the modal's left column: full width, room above for the corner tag.
+  panelTagged: { position: 'relative', margin: '8px 0 0', maxHeight: 'none', overflowY: 'visible' },
+  cornerTag: {
+    position: 'absolute',
+    right: 8,
+    top: -10,
+    background: 'var(--colour-primary)',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    borderRadius: 999,
+    padding: '2px 8px',
   },
   icon: {
     flexShrink: 0,
