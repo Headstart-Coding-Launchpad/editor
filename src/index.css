@@ -1017,10 +1017,19 @@ select {
   flex-wrap: nowrap;
 }
 
-.teacher-top-row__present.btn-primary {
+.teacher-top-row__present {
+  border: 1px solid #fff;
+  border-radius: 8px;
   background: #fff;
   color: var(--colour-primary-dark);
-  border-color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.teacher-top-row__present:hover {
+  background: #f3efff;
 }
 
 .teacher-top-row__group {

@@ -52,6 +52,29 @@ describe('answerTabFor', () => {
     )
   })
 
+  it('uses the Complete tab for a legacy task with complete work and no complete stage', () => {
+    const definition = {
+      capabilities: { unifiedStages: true },
+      lifecycle: { teacherCompleteTab: () => false },
+      getDisplayState: (task, stage, live, tab) =>
+        tab === 'complete' ? { files: task.completeFiles ?? [], entryFile: 'index.html' } : live,
+    }
+    expect(
+      answerTabFor(definition, {
+        codeStages: [{ role: 'starter', files: [] }],
+        completeFiles: [{ name: 'index.html', content: '<h1>Hi</h1>' }],
+      })
+    ).toBe('complete')
+    expect(answerTabFor(definition, { codeStages: [{ role: 'starter', files: [] }] })).toBeNull()
+    // A module without unified stages answers through teacherCompleteTab only.
+    expect(
+      answerTabFor(
+        { ...definition, capabilities: {} },
+        { completeFiles: [{ name: 'index.html', content: 'x' }] }
+      )
+    ).toBeNull()
+  })
+
   it('has no answer tab without a complete stage', () => {
     expect(answerTabFor(null, { codeStages: [{ role: 'starter', code: '' }] })).toBeNull()
   })

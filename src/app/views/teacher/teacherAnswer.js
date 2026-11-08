@@ -39,7 +39,21 @@ export function answerTabFor(definition, task) {
   if (definition?.lifecycle?.teacherCompleteTab?.(task)) return 'complete'
   const stages = Array.isArray(task.codeStages) ? task.codeStages : []
   const index = stages.findIndex((stage) => getStageRole(stage) === 'complete')
-  return index >= 0 ? `stage_${index}` : null
+  if (index >= 0) return `stage_${index}`
+  // An older task on a unified-stages module (Python, HTML, Turtle) keeps its model answer in a
+  // legacy complete field (completeCode, completeFiles): the 'complete' display state shows it.
+  // Other modules say so through teacherCompleteTab above (their 'complete' state falls back to
+  // the starter).
+  if (!definition?.capabilities?.unifiedStages) return null
+  return hasWork(definition.getDisplayState?.(task, null, null, 'complete')) ? 'complete' : null
+}
+
+function hasWork(state) {
+  if (state == null) return false
+  if (typeof state === 'string') return state.trim() !== ''
+  if (Array.isArray(state)) return state.length > 0
+  if (Array.isArray(state.files)) return state.files.length > 0
+  return typeof state === 'object' && Object.keys(state).length > 0
 }
 
 /** The tabs the Answer / Starter toggle does not cover (support stages); empty = no tab row. */

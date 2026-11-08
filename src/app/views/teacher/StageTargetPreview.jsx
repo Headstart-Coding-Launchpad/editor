@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react'
 import StagePane from '../../../shared/stage/StagePane.jsx'
 import { getCachedStageTarget, loadStageTarget } from '../../../modules/python/stageTarget.js'
 
+// ": NameError: …" (the first line of a Python error), or nothing.
+function firstLine(error) {
+  const text = error == null ? '' : String(error).trim()
+  return text ? `: ${text.split(/\r?\n/)[0]}` : ''
+}
+
 /**
  * The picture a right answer draws, for the teacher view's Answer panel on a Python Stage task.
  * `code` is the task's stageTarget (or the model answer when it draws on the Stage). It is drawn
@@ -36,7 +42,14 @@ export default function StageTargetPreview({ code }) {
     <div style={s.wrap} data-testid="teacher-stage-target">
       <span style={s.label}>Target picture (what a right answer draws)</span>
       {state === 'ready' && Array.isArray(result?.commands) ? (
-        <StagePane commands={result.commands} compact title="Target picture" style={s.stage} />
+        <>
+          <StagePane commands={result.commands} compact title="Target picture" style={s.stage} />
+          {result.status === 'error' && (
+            <span style={s.error} data-testid="teacher-stage-target-error">
+              The target code stopped early{firstLine(result.error)}. Check it in the Builder.
+            </span>
+          )}
+        </>
       ) : (
         <div style={s.placeholder}>
           {state === 'drawing'
@@ -57,6 +70,7 @@ const s = {
     color: '#166534',
   },
   stage: { width: '100%', aspectRatio: '1 / 1', maxHeight: 260 },
+  error: { fontFamily: 'var(--font-body)', fontSize: '0.75rem', color: '#b91c1c' },
   placeholder: {
     display: 'flex',
     alignItems: 'center',

@@ -203,7 +203,7 @@ export default function TeacherSessionControls({
     <div className="teacher-session-controls" data-testid="teacher-top-row">
       <button
         type="button"
-        className="btn-primary teacher-session-controls__action teacher-top-row__present"
+        className="teacher-session-controls__action teacher-top-row__present"
         onClick={onOpenPresentationWindow}
         aria-label="Open the presentation window"
         title="Open the presentation window (or bring it to the front)"
