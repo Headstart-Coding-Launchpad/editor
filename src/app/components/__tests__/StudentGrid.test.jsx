@@ -271,13 +271,14 @@ describe('StudentGrid', () => {
       expect(screen.queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
     })
 
-    it('calls onRequestFullscreenAll and shows confirmation when clicked', async () => {
+    it('calls onRequestFullscreenAll from the ⋯ menu and shows confirmation', async () => {
       const user = userEvent.setup()
       const onRequestFullscreenAll = vi.fn()
       render(<StudentGrid {...mkProps({ onRequestFullscreenAll })} />)
+      await user.click(screen.getByRole('button', { name: 'More class actions' }))
       await user.click(screen.getByText('⛶ Fullscreen All'))
       expect(onRequestFullscreenAll).toHaveBeenCalledTimes(1)
-      expect(screen.getByText('✓ Requested')).toBeInTheDocument()
+      expect(screen.getByText('✓ Fullscreen requested')).toBeInTheDocument()
     })
   })
 
@@ -310,7 +311,7 @@ describe('StudentGrid', () => {
   })
 
   describe('header', () => {
-    it('keeps the title line to Students (n), ⋯ and the collapse arrow; counts and Fullscreen All go in the row below', () => {
+    it('keeps the title line to Students (n), ⋯ and the collapse arrow; counts go in the row below', () => {
       render(
         <StudentGrid
           {...mkProps({
@@ -334,7 +335,8 @@ describe('StudentGrid', () => {
       expect(within(header).getByTitle('Collapse Students')).toBeInTheDocument()
       const statusRow = screen.getByTestId('student-grid-status-row')
       expect(statusRow.style.flexWrap).toBe('wrap')
-      expect(within(statusRow).getByText('⛶ Fullscreen All')).toBeInTheDocument()
+      // Fullscreen All is a class action in the ⋯ menu.
+      expect(within(statusRow).queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
       expect(
         within(statusRow).getByTitle('Students who passed the completion check')
       ).toBeInTheDocument()
@@ -393,7 +395,8 @@ describe('StudentGrid', () => {
         />
       )
       const banner = screen.getByTestId('share-request-banner')
-      expect(banner).toHaveTextContent('Alice wants to share their work with the class')
+      expect(banner).toHaveTextContent('Alice wants to share')
+      expect(banner).toHaveAttribute('title', 'Alice wants to share their work with the class')
       await user.click(within(banner).getByRole('button', { name: 'Not now' }))
       expect(onDeclineShare).toHaveBeenCalledWith('s1')
       await user.click(within(banner).getByRole('button', { name: 'Review' }))

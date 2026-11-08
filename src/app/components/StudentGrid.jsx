@@ -187,13 +187,16 @@ export default function StudentGrid({
   const unmatchedIds = new Set(rosterStatus?.unmatchedIds ?? [])
   // Held on a cross-lesson carry task until their earlier-lesson work is found.
   const carryWaitingIds = new Set(rosterStatus?.carryWaitingIds ?? [])
+  // Fullscreen All lives in the ⋯ menu with the other class actions (compact list, sketch v2).
+  const showFullscreenItem = !!onRequestFullscreenAll && students.length > 0
   const hasClassMenu =
     showNudgeItem ||
     showSuggestionsItem ||
     showSelectItem ||
     showItMenuItem ||
     showReferenceItem ||
-    showRosterItem
+    showRosterItem ||
+    showFullscreenItem
   const classMenuAttention =
     (showNudgeItem && awayCount > 0) || (showSuggestionsItem && suggestionCount > 0)
 
@@ -546,6 +549,19 @@ export default function StudentGrid({
               👥 Match students
             </button>
           )}
+          {showFullscreenItem && (
+            <button
+              type="button"
+              style={s.menuItem}
+              onClick={() => {
+                close()
+                handleRequestFullscreenAll()
+              }}
+              title="Ask all students to go fullscreen (each student must click a prompt to accept)"
+            >
+              ⛶ Fullscreen All
+            </button>
+          )}
           {showReferenceItem && (
             <button
               type="button"
@@ -603,7 +619,7 @@ export default function StudentGrid({
     summaryParts.length > 0 ||
     !!sameOutput ||
     nudgedAway ||
-    (!!onRequestFullscreenAll && students.length > 0)
+    fullscreenRequested
 
   const visibleRows = finishedOnly
     ? ordered.filter((st) => rowStates[st.anonymousId]?.status === 'finished')
@@ -682,8 +698,8 @@ export default function StudentGrid({
       {/* Two rows, so nothing prints over the title at any panel width (HSC Audit, Visual
           Review #3). The title line holds the title and count, a ⋯ menu for the occasional
           class actions (its dot means someone is Away or a badge suggestion is waiting) and
-          the collapse arrow. The status row under it holds the count chips and Fullscreen
-          All, and wraps rather than overlapping. */}
+          the collapse arrow. The status row under it holds the joining / roster chips, the
+          plain count line and the same-output line, and wraps rather than overlapping. */}
       <div style={s.header} data-testid="student-grid-header">
         <span style={s.titleGroup}>
           <span style={s.label}>
@@ -748,15 +764,10 @@ export default function StudentGrid({
               ✓ Nudged
             </span>
           )}
-          <span style={s.statusSpacer} aria-hidden="true" />
-          {onRequestFullscreenAll && students.length > 0 && (
-            <button
-              style={s.topicsBtn}
-              onClick={handleRequestFullscreenAll}
-              title="Ask all students to go fullscreen (each student must click a prompt to accept)"
-            >
-              {fullscreenRequested ? '✓ Requested' : '⛶ Fullscreen All'}
-            </button>
+          {fullscreenRequested && (
+            <span style={s.headerNote} role="status">
+              ✓ Fullscreen requested
+            </span>
           )}
           {sameOutput && (
             <span
@@ -912,6 +923,7 @@ export default function StudentGrid({
             {helpRows.map(renderRow)}
             {onReadPendingShare && (
               <ShareRequestsBanner
+                compact
                 students={students}
                 onReview={handleExpand}
                 onDecline={onDeclineShare}
@@ -1104,7 +1116,7 @@ const s = {
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
-    padding: '0 10px 0 14px',
+    padding: '0 8px 0 12px',
     height: 44,
     display: 'flex',
     justifyContent: 'space-between',
@@ -1116,7 +1128,7 @@ const s = {
   },
   headerRight: {
     display: 'flex',
-    gap: 6,
+    gap: 4,
     alignItems: 'center',
     flexWrap: 'nowrap',
     justifyContent: 'flex-end',
@@ -1134,7 +1146,6 @@ const s = {
     color: '#fff',
     flexShrink: 0,
   },
-  statusSpacer: { flex: 1, minWidth: 0 },
   label: {
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
@@ -1205,14 +1216,14 @@ const s = {
     flexDirection: 'column',
     gap: 2,
   },
-  titleGroup: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
+  titleGroup: { display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 },
   helpChip: {
     background: '#f59e0b',
     color: '#fff',
     borderRadius: 999,
-    padding: '2px 8px',
+    padding: '2px 6px',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.72rem',
+    fontSize: '0.68rem',
     fontWeight: 700,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -1291,18 +1302,6 @@ const s = {
     padding: '0 4px',
     lineHeight: 1,
     borderRadius: 3,
-  },
-  topicsBtn: {
-    background: 'rgba(255,255,255,0.18)',
-    border: 'none',
-    color: '#fff',
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    padding: '4px 8px',
-    lineHeight: 1,
-    borderRadius: 4,
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
   },
   selectBar: {
     flexShrink: 0,

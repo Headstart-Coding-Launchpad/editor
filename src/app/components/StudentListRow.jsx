@@ -47,10 +47,14 @@ function codePaneHidden(student, { isCodeTask }) {
   return !panes.some((pane) => pane === 'code' || pane === 'blocks' || String(pane).includes('.'))
 }
 
+// True for 4 s after a new activity report lands. The value already there when the list opens
+// is not a fresh report, so it never lights every row at once.
 function useTyping(lastActivityAt) {
   const [typing, setTyping] = useState(false)
+  const firstRef = useRef(lastActivityAt)
   useEffect(() => {
-    if (!lastActivityAt) return undefined
+    if (!lastActivityAt || lastActivityAt === firstRef.current) return undefined
+    firstRef.current = null
     setTyping(true)
     const t = setTimeout(() => setTyping(false), 4000)
     return () => clearTimeout(t)
@@ -113,8 +117,11 @@ function rowStatusWords(state, { now, since, lastRunAt, activityAt, typing }) {
   }
 }
 
-function RowMenu({ name, groups }) {
+function RowMenu({ name, groups, onOpenChange }) {
   const [open, setOpen] = useState(false)
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
   const [pos, setPos] = useState(null)
   const buttonRef = useRef(null)
   const panelRef = useRef(null)
@@ -140,16 +147,22 @@ function RowMenu({ name, groups }) {
     }
   }, [open])
 
-  // Fixed to the viewport, so the list's scroll box never clips it; flipped up near the bottom.
+  // Fixed to the viewport, so the list's scroll box never clips it. It opens to the left of the
+  // student panel, level with the row, so the list itself stays in view; kept on screen.
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) return
     const button = buttonRef.current.getBoundingClientRect()
+    const row = buttonRef.current.closest('[data-testid="student-row"]')?.getBoundingClientRect()
     const height = panelRef.current?.offsetHeight ?? 0
     const width = panelRef.current?.offsetWidth ?? 0
     const viewH = window.innerHeight || 768
-    let top = button.bottom + 4
-    if (height && top + height > viewH - 8) top = Math.max(8, button.top - height - 4)
-    setPos({ top, left: Math.max(8, button.right - width) })
+    const left = (row?.left ?? button.left) - width - 8
+    const top = Math.min(Math.max(8, button.top - 24), Math.max(8, viewH - height - 8))
+    setPos(
+      left >= 8
+        ? { top, left }
+        : { top: Math.min(button.bottom + 4, Math.max(8, viewH - height - 8)), left: 8 }
+    )
   }, [open])
 
   return (
@@ -262,6 +275,7 @@ export default function StudentListRow({
   const [nameValue, setNameValue] = useState(name)
   const [thumbsSent, setThumbsSent] = useState(false)
   const [nudged, setNudged] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const rowRef = useRef(null)
   const typing = useTyping(student.lastActivityAt)
 
@@ -480,6 +494,9 @@ export default function StudentListRow({
               : shownHint
                 ? '💬 Hint shown'
                 : '💬 Hint offered',
+          title: shownHint
+            ? `They see: “${hintPlainText(shownHint.text)}”`
+            : 'Hint offered, not opened yet',
           style: s.chipHint,
         }
       : null,
@@ -610,8 +627,9 @@ export default function StudentListRow({
           ))}
           {!showHover && (
             <>
+              {/* A help row's status and I'm on it leave no room for a useful stub. */}
               <span style={s.stub} title={output || undefined}>
-                {stub}
+                {state.status === 'help' ? '' : stub}
               </span>
               <span
                 style={{ ...s.status, color: STATUS_COLOUR[state.status] }}
@@ -644,14 +662,14 @@ export default function StudentListRow({
             I&apos;m on it
           </button>
         )}
-        <RowMenu name={name} groups={menuGroups} />
+        <RowMenu name={name} groups={menuGroups} onOpenChange={setMenuOpen} />
       </div>
       {note && !open && (
         <div style={s.note} data-testid="row-note" title={note.text}>
           <span aria-hidden="true">{note.icon}</span> {note.text}
         </div>
       )}
-      {showHover && output && !open && (
+      {showHover && output && !open && !menuOpen && (
         <RowTooltip anchor={rowRef} text={output} error={student.lastRunStatus === 'error'} />
       )}
       {open && (
@@ -668,7 +686,7 @@ export default function StudentListRow({
               {output}
             </div>
           )}
-          {note && (
+          {note && note.icon !== '💬' && (
             <div style={s.openNote}>
               <span aria-hidden="true">{note.icon}</span> {note.text}
             </div>
@@ -676,7 +694,7 @@ export default function StudentListRow({
           {chips.length > 0 && (
             <div style={s.chips}>
               {chips.map((chip) => (
-                <span key={chip.text} style={{ ...s.chip, ...chip.style }}>
+                <span key={chip.text} style={{ ...s.chip, ...chip.style }} title={chip.title}>
                   {chip.text}
                 </span>
               ))}
@@ -732,12 +750,20 @@ export default function StudentListRow({
 // The hover preview of the last output, fixed under the row so the list never clips it.
 function RowTooltip({ anchor, text, error }) {
   const [pos, setPos] = useState(null)
+  const tipRef = useRef(null)
   useLayoutEffect(() => {
     const rect = anchor.current?.getBoundingClientRect()
-    if (rect) setPos({ top: rect.bottom + 2, left: rect.left + 12, width: rect.width - 24 })
+    if (!rect) return
+    // Above the row when there is no room below it.
+    const height = tipRef.current?.offsetHeight ?? 0
+    const below = rect.bottom + 2
+    const top =
+      height && below + height > (window.innerHeight || 768) - 8 ? rect.top - height - 2 : below
+    setPos({ top, left: rect.left + 12, width: rect.width - 24 })
   }, [anchor])
   return (
     <div
+      ref={tipRef}
       role="tooltip"
       data-testid="row-tooltip"
       style={{ ...s.tooltip, ...(pos ?? { visibility: 'hidden' }) }}

@@ -312,7 +312,6 @@ describe('compact student list: nothing a tutor could do is lost', () => {
       onNudgeAway: vi.fn(),
     })
     render(<StudentGrid {...props} />)
-    expect(screen.getByText('⛶ Fullscreen All')).toBeInTheDocument()
     await user.click(
       within(screen.getByTestId('share-request-banner')).getByRole('button', { name: 'Review' })
     )
@@ -320,6 +319,7 @@ describe('compact student list: nothing a tutor could do is lost', () => {
     await user.click(screen.getByRole('button', { name: 'Close modal' }))
     await user.click(screen.getByRole('button', { name: 'More class actions' }))
     expect(screen.getByText(/Nudge Away/)).toBeInTheDocument()
+    expect(screen.getByText('⛶ Fullscreen All')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '☑ Select' }))
     await user.click(screen.getByRole('checkbox', { name: 'Select Ben' }))
     expect(screen.getByText('1 selected')).toBeInTheDocument()
