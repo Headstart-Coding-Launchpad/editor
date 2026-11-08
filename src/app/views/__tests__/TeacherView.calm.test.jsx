@@ -141,6 +141,27 @@ describe('TeacherView countdown ended', () => {
     expect(sessionCommands.setTaskId).toHaveBeenCalledWith(4)
   })
 
+  it('keeps the countdown when Next task stops at a must-see prompt', async () => {
+    mockSession = { ...mockSession, skipOptionalTasks: true }
+    const l = lesson()
+    l.tasks[2] = { ...l.tasks[2], mustSee: true }
+    await renderTeacherView(l)
+    await act(async () =>
+      fireEvent.click(await screen.findByRole('button', { name: 'Next task →' }))
+    )
+    expect(screen.getByTestId('must-see-skip-dialog')).toBeInTheDocument()
+    expect(sessionCommands.setTaskId).not.toHaveBeenCalled()
+    expect(sessionCommands.clearClassCountdown).not.toHaveBeenCalled()
+
+    await act(async () => fireEvent.click(screen.getByTestId('must-see-cancel')))
+    expect(sessionCommands.clearClassCountdown).not.toHaveBeenCalled()
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Next task →' })))
+    await act(async () => fireEvent.click(screen.getByTestId('must-see-skip')))
+    expect(sessionCommands.setTaskId).toHaveBeenCalledWith(4)
+    expect(sessionCommands.clearClassCountdown).toHaveBeenCalled()
+  })
+
   it('Clear keeps the class on its task; +1 min adds a minute', async () => {
     await renderTeacherView()
     await act(async () =>

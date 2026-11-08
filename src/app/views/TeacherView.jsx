@@ -539,7 +539,10 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     session?.teacherLiveReference?.taskId,
   ])
 
-  async function handleTaskChange(taskId, { skipMustSeeCheck = false } = {}) {
+  // Moves the class to `taskId`. Returns true when it moved, false when it stopped to ask about
+  // a must-see task; `onMoved` runs once the class has moved (straight away, or after the
+  // tutor answers the must-see prompt with Go to it / Skip anyway).
+  async function handleTaskChange(taskId, { skipMustSeeCheck = false, onMoved = null } = {}) {
     const leavingTaskId = session?.currentTaskId ?? currentTaskId
     if (!skipMustSeeCheck) {
       // Moving the class past a must-see task it hasn't been on: ask first (src/shared/mustSee.js).
@@ -550,8 +553,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
         session?.taskStartTimes
       )
       if (skipped) {
-        setMustSeePrompt({ targetTaskId: taskId, task: skipped })
-        return
+        setMustSeePrompt({ targetTaskId: taskId, task: skipped, onMoved })
+        return false
       }
     }
     const leavingTask = flatTasks.find((t) => t.id === leavingTaskId)
@@ -571,6 +574,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       await setTeacherLive(null)
     }
     await setTaskId(taskId)
+    if (onMoved) await onMoved()
+    return true
   }
 
   // Preview a task locally without moving students
@@ -803,12 +808,12 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   }
 
   // The countdown's "Next task": the whole class moves on (past optional tasks while Skip
-  // optional tasks is on; classNextTaskId below) and the countdown goes. Nothing moves when the
-  // countdown ends.
+  // optional tasks is on; classNextTaskId below) and the countdown goes, only once the class
+  // has actually moved (a must-see prompt answered with Cancel keeps it). Nothing moves when
+  // the countdown ends.
   async function handleCountdownNextTask() {
     if (classNextTaskId == null) return
-    await handleTaskChange(classNextTaskId)
-    await clearClassCountdown()
+    await handleTaskChange(classNextTaskId, { onMoved: () => clearClassCountdown() })
   }
 
   async function handleStartDashboardLive() {
@@ -1511,14 +1516,14 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
           taskTitle={mustSeePrompt.task.title}
           onClose={() => setMustSeePrompt(null)}
           onGoToIt={() => {
-            const target = mustSeePrompt.task.id
+            const { task: mustSeeTask, onMoved } = mustSeePrompt
             setMustSeePrompt(null)
-            handleTaskChange(target)
+            handleTaskChange(mustSeeTask.id, { onMoved })
           }}
           onSkip={() => {
-            const target = mustSeePrompt.targetTaskId
+            const { targetTaskId, onMoved } = mustSeePrompt
             setMustSeePrompt(null)
-            handleTaskChange(target, { skipMustSeeCheck: true })
+            handleTaskChange(targetTaskId, { skipMustSeeCheck: true, onMoved })
           }}
         />
       )}

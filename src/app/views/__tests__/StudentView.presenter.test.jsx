@@ -288,6 +288,19 @@ describe('Presentation window bar', () => {
     expect(hook.clearClassCountdown).toHaveBeenCalled()
   })
 
+  it('keeps the countdown when moving the class fails', async () => {
+    const hook = presenterSession({ classCountdown: endedCountdown() })
+    hook.setTaskId = vi.fn(async () => {
+      throw new Error('offline')
+    })
+    await renderPresenter(hook)
+    await act(async () =>
+      fireEvent.click(await screen.findByRole('button', { name: 'Next task →' }))
+    )
+    expect(hook.setTaskId).toHaveBeenCalledWith(3)
+    expect(hook.clearClassCountdown).not.toHaveBeenCalled()
+  })
+
   it('Clear keeps the class here and +1 min adds a minute', async () => {
     const hook = presenterSession({ classCountdown: endedCountdown() })
     await renderPresenter(hook)

@@ -116,6 +116,11 @@ import LiveInkProvider from '../liveInk/LiveInkProvider'
 import PresentationDrawButton from '../liveInk/PresentationDrawButton'
 import { isShowItOptedOut } from '../../shared/showIt'
 
+// The layout a presentation-window Go Live forces on students. The bar has no Explainer /
+// Both / Code switch, so it is always 'both' (code-only and explainer-only remain available
+// from a dashboard Go Live).
+const PRESENTER_LAYOUT = 'both'
+
 export default function StudentView({
   lessonId: lessonIdProp,
   // The Realtime Database key of the live class (src/shared/sessionKey.js): the lesson id for
@@ -701,11 +706,6 @@ export default function StudentView({
   const [passBannerUp, setPassBannerUp] = useState(false)
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
-  // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
-  // The layout a presentation-window Go Live forces on students. The bar no longer has an
-  // Explainer / Both / Code switch, so it stays 'both' (code-only and explainer-only remain
-  // available from a dashboard Go Live).
-  const [presenterLayout] = useState('both')
   const sentToTopicPushedAt = session?.students?.[identity?.anonymousId]?.sentToTopicPushedAt
 
   useEffect(() => {
@@ -924,8 +924,15 @@ export default function StudentView({
       return
     }
     if (teacherPresentation) {
-      if (!flatTasks.some((t) => t.id === taskId)) return
-      setTaskId(taskId)
+      if (!flatTasks.some((t) => t.id === taskId)) return Promise.resolve(false)
+      // Resolves whether the class's task was written (the countdown's Next task waits on it).
+      const moved = Promise.resolve(setTaskId(taskId)).then(
+        () => true,
+        (err) => {
+          console.warn('Moving the class failed:', err)
+          return false
+        }
+      )
       setCurrentTaskId(taskId)
       setViewingTaskId(null)
       cs.resetForTaskChange()
@@ -940,7 +947,7 @@ export default function StudentView({
         // An activity state belongs to one task; the new task's activity publishes its own.
         answer: null,
       })
-      return
+      return moved
     }
     if (!identity) return
     if (phase === 'solo' && !allowUnrestrictedTaskNavigation) {
@@ -963,7 +970,7 @@ export default function StudentView({
       await setTeacherLive(null)
       return
     }
-    await setTeacherLive(cs.currentTeacherLivePayload({ layout: presenterLayout }))
+    await setTeacherLive(cs.currentTeacherLivePayload({ layout: PRESENTER_LAYOUT }))
   }
 
   // The pop-up's layout is forced on students (teacherLive.layout). Publish changes while the
@@ -972,15 +979,10 @@ export default function StudentView({
     const live = session?.teacherLive
     if (!teacherPresentation || !live?.active) return
     if (live.source !== 'teacher' || live.publisher === 'dashboard') return
-    if (live.layout === presenterLayout) return
-    updateTeacherLive({ layout: presenterLayout })
+    if (live.layout === PRESENTER_LAYOUT) return
+    updateTeacherLive({ layout: PRESENTER_LAYOUT })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    teacherPresentation,
-    presenterLayout,
-    session?.teacherLive?.active,
-    session?.teacherLive?.layout,
-  ])
+  }, [teacherPresentation, session?.teacherLive?.active, session?.teacherLive?.layout])
 
   const taskDisplayMode = previewMode
     ? null
@@ -1517,16 +1519,21 @@ export default function StudentView({
   const presenterNextTaskId = teacherPresentation
     ? nextClassTaskId(flatTasks, currentTaskId, { skipOptional })
     : null
-  const presenterPosition = classTaskPosition(flatTasks, currentTaskId, { skipOptional })
-  const presenterOptionalAhead = skipOptional ? countOptionalAhead(flatTasks, currentTaskId) : 0
-  const presenterPlaceNote = teacherPresentation
-    ? `Task ${presenterPosition.number} of ${presenterPosition.total}${
-        presenterOptionalAhead > 0 ? ` · Next skips ${presenterOptionalAhead} optional` : ''
-      }`
-    : null
+  // "Task 2 of 3 · Next skips 1 optional" in the presenter's Time's up strip (nothing when the
+  // class task is unknown). Only the presentation window works it out.
+  const presenterPlaceNote = (() => {
+    if (!teacherPresentation) return null
+    const position = classTaskPosition(flatTasks, currentTaskId, { skipOptional })
+    if (position.number == null) return null
+    const optionalAhead = skipOptional ? countOptionalAhead(flatTasks, currentTaskId) : 0
+    return `Task ${position.number} of ${position.total}${
+      optionalAhead > 0 ? ` · Next skips ${optionalAhead} optional` : ''
+    }`
+  })()
+  // The countdown goes only once the class has actually moved.
   async function handlePresenterCountdownNext() {
     if (presenterNextTaskId == null) return
-    handleSoloNavigate(presenterNextTaskId)
+    if (!(await handleSoloNavigate(presenterNextTaskId))) return
     await clearClassCountdown?.()
   }
 
@@ -1572,7 +1579,7 @@ export default function StudentView({
       </button>
       {/* The Pointer / Ink / Highlight toolbar opens from here (closed by default). The
           Explainer / Both / Code layout switch is gone from this bar (calm presenter, sketch
-          v2): presenterLayout keeps its 'both' default for Go Live. */}
+          v2): Go Live uses PRESENTER_LAYOUT ('both'). */}
       <PresentationDrawButton
         className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
@@ -2218,7 +2225,7 @@ export default function StudentView({
                 canOfferCompleteSolution={canOfferCompleteSolution}
                 canOfferPersonalSandbox={canOfferPersonalSandbox}
                 explainerShowsComplete={explainerShowsComplete}
-                presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
+                presenterLayout={teacherPresentation ? PRESENTER_LAYOUT : displayLayout}
                 teacherPresentation={teacherPresentation}
                 onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
                 onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
