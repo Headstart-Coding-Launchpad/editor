@@ -134,7 +134,25 @@ export default function SoloPanel() {
     >
       {error && <AdminMessage tone="error">{error}</AdminMessage>}
       {reportsError && (
-        <AdminMessage tone="error">Could not load side-quest reports: {reportsError}</AdminMessage>
+        <AdminMessage tone="error">
+          Could not load side-quest reports: {reportsError}
+          {/* A failed Load more has its own Retry below; anything else retries here. */}
+          {!reportsMore.failed && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={adminUiStyles.actionBtn}
+                disabled={reportsSource.loading}
+                onClick={reportsSource.retry}
+                aria-label="Retry loading reports"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </AdminMessage>
       )}
       {reportsMore.hasMore && (
         <AdminMessage>

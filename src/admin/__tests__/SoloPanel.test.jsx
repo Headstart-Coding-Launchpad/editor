@@ -77,6 +77,17 @@ describe('SoloPanel', () => {
     expect(limit).toHaveBeenLastCalledWith(40)
   })
 
+  it('shows an error with Retry when the first page of reports fails', () => {
+    render(<SoloPanel />)
+    act(() => errorCallbacks.sessionReports(new Error('quota')))
+
+    expect(screen.getByText(/Could not load side-quest reports: quota/)).toBeInTheDocument()
+    const calls = onSnapshot.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading reports' }))
+    expect(onSnapshot.mock.calls.length).toBe(calls + 1)
+    expect(limit).toHaveBeenLastCalledWith(20)
+  })
+
   it('shows an error when the session reports listener fails', async () => {
     render(<SoloPanel />)
 

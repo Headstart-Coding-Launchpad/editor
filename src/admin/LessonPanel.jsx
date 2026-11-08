@@ -1350,7 +1350,25 @@ function LessonAdminPanel({
         </div>
       )}
       {reportsSource.error && (
-        <p style={s.error}>Could not load session reports: {reportsSource.error}</p>
+        <p style={s.error}>
+          Could not load session reports: {reportsSource.error}
+          {/* A failed Load more has its own Retry in the list; anything else retries here. */}
+          {!reportsMore.failed && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.detailBtn}
+                disabled={reportsSource.loading}
+                onClick={reportsSource.retry}
+                aria-label="Retry loading reports"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </p>
       )}
       {feedbackSource.error && (
         <p style={s.error}>Could not load feedback: {feedbackSource.error}</p>

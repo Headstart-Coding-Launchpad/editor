@@ -519,6 +519,21 @@ describe('LessonPanel', () => {
     expect(limit).toHaveBeenLastCalledWith(40)
   })
 
+  it('shows an error with Retry when the first page of lesson reports fails', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+    await openFirstLevel(user)
+    await openLesson(user)
+    act(() => errorCallbacks.sessionReports?.(new Error('quota')))
+
+    expect(screen.getByText(/Could not load session reports: quota/)).toBeInTheDocument()
+    const calls = onSnapshot.mock.calls.length
+    await user.click(screen.getByRole('button', { name: 'Retry loading reports' }))
+    expect(onSnapshot.mock.calls.length).toBe(calls + 1)
+    expect(limit).toHaveBeenLastCalledWith(20)
+  })
+
   it('does not download the lessons on the Classes tab', () => {
     render(<LessonPanel view="classes" />)
 
