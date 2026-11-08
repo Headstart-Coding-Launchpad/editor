@@ -37,6 +37,9 @@ export default function TeacherSessionControls({
   onDismissPoll,
   // The 🤝 Peer help menu (TeacherPeerHelpMenu), shown while the session runs.
   peerHelpMenu = null,
+  // Focus Class and Highlight Class, shown in More while the students panel (whose header
+  // normally holds them) is folded.
+  classMenuItems = null,
   // Turns off the class-wide "📌 Keep showing live code" pin (setTeacherLiveReferenceForClass
   // with false). Pinning is done from the Live tab; turning it off lives here so it is
   // reachable whether or not Presentation View is showing the task.
@@ -161,6 +164,7 @@ export default function TeacherSessionControls({
             }}
           />
           {session && isRunning && peerHelpMenu && <div style={sDD.nested}>{peerHelpMenu}</div>}
+          {session && classMenuItems && <div style={sDD.nested}>{classMenuItems}</div>}
           {showExtraTools && (
             <MoreItem
               label="Edit Lesson"

@@ -1142,20 +1142,17 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             onShow: setAnswerShown,
             otherLabel: 'Question only',
           }
-  // Focus Class and Highlight Class, in a Class menu in the student list's header.
+  // Focus Class and Highlight Class, in a Class menu in the student list's header, and in the
+  // top row's More while that panel is folded (the default below 1100px, e.g. a tablet).
   const showFocusClass =
     !!session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task))
   const showHighlightClass =
     !!session &&
     !!classHighlightTask &&
     (isCodeTask(classHighlightTask) || !!classHighlightActivity)
-  const classControls =
+  const classControlItems =
     showFocusClass || showHighlightClass ? (
-      <DropdownMenu
-        label="Class"
-        buttonClassName="student-grid-class-menu"
-        title="Focus Class and Highlight Class: point every student at a pane or a control"
-      >
+      <>
         {/* Information and activity/quiz tasks have no explainer or workspace panes to focus
             (a sandbox parked on an activity still shows the workspace). */}
         {showFocusClass && (
@@ -1179,8 +1176,17 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             onClear={clearClassControlHighlight}
           />
         )}
-      </DropdownMenu>
+      </>
     ) : null
+  const classControls = classControlItems ? (
+    <DropdownMenu
+      label="Class"
+      buttonClassName="student-grid-class-menu"
+      title="Focus Class and Highlight Class: point every student at a pane or a control"
+    >
+      {classControlItems}
+    </DropdownMenu>
+  ) : null
 
   const editorPanel = (
     <TeacherEditorPanel
@@ -1251,6 +1257,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
               peerHelpMenu={
                 <TeacherPeerHelpMenu session={session} lesson={lesson} peerHelp={peerHelp} />
               }
+              // The students panel's Class menu is out of reach while that panel is folded.
+              classMenuItems={rightCollapsed ? classControlItems : null}
               // The quieter Rate beside Countdown: a popover, not a panel in <main>, so it never
               // resizes the task workspace (see TaskRatingPanel).
               rateControl={

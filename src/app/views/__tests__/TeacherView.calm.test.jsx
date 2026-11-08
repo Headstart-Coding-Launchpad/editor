@@ -294,6 +294,41 @@ describe('TeacherView top row and Class menu', () => {
     expect(screen.getByRole('button', { name: /Highlight Class/ })).toBeInTheDocument()
   })
 
+  it('keeps Focus Class and Highlight Class in More while the students panel is folded', async () => {
+    const width = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 900 })
+    try {
+      await renderTeacherView()
+      expect(captured.grid.collapsed).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'More ▾' }))
+      expect(screen.getByRole('button', { name: /Focus Class/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Highlight Class/ })).toBeInTheDocument()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: width,
+      })
+    }
+  })
+
+  it('leaves them out of More while the students panel is open', async () => {
+    const width = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1366 })
+    try {
+      await renderTeacherView()
+      expect(captured.grid.collapsed).toBe(false)
+      fireEvent.click(screen.getByRole('button', { name: 'More ▾' }))
+      expect(screen.queryByRole('button', { name: /Focus Class/ })).not.toBeInTheDocument()
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: width,
+      })
+    }
+  })
+
   it('Present brings an open presentation window to the front instead of opening another', async () => {
     const popup = { closed: false, focus: vi.fn(), close: vi.fn() }
     const open = vi.spyOn(window, 'open').mockReturnValue(popup)
