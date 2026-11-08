@@ -19,6 +19,7 @@ import { getRunCountWidgets } from '../../../shared/runCounts.js'
 import { taskHistoryMode, typingHistoryForMode } from '../../../shared/typingHistory'
 import TypingHistoryPanel from './TypingHistoryPanel'
 import CodeStageSplit from './CodeStageSplit'
+import StageOutputColumn from './StageOutputColumn'
 import { resolveAssetsPath } from '../../../shared/assetPaths'
 import { readStageResult } from '../../../shared/stage/sync.js'
 import StagePane from '../../../shared/stage/StagePane.jsx'
@@ -392,7 +393,8 @@ export default function StudentWorkspaceBody({
   if (mirror === 'code') {
     const split = (
       <CodeStageSplit
-        stageResult={stageResult}
+        // With an output column the Stage sits above the Output there, not beside the code.
+        stageResult={outputColumn ? null : stageResult}
         fitCode={fitCode}
         editor={
           <CodeEditor
@@ -459,10 +461,20 @@ export default function StudentWorkspaceBody({
             {highlightComposer}
             {split}
           </div>
-          <div style={s.outputColumn} data-testid="student-modal-output-column">
-            {submitMode ? submitNotice : output(true)}
-            {variables}
-          </div>
+          {stageResult ? (
+            // Python Stage task: the Stage above the Output in this one column.
+            <StageOutputColumn
+              style={s.outputColumn}
+              stageResult={stageResult}
+              output={submitMode ? submitNotice : output(true)}
+              after={variables}
+            />
+          ) : (
+            <div style={s.outputColumn} data-testid="student-modal-output-column">
+              {submitMode ? submitNotice : output(true)}
+              {variables}
+            </div>
+          )}
         </>
       )
     return (

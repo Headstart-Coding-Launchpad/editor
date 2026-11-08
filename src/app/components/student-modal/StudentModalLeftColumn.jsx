@@ -37,11 +37,15 @@ export default function StudentModalLeftColumn({
   const explainer = task?.explainer ?? ''
   return (
     <div style={s.column} data-testid="student-modal-left">
-      <div style={s.explainerWrap}>
+      <div style={s.explainerWrap} data-testid="student-modal-instructions">
         <ExplainerPanel
           title={task?.title ?? 'Instructions'}
           content={explainer}
           collapsible={false}
+          // Fills the column and scrolls inside itself only when the text is longer: never
+          // clipped behind "show more" over empty space (sketch OK'd 8 Nov 2026).
+          fill
+          stretch
           topicType={lessonType}
           showLibrary={false}
           titleEndInset={40}
@@ -84,7 +88,13 @@ const s = {
     overflowY: 'auto',
     paddingTop: 2,
   },
-  explainerWrap: { position: 'relative', flexShrink: 0 },
+  explainerWrap: {
+    position: 'relative',
+    flex: '1 1 auto',
+    minHeight: 160,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   collapse: {
     position: 'absolute',
     top: 4,

@@ -11,6 +11,9 @@ export default function ExplainerPanel({
   content,
   collapsible = true,
   fill = false,
+  // With `fill`: take all the height the parent gives (a white card to the bottom), rather than
+  // sizing to the text. The text still scrolls inside it when it is longer (StudentModal).
+  stretch = false,
   markdownTextScale = 1,
   topicType = null,
   showLibrary = true,
@@ -196,6 +199,7 @@ export default function ExplainerPanel({
         ...s.panel,
         ...(expanded ? s.panelExpanded : {}),
         ...(fill ? s.panelFill : {}),
+        ...(fill && stretch ? s.panelStretch : {}),
       }}
       className={showEntrance ? 'card ui-collapsible motion-drop-in' : 'card ui-collapsible'}
     >
@@ -345,6 +349,7 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
   },
+  panelStretch: { flex: '1 1 auto' },
   titleBar: {
     width: '100%',
     background: 'var(--colour-primary)',
