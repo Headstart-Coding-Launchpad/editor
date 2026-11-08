@@ -16,7 +16,6 @@ import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
 import ReviewNotesControl from './ReviewNotesControl'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
-import PanelTabs from './PanelTabs'
 import SupportStagePanel from './SupportStagePanel'
 import TaskHintBox from './TaskHintBox'
 import { CalmAsideSlot, useCalmAside } from './calmAside'
@@ -36,9 +35,7 @@ import {
 import { useElementSize } from '../../shared/useElementSize'
 import { firstViewKey } from '../../shared/motion'
 import { useBadgeSignals } from '../../shared/badgeSignalsContext'
-import { loadLayoutTab, saveLayoutTab } from '../studentStorage'
 import { resolveAssetsPath } from '../../shared/assetPaths'
-import { NARROW_BREAKPOINT as SCRATCH_CODE_WIDE_WIDTH } from '../../modules/scratch/ScratchWorkspace'
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
@@ -128,27 +125,9 @@ const SIDE_EXPLAINER_TYPES = getModuleTypesWithCapability('sideExplainer')
 // generic `modulePanes` state below, rather than the Scratch-specific plumbing — each
 // module's `capabilities.modulePanes`.
 const MODULE_PANES_TYPES = getModuleTypesWithCapability('modulePanes')
-// Scratch's explainer is a fixed, non-resizable width (no drag-to-resize) rather than a
-// percentage split — Scratch explainers often carry block-pill images/markdown that need
-// real width, and a fixed size is simpler and more predictable than a shrinking one.
-const EXPLAINER_FIXED_WIDTH = 320
 // The side explainer's collapse arrow (s.sideExplainerCollapse: 28px wide, 4px from the right)
 // plus a gap, kept clear at the end of the title bar so the title never runs into it.
 const SIDE_COLLAPSE_INSET = 4 + 28 + 6
-// Gap between the explainer and code columns (s.scratchFixedSplit) — must be included in
-// the threshold below, or the code area ends up ~12px short of SCRATCH_CODE_WIDE_WIDTH
-// right at the boundary, letting ScratchWorkspace's own Blocks/Stage tabs sneak in a hair
-// before Instructions would have tabbed away instead.
-const SCRATCH_SPLIT_GAP = 12
-// Instructions tabs away *before* the code area (editor+stage) would otherwise be
-// squeezed under ScratchWorkspace's own "wide" width (SCRATCH_CODE_WIDE_WIDTH, imported
-// from ScratchWorkspace.jsx so the two never drift apart) — i.e. as soon as a fixed
-// 400px explainer would leave the code area under 1000px, Instructions gives up its
-// space entirely instead of leaving Blocks/Stage to squeeze into their own compact tabs.
-// Only once the *whole* panel is under that combined width does Code, now with the full
-// panel to itself, still end up compact — at which point Stage tabs away from Blocks as
-// the final fallback (see ScratchWorkspace.jsx's own `compact`).
-const TASK_PANEL_TABS_SURFACE = 'task_panel'
 
 export default function LessonTaskContent({
   lesson,
@@ -183,7 +162,6 @@ export default function LessonTaskContent({
   // ActivityHost. displayAnswer is the teacher's broadcast activity state while forced-live.
   isActivityTask = false,
   displayAnswer = null,
-  isViewingExplainerSlide,
   isViewingCompletionScreen,
   onOpenPlayground,
   soloCompanion,
@@ -225,6 +203,9 @@ export default function LessonTaskContent({
   canOfferPersonalSandbox,
   explainerShowsComplete,
   presenterLayout = 'both',
+  // The tutor's presentation window (StudentView teacherPresentation): the calm Scratch stage
+  // shows large there, as it does while the tutor broadcasts (Go Live).
+  teacherPresentation = false,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -263,13 +244,9 @@ export default function LessonTaskContent({
   // fallback for every type) so its open/closed state can feed visiblePanes below just
   // like the side-rail's explainerCollapsed does.
   const [accordionExplainerCollapsed, setAccordionExplainerCollapsed] = useState(false)
-  const [taskPanelTab, setTaskPanelTab] = useState(
-    () => loadLayoutTab(TASK_PANEL_TABS_SURFACE) || 'code'
-  )
   const [taskPanelSizeRef, taskPanelSize] = useElementSize()
-  // Scratch's Instructions/Code (desktop-compact, below) and, inside ScratchWorkspace
-  // itself, Blocks/Stage are the only panes that hide via this shared explainer/code
-  // split, so they get their own dedicated state. Other module-internal togglable state
+  // Scratch's Blocks/Stage panes (inside ScratchWorkspace) are reported through their own
+  // dedicated state. Other module-internal togglable state
   // (Electronics' Breadboard/Code tab, Python's console, Arcade's tab+running, HTML's
   // active file+preview) is reported by each module's own StudentWorkspace into the
   // generic `modulePanes` state instead — see MODULE_PANES_TYPES above.
@@ -290,13 +267,9 @@ export default function LessonTaskContent({
   const modStyles = lessonMod?.getLayoutStyles(isMobile) ?? {}
   const supportsSideExplainer = SIDE_EXPLAINER_TYPES.includes(lessonMod?.type ?? lesson.type)
   const moduleCaps = getModuleDefinition(lessonMod?.type ?? lesson.type)?.capabilities ?? null
-  // Scratch's layout (capabilities.fixedExplainer): a fixed-width explainer column that tabs
-  // away behind Instructions/Code tabs when the task panel is narrow, with the workspace's own
-  // Blocks/Stage panes reported through the dedicated scratchCodePanes state below. On the calm
-  // Scratch screen (capabilities.calmScratch) the Instructions/Code tabs and the fixed-width
-  // column below are never rendered (no other module sets fixedExplainer today); that branch is
-  // kept, with its tests, as the generic fixedExplainer path. The scratchCodePanes reporting is
-  // still live (the calm screen reports blocks + stage through it).
+  // capabilities.fixedExplainer (Scratch): the workspace's own Blocks/Stage panes are reported
+  // through the dedicated scratchCodePanes state below, beside 'instructions' for the explainer
+  // card. The card itself sits in the calm column (capabilities.calmScratch) and never tabs away.
   const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
   // The calm code screen (capabilities.calmCodeScreen; Python): one "What to change" box that
   // folds after a passing Run, the hint docked beside the task, and the Topic library chip in the
@@ -304,17 +277,8 @@ export default function LessonTaskContent({
   const calmScreen = !!moduleCaps?.calmCodeScreen
   const supportsModulePanes = MODULE_PANES_TYPES.includes(lessonMod?.type ?? lesson.type)
   const taskPanelMeasured = taskPanelSize.width > 0
-  // Width-only: giving Code its own tab doesn't add height (explainer and code already
-  // share the same row's height), so a short-but-wide window is left to ScratchWorkspace's
-  // own compact detection (which checks height too) rather than tabbing Instructions away
-  // for no benefit.
   // The calm Scratch screen (capabilities.calmScratch) never tabs the explainer away.
   const isCalmScratchModule = !!moduleCaps?.calmScratch
-  const taskPanelCompact =
-    isFixedExplainerLesson &&
-    !isCalmScratchModule &&
-    taskPanelMeasured &&
-    taskPanelSize.width < EXPLAINER_FIXED_WIDTH + SCRATCH_SPLIT_GAP + SCRATCH_CODE_WIDE_WIDTH
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
   // A teacher-started sandbox's pushed instructions take the task explainer's place, so
   // they get the same side-by-side/collapsible layout rather than stacking above the code.
@@ -329,15 +293,13 @@ export default function LessonTaskContent({
       !cs.inPersonalSandbox &&
       !isQuizLike &&
       !isInformationTask &&
-      !isViewingExplainerSlide &&
       !isViewingCompletionScreen)
   // Sandbox always shows the code workspace, even when the session is parked on a quiz or
   // information task, so it keeps the fluid layout those tasks opt out of.
   const useFluidWorkspace =
     supportsSideExplainer &&
     !isMobile &&
-    (isSandbox ||
-      (!isQuizLike && !isInformationTask && !isViewingExplainerSlide && !isViewingCompletionScreen))
+    (isSandbox || (!isQuizLike && !isInformationTask && !isViewingCompletionScreen))
   const useSideExplainer = hasTaskExplainer && useFluidWorkspace
   // The calm Scratch screen: the explainer card (collapsing only to its one-line title strip) and
   // the docked hint stay beside the blocks at every size: a column at the left from a 1024px
@@ -347,6 +309,9 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
+  // The student has the stage full screen (Enlarge): the card is behind it, so the tutor's card
+  // does not list Instructions as on screen (the workspace reports the stage alone).
+  const [calmStageFullscreen, setCalmStageFullscreen] = useState(false)
   // Stacked, a card too tall for its capped space beside the stage starts folded on the task's
   // first view (ExplainerPanel foldIfTallerThan), never again once a tutor's force reopened it.
   const [calmFoldBase, setCalmFoldBase] = useState({ task: task?.id, openings: 0 })
@@ -440,13 +405,11 @@ export default function LessonTaskContent({
     !hasTaskExplainer || !showExplainerPane
       ? false
       : calmScratch
-        ? !accordionExplainerCollapsed
-        : taskPanelCompact
-          ? taskPanelTab === 'instructions'
-          : useSideExplainer
-            ? !explainerCollapsed
-            : !accordionExplainerCollapsed
-  const codePaneVisible = showCodePane && (!taskPanelCompact || taskPanelTab === 'code')
+        ? !accordionExplainerCollapsed && !calmStageFullscreen
+        : useSideExplainer
+          ? !explainerCollapsed
+          : !accordionExplainerCollapsed
+  const codePaneVisible = showCodePane
   // Information and quiz/activity tasks have no explainer/workspace panes at all (outside a
   // sandbox, which always shows the workspace). They report an explicit empty list so the
   // previous task's panes are cleared on the teacher's card rather than left behind —
@@ -508,17 +471,12 @@ export default function LessonTaskContent({
       if (wantsInstructions && accordionExplainerCollapsed) setCalmExplainerOpenings((n) => n + 1)
     } else if (useSideExplainer) {
       setExplainerCollapsed(!wantsInstructions)
-      if (taskPanelCompact) handleTaskPanelTabChange(wantsInstructions ? 'instructions' : 'code')
     } else {
       setAccordionExplainerCollapsed(!wantsInstructions)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forcedPaneCommand, hasTaskExplainer, useSideExplainer, taskPanelCompact, calmScratch])
+  }, [forcedPaneCommand, hasTaskExplainer, useSideExplainer, calmScratch])
 
-  function handleTaskPanelTabChange(id) {
-    setTaskPanelTab(id)
-    saveLayoutTab(TASK_PANEL_TABS_SURFACE, id)
-  }
   // Modules on the unified code-stage model show a revealed support stage as a reference.
   const supportsStageReveal = !!moduleCaps?.unifiedStages
   const activeSupportStage =
@@ -526,7 +484,6 @@ export default function LessonTaskContent({
     !cs.inPersonalSandbox &&
     !isQuizLike &&
     !isInformationTask &&
-    !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
@@ -544,7 +501,6 @@ export default function LessonTaskContent({
     !cs.inPersonalSandbox &&
     !isQuizLike &&
     !isInformationTask &&
-    !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
@@ -559,7 +515,6 @@ export default function LessonTaskContent({
     !cs.inPersonalSandbox &&
     !isQuizLike &&
     !isInformationTask &&
-    !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
@@ -581,7 +536,6 @@ export default function LessonTaskContent({
     !cs.inPersonalSandbox &&
     !isQuizLike &&
     !isInformationTask &&
-    !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
     !isViewingPrev &&
     !isForcedTeacherLive &&
@@ -660,14 +614,14 @@ export default function LessonTaskContent({
   const taskContentStyle =
     !isSandbox && isQuizLike
       ? s.taskContentQuiz
-      : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
+      : !isSandbox && (isInformationTask || isViewingCompletionScreen)
         ? s.taskContentInfo
         : (modStyles.taskContentStyle ?? s.taskContentFallback)
 
   const editorAreaStyle =
     !isSandbox && isQuizLike
       ? s.editorAreaQuiz
-      : !isSandbox && (isInformationTask || isViewingExplainerSlide || isViewingCompletionScreen)
+      : !isSandbox && (isInformationTask || isViewingCompletionScreen)
         ? s.editorAreaInfo
         : (modStyles.editorAreaStyle ?? s.editorAreaFallback)
 
@@ -681,79 +635,84 @@ export default function LessonTaskContent({
     : taskContentStyle
 
   // The explainer is copy-blocked alongside the workspace while watching a
-  // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal.
-  const taskExplainer = hasTaskExplainer ? (
-    <div
-      data-testid="task-instructions"
-      style={
-        calmScratch ? s.calmExplainerShell : useSideExplainer ? s.sideExplainerShell : undefined
-      }
-      className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
-      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-    >
-      {useSideExplainer && !calmScratch && (
-        <CollapseTabButton
-          onClick={() => setExplainerCollapsed(true)}
-          direction="left"
-          title="Collapse Explainer"
-          ariaLabel="Collapse Explainer"
-          style={s.sideExplainerCollapse}
-          highlighted={instructionsHighlighted}
+  // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal. `footer`
+  // goes inside the card under the text (the calm Scratch hint).
+  const renderTaskExplainer = (footer = null) =>
+    hasTaskExplainer ? (
+      <div
+        data-testid="task-instructions"
+        style={
+          calmScratch ? s.calmExplainerShell : useSideExplainer ? s.sideExplainerShell : undefined
+        }
+        className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
+        onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+        onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+        onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      >
+        {useSideExplainer && !calmScratch && (
+          <CollapseTabButton
+            onClick={() => setExplainerCollapsed(true)}
+            direction="left"
+            title="Collapse Explainer"
+            ariaLabel="Collapse Explainer"
+            style={s.sideExplainerCollapse}
+            highlighted={instructionsHighlighted}
+          />
+        )}
+        <ExplainerPanel
+          // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
+          key={calmScratch ? `calm-${task?.id ?? ''}` : undefined}
+          openRequest={calmScratch ? calmExplainerOpenings : null}
+          title={
+            hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
+          }
+          content={
+            hasSandboxExplainer
+              ? sandboxExplainer
+              : showsCompleteCode
+                ? '```python\n' + task.completeCode + '\n```'
+                : task.explainer
+          }
+          topicType={lesson.type}
+          showLibrary={moduleCaps?.topicLibrary ?? true}
+          libraryButton={!libraryInCodeRow}
+          libraryRequest={libraryInCodeRow ? libraryRequest : 0}
+          onLibraryRequestHandled={() => setLibraryRequest(0)}
+          onTopicOpen={onTopicOpen}
+          onTopicClose={onTopicClose}
+          openTopicId={openTopicId}
+          disableCopy
+          fill={useSideExplainer}
+          // Clear of the collapse arrow laid over the title bar's right end (s.sideExplainerCollapse).
+          titleEndInset={useSideExplainer && !calmScratch ? SIDE_COLLAPSE_INSET : 0}
+          // The calm card collapses to its one-line title strip (never a rail or a tab).
+          collapsible={!useSideExplainer || calmScratch}
+          foldIfTallerThan={calmScratch ? calmFoldIfTallerThan : null}
+          markdownTextScale={useSideExplainer ? 1.08 : 1}
+          onCollapsedChange={
+            !useSideExplainer || calmScratch ? setAccordionExplainerCollapsed : undefined
+          }
+          highlighted={(!useSideExplainer || calmScratch) && instructionsHighlighted}
+          entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
+          // Presentation annotations cover the task's own explainer only (not a pushed sandbox
+          // explainer or the complete-code reveal).
+          inkSurfaceId={
+            !hasSandboxExplainer && !showsCompleteCode && task?.id != null
+              ? surfaceId(SURFACE_KINDS.explainer, task.id)
+              : null
+          }
+          // "See example" opens are logged for the tutor from the task's own explainer only
+          // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
+          onExampleOpen={
+            !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
+              ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
+              : undefined
+          }
+          footer={footer}
         />
-      )}
-      <ExplainerPanel
-        // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
-        key={calmScratch ? `calm-${task?.id ?? ''}-${calmExplainerOpenings}` : undefined}
-        title={
-          hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
-        }
-        content={
-          hasSandboxExplainer
-            ? sandboxExplainer
-            : showsCompleteCode
-              ? '```python\n' + task.completeCode + '\n```'
-              : task.explainer
-        }
-        topicType={lesson.type}
-        showLibrary={moduleCaps?.topicLibrary ?? true}
-        libraryButton={!libraryInCodeRow}
-        libraryRequest={libraryInCodeRow ? libraryRequest : 0}
-        onLibraryRequestHandled={() => setLibraryRequest(0)}
-        onTopicOpen={onTopicOpen}
-        onTopicClose={onTopicClose}
-        openTopicId={openTopicId}
-        disableCopy
-        fill={useSideExplainer}
-        // Clear of the collapse arrow laid over the title bar's right end (s.sideExplainerCollapse).
-        titleEndInset={useSideExplainer && !calmScratch ? SIDE_COLLAPSE_INSET : 0}
-        // The calm card collapses to its one-line title strip (never a rail or a tab).
-        collapsible={!useSideExplainer || calmScratch}
-        foldIfTallerThan={calmScratch ? calmFoldIfTallerThan : null}
-        markdownTextScale={useSideExplainer ? 1.08 : 1}
-        onCollapsedChange={
-          !useSideExplainer || calmScratch ? setAccordionExplainerCollapsed : undefined
-        }
-        highlighted={(!useSideExplainer || calmScratch) && instructionsHighlighted}
-        entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
-        // Presentation annotations cover the task's own explainer only (not a pushed sandbox
-        // explainer or the complete-code reveal).
-        inkSurfaceId={
-          !hasSandboxExplainer && !showsCompleteCode && task?.id != null
-            ? surfaceId(SURFACE_KINDS.explainer, task.id)
-            : null
-        }
-        // "See example" opens are logged for the tutor from the task's own explainer only
-        // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
-        onExampleOpen={
-          !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
-            ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
-            : undefined
-        }
-      />
-    </div>
-  ) : null
+      </div>
+    ) : null
+  const taskExplainer = renderTaskExplainer()
 
   // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
@@ -777,7 +736,6 @@ export default function LessonTaskContent({
     !isTeacherEditing &&
     !isQuizLike &&
     !isInformationTask &&
-    !isViewingExplainerSlide &&
     !isViewingCompletionScreen &&
     !isCodeArrangeTask &&
     !carryHold
@@ -799,11 +757,9 @@ export default function LessonTaskContent({
         ? 'aside'
         : null
       : showsSideBySide
-        ? isFixedExplainerLesson
-          ? null
-          : explainerCollapsed
-            ? 'editor'
-            : 'left'
+        ? explainerCollapsed
+          ? 'editor'
+          : 'left'
         : showCodePane
           ? 'editor'
           : showExplainerPane && hasTaskExplainer
@@ -958,12 +914,20 @@ export default function LessonTaskContent({
   // the card on its own below). It renders into one DOM node (calmAsideHost) that moves between
   // the two slots, so crossing SCRATCH_CALM_STACK_BREAKPOINT (a tablet turned round) never remounts
   // the card or the hint: a folded card stays folded and a scrolled one keeps its place.
-  const calmAside = calmAsideWanted ? (
-    <>
-      {taskExplainer}
-      {calmHintSlot === 'aside' && hintBox}
-    </>
-  ) : null
+  // The full-screen stage's bar (Enlarge) repeats the hint in one line: the tutor's hint, a failed
+  // check's hint, a pass, or the nudge.
+  const calmFullscreenHint = !calmHintShown
+    ? ''
+    : sentHintText ||
+      (shouldShowFeedbackBanner && !bannerPassed
+        ? displayCheckSuggestion || 'Not quite, try again!'
+        : '') ||
+      (shouldShowFeedbackBanner && bannerPassed ? 'Correct!' : '') ||
+      hintNudge
+  // The hint sits inside the card, straight under the steps (and stays when the card folds).
+  const calmAside = calmAsideWanted
+    ? renderTaskExplainer(calmHintSlot === 'aside' ? hintBox : null)
+    : null
 
   const workspaceContent = (
     <>
@@ -1018,7 +982,7 @@ export default function LessonTaskContent({
           onTrySoloChallenge={onTrySoloChallenge}
           onReplayLesson={onReplayLesson}
         />
-      ) : !isSandbox && (isInformationTask || isViewingExplainerSlide) ? (
+      ) : !isSandbox && isInformationTask ? (
         <InformationTask
           task={task}
           lesson={lesson}
@@ -1154,6 +1118,11 @@ export default function LessonTaskContent({
                     ) : null,
                   categoryMemory: paletteCategoryMemory,
                   paletteStartsOpen: paletteStartsOpen(lesson),
+                  // Go Live and the presentation show the large stage (never stored as the
+                  // student's own choice); the student's own view starts small with Enlarge.
+                  bigStage: !!(isForcedTeacherLive || teacherPresentation),
+                  onFullscreenChange: setCalmStageFullscreen,
+                  fullscreenHint: calmFullscreenHint,
                 }
               : undefined
           }
@@ -1311,73 +1280,6 @@ export default function LessonTaskContent({
             <div style={s.scratchCodeFlex}>{editorArea}</div>
           </div>
         </div>
-      ) : useSideExplainer && showExplainerPane && showCodePane && isFixedExplainerLesson ? (
-        // Explainer and code panes are ALWAYS the same two divs, in the same tree
-        // position, in both compact (tabbed) and split (fixed-width) modes — only their
-        // `style` (and, for the explainer, whether it shows the rail) changes between
-        // modes. This is deliberate: if the two modes rendered structurally different
-        // trees here (e.g. PanelTabPanel-wrapped vs plain divs), React would unmount and
-        // remount everything below on every threshold crossing — destroying and
-        // re-injecting every Blockly workspace inside ScratchWorkspace each time,
-        // which can leave its own compact-detection mid-remeasurement and stuck.
-        <div ref={taskPanelSizeRef} style={s.scratchTaskPanelWrap}>
-          {taskPanelCompact && (
-            <PanelTabs
-              label="Task panel"
-              tabs={[
-                { id: 'instructions', label: 'Instructions' },
-                { id: 'code', label: 'Code' },
-              ]}
-              activeId={taskPanelTab}
-              onChange={handleTaskPanelTabChange}
-              highlightedIds={highlightedPanes}
-            />
-          )}
-          <div style={s.scratchFixedSplit}>
-            <div
-              role={taskPanelCompact ? 'tabpanel' : undefined}
-              id={taskPanelCompact ? 'panel-tabpanel-instructions' : undefined}
-              aria-labelledby={taskPanelCompact ? 'panel-tab-instructions' : undefined}
-              hidden={taskPanelCompact ? taskPanelTab !== 'instructions' : undefined}
-              style={
-                taskPanelCompact
-                  ? {
-                      ...s.scratchCodeFlex,
-                      display: taskPanelTab === 'instructions' ? 'flex' : 'none',
-                    }
-                  : explainerCollapsed
-                    ? s.scratchExplainerRail
-                    : s.scratchExplainerFixed
-              }
-            >
-              {!taskPanelCompact && explainerCollapsed ? (
-                <CollapsedPanelRail
-                  onClick={() => setExplainerCollapsed(false)}
-                  label="Explainer"
-                  direction="right"
-                  title="Show Explainer"
-                  ariaLabel="Show Explainer"
-                  highlighted={instructionsHighlighted}
-                />
-              ) : (
-                taskExplainer
-              )}
-            </div>
-            <div
-              role={taskPanelCompact ? 'tabpanel' : undefined}
-              id={taskPanelCompact ? 'panel-tabpanel-code' : undefined}
-              aria-labelledby={taskPanelCompact ? 'panel-tab-code' : undefined}
-              hidden={taskPanelCompact ? taskPanelTab !== 'code' : undefined}
-              style={
-                taskPanelCompact
-                  ? { ...s.scratchCodeFlex, display: taskPanelTab === 'code' ? 'flex' : 'none' }
-                  : s.scratchCodeFlex
-              }
-            >
-              {editorArea}
-            </div>
-          </div>
-        </div>
       ) : useSideExplainer && showExplainerPane && showCodePane ? (
         <SplitPane
           style={s.sideBySideLayout}
@@ -1487,29 +1389,13 @@ const s = {
     gap: 8,
     overflow: 'hidden',
   },
-  // Scratch's explainer is a fixed width, not a draggable split — see EXPLAINER_FIXED_WIDTH.
+  // The calm Scratch screen: the explainer column (calmExplainerWidth) beside the code.
   scratchFixedSplit: {
     flex: 1,
     minHeight: 0,
     display: 'flex',
     gap: 12,
     overflow: 'hidden',
-  },
-  scratchExplainerFixed: {
-    width: EXPLAINER_FIXED_WIDTH,
-    minWidth: EXPLAINER_FIXED_WIDTH,
-    flexShrink: 0,
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  scratchExplainerRail: {
-    width: 44,
-    minWidth: 44,
-    flexShrink: 0,
-    display: 'flex',
-    flexDirection: 'column',
   },
   scratchCodeFlex: {
     flex: 1,
@@ -1537,7 +1423,7 @@ const s = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  calmHint: { maxHeight: '45%' },
+  calmHint: { maxHeight: '100%' },
   // The stacked layout's slot beside the pinned stage (ScratchWorkspace's aside cell).
   calmStackedSlot: {
     flex: 1,

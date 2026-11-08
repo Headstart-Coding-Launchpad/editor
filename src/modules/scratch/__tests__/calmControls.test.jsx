@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { CalmMoreFold, CalmPaletteToggle } from '../calm/CalmControls.jsx'
+import { CalmPaletteToggle } from '../calm/CalmControls.jsx'
 
 // The calm screen's palette state lives in ScratchWorkspace (flyoutCollapsed); this harness
 // gives it the same shape: only the Blocks button changes it, so a tap anywhere else (the stage,
@@ -63,58 +63,5 @@ describe('the Blocks button (calm Scratch palette)', () => {
     expect(screen.getByTestId('scratch-palette-toggle')).not.toHaveAttribute(
       'data-highlight-reveal'
     )
-  })
-})
-
-describe('More (sprite properties and + Backdrop)', () => {
-  it('folds its contents until tapped', async () => {
-    const user = userEvent.setup()
-    render(
-      <CalmMoreFold>
-        <label>
-          x <input defaultValue="0" />
-        </label>
-      </CalmMoreFold>
-    )
-    expect(screen.queryByLabelText('x')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /More/ }))
-    expect(screen.getByLabelText('x')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /More/ })).toHaveAttribute('aria-expanded', 'true')
-  })
-
-  it('keeps one wrapper when More has nothing to fold (the Stage tile): the row and the open state stay', async () => {
-    const user = userEvent.setup()
-    const row = (button) => (
-      <div data-testid="tile-row">
-        tiles
-        {button}
-      </div>
-    )
-    const { rerender } = render(
-      <CalmMoreFold row={row} available>
-        <span>props</span>
-      </CalmMoreFold>
-    )
-    const tileRow = screen.getByTestId('tile-row')
-    await user.click(screen.getByRole('button', { name: /More/ }))
-    expect(screen.getByText('props')).toBeInTheDocument()
-
-    rerender(
-      <CalmMoreFold row={row} available={false}>
-        <span>props</span>
-      </CalmMoreFold>
-    )
-    expect(screen.queryByRole('button', { name: /More/ })).not.toBeInTheDocument()
-    expect(screen.queryByText('props')).not.toBeInTheDocument()
-    expect(screen.getByTestId('tile-row')).toBe(tileRow)
-
-    rerender(
-      <CalmMoreFold row={row} available>
-        <span>props</span>
-      </CalmMoreFold>
-    )
-    expect(screen.getByTestId('tile-row')).toBe(tileRow)
-    expect(screen.getByRole('button', { name: /More/ })).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('props')).toBeInTheDocument()
   })
 })

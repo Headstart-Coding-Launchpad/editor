@@ -61,7 +61,7 @@ export default defineModule({
     teacherStageReveal: false, // StudentModal's Reveal menu offers the task's stages
     highlights: false, // teacher code highlights (needs a 'code' / 'files' studentMirror)
     downloadCode: false, // students can download the code as a .launchpad file (python only)
-    fixedExplainer: false, // Scratch's fixed-width explainer column
+    fixedExplainer: false, // Scratch: explainer card in its own column, workspace panes reported separately
     topicLibrary: true, // the explainer offers the topic library
     stageReveal: 'offer', // 'progressive' (python, html) | 'offer'
     studentMirror: 'view', // how StudentModal mirrors the student: 'code' | 'files' | 'blocks' | 'view'

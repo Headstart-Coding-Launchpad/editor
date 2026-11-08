@@ -115,36 +115,9 @@ export function findTaskById(tasks, id) {
   return flattenTasks(tasks).find((t) => t.id === id) ?? null
 }
 
-// Synthetic "explainer slide" pseudo-task, shown in solo-mode nav (Scratch only, for
-// now) immediately before a task whose explainer is currently shrunk/hidden. It's a
-// live UI reflection, never persisted, so its id only needs to be unique and
-// recognisable, not stable across sessions.
-const EXPLAINER_PSEUDO_PREFIX = '__explainer_slide__'
-
-export function makeExplainerPseudoTask(task) {
-  return {
-    id: `${EXPLAINER_PSEUDO_PREFIX}${task.id}`,
-    title: task.title,
-    forTaskId: task.id,
-    isExplainerPseudo: true,
-  }
-}
-
-export function isExplainerPseudoTaskId(id) {
-  return typeof id === 'string' && id.startsWith(EXPLAINER_PSEUDO_PREFIX)
-}
-
-// Splice a pseudo-task into a flat task array immediately before the task with id
-// `beforeTaskId`. No-op (returns the original array) if that task isn't found.
-export function insertPseudoTaskBefore(flatTasks, beforeTaskId, pseudoTask) {
-  const index = flatTasks.findIndex((t) => t.id === beforeTaskId)
-  if (index === -1) return flatTasks
-  return [...flatTasks.slice(0, index), pseudoTask, ...flatTasks.slice(index)]
-}
-
 // Synthetic "lesson complete" pseudo-task, appended after the last task in solo-mode
-// nav. Like the explainer pseudo-task, it's a live UI reflection only — never
-// persisted — so its id only needs to be a stable, recognisable constant.
+// nav. It's a live UI reflection only — never persisted — so its id only needs to be
+// a stable, recognisable constant.
 const COMPLETION_PSEUDO_ID = '__lesson_complete__'
 
 export function makeCompletionPseudoTask() {

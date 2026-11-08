@@ -191,10 +191,10 @@ function taskChecks(task) {
   ]
 }
 
-// The sprite property row (x, y, direction, size...) folds behind More unless one of the task's
-// checks reads sprite properties, where the child may need to watch them.
-export function calmFoldsSpriteProps(task) {
-  return !readsSpriteProperties(taskChecks(task))
+// Sprite settings (the sprite property row: x, y, direction, size...) starts open when one of the
+// task's checks reads sprite properties, where the child may need to watch them; else folded.
+export function calmOpensSpriteSettings(task) {
+  return readsSpriteProperties(taskChecks(task))
 }
 
 // Below this task-panel width (a portrait tablet: 768px screen, ~736px panel) the stage is pinned
@@ -202,14 +202,70 @@ export function calmFoldsSpriteProps(task) {
 // a column beside the blocks and the stage.
 export const SCRATCH_CALM_STACK_BREAKPOINT = 880
 
-// The explainer column beside the blocks: 320px on a laptop, narrowing to 220px on a tablet.
+// The explainer column beside the blocks (with the hint inside its card): about 232px on a 1366
+// laptop, 208px on a 1024 tablet, at most 320px on a big screen, so the blocks get the room.
 export function calmExplainerWidth(panelWidth) {
-  return Math.max(220, Math.min(320, Math.round((panelWidth || 0) * 0.24)))
+  return Math.max(208, Math.min(320, Math.round((panelWidth || 0) * 0.175)))
+}
+
+const STAGE_W = 480
+const STAGE_H = 360
+
+// The side-by-side stage starts small (Enlarge shows it full screen): 320x240 on a 1366 laptop
+// (a ~1090px workspace beside the explainer column), about 256 wide on a 1024 tablet (~772px),
+// never under 240 wide or over full size. It is also held to the window's size (320 at 1366, 256
+// at 1024), so the playground, with no explainer column and a wider workspace, gets the same stage.
+// A short screen shrinks it so Run, Enlarge, the stage, the sprite tiles and Sprite settings still
+// fit the column (CALM_STAGE_COLUMN_CHROME).
+const CALM_STAGE_MIN_W = 240
+const CALM_STAGE_COLUMN_CHROME = 280
+export function calmStageScale(width, height, viewportWidth = Infinity) {
+  const byWorkspace = 100 + 0.2 * (width || 0)
+  const byWindow = 64 + 0.1875 * (viewportWidth > 0 ? viewportWidth : Infinity)
+  const wanted = Math.round(Math.min(byWorkspace, byWindow))
+  const byWidth = Math.max(CALM_STAGE_MIN_W, Math.min(STAGE_W, wanted)) / STAGE_W
+  const byHeight = height > 0 ? (height - CALM_STAGE_COLUMN_CHROME) / STAGE_H : Infinity
+  return Math.max(0.35, Math.min(byWidth, byHeight))
+}
+
+// The full-screen stage (Enlarge): as big as the window allows under its bar, keeping 4:3.
+export const CALM_FULLSCREEN_BAR_H = 56
+const CALM_FULLSCREEN_PAD = 12
+export function calmFullscreenStageScale(viewportWidth, viewportHeight) {
+  const byWidth = ((viewportWidth || 0) - 2 * CALM_FULLSCREEN_PAD) / (STAGE_W + 2)
+  const byHeight =
+    ((viewportHeight || 0) - CALM_FULLSCREEN_BAR_H - 2 * CALM_FULLSCREEN_PAD) / (STAGE_H + 2)
+  return Math.max(0.5, Math.min(byWidth, byHeight))
+}
+
+// How many canvas pixels per stage unit: 1 (480x360) at or under full size, more when the stage
+// is shown bigger (full screen) so it is drawn sharp, not stretched. At most 3.
+export function calmStageResolution(scale, devicePixelRatio = 1) {
+  const wanted = Math.ceil((scale || 1) * (devicePixelRatio || 1) - 0.05)
+  return Math.max(1, Math.min(3, wanted))
+}
+
+// The grey line under the stage before a check has run. The calm screen drops "Run your code to
+// check" (the hint in the card already says to run) and "Place the blocks to check"; the manual
+// check line stays, as it names the Check button. Null: no line.
+export function scratchCheckPrompt({
+  calm = false,
+  hasChecks,
+  attempted,
+  running,
+  manual = false,
+  afterRun = false,
+  afterPlaced = false,
+}) {
+  if (!hasChecks || attempted || running) return null
+  if (manual) return 'Run your code, then click Check'
+  if (calm) return null
+  if (afterRun) return 'Run your code to check'
+  if (afterPlaced) return 'Place the blocks to check'
+  return null
 }
 
 // The pinned stage in the stacked layout: about 44% of the width, at most 0.65 (312x234).
-const STAGE_W = 480
-const STAGE_H = 360
 const STACKED_STAGE_MAX = 0.65
 const STACKED_STAGE_MIN = 0.35
 export function calmStackedStageScale(width) {
@@ -230,10 +286,13 @@ const STACKED_ASIDE_MIN = 140
 const STACKED_BLOCKS_MAX_MIN = 360
 const STACKED_BLOCKS_FLOOR = 120
 const STACKED_GAP = 10
-const STACKED_STAGE_CHROME = 52
+// Above the pinned stage: the Run row (56px), a gap, the Enlarge / Reset Stage row (44px) and the
+// gap to the stage. The sprite tiles and Sprite settings below scroll inside the stage cell
+// (calmStackedStageMaxHeight), so they never squeeze the blocks.
+export const CALM_STACKED_STAGE_CHROME = 116
 export function calmStackedLayout(height, { width = 0 } = {}) {
   if (!(height > 0)) return { asideMaxHeight: null, blocksMinHeight: 0 }
-  const stageRow = Math.round(STAGE_H * calmStackedStageScale(width)) + STACKED_STAGE_CHROME
+  const stageRow = Math.round(STAGE_H * calmStackedStageScale(width)) + CALM_STACKED_STAGE_CHROME
   const asideMaxHeight = Math.max(STACKED_ASIDE_MIN, Math.round(height * STACKED_ASIDE_SHARE))
   const topRow = Math.max(stageRow, asideMaxHeight)
   const room = height - topRow - STACKED_GAP
@@ -242,6 +301,13 @@ export function calmStackedLayout(height, { width = 0 } = {}) {
     blocksMinHeight: Math.max(STACKED_BLOCKS_FLOOR, Math.min(STACKED_BLOCKS_MAX_MIN, room)),
   }
 }
+// The stacked stage cell's height cap: what the workspace has left over the Blocks minimum, so an
+// open Sprite settings scrolls inside the cell rather than growing the row over the blocks.
+export function calmStackedStageMaxHeight(height, layout) {
+  if (!(height > 0) || !(layout?.blocksMinHeight > 0)) return undefined
+  return Math.max(0, Math.round(height - layout.blocksMinHeight - STACKED_GAP))
+}
+
 export function calmStackedGridStyle(layout, { aside }) {
   const blocksMinHeight = layout?.blocksMinHeight ?? 0
   return {

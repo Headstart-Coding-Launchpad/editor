@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
-  calmFoldsSpriteProps,
+  calmOpensSpriteSettings,
   calmPaletteFollowUp,
   calmStackedStageScale,
+  calmStackedStageMaxHeight,
+  CALM_STACKED_STAGE_CHROME,
   createCalmDragEndStep,
   createPaletteCategoryMemory,
   openPaletteReveal,
@@ -440,14 +442,18 @@ describe('calm Scratch layout rules', () => {
     expect(paletteStartsOpen({ scratchPaletteOpen: false })).toBe(true)
   })
 
-  it('folds the sprite property row behind More unless a check reads sprite properties', () => {
-    expect(calmFoldsSpriteProps({ check: { type: 'block_used', opcode: 'looks_say' } })).toBe(true)
-    expect(calmFoldsSpriteProps({})).toBe(true)
-    expect(calmFoldsSpriteProps({ check: [{ type: 'sprite_property', property: 'x' }] })).toBe(
+  it('folds the sprite property row (Sprite settings) unless a check reads sprite properties', () => {
+    expect(!calmOpensSpriteSettings({ check: { type: 'block_used', opcode: 'looks_say' } })).toBe(
+      true
+    )
+    expect(!calmOpensSpriteSettings({})).toBe(true)
+    expect(!calmOpensSpriteSettings({ check: [{ type: 'sprite_property', property: 'x' }] })).toBe(
       false
     )
     expect(
-      calmFoldsSpriteProps({ check: { type: 'all', checks: [{ type: 'sprite_property_delta' }] } })
+      !calmOpensSpriteSettings({
+        check: { type: 'all', checks: [{ type: 'sprite_property_delta' }] },
+      })
     ).toBe(false)
   })
 
@@ -461,7 +467,7 @@ describe('calm Scratch layout rules', () => {
     ['a manual check', { manualCheck: { type: 'sprite_property', property: 'direction' } }],
     ['a stage check', { codeStages: [{ role: 'support', check: { type: 'sprite_property' } }] }],
   ])('keeps the sprite property row out when %s reads sprite properties', (_, task) => {
-    expect(calmFoldsSpriteProps({ check: { type: 'block_used' }, ...task })).toBe(false)
+    expect(!calmOpensSpriteSettings({ check: { type: 'block_used' }, ...task })).toBe(false)
   })
 
   it('stacks the stage above the blocks only on a portrait-narrow task panel', () => {
@@ -469,11 +475,11 @@ describe('calm Scratch layout rules', () => {
     expect(SCRATCH_CALM_STACK_BREAKPOINT).toBeLessThan(992)
   })
 
-  it('gives the explainer card 220-320px beside the blocks', () => {
-    expect(calmExplainerWidth(1334)).toBe(320)
-    expect(calmExplainerWidth(992)).toBeGreaterThanOrEqual(220)
-    expect(calmExplainerWidth(992)).toBeLessThan(260)
-    expect(calmExplainerWidth(500)).toBe(220)
+  it('gives the explainer card 208-320px beside the blocks (about 232px at 1366)', () => {
+    expect(calmExplainerWidth(1334)).toBe(233)
+    expect(calmExplainerWidth(992)).toBe(208)
+    expect(calmExplainerWidth(500)).toBe(208)
+    expect(calmExplainerWidth(2400)).toBe(320)
   })
 
   it('caps the explainer beside the pinned stage and keeps the Blocks pane at least 360px tall', () => {
@@ -497,13 +503,19 @@ describe('calm Scratch layout rules', () => {
     (height) => {
       const width = 736
       const { asideMaxHeight, blocksMinHeight } = calmStackedLayout(height, { width })
-      const stageRow = Math.round(360 * calmStackedStageScale(width)) + 52
+      const stageRow = Math.round(360 * calmStackedStageScale(width)) + CALM_STACKED_STAGE_CHROME
       const topRow = Math.max(stageRow, asideMaxHeight)
       expect(topRow + 10 + blocksMinHeight).toBeLessThanOrEqual(height)
       expect(blocksMinHeight).toBeGreaterThanOrEqual(120)
       expect(blocksMinHeight).toBeLessThanOrEqual(360)
     }
   )
+
+  it('caps the pinned stage cell so an open Sprite settings scrolls inside it, never over the blocks', () => {
+    const layout = calmStackedLayout(900, { width: 736 })
+    expect(calmStackedStageMaxHeight(900, layout)).toBe(900 - layout.blocksMinHeight - 10)
+    expect(calmStackedStageMaxHeight(0, layout)).toBeUndefined()
+  })
 
   it('keeps a 120px floor for the blocks when nothing fits', () => {
     expect(calmStackedLayout(300, { width: 736 }).blocksMinHeight).toBe(120)

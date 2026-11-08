@@ -16,9 +16,6 @@ import {
   filterTasksByMode,
   findTaskById,
   getRevealableStages,
-  makeExplainerPseudoTask,
-  isExplainerPseudoTaskId,
-  insertPseudoTaskBefore,
   makeCompletionPseudoTask,
   isCompletionPseudoTaskId,
   isSharingAllowed,
@@ -784,48 +781,8 @@ export default function StudentView({
     [teacherPresentation, identity?.anonymousId, phase, currentTaskId]
   )
 
-  // Scratch solo: when the current task's explainer is hidden (either the manual
-  // rail-collapse or the automatic width-driven tab-away — both already folded into
-  // localVisiblePanes lacking 'instructions', see LessonTaskContent's instructionsPaneVisible),
-  // show it as a "pseudo-task" slide in the nav, positioned right before the task it explains.
-  // This lookup re-derives the current task from `lesson` directly (rather than reusing the
-  // `task`/`isQuizTask`/`isInformationTask` variables computed further below) because hooks
-  // must run unconditionally above this component's phase-guard early-returns, while those
-  // variables are only computed after them.
-  const explainerPseudoCandidateTask = lesson ? findTaskById(lesson.tasks, currentTaskId) : null
-  // Composed lessons carry a per-task module type (task.moduleType), not a single
-  // lesson.type — activeLesson is already the effective, composed-aware lesson for
-  // currentTaskId (see getEffectiveLessonForTask), same as everything else in this
-  // component that needs to know the current task's real module type.
-  // Only the fixed-width explainer (capabilities.fixedExplainer) tabs away like this. The calm
-  // Scratch screen (capabilities.calmScratch) never hides its explainer (its card only folds to
-  // a title strip), so it has no explainer slide. Today no module reaches the slide (Scratch is
-  // the only fixedExplainer module and it is calm); the slide machinery stays as the generic
-  // fixedExplainer path, with its tests, until that capability is retired.
-  const rawExplainerHidden =
-    phase === 'solo' &&
-    !!activeModuleCaps?.fixedExplainer &&
-    !activeModuleCaps?.calmScratch &&
-    !!explainerPseudoCandidateTask?.explainer &&
-    explainerPseudoCandidateTask?.taskType !== 'information' &&
-    !isHostedActivityTask(explainerPseudoCandidateTask) &&
-    viewingTaskId === null &&
-    localVisiblePanes != null &&
-    !localVisiblePanes.includes('instructions')
-  const [explainerPseudoActive, setExplainerPseudoActive] = useState(false)
-  useEffect(() => {
-    if (!rawExplainerHidden) {
-      setExplainerPseudoActive(false)
-      return
-    }
-    // Debounced so dragging the window across the auto-shrink breakpoint doesn't flicker
-    // the nav; a manual collapse-click pays the same small delay for simplicity.
-    const timer = setTimeout(() => setExplainerPseudoActive(true), 400)
-    return () => clearTimeout(timer)
-  }, [rawExplainerHidden])
-  const [viewingExplainerSlide, setViewingExplainerSlide] = useState(false)
-  // Synthetic "lesson complete" screen shown after Next off the last solo task — like
-  // the explainer slide, this never touches currentTaskId (which stays pinned to the
+  // Synthetic "lesson complete" screen shown after Next off the last solo task: it
+  // never touches currentTaskId (which stays pinned to the
   // real last task) so it can't interfere with persistence, Firebase, or checks.
   const [viewingCompletionScreen, setViewingCompletionScreen] = useState(false)
 
@@ -849,28 +806,6 @@ export default function StudentView({
   function handleReplayLesson() {
     handleSoloNavigate(flatTasks[0]?.id)
   }
-
-  // Auto-open the explainer slide on arrival at a task whose explainer is (already)
-  // hidden — landing on the task shows the explainer first, and the student proceeds
-  // via the normal Next/dot controls (which then land on the real task) rather than
-  // being dropped straight into the code. Deliberately "arrival only": resizing the
-  // window smaller while already sitting on a task must never yank the student back
-  // to the explainer mid-work, so this is edge-triggered on currentTaskId changing
-  // (including the very first task on load), not level-triggered on rawExplainerHidden.
-  // pendingAutoShowTaskIdRef marks a task as "owed a decision" on every real
-  // navigation, then a separate effect consumes (clears) it the first time
-  // rawExplainerHidden has a real answer for that task — after which it's consumed
-  // for good, so a later live resize on the same task can't reopen it.
-  const pendingAutoShowTaskIdRef = useRef(null)
-  useEffect(() => {
-    pendingAutoShowTaskIdRef.current = currentTaskId
-  }, [currentTaskId])
-  useEffect(() => {
-    if (pendingAutoShowTaskIdRef.current !== currentTaskId) return
-    if (localVisiblePanes == null) return // not reported for this render pass yet — wait
-    pendingAutoShowTaskIdRef.current = null
-    if (rawExplainerHidden) setViewingExplainerSlide(true)
-  }, [currentTaskId, localVisiblePanes, rawExplainerHidden])
 
   // Teacher-pushed "highlight this tab/panel" or "force this tab/panel" command — either
   // targeted at this one student (session.students.{id}.teacherPaneCommand) or the whole
@@ -965,22 +900,13 @@ export default function StudentView({
   // ─── Navigation handlers ───────────────────────────────────────────────────
 
   function handleSoloNavigate(taskId) {
-    // The explainer pseudo-task is a read-only view over the current task's content,
-    // not a real task — never touch currentTaskId/cs for it. Clicking it opens the
-    // slide; navigating "back" onto the current task's own id (its dot, or Next off
-    // the pseudo entry) closes it.
-    if (isExplainerPseudoTaskId(taskId)) {
-      setViewingExplainerSlide(true)
-      setViewingTaskId(null)
-      return
-    }
+    // The completion screen is not a real task: never touch currentTaskId/cs for it.
     if (isCompletionPseudoTaskId(taskId)) {
       setViewingCompletionScreen(true)
       setViewingTaskId(null)
       return
     }
     if (taskId === currentTaskId) {
-      setViewingExplainerSlide(false)
       setViewingCompletionScreen(false)
       return
     }
@@ -989,7 +915,6 @@ export default function StudentView({
       setTaskId(taskId)
       setCurrentTaskId(taskId)
       setViewingTaskId(null)
-      setViewingExplainerSlide(false)
       cs.resetForTaskChange()
       updateTeacherLive({
         taskId,
@@ -1014,7 +939,6 @@ export default function StudentView({
     }
     cs.saveCurrentWork()
     setViewingTaskId(null)
-    setViewingExplainerSlide(false)
     setViewingCompletionScreen(false)
     cs.resetForTaskChange()
     setCurrentTaskId(taskId)
@@ -1319,7 +1243,7 @@ export default function StudentView({
 
   // ─── Side-quests ──────────────────────────────────────────────────────────
   // Only on a code task's own screen: not over a teacher broadcast, a classmate's work, peer
-  // help, or the solo explainer / completion slides.
+  // help, or the solo completion screen.
   const sideQuestsVisible =
     sideQuests.available &&
     !isQuizTask &&
@@ -1327,7 +1251,6 @@ export default function StudentView({
     !isActivityTask &&
     !isCodeArrangeTask &&
     !isForcedTeacherLive &&
-    !viewingExplainerSlide &&
     !viewingCompletionScreen
   const openSideQuest =
     sideQuestsVisible && sideQuests.openIndex != null
@@ -1412,12 +1335,6 @@ export default function StudentView({
   }
 
   const canNavigateNextSolo = allowUnrestrictedTaskNavigation || isSolo
-  // Also present (bypassing the debounce) whenever the slide is actually being viewed —
-  // e.g. just after an arrival auto-opened it, before the debounce has had time to settle —
-  // so SoloNav's index (below) always has a real pseudo entry to point at while the slide
-  // is open, rather than briefly falling back to the real task's own index.
-  const explainerPseudoTask =
-    (explainerPseudoActive || viewingExplainerSlide) && task ? makeExplainerPseudoTask(task) : null
   // Solo mode only — a live/presentation session ends when the teacher ends it, not when
   // the student runs out of tasks, so there's nothing to append there. Only present once
   // the student has actually reached the last real task, so Next can step past it; SoloNav's
@@ -1426,23 +1343,10 @@ export default function StudentView({
     isSolo && (currentIndex === flatTasks.length - 1 || viewingCompletionScreen)
       ? makeCompletionPseudoTask()
       : null
-  const flatTasksForNav = [
-    ...(explainerPseudoTask
-      ? insertPseudoTaskBefore(flatTasks, currentTaskId, explainerPseudoTask)
-      : flatTasks),
-    ...(completionPseudoTask ? [completionPseudoTask] : []),
-  ]
-  // SoloNav's Previous/Next step relative to a single index, so while the slide (or the
-  // completion screen) is showing, that index must point at the pseudo entry itself
-  // rather than the real task's own slot — otherwise Next would skip past it entirely.
-  // The completion pseudo task is always last, so its index is just the array length.
-  const currentIndexForNav = viewingCompletionScreen
-    ? flatTasksForNav.length - 1
-    : explainerPseudoTask
-      ? flatTasksForNav.findIndex(
-          (t) => t.id === (viewingExplainerSlide ? explainerPseudoTask.id : currentTaskId)
-        )
-      : currentIndex
+  const flatTasksForNav = [...flatTasks, ...(completionPseudoTask ? [completionPseudoTask] : [])]
+  // SoloNav's Previous/Next step relative to a single index, so while the completion screen is
+  // showing, that index must point at its pseudo entry (always last), not the real task's slot.
+  const currentIndexForNav = viewingCompletionScreen ? flatTasksForNav.length - 1 : currentIndex
   // Composed lessons can mix module types, so the lesson's own `.type` (or the type of
   // whichever task the student happens to be on) isn't a reliable answer to "what
   // playground should this lead to." Resolve it from the last *code* task instead —
@@ -1577,15 +1481,6 @@ export default function StudentView({
         currentTaskId={currentTaskId}
         viewingTaskId={viewingTaskId}
         isSolo={isSolo}
-        pseudoTask={
-          explainerPseudoTask
-            ? {
-                id: explainerPseudoTask.id,
-                title: explainerPseudoTask.title,
-                beforeTaskId: currentTaskId,
-              }
-            : null
-        }
         canSelectTask={(id) => {
           if (!isSolo) return true
           const idIdx = flatTasks.findIndex((t) => t.id === id)
@@ -1595,7 +1490,7 @@ export default function StudentView({
         }}
         onDotClick={(id) => {
           if (isSolo) {
-            if (id !== currentTaskId || viewingExplainerSlide) handleSoloNavigate(id)
+            if (id !== currentTaskId) handleSoloNavigate(id)
           } else if (id < currentTaskId) {
             setViewingTaskId(id === currentTaskId ? null : id)
           }
@@ -2139,9 +2034,7 @@ export default function StudentView({
       )}
       <div
         style={
-          isSolo &&
-          !isSandbox &&
-          (isQuizTask || isInformationTask || viewingExplainerSlide || viewingCompletionScreen)
+          isSolo && !isSandbox && (isQuizTask || isInformationTask || viewingCompletionScreen)
             ? { ...s.body, overflow: 'hidden' }
             : s.body
         }
@@ -2251,7 +2144,6 @@ export default function StudentView({
                 badgeWall={badgeWall}
                 isActivityTask={isActivityTask}
                 displayAnswer={displayAnswer}
-                isViewingExplainerSlide={viewingExplainerSlide}
                 isViewingCompletionScreen={viewingCompletionScreen}
                 onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
                 soloCompanion={soloCompanion}
@@ -2294,6 +2186,7 @@ export default function StudentView({
                 canOfferPersonalSandbox={canOfferPersonalSandbox}
                 explainerShowsComplete={explainerShowsComplete}
                 presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
+                teacherPresentation={teacherPresentation}
                 onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
                 onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
                 openTopicId={phase === 'lesson' ? openTopicId : null}
