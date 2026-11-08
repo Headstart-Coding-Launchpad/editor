@@ -135,6 +135,62 @@ function canRecordAdvanceOverride(task) {
   return true
 }
 
+// Where ← / → / Escape belong to something else, not the task preview: fields and editors,
+// controls that use the arrow keys (tabs, sliders, menus, lists, radio groups), the Blockly /
+// Scratch workspace, and dialogs.
+const PREVIEW_KEY_OWNERS = [
+  'input',
+  'textarea',
+  'select',
+  '[contenteditable="true"]',
+  '.cm-editor',
+  '[role="dialog"]',
+  '[role="tab"]',
+  '[role="tablist"]',
+  '[role="slider"]',
+  '[role="spinbutton"]',
+  '[role="menu"]',
+  '[role="menubar"]',
+  '[role="menuitem"]',
+  '[role="menuitemradio"]',
+  '[role="menuitemcheckbox"]',
+  '[role="listbox"]',
+  '[role="option"]',
+  '[role="radiogroup"]',
+  '[role="radio"]',
+  '[role="tree"]',
+  '[role="grid"]',
+  '.scratch-workspace',
+  '.injectionDiv',
+  '.blocklySvg',
+  '.blocklyWidgetDiv',
+  '.blocklyDropDownDiv',
+].join(', ')
+
+// Anything open that Escape should close first (and that the arrows should not reach past).
+const OPEN_LAYERS =
+  '[aria-modal="true"], [role="dialog"], [role="menu"], [role="listbox"], .ui-popover'
+
+// A pane the arrow keys scroll sideways.
+function scrollsSideways(el) {
+  for (let node = el; node && node !== document.body; node = node.parentElement) {
+    if (node.scrollWidth > node.clientWidth) {
+      const overflowX = window.getComputedStyle(node).overflowX
+      if (overflowX === 'auto' || overflowX === 'scroll') return true
+    }
+  }
+  return false
+}
+
+function previewKeyOwnedElsewhere(event) {
+  const target = event.target
+  if (target instanceof Element) {
+    if (target.closest(PREVIEW_KEY_OWNERS)) return true
+    if (event.key !== 'Escape' && scrollsSideways(target)) return true
+  }
+  return !!document.querySelector(OPEN_LAYERS)
+}
+
 export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // The Realtime Database key of this tutor's live class (src/shared/sessionKey.js); the lesson
   // id when the tutor has no handle. Lesson content, reports and feedback stay on `lessonId`.
@@ -589,36 +645,30 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
 
   // The task list has no Prev / Next (calm teacher view): ← and → step the preview through the
   // tasks without moving the class, Escape goes back to the class's task. Ignored while typing,
-  // in a dialog, or in the sandbox.
+  // in the sandbox, on anything that uses the arrow keys itself (tabs, sliders, menus, the
+  // block workspace, a scrolling pane), and while a dialog, menu or popover is open (Escape
+  // closes that first). A key is consumed (preventDefault) only when it changes the preview.
   const previewKeysRef = useRef(null)
-  previewKeysRef.current = { flat: flattenTasks(filterTasksByMode(lesson?.tasks ?? [], 'live')) }
   useEffect(() => {
     function onKeyDown(event) {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
       if (!['ArrowLeft', 'ArrowRight', 'Escape'].includes(event.key)) return
-      const target = event.target
-      if (
-        target instanceof Element &&
-        target.closest(
-          'input, textarea, select, [contenteditable="true"], .cm-editor, [role="dialog"]'
-        )
-      ) {
-        return
-      }
-      if (document.querySelector('[aria-modal="true"]')) return
-      const { flat, blocked } = previewKeysRef.current
-      if (blocked) return
+      if (previewKeyOwnedElsewhere(event)) return
+      const keys = previewKeysRef.current
+      if (!keys || keys.blocked) return
+      const { flat, classTaskId, previewTaskId: preview } = keys
+      let nextPreview = preview
       if (event.key === 'Escape') {
-        setPreviewTaskId(null)
-        return
+        nextPreview = null
+      } else {
+        const index = flat.findIndex((t) => t.id === (preview ?? classTaskId))
+        const next = index < 0 ? null : flat[index + (event.key === 'ArrowRight' ? 1 : -1)]
+        if (next) nextPreview = next.id === classTaskId ? null : next.id
       }
-      setPreviewTaskId((preview) => {
-        const shownId = preview ?? previewKeysRef.current.classTaskId
-        const index = flat.findIndex((t) => t.id === shownId)
-        const next = flat[index + (event.key === 'ArrowRight' ? 1 : -1)]
-        if (!next) return preview
-        return next.id === previewKeysRef.current.classTaskId ? null : next.id
-      })
+      if (nextPreview === preview) return
+      event.preventDefault()
+      keys.previewTaskId = nextPreview
+      setPreviewTaskId(nextPreview)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -955,6 +1005,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   previewKeysRef.current = {
     flat: flatTasks,
     classTaskId: currentTaskId,
+    previewTaskId,
     blocked: isInSandbox,
   }
 

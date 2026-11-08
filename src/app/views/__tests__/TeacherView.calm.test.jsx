@@ -340,6 +340,48 @@ describe('TeacherView previewing a task', () => {
     expect(sessionCommands.setTaskId).not.toHaveBeenCalled()
   })
 
+  it('arrow keys consume the key only when they step the preview', async () => {
+    await renderTeacherView()
+    expect(fireEvent.keyDown(window, { key: 'ArrowRight' })).toBe(false)
+    // Escape with nothing previewed does nothing, so it leaves the key alone.
+    expect(fireEvent.keyDown(window, { key: 'Escape' })).toBe(false)
+    expect(fireEvent.keyDown(window, { key: 'Escape' })).toBe(true)
+  })
+
+  it('leaves arrow keys to tabs, sliders, menus and the block workspace', async () => {
+    await renderTeacherView()
+    const owners = [
+      '<button role="tab">Tab</button>',
+      '<div role="slider" tabindex="0">Speed</div>',
+      '<div role="menu"><button role="menuitem">Item</button></div>',
+      '<div class="scratch-workspace"><svg class="blocklySvg"></svg></div>',
+    ]
+    for (const html of owners) {
+      const host = document.createElement('div')
+      host.innerHTML = html
+      document.body.appendChild(host)
+      const target = host.querySelector('[role="menuitem"], svg, [role]') ?? host.firstChild
+      expect(fireEvent.keyDown(target, { key: 'ArrowRight' })).toBe(true)
+      host.remove()
+    }
+    expect(screen.queryByTestId('teacher-preview-banner')).not.toBeInTheDocument()
+  })
+
+  it('Escape closes an open popover first and keeps the preview', async () => {
+    await renderTeacherView()
+    fireEvent.click(screen.getByRole('button', { name: /Two/ }))
+    const popover = document.createElement('div')
+    popover.className = 'ui-popover'
+    document.body.appendChild(popover)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByTestId('teacher-preview-banner')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent('Previewing task 2')
+    popover.remove()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('teacher-preview-banner')).not.toBeInTheDocument()
+  })
+
   it('a greyed optional task only previews and says Next still skips it', async () => {
     mockSession = { ...mockSession, skipOptionalTasks: true }
     await renderTeacherView()
