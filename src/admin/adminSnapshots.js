@@ -4,14 +4,17 @@
 // session reports again. Here a source (a key) has one listener for every panel that uses it,
 // and it stays open for ADMIN_SNAPSHOT_LINGER_MS after the last panel closes, so switching tabs
 // and back reads nothing new. Data stays live: other people's edits still arrive.
-// A source belongs to the signed-in user: when someone else signs in, every cached result is
-// dropped (setAdminSnapshotsUser), and signing out drops them too (resetAdminSnapshots).
+// A source belongs to the signed-in user: watchAdminSnapshotsAuth follows the app's auth state,
+// and any sign-out (button, session expiry, another tab) or a different user drops every cached
+// result.
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
 import { collection, collectionGroup, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { firestore } from '../shared/firebase'
+import { auth, firestore } from '../shared/firebase'
 import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 
-export const ADMIN_SNAPSHOT_LINGER_MS = 10 * 60 * 1000
+// Short: a lingering lessons listener still bills every lesson edit made elsewhere.
+export const ADMIN_SNAPSHOT_LINGER_MS = 2 * 60 * 1000
 
 // Session reports are large (every student's answers), so lists show this many at a time with
 // a Load more button.
@@ -21,7 +24,9 @@ const IDLE = Object.freeze({ data: null, loading: true, error: null })
 // A source a panel does not need (key null): nothing to wait for.
 const DISABLED = Object.freeze({ data: null, loading: false, error: null })
 const sources = new Map()
-let ownerUid = null
+// The uid the cached sources belong to; undefined until the auth watch first reports.
+let ownerUid
+let stopAuthWatch = null
 
 function stop(key) {
   const source = sources.get(key)
@@ -31,35 +36,42 @@ function stop(key) {
   sources.delete(key)
 }
 
-// Drop every listener and cached result (sign-out, and tests).
+// Drop every listener and cached result (tests).
 export function resetAdminSnapshots() {
   for (const key of [...sources.keys()]) stop(key)
-  ownerUid = null
+  ownerUid = undefined
 }
 
-// Called by the Admin shell with the signed-in user's uid before its panels subscribe. A
-// different user drops everything cached for the last one. A missing uid (the brief null while
-// Firebase restores a session) changes nothing; signing out calls resetAdminSnapshots.
-export function setAdminSnapshotsUser(uid) {
-  if (!uid || uid === ownerUid) return
-  const previous = ownerUid
-  ownerUid = uid
-  if (previous === null) return
+// The signed-in user changed (another user, or nobody). Sources no panel uses are dropped; one a
+// mounted panel still uses starts again empty (and waits, with no listener, while nobody is
+// signed in) rather than keep the last user's data or orphan the panel.
+function changeOwner(uid) {
   for (const [key, source] of [...sources]) {
     if (source.subscribers.size === 0) {
       stop(key)
       continue
     }
-    // Still on screen (normally none: Admin unmounts on sign-out): start again empty rather
-    // than orphan it. Its panels hear a moment later, as this runs while the shell renders.
+    clearTimeout(source.timer)
     source.unsubscribe?.()
     source.unsubscribe = null
-    source.state = IDLE
-    listen(source)
-    queueMicrotask(() => {
-      for (const fn of source.subscribers) fn()
-    })
+    emit(source, IDLE)
+    if (uid) listen(source)
   }
+}
+
+// Follow the app's Firebase auth state (the same onAuthStateChanged stream AuthContext uses),
+// once per page: the Admin shell calls this when it mounts. The first report is the user the
+// shell signed in as; after that a different uid, or none, drops the cache.
+export function watchAdminSnapshotsAuth() {
+  if (stopAuthWatch) return
+  stopAuthWatch = onAuthStateChanged(auth, (user) => {
+    const uid = user?.uid ?? null
+    if (uid === ownerUid) return
+    const first = ownerUid === undefined
+    ownerUid = uid
+    if (first && uid) return
+    changeOwner(uid)
+  })
 }
 
 function emit(source, state) {

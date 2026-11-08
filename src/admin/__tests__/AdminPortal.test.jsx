@@ -7,15 +7,13 @@ const authState = { user: { uid: 'tutor-a', email: 'a@example.test' } }
 vi.mock('firebase/auth', () => ({ signOut: vi.fn(() => Promise.resolve()) }))
 vi.mock('../../shared/firebase', () => ({ auth: {} }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => authState }))
-vi.mock('../adminSnapshots', () => ({
-  resetAdminSnapshots: vi.fn(),
-  setAdminSnapshotsUser: vi.fn(),
-}))
+vi.mock('../adminSnapshots', () => ({ watchAdminSnapshotsAuth: vi.fn() }))
 // Panels are lazy; keep them out of this test.
 vi.mock('../LessonPanel', () => ({ default: () => <p>lessons panel</p> }))
 vi.mock('../AppVersionFooter', () => ({ default: () => null }))
 
-import { resetAdminSnapshots, setAdminSnapshotsUser } from '../adminSnapshots'
+import { signOut } from 'firebase/auth'
+import { watchAdminSnapshotsAuth } from '../adminSnapshots'
 import AdminPortal from '../AdminPortal'
 
 function renderPortal() {
@@ -31,14 +29,30 @@ function renderPortal() {
 describe('AdminPortal and the shared Admin listeners', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("ties the shared listeners to the signed-in user, so another account never sees the last one's data", () => {
-    renderPortal()
-    expect(setAdminSnapshotsUser).toHaveBeenCalledWith('tutor-a')
+  it('hands the shared listeners to the auth watch once mounted, never while rendering', () => {
+    let calledDuringRender = false
+    function Probe() {
+      calledDuringRender = watchAdminSnapshotsAuth.mock.calls.length > 0
+      return null
+    }
+    render(
+      <>
+        <MemoryRouter initialEntries={['/admin/lessons']}>
+          <Routes>
+            <Route path="/admin/:tab?/:subtab?" element={<AdminPortal />} />
+          </Routes>
+        </MemoryRouter>
+        {/* Renders after the portal, before any effect runs. */}
+        <Probe />
+      </>
+    )
+    expect(calledDuringRender).toBe(false)
+    expect(watchAdminSnapshotsAuth).toHaveBeenCalled()
   })
 
-  it('drops every cached Admin result on Sign out', async () => {
+  it('Sign out signs out of Firebase (the auth watch then drops the cache)', async () => {
     renderPortal()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Sign out' })))
-    expect(resetAdminSnapshots).toHaveBeenCalledTimes(1)
+    expect(signOut).toHaveBeenCalledTimes(1)
   })
 })

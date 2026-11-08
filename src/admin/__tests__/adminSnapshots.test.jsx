@@ -2,17 +2,28 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('firebase/firestore', () => ({ onSnapshot: vi.fn() }))
-vi.mock('../../shared/firebase', () => ({ firestore: {} }))
+vi.mock('../../shared/firebase', () => ({ firestore: {}, auth: { name: 'auth' } }))
+// The app's own auth state stream: tests drive it by hand.
+let authListener = null
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn((_auth, cb) => {
+    authListener = cb
+    return () => {}
+  }),
+}))
 
 import { onSnapshot } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
 import { renderHook } from '@testing-library/react'
 import {
   ADMIN_SNAPSHOT_LINGER_MS,
   resetAdminSnapshots,
-  setAdminSnapshotsUser,
   useAdminSnapshot,
   useLoadMore,
+  watchAdminSnapshotsAuth,
 } from '../adminSnapshots'
+
+const signIn = (uid) => authListener(uid ? { uid } : null)
 
 let fire
 let unsubscribe
@@ -106,28 +117,57 @@ describe('useAdminSnapshot (one shared listener per Admin source)', () => {
     expect(screen.getByText('a: off')).toBeInTheDocument()
   })
 
+  it('lingers only 2 minutes after the last panel closes (a lingering lessons listener still bills edits)', () => {
+    expect(ADMIN_SNAPSHOT_LINGER_MS).toBe(2 * 60 * 1000)
+  })
+
+  it("watches the app's auth state once, however often the Admin shell mounts", () => {
+    watchAdminSnapshotsAuth()
+    watchAdminSnapshotsAuth()
+    expect(onAuthStateChanged.mock.calls.length).toBeLessThanOrEqual(1)
+    expect(authListener).toEqual(expect.any(Function))
+  })
+
   it("drops every cached source when a different user signs in, so they never see the last user's data", () => {
-    setAdminSnapshotsUser('tutor-a')
+    watchAdminSnapshotsAuth()
+    signIn('tutor-a')
     const view = render(<Names />)
     act(() => fire.next({ docs: [{ id: 'secret' }] }))
     view.unmount()
 
-    setAdminSnapshotsUser('tutor-a')
+    signIn('tutor-a') // a token refresh reports the same user: nothing changes
     expect(unsubscribe).not.toHaveBeenCalled()
 
-    setAdminSnapshotsUser('tutor-b')
+    signIn('tutor-b')
     expect(unsubscribe).toHaveBeenCalledTimes(1)
     render(<Names />)
     expect(screen.getByText('a: loading')).toBeInTheDocument()
     expect(onSnapshot).toHaveBeenCalledTimes(2)
   })
 
-  it('restarts a source a mounted panel still uses when the user changes, instead of orphaning it', async () => {
-    setAdminSnapshotsUser('tutor-a')
+  it('drops every cached source on any sign-out (session expiry, another tab), not just the Sign out button', () => {
+    watchAdminSnapshotsAuth()
+    signIn('tutor-a')
+    const view = render(<Names />)
+    act(() => fire.next({ docs: [{ id: 'secret' }] }))
+    view.unmount()
+
+    signIn(null)
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    signIn('tutor-a')
+    render(<Names />)
+    expect(screen.getByText('a: loading')).toBeInTheDocument()
+  })
+
+  it('restarts a source a mounted panel still uses when the user changes, instead of orphaning it', () => {
+    watchAdminSnapshotsAuth()
+    signIn('tutor-a')
     render(<Names />)
     act(() => fire.next({ docs: [{ id: 'secret' }] }))
-    await act(async () => setAdminSnapshotsUser('tutor-b'))
+    act(() => signIn(null))
     expect(screen.getByText('a: loading')).toBeInTheDocument()
+    expect(onSnapshot).toHaveBeenCalledTimes(1) // no listener while nobody is signed in
+    act(() => signIn('tutor-b'))
     expect(onSnapshot).toHaveBeenCalledTimes(2)
     act(() => fire.next({ docs: [{ id: 'mine' }] }))
     expect(screen.getByText('a: mine')).toBeInTheDocument()
