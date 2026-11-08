@@ -55,9 +55,7 @@ function shareIsPastLimit(expiresAt, now, limits = LIMITS) {
 async function sweep(db, now = Date.now()) {
   const counts = { reports: 0, classes: 0, rosterEntries: 0, shares: 0 }
 
-  // Only the time fields: a report's students and answers are large, and the sweep needs only
-  // when it was made (usually its doc id).
-  const reports = await db.collectionGroup('sessionReports').select('endedAt', 'startedAt').get()
+  const reports = await db.collectionGroup('sessionReports').get()
   for (const snap of reports.docs) {
     if (!reportIsPastLimit(reportTime(snap.id, snap.data()), now)) continue
     counts.reports++
@@ -67,26 +65,14 @@ async function sweep(db, now = Date.now()) {
   const classes = await db.collection('classes').get()
   for (const cls of classes.docs) {
     const data = cls.data()
-    const roster = await cls.ref.collection('roster').select('createdAt').get()
-    const info = { archived: !!data.archived, updatedAt: toMs(data.updatedAt), lastActivity: 0 }
+    const roster = await cls.ref.collection('roster').get()
+    let lastActivity = 0
     for (const entry of roster.docs) {
-      info.lastActivity = Math.max(info.lastActivity, toMs(entry.data().createdAt) ?? 0)
+      lastActivity = Math.max(lastActivity, toMs(entry.data().createdAt) ?? 0)
+      const work = await entry.ref.collection('work').get()
+      for (const w of work.docs) lastActivity = Math.max(lastActivity, toMs(w.data().savedAt) ?? 0)
     }
-    // Saved work can only make a class more recent, so it is read only when it could change the
-    // answer, and then just each student's newest save (savedAt is a server timestamp).
-    const goesAnyway = classIsPastLimit({ ...info, lastActivity: now }, now)
-    for (const entry of roster.docs) {
-      if (goesAnyway || !classIsPastLimit(info, now)) break
-      const newest = await entry.ref
-        .collection('work')
-        .orderBy('savedAt', 'desc')
-        .limit(1)
-        .select('savedAt')
-        .get()
-      for (const w of newest.docs) {
-        info.lastActivity = Math.max(info.lastActivity, toMs(w.data().savedAt) ?? 0)
-      }
-    }
+    const info = { archived: !!data.archived, updatedAt: toMs(data.updatedAt), lastActivity }
     if (!classIsPastLimit(info, now)) continue
     counts.classes++
     counts.rosterEntries += roster.size
@@ -95,7 +81,7 @@ async function sweep(db, now = Date.now()) {
     }
   }
 
-  const shares = await db.collection('sharedWork').select('expiresAt').get()
+  const shares = await db.collection('sharedWork').get()
   for (const snap of shares.docs) {
     if (!shareIsPastLimit(toMs(snap.data().expiresAt), now)) continue
     counts.shares++

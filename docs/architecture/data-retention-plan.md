@@ -36,8 +36,6 @@ lists every field).
   names) to a `retentionLog` doc; LaunchPad Dev checks it and shows Ryan. Deletes start only after
   his second OK.
 - Cost: Cloud Scheduler's free tier covers one job; the reads are a few hundred docs a day.
-- Reads only what it needs (8 Nov 2026): report and share times via `.select()`, and a class's saved
-  work only when it could change the answer, one newest doc per student.
 - Docs: `docs/agents/student-data.md` gets a "Kept for" column; Brand.md can then say how long we
   keep children's work.
 
