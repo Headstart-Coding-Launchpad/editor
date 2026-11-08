@@ -71,6 +71,15 @@ describe('expectedOutputOf', () => {
     ).toBe('Hello\nAva')
     expect(expectedOutputOf({ check: { type: 'code_contains', value: 'x' } })).toBeNull()
   })
+
+  it('reads the type + operator form of output checks too', () => {
+    expect(
+      expectedOutputOf({ check: { type: 'output', operator: 'contains', value: 'Hello' } })
+    ).toBe('Hello')
+    expect(
+      expectedOutputOf({ check: { type: 'output', operator: 'equals', value: 'Hi Ava' } })
+    ).toBe('Hi Ava')
+  })
 })
 
 describe('stagePictureCode', () => {

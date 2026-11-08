@@ -62,11 +62,14 @@ function checkList(check) {
  * checks say nothing about the output.
  */
 export function expectedOutputOf(task) {
+  // Both spellings are live: `output_equals` and `{ type: 'output', operator: 'equals' }`.
+  const kindOf = (c) =>
+    c?.type === 'output' && typeof c.operator === 'string' ? `output_${c.operator}` : c?.type
   const checks = checkList(task?.check)
-  const equals = checks.find((c) => c?.type === 'output_equals' && c.value != null)
+  const equals = checks.find((c) => kindOf(c) === 'output_equals' && c.value != null)
   if (equals) return String(equals.value)
   const contains = checks
-    .filter((c) => c?.type === 'output_contains' && c.value != null && String(c.value) !== '')
+    .filter((c) => kindOf(c) === 'output_contains' && c.value != null && String(c.value) !== '')
     .map((c) => String(c.value))
   return contains.length ? contains.join('\n') : null
 }
