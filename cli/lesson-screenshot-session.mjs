@@ -245,12 +245,16 @@ async function captureOne({ shot, tutor, pages, outPath }) {
   }
   if (shot.view === 'student-modal') {
     await openGrid(tutor)
-    await tutor
+    // The compact list opens the row in place (click its name, unless it is open already, which
+    // a second click would close); the open row's Open button opens the student window.
+    const rowMain = tutor
       .getByTestId('student-grid')
-      .getByText(shot.student, { exact: true })
+      .locator(`[data-testid="student-row"][data-student-name=${JSON.stringify(shot.student)}]`)
+      .getByTestId('row-main')
       .first()
-      .click({ timeout: 6000 })
-    // The compact list opens the row in place; its Open button opens the student window.
+    if ((await rowMain.getAttribute('aria-expanded', { timeout: 6000 })) !== 'true') {
+      await rowMain.click({ timeout: 6000 })
+    }
     await tutor
       .getByTestId('student-grid')
       .getByRole('button', { name: `Open ${shot.student}`, exact: true })
