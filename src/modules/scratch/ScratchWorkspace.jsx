@@ -84,6 +84,10 @@ import {
   createCalmArrival,
   createCalmDragEndStep,
   calmStackedStageScale,
+  calmStageScale,
+  calmFullscreenStageScale,
+  calmStageResolution,
+  scratchCheckPrompt,
   trackBlockDrags,
   createPaletteCategoryMemory,
   openPaletteReveal,
@@ -93,7 +97,14 @@ import {
   revealBlocksBesideFlyout,
   topFlyoutCategory,
 } from './calm/calmPalette.js'
-import { CalmMoreFold, CalmPaletteToggle } from './calm/CalmControls.jsx'
+import { CalmPaletteToggle } from './calm/CalmControls.jsx'
+import {
+  CalmEnlargeButton,
+  CalmRunButton,
+  CalmSpriteSettings,
+  CalmStageShell,
+  CalmStopButton,
+} from './calm/CalmStage.jsx'
 
 export const STAGE_W = 480
 export const STAGE_H = 360
@@ -1000,15 +1011,20 @@ export default function ScratchWorkspace({
   // Slow-mo use for the session report ({ kind: 'run' | 'step' }); see slowMo/useScratchSlowMo.js.
   onSlowMoUse = null,
   // The calm screen (capabilities.calmScratch; StudentWorkspace from LessonTaskContent), or null:
-  // { stacked, aside, paletteStartsOpen, onResetBlocks }. The palette sits behind a Blocks button
-  // (open at the start unless the lesson sets scratchPaletteClosed) and is scrolled clear on every
-  // open; the stage is never behind a tab (stacked:
-  // pinned above the blocks with `aside`, the explainer column, beside it); the sprite property row
-  // and + Backdrop fold behind More. Blockly's own layout and drag-and-drop are untouched.
+  // { stacked, aside, paletteStartsOpen, onResetBlocks, bigStage, fullscreenHint }. The palette
+  // sits behind a Blocks button (open at the start unless the lesson sets scratchPaletteClosed) and
+  // is scrolled clear on every open; the stage is never behind a tab (stacked: pinned above the
+  // blocks with `aside`, the explainer column, beside it). Side by side the stage starts small
+  // (calmStageScale) under a big Run, with Enlarge for a full-screen stage (`fullscreenHint` on its
+  // bar); `bigStage` (Go Live, the presentation) shows it large instead, never changing the
+  // student's own state. The sprite property row and + Backdrop fold behind Sprite settings.
+  // Blockly's own layout and drag-and-drop are untouched.
   calm = null,
 }) {
   const calmOn = !!calm
   const calmStacked = !!calm?.stacked
+  // Go Live and the presentation show the large stage: a view-only override, never stored.
+  const calmBigStage = !!calm?.bigStage
   const calmRef = useRef(calm)
   calmRef.current = calm
   // Sprites/backdrops start from the task's authored lists but become mutable local state so
@@ -1209,6 +1225,36 @@ export default function ScratchWorkspace({
   }
   const [stageCursor, setStageCursor] = useState('default')
   const [stageScale, setStageScale] = useState(1)
+  // Enlarge (calm screen, and the tutor's watch view): the same stage element fixed over the whole
+  // window (CalmStageShell), in memory only. The blocks stay mounted, hidden behind it, so Back
+  // finds the code, the sprites and a running project exactly as they were.
+  const [stageFullscreen, setStageFullscreen] = useState(false)
+  const showFullscreen = stageFullscreen && !hideStage
+  const enlargeAvailable = calmOn || forceCompact
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 0 : window.innerWidth,
+    height: typeof window === 'undefined' ? 0 : window.innerHeight,
+  }))
+  useEffect(() => {
+    if (!showFullscreen) return undefined
+    const measure = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [showFullscreen])
+  const shownStageScale = showFullscreen
+    ? calmFullscreenStageScale(viewport.width, viewport.height)
+    : stageScale
+  const stageResolution = showFullscreen
+    ? calmStageResolution(
+        shownStageScale,
+        typeof window === 'undefined' ? 1 : window.devicePixelRatio
+      )
+    : 1
+  // Into full screen: focus the stage, so arrow keys drive the sprites (not the page) at once.
+  useEffect(() => {
+    if (showFullscreen) canvasRef.current?.focus?.({ preventScroll: true })
+  }, [showFullscreen])
   // Calm screen: the palette starts open unless the lesson opts into closed (scratchPaletteClosed;
   // a read-only workspace has no palette at all). Only the Blocks button changes it.
   const [flyoutCollapsed, setFlyoutCollapsed] = useState(
@@ -1452,7 +1498,12 @@ export default function ScratchWorkspace({
     (states, clones = {}, backdropOverride = null) => {
       const canvas = canvasRef.current
       if (!canvas) return
-      paintStage(canvas.getContext('2d'), {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      // The full-screen stage has a bigger backing store (calmStageResolution): draw in stage units.
+      const k = canvas.width / STAGE_W
+      ctx.setTransform?.(k, 0, 0, k, 0, 0)
+      paintStage(ctx, {
         sprites,
         backdrops,
         backdropName: backdropOverride ?? backdropNameRef.current,
@@ -1477,7 +1528,16 @@ export default function ScratchWorkspace({
       return
     }
     drawStage(spriteStates, cloneStates)
-  }, [spriteStates, cloneStates, backdropName, imageVersion, drawStage, slowMoPreview])
+    // stageResolution: a new canvas size clears it, so redraw.
+  }, [
+    spriteStates,
+    cloneStates,
+    backdropName,
+    imageVersion,
+    drawStage,
+    slowMoPreview,
+    stageResolution,
+  ])
 
   useEffect(() => {
     if (!stagePanelCollapsed) drawStage(spriteStatesRef.current, clonesRef.current)
@@ -2447,6 +2507,7 @@ export default function ScratchWorkspace({
     forceCompact,
     calmOn,
     calmStacked,
+    calmBigStage,
     resizeBlocklyWorkspaces,
   ])
 
@@ -2455,6 +2516,9 @@ export default function ScratchWorkspace({
   // (portrait) layout it is pinned at about 300px wide above the blocks.
   function stageScaleFor(w, h, isCompact) {
     if (calmRef.current?.stacked) return calmStackedStageScale(w)
+    if (calmRef.current && !calmRef.current.bigStage) {
+      return calmStageScale(w, h, typeof window === 'undefined' ? Infinity : window.innerWidth)
+    }
     return computeStageScale(w, h, {
       compact: isCompact,
       flyoutCollapsed: calmRef.current ? false : flyoutCollapsedRef.current,
@@ -3334,13 +3398,17 @@ export default function ScratchWorkspace({
     <button
       key="__stage__"
       type="button"
-      style={{ ...s.spriteTile, ...('__stage__' === selectedSpriteId ? s.spriteTileActive : {}) }}
+      style={{
+        ...s.spriteTile,
+        ...(calmOn ? s.spriteTileCalm : null),
+        ...('__stage__' === selectedSpriteId ? s.spriteTileActive : {}),
+      }}
       onClick={() => setSelectedSpriteId('__stage__')}
       title="Stage scripts"
     >
       <div
         style={{
-          ...s.spriteTileThumb,
+          ...(calmOn ? s.spriteTileThumbCalm : s.spriteTileThumb),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -3404,7 +3472,7 @@ export default function ScratchWorkspace({
       : null
   const assetTabsVisible = (showCostumesTab || showSoundsTab) && !!selectedSprite
 
-  // + Backdrop: in the stage toolbar, or behind More on the calm screen.
+  // + Backdrop: in the stage toolbar, or behind Sprite settings on the calm screen.
   const backdropAddControl = canAddBackdrop ? (
     <div style={s.addPickerWrap} ref={backdropAddWrapRef}>
       <button
@@ -3461,24 +3529,14 @@ export default function ScratchWorkspace({
     </div>
   ) : null
 
-  // Calm screen: the sprite property row and + Backdrop fold behind More, unless a check reads
-  // sprite properties (then the row stays out where the child can watch it).
-  const calmFoldProps = calmOn && calmFoldsSpriteProps(task)
-  const calmPropsRow =
+  // Calm screen: the sprite property row and + Backdrop fold behind one Sprite settings button,
+  // which starts open when a check reads sprite properties (so the child can watch them).
+  const spritePropsRow =
     selectedSpriteId !== '__stage__' && !hideSpriteProps ? renderSpriteProps(false) : null
-  const calmMoreContents = calmOn ? (
-    <>
-      {calmFoldProps && calmPropsRow}
-      {backdropAddControl}
-    </>
-  ) : null
-  const calmHasMore = calmOn && ((calmFoldProps && !!calmPropsRow) || !!backdropAddControl)
-  const spriteTileRow = (moreButton) => (
-    <div style={s.spriteTileRow}>
-      {spriteTiles}
-      {moreButton}
-    </div>
-  )
+  const calmHasSettings = calmOn && (!!spritePropsRow || !!backdropAddControl)
+  const tileStyle = calmOn ? { ...s.spriteTile, ...s.spriteTileCalm } : s.spriteTile
+  const tileThumbStyle = calmOn ? s.spriteTileThumbCalm : s.spriteTileThumb
+  const addTileStyle = calmOn ? { ...s.spriteAddTile, ...s.spriteAddTileCalm } : s.spriteAddTile
 
   const spriteTiles = (
     <>
@@ -3488,17 +3546,17 @@ export default function ScratchWorkspace({
           key={sp.id}
           role="button"
           tabIndex={0}
-          style={{ ...s.spriteTile, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
+          style={{ ...tileStyle, ...(sp.id === selectedSpriteId ? s.spriteTileActive : {}) }}
           onClick={() => setSelectedSpriteId(sp.id)}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedSpriteId(sp.id)}
         >
-          <div style={s.spriteTileThumb}>
+          <div style={tileThumbStyle}>
             <SpriteThumb
               sprite={sp}
               state={spriteStates[sp.id]}
               imageCache={imageCacheRef.current}
               assetsPath={assetsPath}
-              size={52}
+              size={calmOn ? 30 : 52}
               imageVersion={imageVersion}
             />
             {!spriteStates[sp.id]?.visible && (
@@ -3528,7 +3586,7 @@ export default function ScratchWorkspace({
       {!readOnly && onAddSprite && (
         <button
           type="button"
-          style={s.spriteAddTile}
+          style={addTileStyle}
           onClick={onAddSprite}
           aria-label="Add sprite"
           title="Add sprite"
@@ -3541,7 +3599,7 @@ export default function ScratchWorkspace({
         <div style={s.addPickerWrap} ref={spriteAddWrapRef}>
           <button
             type="button"
-            style={s.spriteAddTile}
+            style={addTileStyle}
             onClick={() => setSpritePickerOpen((open) => !open)}
             aria-expanded={spritePickerOpen}
             aria-label="Add sprite"
@@ -3594,16 +3652,17 @@ export default function ScratchWorkspace({
 
   const spritePanelFull = (
     <div style={s.spritePanel}>
-      {/* Calm: always the same wrapper (More only hides with nothing to fold), so selecting the
-          Stage tile never remounts the tiles or forgets that More was open. */}
+      <div style={s.spriteTileRow}>{spriteTiles}</div>
+      {/* Calm: always mounted (it only hides with nothing to fold), so selecting the Stage tile
+          never forgets that Sprite settings was open. */}
       {calmOn ? (
-        <CalmMoreFold row={spriteTileRow} available={calmHasMore}>
-          {calmMoreContents}
-        </CalmMoreFold>
+        <CalmSpriteSettings available={calmHasSettings} defaultOpen={!calmFoldsSpriteProps(task)}>
+          {spritePropsRow}
+          {backdropAddControl}
+        </CalmSpriteSettings>
       ) : (
-        spriteTileRow(null)
+        spritePropsRow
       )}
-      {!calmFoldProps && calmPropsRow}
       {spritePanelEditor && <div style={s.spritePanelEditor}>{spritePanelEditor}</div>}
       {spritePanelFooter && <div style={s.spritePanelFooter}>{spritePanelFooter}</div>}
     </div>
@@ -3643,6 +3702,30 @@ export default function ScratchWorkspace({
       </div>
       {selectedSpriteId !== '__stage__' && renderSpriteProps(true)}
     </div>
+  )
+
+  // The grey line under the stage before a check runs (none on the calm screen but the manual one).
+  const checkPrompt = scratchCheckPrompt({
+    calm: calmOn,
+    hasChecks: scratchChecks.length > 0,
+    attempted: checkAttempted,
+    running,
+    manual: showManualCheck,
+    afterRun: hasAfterRunCheck,
+    afterPlaced: hasAfterBlockPlacedCheck,
+  })
+  const closeFullscreen = () => setStageFullscreen(false)
+  // Calm: Reset Stage is a small secondary button (beside Enlarge, or in the full-screen bar).
+  const calmResetStage = (
+    <button
+      type="button"
+      className="btn-ghost-outline"
+      style={calmOn ? s.calmResetStage : s.resetBtn}
+      onClick={handleResetStage}
+      title="Reset the stage: put sprites back where they started"
+    >
+      <span aria-hidden="true">↺</span> Reset Stage
+    </button>
   )
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -3764,13 +3847,16 @@ export default function ScratchWorkspace({
       {/* Block editor — all workspace divs stacked, only selected one visible */}
       <div
         data-testid="scratch-blocks"
-        style={
-          compact
+        style={{
+          ...(compact
             ? { ...s.editorPane, display: activePane === 'blocks' ? 'flex' : 'none' }
             : calmStacked
               ? { ...s.editorPane, gridArea: 'blocks' }
-              : s.editorPane
-        }
+              : s.editorPane),
+          // Behind the full-screen stage: kept mounted and the same size (Blockly never re-lays
+          // out), only hidden, so a highlight on a palette control points at Back instead.
+          ...(showFullscreen ? { visibility: 'hidden' } : null),
+        }}
       >
         <div style={calmOn && !readOnly ? s.calmEditorHeader : s.editorPaneHeader}>
           {calmOn && !readOnly && assetTab === 'code' && (
@@ -3944,154 +4030,194 @@ export default function ScratchWorkspace({
                 : s.stagePane
           }
         >
-          <div
-            ref={stageToolbarRef}
-            style={s.stageToolbar}
-            onPointerMove={readOnly ? undefined : handleToolbarPointerMove}
-            onPointerDown={readOnly ? undefined : handleToolbarPointerDown}
-            onPointerUp={readOnly ? undefined : handleToolbarPointerUp}
-            onPointerLeave={readOnly ? undefined : handleToolbarPointerLeave}
-          >
-            {effectiveCursor?.target === 'toolbar' && (
-              <div
-                style={{ position: 'absolute', left: effectiveCursor.x, top: effectiveCursor.y }}
-              >
-                <LiveCursorDot down={effectiveCursor.down} />
-              </div>
-            )}
-            {/* The calm screen keeps the stage (and its flag) always in view: no collapse. */}
-            {!calmOn && (
-              <CollapseTabButton
-                onClick={() => setStagePanelCollapsed(true)}
-                direction="right"
-                title="Collapse Stage"
-                ariaLabel="Collapse Stage"
-                // Reserved (not simply omitted) in compact mode: this button toggles the
-                // side-by-side collapsible stage pane, which doesn't exist in compact's
-                // Blocks/Stage tab layout — but removing it outright shifted the green
-                // flag and every button after it left by its width, so its position no
-                // longer matched between compact and non-compact layouts.
-                style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
-              />
-            )}
-            <button
-              type="button"
-              className="btn-ghost-outline"
-              style={s.greenFlagBtn}
-              data-highlight-target="green_flag"
-              onClick={(e) => {
-                e.currentTarget.blur()
-                handleRun()
-              }}
-              aria-label="Run"
-              title="Run green flag scripts"
+          {/* Not drawn under the full-screen stage: its bar has its own Run, Stop and Reset, and a
+              highlight must find those, not these hidden ones. */}
+          {!showFullscreen && (
+            <div
+              ref={stageToolbarRef}
+              style={calmOn ? s.calmStageToolbar : s.stageToolbar}
+              onPointerMove={readOnly ? undefined : handleToolbarPointerMove}
+              onPointerDown={readOnly ? undefined : handleToolbarPointerDown}
+              onPointerUp={readOnly ? undefined : handleToolbarPointerUp}
+              onPointerLeave={readOnly ? undefined : handleToolbarPointerLeave}
             >
-              <svg
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 15 15"
-              >
-                <rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151" />
-                <polygon points="3,1 14,6 3,11" fill="#22c55e" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="btn-danger"
-              style={s.stopFlagBtn}
-              data-highlight-target="stop"
-              onClick={handleStop}
-              aria-label="Stop"
-              title="Stop all scripts"
-            >
-              <span style={s.stopIcon} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              style={s.resetBtn}
-              onClick={handleResetStage}
-              title="Reset the stage: put sprites back where they started"
-            >
-              Reset Stage
-            </button>
-            {!calmOn && backdropAddControl}
-          </div>
+              {effectiveCursor?.target === 'toolbar' && (
+                <div
+                  style={{ position: 'absolute', left: effectiveCursor.x, top: effectiveCursor.y }}
+                >
+                  <LiveCursorDot down={effectiveCursor.down} />
+                </div>
+              )}
+              {/* The calm screen keeps the stage (and its flag) always in view: no collapse. */}
+              {!calmOn && (
+                <CollapseTabButton
+                  onClick={() => setStagePanelCollapsed(true)}
+                  direction="right"
+                  title="Collapse Stage"
+                  ariaLabel="Collapse Stage"
+                  // Reserved (not simply omitted) in compact mode: this button toggles the
+                  // side-by-side collapsible stage pane, which doesn't exist in compact's
+                  // Blocks/Stage tab layout — but removing it outright shifted the green
+                  // flag and every button after it left by its width, so its position no
+                  // longer matched between compact and non-compact layouts.
+                  style={compact ? { visibility: 'hidden', pointerEvents: 'none' } : undefined}
+                />
+              )}
+              {calmOn ? (
+                <>
+                  <div style={s.calmRunRow}>
+                    <CalmRunButton onRun={handleRun} big />
+                    <CalmStopButton onStop={handleStop} big />
+                  </div>
+                  <div style={s.calmStageRow}>
+                    <CalmEnlargeButton onEnlarge={() => setStageFullscreen(true)} />
+                    {calmResetStage}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost-outline"
+                    style={s.greenFlagBtn}
+                    data-highlight-target="green_flag"
+                    onClick={(e) => {
+                      e.currentTarget.blur()
+                      handleRun()
+                    }}
+                    aria-label="Run"
+                    title="Run green flag scripts"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 15 15"
+                    >
+                      <rect x="1" y="0" width="2" height="15" rx=".5" fill="#374151" />
+                      <polygon points="3,1 14,6 3,11" fill="#22c55e" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    style={s.stopFlagBtn}
+                    data-highlight-target="stop"
+                    onClick={handleStop}
+                    aria-label="Stop"
+                    title="Stop all scripts"
+                  >
+                    <span style={s.stopIcon} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={s.resetBtn}
+                    onClick={handleResetStage}
+                    title="Reset the stage: put sprites back where they started"
+                  >
+                    Reset Stage
+                  </button>
+                  {backdropAddControl}
+                  {enlargeAvailable && (
+                    <CalmEnlargeButton onEnlarge={() => setStageFullscreen(true)} />
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
-          <div
-            style={{ ...s.stageFrame, width: STAGE_W * stageScale, height: STAGE_H * stageScale }}
+          <CalmStageShell
+            fullscreen={showFullscreen}
+            onBack={closeFullscreen}
+            readOnly={readOnly}
+            hint={calm?.fullscreenHint ?? ''}
+            controls={
+              <>
+                <CalmRunButton onRun={handleRun} big={false} />
+                <CalmStopButton onStop={handleStop} big={false} />
+                {calmResetStage}
+              </>
+            }
           >
-            {variables.some((v) => v.showOnStage) && (
-              <div style={s.variableMonitors}>
-                {variables
-                  .filter((v) => v.showOnStage)
-                  .map((v) => (
-                    <div key={v.name} style={s.variableMonitor}>
-                      <span style={s.variableMonitorName}>{v.name}</span>
-                      <span style={s.variableMonitorValue}>
-                        {(slowMoPreview ? slowMoPreview.variables : variableValues)[v.name] ?? 0}
-                      </span>
+            <div
+              style={{
+                ...s.stageFrame,
+                width: STAGE_W * shownStageScale,
+                height: STAGE_H * shownStageScale,
+              }}
+            >
+              {variables.some((v) => v.showOnStage) && (
+                <div style={s.variableMonitors}>
+                  {variables
+                    .filter((v) => v.showOnStage)
+                    .map((v) => (
+                      <div key={v.name} style={s.variableMonitor}>
+                        <span style={s.variableMonitorName}>{v.name}</span>
+                        <span style={s.variableMonitorValue}>
+                          {(slowMoPreview ? slowMoPreview.variables : variableValues)[v.name] ?? 0}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+              {broadcastToasts.length > 0 && (
+                <div style={s.broadcastToastStack}>
+                  {broadcastToasts.map((t) => (
+                    <div key={t.id} style={t.kind === 'error' ? s.errorToast : s.broadcastToast}>
+                      <span style={s.broadcastToastIcon}>{t.kind === 'error' ? '⚠️' : '📢'}</span>{' '}
+                      {t.message}
                     </div>
                   ))}
-              </div>
-            )}
-            {broadcastToasts.length > 0 && (
-              <div style={s.broadcastToastStack}>
-                {broadcastToasts.map((t) => (
-                  <div key={t.id} style={t.kind === 'error' ? s.errorToast : s.broadcastToast}>
-                    <span style={s.broadcastToastIcon}>{t.kind === 'error' ? '⚠️' : '📢'}</span>{' '}
-                    {t.message}
-                  </div>
-                ))}
-              </div>
-            )}
-            <SlowMoPreviewBanner snapshot={slowMoPreview} onBackToNow={slowMo.backToNow} />
-            <canvas
-              ref={canvasRef}
-              width={STAGE_W}
-              height={STAGE_H}
-              tabIndex={readOnly ? undefined : 0}
-              style={{
-                ...s.canvas,
-                width: STAGE_W * stageScale,
-                height: STAGE_H * stageScale,
-                cursor: readOnly ? 'default' : stageCursor,
-              }}
-              onPointerDown={readOnly ? undefined : handleCanvasPointerDown}
-              onPointerMove={readOnly ? undefined : handleCanvasPointerMove}
-              onPointerUp={readOnly ? undefined : handleCanvasPointerUp}
-              onPointerLeave={readOnly ? undefined : handleCanvasPointerLeave}
-            />
-            {askPrompt && (
-              <form style={s.askBox} onSubmit={handleAskSubmit}>
-                <label style={s.askLabel}>{askPrompt}</label>
-                <div style={s.askRow}>
-                  <input
-                    style={s.askInput}
-                    value={askValue}
-                    onChange={(e) => setAskValue(e.target.value)}
-                    autoFocus
-                  />
-                  <button className="btn-primary" style={s.askBtn} type="submit">
-                    OK
-                  </button>
                 </div>
-              </form>
-            )}
-            {effectiveCursor?.target === 'stage' && (
-              <div
+              )}
+              <SlowMoPreviewBanner snapshot={slowMoPreview} onBackToNow={slowMo.backToNow} />
+              <canvas
+                ref={canvasRef}
+                width={STAGE_W * stageResolution}
+                height={STAGE_H * stageResolution}
+                tabIndex={readOnly ? undefined : 0}
                 style={{
-                  position: 'absolute',
-                  left: toCanvasX(effectiveCursor.x) * stageScale,
-                  top: toCanvasY(effectiveCursor.y) * stageScale,
+                  ...s.canvas,
+                  width: STAGE_W * shownStageScale,
+                  height: STAGE_H * shownStageScale,
+                  cursor: readOnly ? 'default' : stageCursor,
                 }}
-              >
-                <LiveCursorDot down={effectiveCursor.down} />
-              </div>
-            )}
-          </div>
+                onPointerDown={readOnly ? undefined : handleCanvasPointerDown}
+                onPointerMove={readOnly ? undefined : handleCanvasPointerMove}
+                onPointerUp={readOnly ? undefined : handleCanvasPointerUp}
+                onPointerLeave={readOnly ? undefined : handleCanvasPointerLeave}
+              />
+              {askPrompt && (
+                <form style={s.askBox} onSubmit={handleAskSubmit}>
+                  <label style={s.askLabel}>{askPrompt}</label>
+                  <div style={s.askRow}>
+                    <input
+                      style={s.askInput}
+                      value={askValue}
+                      onChange={(e) => setAskValue(e.target.value)}
+                      autoFocus
+                    />
+                    <button className="btn-primary" style={s.askBtn} type="submit">
+                      OK
+                    </button>
+                  </div>
+                </form>
+              )}
+              {effectiveCursor?.target === 'stage' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: toCanvasX(effectiveCursor.x) * shownStageScale,
+                    top: toCanvasY(effectiveCursor.y) * shownStageScale,
+                  }}
+                >
+                  <LiveCursorDot down={effectiveCursor.down} />
+                </div>
+              )}
+            </div>
+          </CalmStageShell>
 
           {slowMoConfig && !readOnly && (
             <>
@@ -4129,20 +4255,7 @@ export default function ScratchWorkspace({
                 Check
               </button>
             )}
-            {scratchChecks.length > 0 && !checkAttempted && showManualCheck && !running && (
-              <span style={s.checkNone}>Run your code, then click Check</span>
-            )}
-            {scratchChecks.length > 0 &&
-              !checkAttempted &&
-              hasAfterRunCheck &&
-              !showManualCheck &&
-              !running && <span style={s.checkNone}>Run your code to check</span>}
-            {scratchChecks.length > 0 &&
-              !checkAttempted &&
-              hasAfterBlockPlacedCheck &&
-              !hasAfterRunCheck &&
-              !showManualCheck &&
-              !running && <span style={s.checkNone}>Place the blocks to check</span>}
+            {checkPrompt && <span style={s.checkNone}>{checkPrompt}</span>}
           </div>
         </div>
       )}
@@ -4192,6 +4305,43 @@ const s = {
     background: '#fafafa',
     flexShrink: 0,
   },
+  // Calm stage column (side by side): Run and Stop, then Enlarge and a small Reset Stage.
+  calmStageToolbar: {
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  calmRunRow: { display: 'flex', gap: 8, alignItems: 'stretch' },
+  calmStageRow: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  calmResetStage: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 36,
+    padding: '4px 10px',
+    fontSize: 13,
+    whiteSpace: 'nowrap',
+  },
+  // Calm sprite tiles: smaller than the classic 52px thumbnails, still at least 44px to tap.
+  spriteTileCalm: { minWidth: 52, minHeight: 52, padding: '4px 6px', gap: 2 },
+  spriteTileThumbCalm: {
+    width: 30,
+    height: 30,
+    borderRadius: 6,
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  spriteAddTileCalm: { width: 52, minHeight: 52, padding: '4px 6px', gap: 2 },
   calmResetBlocks: {
     whiteSpace: 'nowrap',
     minHeight: 44,

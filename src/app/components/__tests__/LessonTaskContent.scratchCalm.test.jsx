@@ -89,7 +89,7 @@ describe('calm Scratch: the explainer stays in view while building', () => {
     expect(workspaceProps.calm).toMatchObject({ stacked: false })
     const column = screen.getByTestId('scratch-calm-aside')
     const columnWidth = parseInt(column.style.width, 10)
-    expect(columnWidth).toBeGreaterThanOrEqual(220)
+    expect(columnWidth).toBeGreaterThanOrEqual(208)
     expect(columnWidth).toBeLessThanOrEqual(320)
   })
 

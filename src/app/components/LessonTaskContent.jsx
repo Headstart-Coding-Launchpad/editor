@@ -225,6 +225,9 @@ export default function LessonTaskContent({
   canOfferPersonalSandbox,
   explainerShowsComplete,
   presenterLayout = 'both',
+  // The tutor's presentation window (StudentView teacherPresentation): the calm Scratch stage
+  // shows large there, as it does while the tutor broadcasts (Go Live).
+  teacherPresentation = false,
   onTopicOpen,
   onTopicClose,
   openTopicId,
@@ -681,79 +684,83 @@ export default function LessonTaskContent({
     : taskContentStyle
 
   // The explainer is copy-blocked alongside the workspace while watching a
-  // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal.
-  const taskExplainer = hasTaskExplainer ? (
-    <div
-      data-testid="task-instructions"
-      style={
-        calmScratch ? s.calmExplainerShell : useSideExplainer ? s.sideExplainerShell : undefined
-      }
-      className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
-      onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-      onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
-    >
-      {useSideExplainer && !calmScratch && (
-        <CollapseTabButton
-          onClick={() => setExplainerCollapsed(true)}
-          direction="left"
-          title="Collapse Explainer"
-          ariaLabel="Collapse Explainer"
-          style={s.sideExplainerCollapse}
-          highlighted={instructionsHighlighted}
+  // broadcast: it can carry a pushed sandbox explainer or the complete-code reveal. `footer`
+  // goes inside the card under the text (the calm Scratch hint).
+  const renderTaskExplainer = (footer = null) =>
+    hasTaskExplainer ? (
+      <div
+        data-testid="task-instructions"
+        style={
+          calmScratch ? s.calmExplainerShell : useSideExplainer ? s.sideExplainerShell : undefined
+        }
+        className={isLiveCopyBlocked ? 'live-copy-blocked' : undefined}
+        onCopyCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+        onCutCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+        onDragStartCapture={isLiveCopyBlocked ? blockClipboardEvent : undefined}
+      >
+        {useSideExplainer && !calmScratch && (
+          <CollapseTabButton
+            onClick={() => setExplainerCollapsed(true)}
+            direction="left"
+            title="Collapse Explainer"
+            ariaLabel="Collapse Explainer"
+            style={s.sideExplainerCollapse}
+            highlighted={instructionsHighlighted}
+          />
+        )}
+        <ExplainerPanel
+          // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
+          key={calmScratch ? `calm-${task?.id ?? ''}-${calmExplainerOpenings}` : undefined}
+          title={
+            hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
+          }
+          content={
+            hasSandboxExplainer
+              ? sandboxExplainer
+              : showsCompleteCode
+                ? '```python\n' + task.completeCode + '\n```'
+                : task.explainer
+          }
+          topicType={lesson.type}
+          showLibrary={moduleCaps?.topicLibrary ?? true}
+          libraryButton={!libraryInCodeRow}
+          libraryRequest={libraryInCodeRow ? libraryRequest : 0}
+          onLibraryRequestHandled={() => setLibraryRequest(0)}
+          onTopicOpen={onTopicOpen}
+          onTopicClose={onTopicClose}
+          openTopicId={openTopicId}
+          disableCopy
+          fill={useSideExplainer}
+          // Clear of the collapse arrow laid over the title bar's right end (s.sideExplainerCollapse).
+          titleEndInset={useSideExplainer && !calmScratch ? SIDE_COLLAPSE_INSET : 0}
+          // The calm card collapses to its one-line title strip (never a rail or a tab).
+          collapsible={!useSideExplainer || calmScratch}
+          foldIfTallerThan={calmScratch ? calmFoldIfTallerThan : null}
+          markdownTextScale={useSideExplainer ? 1.08 : 1}
+          onCollapsedChange={
+            !useSideExplainer || calmScratch ? setAccordionExplainerCollapsed : undefined
+          }
+          highlighted={(!useSideExplainer || calmScratch) && instructionsHighlighted}
+          entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
+          // Presentation annotations cover the task's own explainer only (not a pushed sandbox
+          // explainer or the complete-code reveal).
+          inkSurfaceId={
+            !hasSandboxExplainer && !showsCompleteCode && task?.id != null
+              ? surfaceId(SURFACE_KINDS.explainer, task.id)
+              : null
+          }
+          // "See example" opens are logged for the tutor from the task's own explainer only
+          // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
+          onExampleOpen={
+            !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
+              ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
+              : undefined
+          }
+          footer={footer}
         />
-      )}
-      <ExplainerPanel
-        // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
-        key={calmScratch ? `calm-${task?.id ?? ''}-${calmExplainerOpenings}` : undefined}
-        title={
-          hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
-        }
-        content={
-          hasSandboxExplainer
-            ? sandboxExplainer
-            : showsCompleteCode
-              ? '```python\n' + task.completeCode + '\n```'
-              : task.explainer
-        }
-        topicType={lesson.type}
-        showLibrary={moduleCaps?.topicLibrary ?? true}
-        libraryButton={!libraryInCodeRow}
-        libraryRequest={libraryInCodeRow ? libraryRequest : 0}
-        onLibraryRequestHandled={() => setLibraryRequest(0)}
-        onTopicOpen={onTopicOpen}
-        onTopicClose={onTopicClose}
-        openTopicId={openTopicId}
-        disableCopy
-        fill={useSideExplainer}
-        // Clear of the collapse arrow laid over the title bar's right end (s.sideExplainerCollapse).
-        titleEndInset={useSideExplainer && !calmScratch ? SIDE_COLLAPSE_INSET : 0}
-        // The calm card collapses to its one-line title strip (never a rail or a tab).
-        collapsible={!useSideExplainer || calmScratch}
-        foldIfTallerThan={calmScratch ? calmFoldIfTallerThan : null}
-        markdownTextScale={useSideExplainer ? 1.08 : 1}
-        onCollapsedChange={
-          !useSideExplainer || calmScratch ? setAccordionExplainerCollapsed : undefined
-        }
-        highlighted={(!useSideExplainer || calmScratch) && instructionsHighlighted}
-        entranceKey={hasSandboxExplainer ? null : taskEntranceKey}
-        // Presentation annotations cover the task's own explainer only (not a pushed sandbox
-        // explainer or the complete-code reveal).
-        inkSurfaceId={
-          !hasSandboxExplainer && !showsCompleteCode && task?.id != null
-            ? surfaceId(SURFACE_KINDS.explainer, task.id)
-            : null
-        }
-        // "See example" opens are logged for the tutor from the task's own explainer only
-        // (src/shared/exampleOpens.js); the reporter is a no-op outside a live lesson.
-        onExampleOpen={
-          !hasSandboxExplainer && !showsCompleteCode && badgeSignals?.reportExampleOpen
-            ? (index) => badgeSignals.reportExampleOpen(index, task?.id)
-            : undefined
-        }
-      />
-    </div>
-  ) : null
+      </div>
+    ) : null
+  const taskExplainer = renderTaskExplainer()
 
   // The tutor's "Send hint" shows on this same banner, as a 💡 note from the tutor, with no check
   // result behind it (live lesson only: a teacher's forced live view shows their own screen).
@@ -958,12 +965,20 @@ export default function LessonTaskContent({
   // the card on its own below). It renders into one DOM node (calmAsideHost) that moves between
   // the two slots, so crossing SCRATCH_CALM_STACK_BREAKPOINT (a tablet turned round) never remounts
   // the card or the hint: a folded card stays folded and a scrolled one keeps its place.
-  const calmAside = calmAsideWanted ? (
-    <>
-      {taskExplainer}
-      {calmHintSlot === 'aside' && hintBox}
-    </>
-  ) : null
+  // The full-screen stage's bar (Enlarge) repeats the hint in one line: the tutor's hint, a failed
+  // check's hint, a pass, or the nudge.
+  const calmFullscreenHint = !calmHintShown
+    ? ''
+    : sentHintText ||
+      (shouldShowFeedbackBanner && !bannerPassed
+        ? displayCheckSuggestion || 'Not quite, try again!'
+        : '') ||
+      (shouldShowFeedbackBanner && bannerPassed ? 'Correct!' : '') ||
+      hintNudge
+  // The hint sits inside the card, straight under the steps (and stays when the card folds).
+  const calmAside = calmAsideWanted
+    ? renderTaskExplainer(calmHintSlot === 'aside' ? hintBox : null)
+    : null
 
   const workspaceContent = (
     <>
@@ -1154,6 +1169,10 @@ export default function LessonTaskContent({
                     ) : null,
                   categoryMemory: paletteCategoryMemory,
                   paletteStartsOpen: paletteStartsOpen(lesson),
+                  // Go Live and the presentation show the large stage (never stored as the
+                  // student's own choice); the student's own view starts small with Enlarge.
+                  bigStage: !!(isForcedTeacherLive || teacherPresentation),
+                  fullscreenHint: calmFullscreenHint,
                 }
               : undefined
           }
@@ -1537,7 +1556,7 @@ const s = {
     flexDirection: 'column',
     overflow: 'hidden',
   },
-  calmHint: { maxHeight: '45%' },
+  calmHint: { maxHeight: '100%' },
   // The stacked layout's slot beside the pinned stage (ScratchWorkspace's aside cell).
   calmStackedSlot: {
     flex: 1,

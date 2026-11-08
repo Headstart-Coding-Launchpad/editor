@@ -2294,6 +2294,7 @@ export default function StudentView({
                 canOfferPersonalSandbox={canOfferPersonalSandbox}
                 explainerShowsComplete={explainerShowsComplete}
                 presenterLayout={teacherPresentation ? presenterLayout : displayLayout}
+                teacherPresentation={teacherPresentation}
                 onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
                 onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
                 openTopicId={phase === 'lesson' ? openTopicId : null}

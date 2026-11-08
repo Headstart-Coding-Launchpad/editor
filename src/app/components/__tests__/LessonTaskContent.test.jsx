@@ -293,7 +293,7 @@ describe('LessonTaskContent compact Scratch layout', () => {
     isTeacherEditing: false,
   }
 
-  it('keeps the side-by-side split (no tabs) when the panel is measured as wide, with the explainer at its fixed 320px width — not draggable, not proportional', () => {
+  it('keeps the side-by-side split (no tabs) when the panel is measured as wide, with the explainer column at its set width (280px at 1600) — not draggable', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
 
@@ -302,17 +302,17 @@ describe('LessonTaskContent compact Scratch layout', () => {
     expect(screen.queryByRole('tablist', { name: 'Task panel' })).not.toBeInTheDocument()
     expect(screen.getByText('Workspace')).toBeVisible()
     const explainerText = screen.getByText('Drag the move block.')
-    const explainerColumn = explainerText.closest('[style*="width: 320px"]')
+    const explainerColumn = explainerText.closest('[style*="width: 280px"]')
     expect(explainerColumn).toBeInTheDocument()
     // No drag handle — SplitPane's draggable divider has this cursor; the fixed layout has none.
     expect(document.querySelector('[style*="cursor: col-resize"]')).not.toBeInTheDocument()
   })
 
-  it('keeps the explainer at exactly 320px regardless of how wide the panel is (no proportional growth)', () => {
+  it('never lets the explainer grow past 320px however wide the panel is (calm column, 208-320px)', () => {
     getLessonModule.mockReturnValue(SCRATCH_MODULE)
     useElementSize.mockReturnValue([{ current: null }, { width: 1600, height: 900 }])
     const { rerender } = render(<LessonTaskContent {...scratchProps} />)
-    const widthAt1600 = screen.getByText('Drag the move block.').closest('[style*="width: 320px"]')
+    const widthAt1600 = screen.getByText('Drag the move block.').closest('[style*="width: 280px"]')
     expect(widthAt1600).toBeInTheDocument()
 
     useElementSize.mockReturnValue([{ current: null }, { width: 3000, height: 900 }])

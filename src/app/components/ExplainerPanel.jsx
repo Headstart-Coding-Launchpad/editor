@@ -45,6 +45,9 @@ export default function ExplainerPanel({
   // starts folded to its title strip. Never once the student scrolls, taps or focuses inside it.
   // Null never folds. (The calm Scratch screen, stacked beside the stage.)
   foldIfTallerThan = null,
+  // Shown inside the card under the text, folded or not (the calm Scratch screen's hint), so it
+  // never scrolls away with the steps and stays when the card folds to its title.
+  footer = null,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
@@ -220,6 +223,7 @@ export default function ExplainerPanel({
             style={{
               ...s.content,
               ...(fill ? s.contentFill : {}),
+              ...(fill && footer ? s.contentFillAboveFooter : {}),
             }}
             onScroll={updateScrollState}
           >
@@ -256,6 +260,9 @@ export default function ExplainerPanel({
             </div>
           )}
         </div>
+      )}
+      {footer && (
+        <div style={isCollapsed ? { ...s.footer, paddingTop: 12 } : s.footer}>{footer}</div>
       )}
       {expanded && !isCollapsed && canExpandOverlay && (
         <>
@@ -424,6 +431,15 @@ const s = {
     maxHeight: 'none',
     overflowY: 'auto',
     padding: '18px 22px 48px',
+  },
+  contentFillAboveFooter: { paddingBottom: 12 },
+  footer: {
+    flexShrink: 0,
+    minHeight: 0,
+    maxHeight: '45%',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '0 12px 12px',
   },
   contentExpanded: {
     flex: 1,

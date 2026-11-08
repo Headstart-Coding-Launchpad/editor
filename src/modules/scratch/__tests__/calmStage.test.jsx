@@ -206,6 +206,12 @@ describe('calm stage sizes', () => {
     expect(calmStageScale(5000, 2000)).toBeLessThanOrEqual(1)
   })
 
+  it('the playground (no explainer, a wider workspace) gets the same 320 at 1366', () => {
+    expect(Math.round(calmStageScale(1334, 690, 1366) * 480)).toBe(320)
+    expect(Math.round(calmStageScale(992, 690, 1024) * 480)).toBe(256)
+    expect(Math.round(calmStageScale(1090, 690, 1366) * 480)).toBe(318)
+  })
+
   it('a short screen shrinks it so the column still fits', () => {
     expect(calmStageScale(1090, 420)).toBeLessThan(calmStageScale(1090, 690))
   })
@@ -249,4 +255,3 @@ describe('the line under the stage (calm screen)', () => {
     expect(scratchCheckPrompt({ ...base, calm: false, afterRun: true, running: true })).toBeNull()
   })
 })
-

@@ -469,11 +469,11 @@ describe('calm Scratch layout rules', () => {
     expect(SCRATCH_CALM_STACK_BREAKPOINT).toBeLessThan(992)
   })
 
-  it('gives the explainer card 220-320px beside the blocks', () => {
-    expect(calmExplainerWidth(1334)).toBe(320)
-    expect(calmExplainerWidth(992)).toBeGreaterThanOrEqual(220)
-    expect(calmExplainerWidth(992)).toBeLessThan(260)
-    expect(calmExplainerWidth(500)).toBe(220)
+  it('gives the explainer card 208-320px beside the blocks (about 232px at 1366)', () => {
+    expect(calmExplainerWidth(1334)).toBe(233)
+    expect(calmExplainerWidth(992)).toBe(208)
+    expect(calmExplainerWidth(500)).toBe(208)
+    expect(calmExplainerWidth(2400)).toBe(320)
   })
 
   it('caps the explainer beside the pinned stage and keeps the Blocks pane at least 360px tall', () => {
