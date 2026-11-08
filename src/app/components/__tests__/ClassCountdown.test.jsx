@@ -84,7 +84,7 @@ describe('ClassCountdownControl', () => {
       ...overrides,
     }
     render(<ClassCountdownControl {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Class countdown' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Class countdown/ }))
     return props
   }
 
@@ -125,6 +125,25 @@ describe('ClassCountdownControl', () => {
     renderControl()
     expect(screen.queryByRole('button', { name: '+1 min' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
+  })
+
+  it('names the button with the time left while a countdown runs', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+    render(
+      <ClassCountdownControl
+        countdown={countdownEndingIn(125_000)}
+        onStart={vi.fn()}
+        onAddTime={vi.fn()}
+        onClear={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Class countdown: 2:05 left' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    )
+    act(() => vi.advanceTimersByTime(130_000))
+    expect(screen.getByRole('button', { name: 'Class countdown: time’s up' })).toBeInTheDocument()
   })
 })
 

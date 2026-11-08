@@ -13,12 +13,18 @@ import { formatClock } from '../../shared/timeAgo'
 
 // The button's own text: the time left while a countdown runs ("⏱ 4:52"), "⏱ 0:00" in amber
 // once it ends, else "⏱ Countdown". Ticks on its own so the top bar does not re-render.
+// While it runs the accessible name carries the time too ("Class countdown: 4:52 left").
 function CountdownButtonText({ countdown, serverTimeOffset }) {
   const remainingMs = useCountdownRemaining(countdown, serverTimeOffset)
   if (remainingMs == null) return <>⏱ Countdown</>
+  const ended = remainingMs <= 0
+  const clock = formatClock(Math.ceil(Math.max(remainingMs, 0) / 1000))
   return (
-    <span className={remainingMs <= 0 ? 'teacher-top-row__countdown-ended' : undefined}>
-      ⏱ {formatClock(Math.ceil(remainingMs / 1000))}
+    <span className={ended ? 'teacher-top-row__countdown-ended' : undefined}>
+      <span style={s.srOnly}>
+        {ended ? 'Class countdown: time’s up' : `Class countdown: ${clock} left`}
+      </span>
+      <span aria-hidden="true">⏱ {clock}</span>
     </span>
   )
 }
@@ -89,7 +95,8 @@ export default function ClassCountdownControl({
         className="btn-ghost teacher-session-controls__action"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Class countdown"
+        // While a countdown runs the button's text names it, time included.
+        aria-label={running ? undefined : 'Class countdown'}
         title="Show a countdown on every student screen and the presentation window"
       >
         <CountdownButtonText countdown={countdown} serverTimeOffset={serverTimeOffset} />
@@ -171,6 +178,17 @@ export default function ClassCountdownControl({
 }
 
 const s = {
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    whiteSpace: 'nowrap',
+    border: 0,
+  },
   wrap: { position: 'relative', display: 'inline-block' },
   panel: {
     position: 'absolute',
