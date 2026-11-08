@@ -167,3 +167,76 @@ describe('TeacherView Skip optional tasks', () => {
     expect(screen.getByRole('button', { name: /Bonus/ })).toHaveAttribute('data-skipped', 'true')
   })
 })
+
+describe('TeacherView Answer panel', () => {
+  function answerLesson() {
+    return {
+      id: 'answer-lesson',
+      title: 'Answers',
+      type: 'composed',
+      tasks: [
+        {
+          id: 1,
+          moduleType: 'turtle',
+          title: 'Square',
+          starterCode: 'turtle.forward(10)',
+          codeStages: [
+            { label: 'Starter', role: 'starter', code: 'turtle.forward(10)' },
+            {
+              label: 'Complete',
+              role: 'complete',
+              code: 'for i in range(4):\n  turtle.forward(10)',
+            },
+          ],
+        },
+        {
+          id: 2,
+          moduleType: 'turtle',
+          title: 'What does a loop do?',
+          taskType: 'quiz',
+          quizType: 'multiple_choice',
+          options: [
+            { id: 'a', text: 'Repeats code' },
+            { id: 'b', text: 'Stops the program' },
+          ],
+          check: { type: 'answer_equals', value: 'a' },
+        },
+      ],
+    }
+  }
+
+  beforeEach(() =>
+    reset({
+      state: 'active',
+      currentTaskId: 1,
+      students: { s1: { displayName: 'Ava', currentAnswer: null } },
+    })
+  )
+
+  it('shows the model answer first, with an Answer / Starter toggle', async () => {
+    await renderTeacherView(answerLesson())
+    const card = screen.getByTestId('teacher-answer-card')
+    expect(card).toHaveTextContent('Task 1 · Square')
+    await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('stage_1'))
+    expect(captured.editor.answerTab).toBe('stage_1')
+    expect(screen.getByRole('button', { name: 'Answer' })).toHaveAttribute('aria-pressed', 'true')
+
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Starter' })))
+    await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('starter'))
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Answer' })))
+    await waitFor(() => expect(captured.editor.teacherCodeTab).toBe('stage_1'))
+  })
+
+  it('gives a quiz an Answer / Question only toggle and the class’s answers', async () => {
+    mockSession = { ...mockSession, currentTaskId: 2 }
+    await renderTeacherView(answerLesson())
+    await waitFor(() => expect(captured.editor.task.id).toBe(2))
+    expect(captured.editor.answerShown).toBe(true)
+    expect(captured.editor.classTaskId).toBe(2)
+    expect(captured.editor.students).toEqual([
+      expect.objectContaining({ anonymousId: 's1', displayName: 'Ava' }),
+    ])
+    act(() => fireEvent.click(screen.getByRole('button', { name: 'Question only' })))
+    await waitFor(() => expect(captured.editor.answerShown).toBe(false))
+  })
+})

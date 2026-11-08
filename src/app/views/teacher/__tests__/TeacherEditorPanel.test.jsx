@@ -137,3 +137,78 @@ describe('TeacherEditorPanel — read-only note', () => {
     expect(screen.queryByTestId('teacher-panel-readonly-note')).not.toBeInTheDocument()
   })
 })
+
+describe('TeacherEditorPanel — the Answer panel', () => {
+  const MC = {
+    id: 6,
+    title: 'What does a loop do?',
+    taskType: 'quiz',
+    quizType: 'multiple_choice',
+    explainer: 'What does a loop do?',
+    options: [
+      { id: 'a', text: 'Repeats code' },
+      { id: 'b', text: 'Stops the program' },
+    ],
+    check: { type: 'answer_equals', value: 'a' },
+  }
+
+  it('shows a multiple-choice task’s real options with the answer ticked and the votes', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: { type: 'python', tasks: [MC] },
+          task: MC,
+          displayTaskId: 6,
+          answerShown: true,
+          classTaskId: 6,
+          students: [{ anonymousId: 's1', displayName: 'Ava', currentAnswer: 'a' }],
+        })}
+      />
+    )
+    expect(screen.getByTestId('quiz-answer-option-a')).toHaveTextContent('Repeats code')
+    expect(screen.getByTestId('quiz-answer-option-a')).toHaveTextContent('Correct answer')
+    expect(screen.getByTestId('quiz-answer-option-a')).toHaveTextContent('1 student')
+    expect(screen.getByTestId('quiz-answer-option-b')).toHaveTextContent('Stops the program')
+  })
+
+  it('shows the question only (as students see it) when the toggle says so', () => {
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: { type: 'python', tasks: [MC] },
+          task: MC,
+          displayTaskId: 6,
+          answerShown: false,
+        })}
+      />
+    )
+    expect(screen.queryByTestId('quiz-answer-option-a')).not.toBeInTheDocument()
+    expect(screen.queryByText('Correct answer')).not.toBeInTheDocument()
+  })
+
+  it('shows the expected output under a code task’s answer', () => {
+    const task = {
+      id: 3,
+      title: 'Print a greeting',
+      codeStages: [
+        { role: 'starter', code: 'print("Hello")' },
+        { role: 'complete', code: 'print("Hello Headstart")' },
+      ],
+      check: { type: 'output_equals', value: 'Hello Headstart' },
+    }
+    render(
+      <TeacherEditorPanel
+        {...mkProps({
+          lesson: { type: 'python', tasks: [task] },
+          task,
+          displayTaskId: 3,
+          taskCodeStages: task.codeStages,
+          teacherCodeTab: 'stage_1',
+          activeTeacherStage: task.codeStages[1],
+          answerTab: 'stage_1',
+        })}
+      />
+    )
+    expect(screen.getByTestId('teacher-expected-output')).toHaveTextContent('Hello Headstart')
+  })
+})

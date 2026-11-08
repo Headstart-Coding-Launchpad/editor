@@ -1011,6 +1011,75 @@ select {
   font-size: 2.6rem;
 }
 
+/* Teacher view centre card (TeacherAnswerCard.jsx): "Task N · title" on the brand bar, a small
+   Answer / Starter toggle, the answer below. */
+.teacher-answer-card {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.teacher-answer-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--colour-primary);
+  color: #fff;
+}
+
+.teacher-answer-card__title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teacher-answer-card__toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.teacher-answer-card__toggle button {
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.teacher-answer-card__toggle button.is-active {
+  background: #fff;
+  color: var(--colour-primary-dark);
+}
+
+.teacher-answer-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.teacher-answer-card--fill,
+.teacher-answer-card--fill .teacher-answer-card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* Countdown ended (ClassCountdownEndedStrip.jsx): a light amber strip under the top bar on the
    teacher view and the presentation window with +1 min, Clear: stay here and Next task. It sits
    in the page flow (never covers the workspace) and only shows at zero. */

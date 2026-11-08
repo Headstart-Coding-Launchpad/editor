@@ -122,46 +122,66 @@ export default function TeacherCodeTabs({
         onSendToAll &&
         !isLiveTab && (
           <div style={tabActions}>
-            <button
-              type="button"
-              style={sendStageBtn}
-              title="Send this stage's code to all students"
-              onClick={() => {
-                // A non-starter stage (support/complete role) is always safe to "reveal" — a
-                // read-only reference — rather than force-reset every student's saved work to
-                // it, regardless of whether this module type uses the unified tab layout. This
-                // is the same safe path the per-student Reveal action already uses for every
-                // module type (see StudentModal.jsx's onRevealSupportStage).
-                const stage = activeTab.startsWith('stage_')
-                  ? stages[parseInt(activeTab.replace('stage_', ''), 10)]
-                  : null
-                const isRevealableStage = stage && getStageRole(stage) !== 'starter'
-                const action = isRevealableStage
-                  ? `reveal_stage_${activeTab.replace('stage_', '')}`
-                  : activeTab === 'complete'
-                    ? 'complete'
-                    : activeTab.startsWith('stage_')
-                      ? activeTab
-                      : 'starter'
-                const verb = isRevealableStage ? 'Reveal' : 'Send'
-                if (
-                  window.confirm(
-                    `${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : (stage?.label ?? activeTab)} to all students?`
-                  )
-                ) {
-                  onSendToAll(action)
-                }
-              }}
-            >
-              {activeTab.startsWith('stage_') &&
-              getStageRole(stages[parseInt(activeTab.replace('stage_', ''), 10)]) !== 'starter'
-                ? 'Reveal to all'
-                : 'Send to all'}
-            </button>
+            <SendStageToAllButton
+              activeTab={activeTab}
+              stages={stages}
+              starterLabel={starterLabel}
+              completeLabel={completeLabel}
+              onSendToAll={onSendToAll}
+            />
           </div>
         )
       )}
     </div>
+  )
+}
+
+/**
+ * "Send to all" / "Reveal to all" for the stage the tutor is looking at (asks first). Also used
+ * by the teacher view's Answer card when the tab row is hidden (TeacherEditorPanel).
+ */
+export function SendStageToAllButton({
+  activeTab,
+  stages = [],
+  starterLabel = 'Starter code',
+  completeLabel = 'Complete code',
+  onSendToAll,
+  style,
+}) {
+  const stage = activeTab.startsWith('stage_')
+    ? stages[parseInt(activeTab.replace('stage_', ''), 10)]
+    : null
+  // A non-starter stage (support/complete role) is always safe to "reveal" — a read-only
+  // reference — rather than force-reset every student's saved work to it, regardless of whether
+  // this module type uses the unified tab layout. This is the same safe path the per-student
+  // Reveal action already uses for every module type (see StudentModal.jsx's
+  // onRevealSupportStage).
+  const isRevealableStage = !!stage && getStageRole(stage) !== 'starter'
+  return (
+    <button
+      type="button"
+      style={{ ...sendStageBtn, ...style }}
+      title="Send this stage's code to all students"
+      onClick={() => {
+        const action = isRevealableStage
+          ? `reveal_stage_${activeTab.replace('stage_', '')}`
+          : activeTab === 'complete'
+            ? 'complete'
+            : activeTab.startsWith('stage_')
+              ? activeTab
+              : 'starter'
+        const verb = isRevealableStage ? 'Reveal' : 'Send'
+        if (
+          window.confirm(
+            `${verb} ${activeTab === 'starter' ? starterLabel : activeTab === 'complete' ? completeLabel : (stage?.label ?? activeTab)} to all students?`
+          )
+        ) {
+          onSendToAll(action)
+        }
+      }}
+    >
+      {isRevealableStage ? 'Reveal to all' : 'Send to all'}
+    </button>
   )
 }
 

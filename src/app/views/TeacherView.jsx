@@ -41,6 +41,8 @@ import SideQuestsPanel from './teacher/SideQuestsPanel'
 import TaskRatingPanel from './teacher/TaskRatingPanel'
 import BadgeSuggestionsPanel from './teacher/BadgeSuggestionsPanel'
 import TeacherEditorPanel from './teacher/TeacherEditorPanel'
+import TeacherAnswerCard from './teacher/TeacherAnswerCard'
+import { answerTabFor, teacherAnswerKind } from './teacher/teacherAnswer'
 import { cloneFiles } from '../../shared/workspaceData'
 import {
   cloneSandboxWork,
@@ -381,6 +383,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   const [workByKind, setWorkByKind] = useState(initialSandboxWorkByKind)
   const [sandboxStaging, setSandboxStaging] = useState(false)
   const [teacherCodeTab, setTeacherCodeTab] = useState('starter')
+  // A quiz's or activity's Answer / Question only toggle (code tasks use teacherCodeTab).
+  const [answerShown, setAnswerShown] = useState(true)
   const [sandboxModuleId, setSandboxModuleId] = useState(null)
   // The teacher's sandbox work per kind, kept across staging, going live and leaving (absent =
   // none yet).
@@ -494,10 +498,20 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     session?.sandboxFilesUpdatedAt,
   ])
 
-  // Reset complete code tab when displayed task changes
+  // The Answer panel shows the answer first: a code task opens on its model answer (the
+  // Complete tab or complete stage), a quiz or activity on its answer, whenever the displayed
+  // task changes.
+  const displayAnswerTab = (() => {
+    const shown = flattenTasks(lesson?.tasks ?? []).find(
+      (t) => t.id === (previewTaskId ?? currentTaskId)
+    )
+    if (!shown) return null
+    return answerTabFor(getModuleDefinition(getEffectiveLessonForTask(lesson, shown)?.type), shown)
+  })()
   useEffect(() => {
-    setTeacherCodeTab('starter')
-  }, [currentTaskId, previewTaskId])
+    setTeacherCodeTab(displayAnswerTab ?? 'starter')
+    setAnswerShown(true)
+  }, [currentTaskId, previewTaskId, displayAnswerTab])
 
   // Fall back off the Live tab if Presentation View's broadcast for the displayed task ends
   // (window closed, task changed there, etc.) — the tab itself disappears once this happens,
@@ -994,6 +1008,57 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       !!getModuleDefinition(displayedLesson.type)?.capabilities.teacherFillHeight) &&
     !(currentTask?.check != null && !isInSandbox)
 
+  // The centre card: the answer first, with an Answer / Starter (code) or Answer / Question
+  // only (quiz, activity) toggle. Not on information tasks, in the sandbox or in a live demo.
+  const answerKind = teacherAnswerKind(task)
+  const answerCard =
+    !task || isInSandbox || isInformationTask
+      ? null
+      : answerKind === 'code'
+        ? {
+            toggle: !liveDemo && displayAnswerTab != null,
+            shown: displayAnswerTab != null && teacherCodeTab === displayAnswerTab,
+            onShow: (show) => setTeacherCodeTab(show ? displayAnswerTab : 'starter'),
+            otherLabel: 'Starter',
+          }
+        : {
+            toggle:
+              answerKind === 'choice' ||
+              answerKind === 'short' ||
+              (answerKind === 'activity' && !!getTaskActivity(task)?.solutionState),
+            shown: answerShown,
+            onShow: setAnswerShown,
+            otherLabel: 'Question only',
+          }
+  const editorPanel = (
+    <TeacherEditorPanel
+      lesson={editorLesson}
+      task={task}
+      displayTaskId={displayTaskId}
+      isInSandbox={isInSandbox}
+      isInformationTask={isInformationTask}
+      activeTeacherStage={activeTeacherStage}
+      taskCodeStages={taskCodeStages}
+      teacherCodeTab={teacherCodeTab}
+      setTeacherCodeTab={setTeacherCodeTab}
+      hasStudents={students.length > 0}
+      onSendStageToAll={handleSendStageToAll}
+      liveState={liveState}
+      onChange={onChange}
+      teacherLiveReference={session?.teacherLiveReference}
+      teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
+      onToggleLiveReference={setTeacherLiveReferenceForClass}
+      fillHeight={centreFillsHeight}
+      liveDemo={liveDemo}
+      badgeWall={teacherBadgeWall}
+      entranceKey={firstViewKey(lessonId, task?.id)}
+      answerShown={answerShown}
+      answerTab={displayAnswerTab}
+      students={students}
+      classTaskId={session?.currentTaskId ?? null}
+    />
+  )
+
   return (
     <div style={s.page}>
       <TopBar
@@ -1135,23 +1200,6 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
 
         {/* Centre — Teacher Editor */}
         <main style={{ ...s.centre, ...(centreFillsHeight ? { overflow: 'hidden' } : {}) }}>
-          {/* Only the explainer slides: it's presentational, so the leaving copy is an inert
-              snapshot. The editor, broadcast and panels below have side effects and swap in place. */}
-          {task?.explainer && !isInSandbox && !isHostedActivityTask(task) && !isInformationTask && (
-            <TaskSlideTransition
-              transitionKey={`teacher-explainer-${displayTaskId}`}
-              order={displayIndex}
-              style={s.explainerSlide}
-            >
-              <ExplainerPanel
-                title={task.title}
-                content={task.explainer}
-                topicType={displayedLesson.type}
-                entranceKey={firstViewKey(lessonId, task.id)}
-              />
-            </TaskSlideTransition>
-          )}
-
           {isPreviewing && (
             <TeacherPreviewBanner
               taskNumber={displayIndex + 1}
@@ -1221,31 +1269,42 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
               />
             )}
 
-          <TeacherEditorPanel
-            lesson={editorLesson}
-            task={task}
-            displayTaskId={displayTaskId}
-            isInSandbox={isInSandbox}
-            isInformationTask={isInformationTask}
-            activeTeacherStage={activeTeacherStage}
-            taskCodeStages={taskCodeStages}
-            teacherCodeTab={teacherCodeTab}
-            setTeacherCodeTab={setTeacherCodeTab}
-            hasStudents={students.length > 0}
-            onSendStageToAll={handleSendStageToAll}
-            liveState={liveState}
-            onChange={onChange}
-            teacherLiveReference={session?.teacherLiveReference}
-            teacherLiveReferenceVisibleToAll={session?.teacherLiveReferenceVisibleToAll}
-            onToggleLiveReference={setTeacherLiveReferenceForClass}
-            fillHeight={centreFillsHeight}
-            liveDemo={liveDemo}
-            badgeWall={teacherBadgeWall}
-            entranceKey={firstViewKey(lessonId, task?.id)}
-          />
+          {answerCard ? (
+            <TeacherAnswerCard
+              taskNumber={displayIndex + 1}
+              title={task?.title}
+              answerShown={answerCard.shown}
+              onShowAnswer={answerCard.onShow}
+              otherLabel={answerCard.otherLabel}
+              toggle={answerCard.toggle}
+              fill={centreFillsHeight}
+            >
+              {editorPanel}
+            </TeacherAnswerCard>
+          ) : (
+            editorPanel
+          )}
           {task?.check != null && !isInSandbox && (
             <CheckConditionsPanel check={task.check} taskTitle={task.title} />
           )}
+          {/* The task's instructions, under the answer (the class reads them on the presentation
+              window). Only the explainer slides: it's presentational, so the leaving copy is an inert
+              snapshot. The editor, broadcast and panels below have side effects and swap in place. */}
+          {task?.explainer && !isInSandbox && !isHostedActivityTask(task) && !isInformationTask && (
+            <TaskSlideTransition
+              transitionKey={`teacher-explainer-${displayTaskId}`}
+              order={displayIndex}
+              style={s.explainerSlide}
+            >
+              <ExplainerPanel
+                title={task.title}
+                content={task.explainer}
+                topicType={displayedLesson.type}
+                entranceKey={firstViewKey(lessonId, task.id)}
+              />
+            </TaskSlideTransition>
+          )}
+
           {!isInSandbox && (
             <SideQuestsPanel
               lesson={lesson}
