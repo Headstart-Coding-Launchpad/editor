@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react'
 import StagePane from '../../../shared/stage/StagePane.jsx'
 import { getCachedStageTarget, loadStageTarget } from '../../../modules/python/stageTarget.js'
 
+// How long the shown task must stay put before its target is drawn (stepping quickly).
+const DRAW_DELAY_MS = 250
+
 // ": NameError: …" (the first line of a Python error), or nothing.
 function firstLine(error) {
   const text = error == null ? '' : String(error).trim()
@@ -28,13 +31,26 @@ export default function StageTargetPreview({ code }) {
     }
     setResult(null)
     setState('drawing')
-    loadStageTarget(code).then((drawn) => {
-      if (cancelled) return
-      setResult(drawn)
-      setState(drawn ? 'ready' : 'failed')
-    })
+    // Wait until the tutor stops stepping through tasks before queuing a Pyodide run, so
+    // ← ← ← does not line up a draw for every task passed on the way.
+    const timer = setTimeout(() => {
+      Promise.resolve()
+        .then(() => loadStageTarget(code))
+        .then((drawn) => {
+          if (cancelled) return
+          setResult(drawn)
+          setState(drawn ? 'ready' : 'failed')
+        })
+        .catch((err) => {
+          console.warn('Stage target preview failed:', err)
+          if (cancelled) return
+          setResult(null)
+          setState('failed')
+        })
+    }, DRAW_DELAY_MS)
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [code])
 
