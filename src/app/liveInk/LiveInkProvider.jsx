@@ -29,6 +29,9 @@ export default function LiveInkProvider({
   createWriter,
   onExplainerAnnotate,
   followTutor = false,
+  // The Presentation window's calm bar: the toolbar starts hidden behind a Draw button
+  // (PresentationDrawButton) instead of always floating over the slide.
+  drawToggle = false,
   children,
 }) {
   const enabled = !!lessonId && (role === 'teacher' || role === 'student')
@@ -36,6 +39,7 @@ export default function LiveInkProvider({
   const [ink, setInk] = useState(EMPTY_LIVE_INK)
   const inkRef = useRef(EMPTY_LIVE_INK)
   const [tool, setTool] = useState(null)
+  const [toolsOpen, setToolsOpenState] = useState(false)
   const [surfaceCounts, setSurfaceCounts] = useState({})
   const [writer, setWriter] = useState(null)
   // useSession hands out fresh function identities every render; only the latest matters.
@@ -124,6 +128,19 @@ export default function LiveInkProvider({
 
   const getInk = useCallback(() => inkRef.current, [])
 
+  // Closing the drawing tools turns the tool off and clears the marks, so nothing the class
+  // can see is left behind a closed toolbar.
+  const writerRef = useRef(null)
+  writerRef.current = writer
+  const setToolsOpen = useCallback((open) => {
+    setToolsOpenState(!!open)
+    if (!open) {
+      setTool(null)
+      writerRef.current?.hidePointer()
+      writerRef.current?.clearAll()
+    }
+  }, [])
+
   const config = useMemo(
     () =>
       enabled
@@ -135,9 +152,26 @@ export default function LiveInkProvider({
             registerSurface,
             noteAnnotate,
             getInk,
+            drawToggle: isTeacher && drawToggle,
+            toolsOpen: isTeacher && toolsOpen,
+            setToolsOpen,
+            hasSurface,
           }
         : null,
-    [enabled, role, isTeacher, tool, writer, registerSurface, noteAnnotate, getInk]
+    [
+      enabled,
+      role,
+      isTeacher,
+      tool,
+      writer,
+      registerSurface,
+      noteAnnotate,
+      getInk,
+      drawToggle,
+      toolsOpen,
+      setToolsOpen,
+      hasSurface,
+    ]
   )
 
   // Always rendered (with a null config when disabled), so a student's phase change in and out
@@ -148,7 +182,7 @@ export default function LiveInkProvider({
         {children}
         {isTeacher && writer && <TutorPointerTracker writer={writer} />}
         {enabled && !isTeacher && <TutorPointerLayer followTutor={followTutor} />}
-        {isTeacher && hasSurface && (
+        {isTeacher && hasSurface && (!drawToggle || toolsOpen) && (
           <PresentationInkToolbar
             tool={tool}
             onToolChange={setTool}

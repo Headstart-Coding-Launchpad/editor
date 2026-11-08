@@ -14,6 +14,9 @@ export default function TopBar({
   isSolo,
   right,
   singleRow = false,
+  // The teacher view and the presentation window say just "LaunchPad", so the lesson title
+  // has the room and is never cut (calm teacher view, sketch v2).
+  shortBrand = false,
 }) {
   const isMobile = useIsMobile()
   // Only a valid authored lessonNumber shows ("Lesson 9"); absent or invalid shows nothing.
@@ -56,8 +59,11 @@ export default function TopBar({
             {/* In the one-row student bar the name hides below 1180px (index.css), so the
                 right-hand controls can't squash the lesson title to "H…" or cover the
                 LIVE / SANDBOX badge on a tablet (HSC Audit #6, 23, 24). */}
-            <span className={singleRow ? 'top-bar__logo-text' : undefined}>
-              Headstart Coding - LaunchPad
+            <span
+              className={singleRow && !shortBrand ? 'top-bar__logo-text' : undefined}
+              data-testid="top-bar-brand"
+            >
+              {shortBrand ? 'LaunchPad' : 'Headstart Coding - LaunchPad'}
             </span>
           </span>
         )}

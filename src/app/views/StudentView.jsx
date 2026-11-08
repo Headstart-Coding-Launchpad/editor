@@ -113,6 +113,7 @@ import { getModuleDefinition } from '../../modules/definitions'
 import { decodeSessionFiles } from '../../shared/workspaceData'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext'
 import LiveInkProvider from '../liveInk/LiveInkProvider'
+import PresentationDrawButton from '../liveInk/PresentationDrawButton'
 import { isShowItOptedOut } from '../../shared/showIt'
 
 export default function StudentView({
@@ -701,7 +702,10 @@ export default function StudentView({
   const [openTopicId, setOpenTopicId] = useState(null)
   const [pendingTopicId, setPendingTopicId] = useState(null)
   // Presenter-only layout toggle: which panes the presentation popup shows ('both' | 'explainer' | 'code')
-  const [presenterLayout, setPresenterLayout] = useState('both')
+  // The layout a presentation-window Go Live forces on students. The bar no longer has an
+  // Explainer / Both / Code switch, so it stays 'both' (code-only and explainer-only remain
+  // available from a dashboard Go Live).
+  const [presenterLayout] = useState('both')
   const sentToTopicPushedAt = session?.students?.[identity?.anonymousId]?.sentToTopicPushedAt
 
   useEffect(() => {
@@ -1566,25 +1570,13 @@ export default function StudentView({
       >
         {isTeacherLiveActive ? '■ Stop Live' : '📡 Go Live'}
       </button>
-      <div style={s.presenterLayoutGroup} role="group" aria-label="Presentation layout">
-        {[
-          { key: 'explainer', label: 'Explainer', full: 'Explainer only' },
-          { key: 'both', label: 'Both', full: 'Explainer and code' },
-          { key: 'code', label: 'Code', full: 'Code only' },
-        ].map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            className="btn-ghost presentation-header-btn"
-            style={s.presentationBtn}
-            aria-pressed={presenterLayout === opt.key}
-            title={opt.full}
-            onClick={() => setPresenterLayout(opt.key)}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {/* The Pointer / Ink / Highlight toolbar opens from here (closed by default). The
+          Explainer / Both / Code layout switch is gone from this bar (calm presenter, sketch
+          v2): presenterLayout keeps its 'both' default for Go Live. */}
+      <PresentationDrawButton
+        className="btn-ghost presentation-header-btn"
+        style={s.presentationBtn}
+      />
     </div>
   ) : (
     <div style={s.topBarTaskControls}>
@@ -1734,13 +1726,14 @@ export default function StudentView({
           isPresentationStudentViewer
             ? `Other Student — ${session.teacherLive.sourceStudentName ?? 'Student'}`
             : teacherPresentation
-              ? 'Presentation'
+              ? null
               : identity?.displayName
         }
         isSandbox={isSandbox}
         isSolo={teacherPresentation ? undefined : isSolo}
         right={topBarRight}
         singleRow
+        shortBrand={teacherPresentation}
       />
       {teacherPresentation && (
         <ClassCountdownEndedStrip
@@ -2289,6 +2282,7 @@ export default function StudentView({
         lessonId={sessionKey}
         role={liveInkRole}
         followTutor={isForcedTeacherLive}
+        drawToggle={teacherPresentation}
         subscribe={subscribeLiveInk}
         createWriter={createLiveInkWriter}
         // Annotating a code task's explainer opens it for students who have it collapsed,
@@ -2341,15 +2335,6 @@ const s = {
     minWidth: 72,
     textAlign: 'center',
     whiteSpace: 'nowrap',
-    flexShrink: 0,
-  },
-  presenterLayoutGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 4,
-    paddingLeft: 8,
-    borderLeft: '1px solid rgba(255,255,255,0.35)',
     flexShrink: 0,
   },
   // One row that never wraps (the top bar keeps a fixed height): the task dots shrink or scroll

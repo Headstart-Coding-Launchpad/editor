@@ -328,4 +328,18 @@ describe('Presentation window bar', () => {
       'Task 2 of 3 · Next skips 1 optional'
     )
   })
+
+  it('has no Explainer / Both / Code layout switch and no Presentation tag', async () => {
+    await renderPresenter(presenterSession())
+    expect(screen.queryByRole('group', { name: 'Presentation layout' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Both' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Explainer' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Go Live/ })).toBeInTheDocument()
+  })
+
+  it('keeps the drawing tools behind a Draw button on the bar', async () => {
+    await renderPresenter(presenterSession())
+    expect(screen.getByRole('button', { name: /Draw/ })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('toolbar', { name: 'Presentation annotations' })).toBeNull()
+  })
 })

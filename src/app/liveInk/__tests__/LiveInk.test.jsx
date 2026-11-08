@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import LiveInkProvider from '../LiveInkProvider'
 import InkSurface from '../InkSurface'
+import PresentationDrawButton from '../PresentationDrawButton'
 import { STROKE_FADE_MS, STROKE_HOLD_MS } from '../liveInkData'
 
 // jsdom has no PointerEvent; React only needs the event type, plus clientX/Y and pointer fields.
@@ -428,5 +429,69 @@ describe('Presentation window (teacher) tools', () => {
     expect(clear).toBeEnabled()
     fireEvent.click(clear)
     expect(writer.clearAll).toHaveBeenCalled()
+  })
+})
+
+describe('Presentation window Draw button', () => {
+  function renderWithDraw({
+    writer = makeWriter(),
+    sub = makeSubscription(),
+    surface = true,
+  } = {}) {
+    render(
+      <LiveInkProvider
+        lessonId="lesson-1"
+        role="teacher"
+        drawToggle
+        subscribe={sub.subscribe}
+        createWriter={() => writer}
+      >
+        <PresentationDrawButton />
+        {surface ? (
+          <InkSurface id="info:1">
+            <Content />
+          </InkSurface>
+        ) : (
+          <p>No surface here</p>
+        )}
+      </LiveInkProvider>
+    )
+    return { writer, sub }
+  }
+
+  it('keeps the drawing tools hidden until Draw is pressed, then toggles them', () => {
+    renderWithDraw()
+    const draw = screen.getByRole('button', { name: /Draw/ })
+    expect(draw).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('toolbar', { name: 'Presentation annotations' })).toBeNull()
+
+    fireEvent.click(draw)
+    expect(draw).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('toolbar', { name: 'Presentation annotations' })).toBeInTheDocument()
+
+    fireEvent.click(draw)
+    expect(screen.queryByRole('toolbar', { name: 'Presentation annotations' })).toBeNull()
+  })
+
+  it('shows the active tool on the button, and closing turns it off and clears the marks', () => {
+    const { writer } = renderWithDraw()
+    const draw = screen.getByRole('button', { name: /Draw/ })
+    fireEvent.click(draw)
+    fireEvent.click(screen.getByRole('button', { name: /Pointer/ }))
+    expect(draw).toHaveTextContent('Pointer')
+    expect(draw).toHaveAttribute('data-tool', 'pointer')
+
+    fireEvent.click(draw)
+    expect(draw).not.toHaveAttribute('data-tool')
+    expect(writer.hidePointer).toHaveBeenCalled()
+    expect(writer.clearAll).toHaveBeenCalled()
+    // Reopening starts with no tool on.
+    fireEvent.click(draw)
+    expect(screen.getByRole('button', { name: /Pointer/ })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('is disabled when nothing on screen can be drawn on', () => {
+    renderWithDraw({ surface: false })
+    expect(screen.getByRole('button', { name: /Draw/ })).toBeDisabled()
   })
 })
