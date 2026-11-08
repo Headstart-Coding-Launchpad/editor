@@ -39,6 +39,17 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-08
 
+- **`priority: optional` tasks can be skipped by the tutor, and the teacher view shows the
+  answer first.** A new "Skip optional tasks" switch in the tutor's task list makes Next (the
+  presentation window and the countdown's Next task) jump over tasks with `priority: optional`;
+  they stay in the list and the tutor can still move the class to one by hand. So mark a task
+  `optional` only when the lesson still makes sense without it. The teacher view's centre now
+  opens on the model answer: the `complete` stage (or Complete tab) with the expected output read
+  from `output_equals` / `output_contains` checks, a Python Stage task's `stageTarget` picture,
+  and a multiple-choice quiz's options with the `answer` ticked. A code task with no `complete`
+  stage opens on its starter, so add one if tutors should see a model answer.
+  - Affects: all · Existing lessons: no changes needed · Resolves: none
+
 - **Scratch: small stage with Enlarge (the A+B layout).** On the calm Scratch screen the stage
   now starts small beside the blocks (320x240 on a 1366 laptop, about 256 wide on a 1024 tablet)
   under a big green **Run** button (the green flag, labelled) and a red Stop. **Enlarge** above
