@@ -118,6 +118,32 @@ describe('tutor pointer layer', () => {
     expect(dot.style.top).toBe('100px')
   })
 
+  it('sends no dot over annotatable text and clears a stale one', () => {
+    renderBoth()
+    act(() => {
+      fireEvent.mouseMove(screen.getByTestId('teacher-inner'), { clientX: 250, clientY: 100 })
+    })
+    expect(screen.getByTestId('tutor-pointer-dot')).toBeTruthy()
+    const page = screen.getByTestId('teacher-page')
+    const text = document.createElement('p')
+    text.setAttribute('data-md-anchor', 'p1')
+    const word = document.createElement('b')
+    text.appendChild(word)
+    const ink = document.createElement('div')
+    ink.setAttribute('data-ink-surface', 'page')
+    page.append(text, ink)
+    for (const el of [word, ink]) {
+      act(() => {
+        fireEvent.mouseMove(screen.getByTestId('teacher-inner'), { clientX: 250, clientY: 100 })
+      })
+      expect(screen.getByTestId('tutor-pointer-dot')).toBeTruthy()
+      act(() => {
+        fireEvent.mouseMove(el, { clientX: 300, clientY: 150 })
+      })
+      expect(screen.queryByTestId('tutor-pointer-dot')).toBeNull()
+    }
+  })
+
   it('ripples on the student screen when the tutor clicks, again for a repeat click', () => {
     renderBoth()
     act(() => {
