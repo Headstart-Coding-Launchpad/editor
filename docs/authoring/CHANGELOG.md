@@ -37,6 +37,23 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-08
+
+- **Scratch: small stage with Enlarge (the A+B layout).** On the calm Scratch screen the stage
+  now starts small beside the blocks (320x240 on a 1366 laptop, about 256 wide on a 1024 tablet)
+  under a big green **Run** button (the green flag, labelled) and a red Stop. **Enlarge** above
+  the stage shows it full screen with Back, Run, Stop, Reset Stage and the hint; Back returns
+  with the blocks and sprites exactly as they were. The sprite property row and + Backdrop fold
+  behind one **Sprite settings** button (open from the start when a check reads a sprite
+  property). The hint now sits inside the explainer card, under the steps, and the explainer
+  column is narrower (about 232px at 1366, 208px at 1024), so the script area with the palette
+  open is about twice as wide. The playground uses the same layout. Go Live and the presentation
+  window still show the large stage, and the tutor's watch view has its own Enlarge. Explainers
+  that say "tap the green flag" still read right (Run carries the flag); "click the stage" still
+  works on the small stage and full screen. `highlight: green_flag` now pulses Run.
+  See [scratch.md](scratch.md#calm-screen).
+  - Affects: scratch · Existing lessons: no changes needed (they get the new layout as they are; an explainer that relies on the stage being big can say "tap **Enlarge**") · Resolves: none
+
 ## 2026-11-07
 
 - **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still

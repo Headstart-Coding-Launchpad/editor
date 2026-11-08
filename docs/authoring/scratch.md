@@ -515,7 +515,7 @@ Scratch tasks open on a calm screen, the same at every screen size:
 - **Blocks are drawn at 65%** (60% at the smallest), smaller than the 75% elsewhere, so the open
   palette is narrower (about 306px instead of 350px at 1366) and leaves more script area.
 - **The explainer card stays in view** beside the blocks: a column on the left from a 1024px
-  tablet up, and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
+  tablet up (about 232px wide on a 1366 laptop, 208px on a 1024 tablet, at most 320px), and beside the stage (pinned above the blocks) on a portrait tablet. It folds to its
   one-line title, never behind a tab, and a long explainer scrolls inside the card. On a
   portrait tablet the card gets at most about a third of the height (the blocks keep up to 360px,
   less on a short screen so the stage row still fits), and a card taller than that starts folded
@@ -524,16 +524,28 @@ Scratch tasks open on a calm screen, the same at every screen size:
   scrolling or tapping is never folded under them. Keep explainers short for portrait tablets. Turning a
   tablet round keeps the card as it was (folded or open, scrolled where it was). Each new task
   opens its card. There is no "Task N of N+1" explainer slide.
-- **The hint is docked under the card** (the same hint box as the calm Python screen): a nudge
+- **The hint sits inside the card**, straight under the steps (the same hint box as the calm
+  Python screen), and stays in view when the card is folded to its title: a nudge
   to try the green flag before any run, then the check's hint in amber after a failed run (it
   goes gentle blue, still readable, once the blocks change), green after a pass, blue for the
   tutor's sent hint (with "Got it"). "✋ Ask for help" shows only when a tutor is there (a live
   lesson or the tutor's sandbox), never in Solo; once asked it reads "✋ Help requested". In the
   presenter's explainer-only layout the result shows as the usual popup instead.
-- **Flag, Stop and Reset Stage** are always in one row above the stage. The sprite property row
-  (x, y, direction…) and **+ Backdrop** fold behind **More** unless one of the task's checks reads
-  a sprite property (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`), in
-  `check`, `feedbackChecks` or `incorrectChecks`.
+- **A small stage with Enlarge.** Beside the blocks the stage starts small (320x240 on a 1366
+  laptop, about 256 wide on a 1024 tablet, never under 240), under a big green **Run** button (the
+  green flag, labelled "Run") and a red Stop. **Enlarge** above the stage shows the stage full
+  screen, with Back, Run, Stop, Reset Stage and the hint in a thin bar; Back (or Escape) returns
+  with the blocks and sprites exactly as they were, and a running project keeps running. Clicking
+  sprites and pressing keys work the same at both sizes. **Reset Stage** is a small button beside
+  Enlarge. While the tutor broadcasts (Go Live) or presents, the stage shows large as before.
+- **Sprite settings.** The sprite tiles sit under the stage; the sprite property row (x, y,
+  direction, size, show, rotation, costume) and **+ Backdrop** fold behind one **Sprite
+  settings** button. It starts open when one of the task's checks reads a sprite property
+  (`sprite_property`, `sprite_property_delta`, `sprite_property_changed`, in `check`,
+  `feedbackChecks` or `incorrectChecks`), so the child can watch x and y.
+- The playground uses the same layout (no explainer). There is no grey "Run your code to check"
+  line under the stage (the hint says it); a manual check still says "Run your code, then click
+  Check".
 - The Costumes and Sounds tabs still need `showCostumesTab` / `showSoundsTab`.
 
 **Existing Scratch lessons are unchanged: the palette still starts open** (they get the calm
@@ -558,14 +570,15 @@ seconds. With reduced motion it's a still outline.
 
 | Target | Points at |
 |---|---|
-| `green_flag` (or `run`) | The green flag above the stage |
+| `green_flag` (or `run`) | The green flag (on the calm screen, the big green **Run** button) |
 | `stop` | The stop sign |
 | `costumes_tab` | The Costumes tab (needs `showCostumesTab`, or validation warns) |
 | `sounds_tab` | The Sounds tab (needs `showSoundsTab`, or validation warns) |
 | `category:<name>` | A category heading in the block palette: `Motion`, `Looks`, `Sound`, `Events`, `Control`, `Sensing`, `Operators`, `Variables` or `My Blocks`. The palette scrolls to it |
 
 Any other target is a validation error. When the control is out of sight, the way to it pulses
-instead: the **Blocks** button while the palette is closed (calm screen), or the **Stage** /
+instead: the **Blocks** button while the palette is closed (calm screen), **Back** while the
+stage is full screen (for a palette category or the Costumes and Sounds tabs), or the **Stage** /
 **Blocks** tab, the collapsed Stage rail or the "Show blocks palette" button outside it. A category your `toolbox` leaves out has no heading, so nothing
 pulses.
 

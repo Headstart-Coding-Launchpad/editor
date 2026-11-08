@@ -440,7 +440,7 @@ describe('calm Scratch layout rules', () => {
     expect(paletteStartsOpen({ scratchPaletteOpen: false })).toBe(true)
   })
 
-  it('folds the sprite property row behind More unless a check reads sprite properties', () => {
+  it('folds the sprite property row (Sprite settings) unless a check reads sprite properties', () => {
     expect(calmFoldsSpriteProps({ check: { type: 'block_used', opcode: 'looks_say' } })).toBe(true)
     expect(calmFoldsSpriteProps({})).toBe(true)
     expect(calmFoldsSpriteProps({ check: [{ type: 'sprite_property', property: 'x' }] })).toBe(

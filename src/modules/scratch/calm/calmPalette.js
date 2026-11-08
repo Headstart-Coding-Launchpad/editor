@@ -191,8 +191,8 @@ function taskChecks(task) {
   ]
 }
 
-// The sprite property row (x, y, direction, size...) folds behind More unless one of the task's
-// checks reads sprite properties, where the child may need to watch them.
+// Sprite settings (the sprite property row: x, y, direction, size...) starts open when one of the
+// task's checks reads sprite properties, where the child may need to watch them; else folded.
 export function calmFoldsSpriteProps(task) {
   return !readsSpriteProperties(taskChecks(task))
 }

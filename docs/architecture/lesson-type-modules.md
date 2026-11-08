@@ -55,8 +55,9 @@ Required booleans: `sideExplainer` (explainer as a side rail, else an accordion)
 student's stage reference), `unifiedStages` (Starter/Complete live in `codeStages` roles; the
 unified remote-reset selector and read-only support references), `teacherStageReveal`
 (StudentModal's Reveal menu), `highlights` (teacher code highlights; needs a `'code'`/`'files'`
-mirror), `downloadCode` (`.launchpad` download), `fixedExplainer` (Scratch's fixed column; needs
-`sideExplainer`, no `modulePanes`), `topicLibrary`.
+mirror), `downloadCode` (`.launchpad` download), `fixedExplainer` (Scratch: the explainer card in its own column
+beside the workspace, whose Blocks/Stage panes are reported separately; needs `sideExplainer`, no
+`modulePanes`), `topicLibrary`.
 
 Optional booleans (default false): `teacherFillHeight` (TeacherView's centre column fills and
 clips), `teacherSandboxRow` (the teacher sandbox workspace fills a plain flex row),
