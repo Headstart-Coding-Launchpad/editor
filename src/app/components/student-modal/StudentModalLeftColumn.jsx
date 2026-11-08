@@ -90,7 +90,9 @@ const s = {
   },
   explainerWrap: {
     position: 'relative',
-    flex: '1 1 auto',
+    // Grows to fill spare height under short text; never shrinks below its content, so with
+    // a hint or Type this out block under long text the column scrolls, not the card.
+    flex: '1 0 auto',
     minHeight: 160,
     display: 'flex',
     flexDirection: 'column',
