@@ -65,7 +65,7 @@ const REQUIRED_CAPABILITY_BOOLEANS = [
   'teacherStageReveal', // StudentModal's Reveal menu offers the task's support / complete stages
   'highlights', // the teacher can highlight code in StudentModal's mirror (needs a code/files mirror)
   'downloadCode', // the student can download the task / sandbox code as a .launchpad file
-  'fixedExplainer', // the side explainer is a fixed-width column that tabs away (see below)
+  'fixedExplainer', // the explainer card sits in its own column (calm Scratch); panes report as instructions + the workspace's own
   'topicLibrary', // the explainer offers the topic library
 ]
 // Optional capability booleans (plan step 4.8; default false). Each replaced an inline

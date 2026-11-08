@@ -37,7 +37,6 @@ export default function TaskProgressDots({
   onDotClick,
   isSolo,
   canSelectTask,
-  pseudoTask,
   compact = false,
 }) {
   const rowRef = useRef(null)
@@ -45,24 +44,7 @@ export default function TaskProgressDots({
   const dotWidth = compact ? (touch ? TOUCH_DOT_WIDTH : COMPACT_DOT_WIDTH) : DOT_WIDTH
   const dotGap = compact ? (touch ? TOUCH_DOT_GAP : COMPACT_DOT_GAP) : DOT_GAP
   const step = dotWidth + dotGap
-  const baseItems = getProgressItems(tasks)
-  const pseudoIndex = pseudoTask
-    ? baseItems.findIndex((item) => item.taskIds.includes(pseudoTask.beforeTaskId))
-    : -1
-  const items =
-    pseudoIndex === -1
-      ? baseItems
-      : [
-          ...baseItems.slice(0, pseudoIndex),
-          {
-            type: 'task',
-            id: pseudoTask.id,
-            title: pseudoTask.title,
-            taskIds: [pseudoTask.id],
-            isPseudo: true,
-          },
-          ...baseItems.slice(pseudoIndex),
-        ]
+  const items = getProgressItems(tasks)
   const pad = compact ? COMPACT_PAD * 2 : 0
   const naturalWidth = items.length * step - dotGap + pad
   const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * step - dotGap)
@@ -156,32 +138,6 @@ export default function TaskProgressDots({
       onScroll={mode === 'scroll' ? updateEdges : undefined}
     >
       {items.map((item, index) => {
-        // A pseudo item (the "explainer shrunk" nav entry) has a synthetic id that
-        // doesn't participate in the real task-id ordering the past/future checks
-        // below rely on, and it's always freely viewable (read-only content for a
-        // task the student already unlocked), so it skips both.
-        if (item.isPseudo) {
-          const isViewing = viewingTaskId != null && item.taskIds.includes(viewingTaskId)
-          return (
-            <button
-              key={item.id}
-              style={{
-                ...s.dot,
-                ...(compact ? compactDot(dotWidth, touch) : null),
-                ...(mode === 'scroll' ? s.dotSnap : null),
-                ...s.dotPseudo,
-                ...(isViewing ? s.dotViewing : {}),
-                cursor: 'pointer',
-              }}
-              onClick={() => onDotClick?.(item.id)}
-              title={`Explainer: ${item.title}`}
-              aria-label={`Explainer: ${item.title}`}
-            >
-              ⓘ
-            </button>
-          )
-        }
-
         const isCurrent = item.taskIds.includes(currentTaskId)
         const isViewing = viewingTaskId != null && item.taskIds.includes(viewingTaskId)
         const isPast = item.taskIds.every((id) => id < currentTaskId)
@@ -283,12 +239,6 @@ const s = {
   dotGroup: {
     borderRadius: 8,
     width: 36,
-  },
-  dotPseudo: {
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.65)',
-    background: 'rgba(255,255,255,0.08)',
-    fontSize: '1rem',
   },
   dotCurrent: {
     background: 'var(--colour-secondary)',
