@@ -3,12 +3,29 @@ import {
   collection,
   collectionGroup,
   doc,
-  onSnapshot,
+  limit,
   orderBy,
   query,
   updateDoc,
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
+import { useAdminSnapshot, useLoadMore } from './adminSnapshots'
+
+// Platform feedback is read a page at a time, newest first, with Load more.
+export const PLATFORM_FEEDBACK_PAGE_SIZE = 30
+const EMPTY = Object.freeze([])
+
+const mapPlatform = (snap) => ({
+  // Archived items are hidden here, but count toward the page, so Load more uses the raw size.
+  size: snap.docs.length,
+  items: snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() })),
+})
+
+const mapLessonFeedback = (snap) =>
+  snap.docs
+    .filter((d) => !d.data().archived)
+    .map((d) => ({ id: d.id, lessonId: d.ref.parent.parent?.id ?? null, ...d.data() }))
+    .sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
 
 function builderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -66,55 +83,49 @@ const VALID_SUBTABS = ['platform', 'lesson', 'task']
 export default function FeedbackPanel({ subtab, onSubtabChange }) {
   const subTab = VALID_SUBTABS.includes(subtab) ? subtab : 'platform'
   const setSubTab = onSubtabChange
-  const [platform, setPlatform] = useState([])
-  const [allLesson, setAllLesson] = useState([])
-  const [loadingPlatform, setLoadingPlatform] = useState(true)
-  const [loadingLesson, setLoadingLesson] = useState(true)
-  const [platformError, setPlatformError] = useState(null)
-  const [lessonError, setLessonError] = useState(null)
   const [actionError, setActionError] = useState(null)
-
+  // Shared listeners (adminSnapshots.js): switching Admin tabs and back reads nothing new.
+  const [platformCount, setPlatformCount] = useState(PLATFORM_FEEDBACK_PAGE_SIZE)
+  const platformSource = useAdminSnapshot(
+    `platformFeedback:${platformCount}`,
+    () =>
+      query(
+        collection(firestore, 'platformFeedback'),
+        orderBy('submittedAt', 'desc'),
+        limit(platformCount)
+      ),
+    mapPlatform,
+    { family: 'platformFeedback' }
+  )
+  // While a bigger page loads, keep showing the smaller one.
+  const [platformPage, setPlatformPage] = useState(null)
   useEffect(() => {
-    const q = query(collection(firestore, 'platformFeedback'), orderBy('submittedAt', 'desc'))
-    return onSnapshot(
-      q,
-      (snap) => {
-        setPlatform(
-          snap.docs.filter((d) => !d.data().archived).map((d) => ({ id: d.id, ...d.data() }))
-        )
-        setPlatformError(null)
-        setLoadingPlatform(false)
-      },
-      (err) => {
-        setPlatformError(`Could not load platform feedback: ${err.message}`)
-        setLoadingPlatform(false)
-      }
-    )
-  }, [])
-
-  useEffect(() => {
-    const q = collectionGroup(firestore, 'feedback')
-    return onSnapshot(
-      q,
-      (snap) => {
-        const items = snap.docs
-          .filter((d) => !d.data().archived)
-          .map((d) => ({
-            id: d.id,
-            lessonId: d.ref.parent.parent?.id ?? null,
-            ...d.data(),
-          }))
-        items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
-        setAllLesson(items)
-        setLessonError(null)
-        setLoadingLesson(false)
-      },
-      (err) => {
-        setLessonError(`Could not load lesson feedback: ${err.message}`)
-        setLoadingLesson(false)
-      }
-    )
-  }, [])
+    if (platformSource.data) setPlatformPage(platformSource.data)
+  }, [platformSource.data])
+  // Lesson feedback stays one unlimited listener: ordering or filtering a collection-group query
+  // needs a Firestore index that is not deployed. The docs are short text.
+  const lessonSource = useAdminSnapshot(
+    'feedbackAll',
+    () => collectionGroup(firestore, 'feedback'),
+    mapLessonFeedback
+  )
+  const platform = platformPage?.items ?? EMPTY
+  const platformMore = useLoadMore({
+    source: platformSource,
+    size: platformSource.data?.size ?? 0,
+    count: platformCount,
+    pageSize: PLATFORM_FEEDBACK_PAGE_SIZE,
+  })
+  const platformHasMore = platformMore.hasMore
+  const allLesson = lessonSource.data ?? EMPTY
+  const loadingPlatform = platformSource.loading && !platformPage
+  const loadingLesson = lessonSource.loading
+  const platformError = platformSource.error
+    ? `Could not load platform feedback: ${platformSource.error}`
+    : null
+  const lessonError = lessonSource.error
+    ? `Could not load lesson feedback: ${lessonSource.error}`
+    : null
 
   async function archive(ref) {
     setActionError(null)
@@ -181,7 +192,7 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
 
       {loading ? (
         <p style={s.empty}>Loading…</p>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !(subTab === 'platform' && platformHasMore) ? (
         <p style={s.empty}>No {subTab} feedback yet.</p>
       ) : (
         <div style={s.list}>
@@ -192,6 +203,24 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
             : items.map((item) => (
                 <LessonCard key={item.id} item={item} onDelete={handleDeleteLesson} />
               ))}
+          {subTab === 'platform' && platformHasMore && (
+            <button
+              type="button"
+              className="btn-ghost-outline"
+              style={s.loadMore}
+              disabled={platformSource.loading}
+              onClick={
+                platformMore.failed
+                  ? platformSource.retry
+                  : () => setPlatformCount((count) => count + PLATFORM_FEEDBACK_PAGE_SIZE)
+              }
+              aria-label={
+                platformMore.failed ? 'Retry loading more feedback' : 'Load more feedback'
+              }
+            >
+              {platformSource.loading ? 'Loading…' : platformMore.failed ? 'Retry' : 'Load more'}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -227,6 +256,11 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
+  },
+  loadMore: {
+    alignSelf: 'flex-start',
+    padding: '6px 14px',
+    fontSize: '0.85rem',
   },
   card: {
     background: '#fff',

@@ -1,11 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   collection,
-  collectionGroup,
   deleteDoc,
   doc,
   limit,
-  onSnapshot,
   orderBy,
   query,
   setDoc,
@@ -13,7 +11,6 @@ import {
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
-import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import {
   deletePublishedLesson,
   publishLesson,
@@ -44,12 +41,14 @@ import { useAuth } from '../auth/useAuth'
 import { saveAfterClassFeedback } from '../app/afterClassFeedback'
 import { AdminCell, AdminTable } from './AdminUi'
 import ClassRosterEditor from './ClassRosterEditor'
+import { REPORT_PAGE_SIZE, useAdminLessons, useAdminSnapshot, useLoadMore } from './adminSnapshots'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
 }
 
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
+const EMPTY = Object.freeze([])
 const COMMON_LEVEL_EMOJIS = ['⭐', '🌱', '🚀', '💡', '🎯', '🧩', '🏆', '📚', '🛠️', '⚡', '🎨', '🔬']
 const LEGACY_ICON_LABELS = { star: '⭐' }
 const makeBlankLevelForm = () => ({
@@ -215,27 +214,65 @@ function makeLessonFamilyGroups(lessons) {
   return [...families, ...orphanFamilies]
 }
 
-// The report collection grows forever, so the Admin reads only the newest reports (newest first)
-// instead of every document on every open.
-export const REPORT_LIMIT = 300
+const mapLevels = (snap) =>
+  snap.docs.map((d) => normalizeLevelRecord({ id: d.id, ...d.data() })).sort(compareLevels)
+
+const mapClasses = (snap) =>
+  snap.docs
+    .map((d) => makeClassRecord({ id: d.id, ...d.data() }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+// One lesson's reports and feedback are read only when its row is opened. Reports are large
+// (every student's answers), so the newest REPORT_PAGE_SIZE come first, with Load more.
+function useLessonReports(lessonId, count) {
+  return useAdminSnapshot(
+    `lessonReports:${lessonId}:${count}`,
+    () =>
+      query(
+        collection(firestore, 'lessons', lessonId, 'sessionReports'),
+        orderBy('startedAt', 'desc'),
+        limit(count)
+      ),
+    (snap) => snap.docs.map((d) => ({ id: d.id, lessonId, ...d.data() })),
+    { family: `lessonReports:${lessonId}` }
+  )
+}
+
+function useLessonFeedback(lessonId) {
+  return useAdminSnapshot(
+    `lessonFeedback:id:${lessonId}`,
+    () => collection(firestore, 'lessons', lessonId, 'feedback'),
+    (snap) =>
+      snap.docs
+        .map((d) => ({ id: d.id, lessonId, ...d.data() }))
+        .sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
+  )
+}
 
 export default function LessonPanel({ view = 'lessons' }) {
   const user = useAuth()?.user
   // The signed-in tutor's handle: their lesson link carries it so students join their own class.
   const tutorHandle = useAuth()?.handle ?? ''
-  const [lessons, setLessons] = useState([])
-  const [levels, setLevels] = useState([])
-  const [classes, setClasses] = useState([])
-  const [reports, setReports] = useState([])
-  const [feedback, setFeedback] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [levelsLoading, setLevelsLoading] = useState(true)
-  const [classesLoading, setClassesLoading] = useState(true)
-  const [reportsLoading, setReportsLoading] = useState(true)
-  const [feedbackLoading, setFeedbackLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [reportsError, setReportsError] = useState(null)
-  const [feedbackError, setFeedbackError] = useState(null)
+  // Shared with the other Admin tabs (adminSnapshots.js), so switching tabs reads nothing new.
+  // The Classes tab needs no lessons or levels; the Levels tab no classes.
+  const lessonsSource = useAdminLessons(view !== 'classes')
+  const levelsSource = useAdminSnapshot(
+    view === 'classes' ? null : 'levels',
+    () => collection(firestore, LEVEL_COLLECTION),
+    mapLevels
+  )
+  const classesSource = useAdminSnapshot(
+    view === 'levels' ? null : 'classes',
+    () => collection(firestore, CLASS_COLLECTION),
+    mapClasses
+  )
+  const lessons = lessonsSource.data ?? EMPTY
+  const levels = levelsSource.data ?? EMPTY
+  const classes = classesSource.data ?? EMPTY
+  const loading = lessonsSource.loading
+  const error = lessonsSource.error
+  const levelsLoading = levelsSource.loading
+  const classesLoading = classesSource.loading
   const [resolveError, setResolveError] = useState(null)
   const [shareOpenId, setShareOpenId] = useState(null)
   const [copiedLink, setCopiedLink] = useState(null)
@@ -246,97 +283,6 @@ export default function LessonPanel({ view = 'lessons' }) {
   const [openLevelIds, setOpenLevelIds] = useState(() => new Set())
   const copyTimerRef = useRef(null)
   const migratedRef = useRef(new Set())
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(firestore, 'lessons'),
-      (snap) => {
-        setLessons(snap.docs.map((d) => ({ id: d.id, ...decodeLessonFromFirestore(d.data()) })))
-        setLoading(false)
-        setError(null)
-      },
-      (err) => {
-        setError(err.message)
-        setLoading(false)
-      }
-    )
-  }, [])
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(firestore, LEVEL_COLLECTION),
-      (snap) => {
-        setLevels(
-          snap.docs.map((d) => normalizeLevelRecord({ id: d.id, ...d.data() })).sort(compareLevels)
-        )
-        setLevelsLoading(false)
-      },
-      () => setLevelsLoading(false)
-    )
-  }, [])
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(firestore, CLASS_COLLECTION),
-      (snap) => {
-        setClasses(
-          snap.docs
-            .map((d) => makeClassRecord({ id: d.id, ...d.data() }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-        )
-        setClassesLoading(false)
-      },
-      () => setClassesLoading(false)
-    )
-  }, [])
-
-  useEffect(() => {
-    const q = query(
-      collectionGroup(firestore, 'sessionReports'),
-      orderBy('startedAt', 'desc'),
-      limit(REPORT_LIMIT)
-    )
-    return onSnapshot(
-      q,
-      (snap) => {
-        setReports(
-          snap.docs.map((d) => ({
-            id: d.id,
-            lessonId: d.ref.parent.parent?.id ?? null,
-            ...d.data(),
-          }))
-        )
-        setReportsError(null)
-        setReportsLoading(false)
-      },
-      (err) => {
-        setReportsError(err.message)
-        setReportsLoading(false)
-      }
-    )
-  }, [])
-
-  useEffect(() => {
-    const q = collectionGroup(firestore, 'feedback')
-    return onSnapshot(
-      q,
-      (snap) => {
-        const items = snap.docs.map((d) => ({
-          id: d.id,
-          lessonId: d.ref.parent.parent?.id ?? null,
-          ...d.data(),
-        }))
-        items.sort((a, b) => (b.submittedAt ?? 0) - (a.submittedAt ?? 0))
-        setFeedback(items)
-        setFeedbackError(null)
-        setFeedbackLoading(false)
-      },
-      (err) => {
-        setFeedbackError(err.message)
-        setFeedbackLoading(false)
-      }
-    )
-  }, [])
 
   useEffect(() => {
     if (loading || levelsLoading) return
@@ -540,14 +486,7 @@ export default function LessonPanel({ view = 'lessons' }) {
 
       {loading && <p style={s.muted}>Loading lessons...</p>}
       {error && <p style={s.error}>Could not load lessons: {error}</p>}
-      {reportsError && <p style={s.error}>Could not load session reports: {reportsError}</p>}
-      {feedbackError && <p style={s.error}>Could not load feedback: {feedbackError}</p>}
       {resolveError && <p style={s.error}>{resolveError}</p>}
-      {reports.length >= REPORT_LIMIT && (
-        <p style={s.muted}>
-          Showing only the newest {REPORT_LIMIT} session reports; older ones are not listed.
-        </p>
-      )}
       {!loading && !error && visibleLessons.length === 0 && (
         <p style={s.muted}>No lessons found. Run the migration script to populate Firestore.</p>
       )}
@@ -564,14 +503,10 @@ export default function LessonPanel({ view = 'lessons' }) {
                   bucket={bucket}
                   open={openLevelIds.has(bucket.id)}
                   onToggle={() => handleToggleLevel(bucket.id)}
-                  reports={reports}
-                  feedback={feedback}
                   shareOpenId={shareOpenId}
                   copiedLink={copiedLink}
                   deletingId={deletingId}
                   deletedIds={deletedIds}
-                  reportsLoading={reportsLoading}
-                  feedbackLoading={feedbackLoading}
                   onToggleShare={handleToggleShare}
                   onCloseShare={() => setShareOpenId(null)}
                   onCopyLink={handleCopyLink}
@@ -708,14 +643,10 @@ function LevelLessonGroup({
   bucket,
   open,
   onToggle,
-  reports,
-  feedback,
   shareOpenId,
   copiedLink,
   deletingId,
   deletedIds,
-  reportsLoading,
-  feedbackLoading,
   onToggleShare,
   onCloseShare,
   onCopyLink,
@@ -803,8 +734,6 @@ function LevelLessonGroup({
                       .filter(Boolean)
                       .join(' · ')
 
-                    const lessonReports = reports.filter((report) => report.lessonId === lesson.id)
-                    const lessonFeedback = feedback.filter((item) => item.lessonId === lesson.id)
                     const lessonOpen = openLessonIds.has(lesson.id)
                     return (
                       <React.Fragment key={lesson.id}>
@@ -882,10 +811,6 @@ function LevelLessonGroup({
                             <AdminCell colSpan={4} style={s.lessonDetailCell}>
                               <LessonAdminPanel
                                 lesson={lesson}
-                                reports={lessonReports}
-                                feedback={lessonFeedback}
-                                reportsLoading={reportsLoading}
-                                feedbackLoading={feedbackLoading}
                                 shareOpen={shareOpenId === lesson.id}
                                 copiedLink={copiedLink}
                                 deleting={deletingId === lesson.id || deletedIds.has(lesson.id)}
@@ -1330,10 +1255,6 @@ function ClassManager({ classes, loading }) {
 
 function LessonAdminPanel({
   lesson,
-  reports,
-  feedback,
-  reportsLoading,
-  feedbackLoading,
   shareOpen,
   copiedLink,
   deleting,
@@ -1352,6 +1273,22 @@ function LessonAdminPanel({
   const activeClasses = (classes ?? []).filter((cls) => !cls.archived)
   const [selectedClassId, setSelectedClassId] = useState('')
   const selectedClass = activeClasses.find((cls) => cls.id === selectedClassId)
+  const [reportCount, setReportCount] = useState(REPORT_PAGE_SIZE)
+  const reportsSource = useLessonReports(lesson.id, reportCount)
+  const feedbackSource = useLessonFeedback(lesson.id)
+  // While a bigger page loads, keep showing the smaller one.
+  const [shownReports, setShownReports] = useState(EMPTY)
+  useEffect(() => {
+    if (reportsSource.data) setShownReports(reportsSource.data)
+  }, [reportsSource.data])
+  const reports = shownReports
+  const reportsMore = useLoadMore({
+    source: reportsSource,
+    size: reportsSource.data?.length ?? 0,
+    count: reportCount,
+    pageSize: REPORT_PAGE_SIZE,
+  })
+  const feedback = feedbackSource.data ?? EMPTY
 
   return (
     <div style={s.lessonAdminPanel}>
@@ -1412,18 +1349,46 @@ function LessonAdminPanel({
           </button>
         </div>
       )}
+      {reportsSource.error && (
+        <p style={s.error}>
+          Could not load session reports: {reportsSource.error}
+          {/* A failed Load more has its own Retry in the list; anything else retries here. */}
+          {!reportsMore.failed && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={s.detailBtn}
+                disabled={reportsSource.loading}
+                onClick={reportsSource.retry}
+                aria-label="Retry loading reports"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </p>
+      )}
+      {feedbackSource.error && (
+        <p style={s.error}>Could not load feedback: {feedbackSource.error}</p>
+      )}
       {reports.length > 0 && (
         <LessonReportsSection
           lesson={lesson}
           reports={reports}
-          loading={reportsLoading}
+          loading={reportsSource.loading}
+          hasMore={reportsMore.hasMore}
+          failed={reportsMore.failed}
+          onLoadMore={() => setReportCount((count) => count + REPORT_PAGE_SIZE)}
+          onRetry={reportsSource.retry}
           onViewReport={onViewReport}
         />
       )}
       {feedback.length > 0 && (
         <LessonFeedbackSection
           feedback={feedback}
-          loading={feedbackLoading}
+          loading={feedbackSource.loading}
           onResolveFeedback={onResolveFeedback}
         />
       )}
@@ -1431,9 +1396,23 @@ function LessonAdminPanel({
   )
 }
 
-function LessonReportsSection({ lesson, reports, loading, onViewReport }) {
+function LessonReportsSection({
+  lesson,
+  reports,
+  loading,
+  hasMore,
+  failed,
+  onLoadMore,
+  onRetry,
+  onViewReport,
+}) {
+  const meta = loading
+    ? 'Loading...'
+    : hasMore
+      ? `newest ${reports.length}`
+      : `${reports.length} total`
   return (
-    <CollapsibleDetail title="Reports" meta={loading ? 'Loading...' : `${reports.length} total`}>
+    <CollapsibleDetail title="Reports" meta={meta}>
       {reports.map((report) => (
         <div key={report.id} style={s.detailItem}>
           <div>
@@ -1452,6 +1431,18 @@ function LessonReportsSection({ lesson, reports, loading, onViewReport }) {
           </button>
         </div>
       ))}
+      {hasMore && (
+        <button
+          type="button"
+          className="btn-ghost-outline"
+          style={s.loadMoreBtn}
+          disabled={loading}
+          onClick={failed ? onRetry : onLoadMore}
+          aria-label={failed ? 'Retry loading more reports' : 'Load more reports'}
+        >
+          {loading ? 'Loading...' : failed ? 'Retry' : 'Load more'}
+        </button>
+      )}
     </CollapsibleDetail>
   )
 }
@@ -1996,6 +1987,12 @@ const s = {
   },
   detailMeta: { display: 'block', marginTop: 2, color: '#6b7280', fontSize: '0.76rem' },
   detailBtn: { padding: '4px 10px', fontSize: '0.78rem' },
+  loadMoreBtn: {
+    alignSelf: 'flex-start',
+    margin: '8px 0 2px',
+    padding: '4px 10px',
+    fontSize: '0.78rem',
+  },
   detailEmpty: { margin: 0, fontFamily: 'var(--font-body)', fontSize: '0.82rem', color: '#9ca3af' },
   feedbackText: { margin: '5px 0 0', whiteSpace: 'pre-wrap', lineHeight: 1.45, color: '#374151' },
 }

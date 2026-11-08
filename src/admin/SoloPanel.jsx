@@ -3,9 +3,6 @@
 // `soloLog` (src/shared/soloLog.js), side-quests from the stored session reports. The download is
 // anonymised ("Student N", no names) like a session report.
 import { useEffect, useMemo, useState } from 'react'
-import { collection, collectionGroup, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { firestore } from '../shared/firebase'
-import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { readSoloLog } from '../app/soloLogService'
 import { buildSideQuestRows, buildSoloExport, buildSoloRows } from '../shared/soloLog'
 import {
@@ -16,9 +13,9 @@ import {
   AdminTable,
   adminUiStyles,
 } from './AdminUi'
+import { REPORT_PAGE_SIZE, useAdminLessons, useLoadMore, useRecentReports } from './adminSnapshots'
 
-// Side-quests are read from the newest stored reports only; the collection grows forever.
-export const SIDE_QUEST_REPORT_LIMIT = 300
+const EMPTY = Object.freeze([])
 
 const formatDateTime = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
 
@@ -49,47 +46,35 @@ function downloadJson(filename, data) {
 }
 
 export default function SoloPanel() {
-  const [lessons, setLessons] = useState([])
+  // Lessons and reports are shared with the other Admin tabs (adminSnapshots.js). Session
+  // reports are large, so side-quests come from the newest REPORT_PAGE_SIZE, with Load more.
+  const lessonsSource = useAdminLessons()
+  const [reportCount, setReportCount] = useState(REPORT_PAGE_SIZE)
+  const reportsSource = useRecentReports(reportCount)
+  const [reports, setReports] = useState(EMPTY)
+  useEffect(() => {
+    if (reportsSource.data) setReports(reportsSource.data)
+  }, [reportsSource.data])
+  const reportsMore = useLoadMore({
+    source: reportsSource,
+    size: reportsSource.data?.length ?? 0,
+    count: reportCount,
+    pageSize: REPORT_PAGE_SIZE,
+  })
+  const lessons = lessonsSource.data ?? EMPTY
+  const reportsError = reportsSource.error
   const [soloLog, setSoloLog] = useState(null)
-  const [reports, setReports] = useState([])
-  const [error, setError] = useState(null)
-  const [reportsError, setReportsError] = useState(null)
+  const [soloLogError, setSoloLogError] = useState(null)
   const [classId, setClassId] = useState('')
   const [lessonId, setLessonId] = useState('')
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(firestore, 'lessons'),
-      (snap) => {
-        setLessons(snap.docs.map((d) => ({ id: d.id, ...decodeLessonFromFirestore(d.data()) })))
-      },
-      (err) => setError(`Could not load lessons: ${err.message}`)
-    )
-  }, [])
-
-  useEffect(() => {
-    const q = query(
-      collectionGroup(firestore, 'sessionReports'),
-      orderBy('startedAt', 'desc'),
-      limit(SIDE_QUEST_REPORT_LIMIT)
-    )
-    return onSnapshot(
-      q,
-      (snap) => {
-        setReports(
-          snap.docs.map((d) => ({ lessonId: d.ref.parent.parent?.id ?? null, ...d.data() }))
-        )
-        setReportsError(null)
-      },
-      (err) => setReportsError(err.message)
-    )
-  }, [])
+  const error =
+    soloLogError ?? (lessonsSource.error ? `Could not load lessons: ${lessonsSource.error}` : null)
 
   useEffect(() => {
     let cancelled = false
     readSoloLog()
       .then((data) => !cancelled && setSoloLog(data))
-      .catch((err) => !cancelled && setError(err.message))
+      .catch((err) => !cancelled && setSoloLogError(err.message))
     return () => {
       cancelled = true
     }
@@ -149,11 +134,43 @@ export default function SoloPanel() {
     >
       {error && <AdminMessage tone="error">{error}</AdminMessage>}
       {reportsError && (
-        <AdminMessage tone="error">Could not load side-quest reports: {reportsError}</AdminMessage>
+        <AdminMessage tone="error">
+          Could not load side-quest reports: {reportsError}
+          {/* A failed Load more has its own Retry below; anything else retries here. */}
+          {!reportsMore.failed && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn-ghost-outline"
+                style={adminUiStyles.actionBtn}
+                disabled={reportsSource.loading}
+                onClick={reportsSource.retry}
+                aria-label="Retry loading reports"
+              >
+                Retry
+              </button>
+            </>
+          )}
+        </AdminMessage>
       )}
-      {reports.length >= SIDE_QUEST_REPORT_LIMIT && (
+      {reportsMore.hasMore && (
         <AdminMessage>
-          Side-quests come from the newest {SIDE_QUEST_REPORT_LIMIT} session reports only.
+          Side-quests come from the newest {reports.length} session reports only.{' '}
+          <button
+            type="button"
+            className="btn-ghost-outline"
+            style={adminUiStyles.actionBtn}
+            disabled={reportsSource.loading}
+            onClick={
+              reportsMore.failed
+                ? reportsSource.retry
+                : () => setReportCount((count) => count + REPORT_PAGE_SIZE)
+            }
+            aria-label={reportsMore.failed ? 'Retry loading more reports' : 'Load more reports'}
+          >
+            {reportsSource.loading ? 'Loading…' : reportsMore.failed ? 'Retry' : 'Load more'}
+          </button>
         </AdminMessage>
       )}
       {!soloLog && !error && <AdminMessage>Loading solo log…</AdminMessage>}

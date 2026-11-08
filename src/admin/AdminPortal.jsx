@@ -1,10 +1,11 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import { signOut } from 'firebase/auth'
 import { useNavigate, useParams } from 'react-router-dom'
 import { auth } from '../shared/firebase'
 import { useAuth } from '../auth/useAuth'
 import LoadingScreen from '../app/components/LoadingScreen'
 import AppVersionFooter from './AppVersionFooter'
+import { watchAdminSnapshotsAuth } from './adminSnapshots'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
 const BadgesPanel = lazy(() => import('./BadgesPanel'))
@@ -35,6 +36,12 @@ export default function AdminPortal() {
   const { tab, subtab } = useParams()
   const navigate = useNavigate()
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'lessons'
+
+  // The shared Admin listeners (adminSnapshots.js) follow the app's auth state from here on, for
+  // the life of the page: any sign-out or a different user drops their cache.
+  useEffect(() => {
+    watchAdminSnapshotsAuth()
+  }, [])
 
   function handleSubtabChange(sub) {
     navigate(`/admin/${activeTab}/${sub}`)
