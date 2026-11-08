@@ -6,6 +6,8 @@ import {
   calmFoldsSpriteProps,
   calmPaletteFollowUp,
   calmStackedStageScale,
+  calmStackedStageMaxHeight,
+  CALM_STACKED_STAGE_CHROME,
   createCalmDragEndStep,
   createPaletteCategoryMemory,
   openPaletteReveal,
@@ -497,13 +499,19 @@ describe('calm Scratch layout rules', () => {
     (height) => {
       const width = 736
       const { asideMaxHeight, blocksMinHeight } = calmStackedLayout(height, { width })
-      const stageRow = Math.round(360 * calmStackedStageScale(width)) + 52
+      const stageRow = Math.round(360 * calmStackedStageScale(width)) + CALM_STACKED_STAGE_CHROME
       const topRow = Math.max(stageRow, asideMaxHeight)
       expect(topRow + 10 + blocksMinHeight).toBeLessThanOrEqual(height)
       expect(blocksMinHeight).toBeGreaterThanOrEqual(120)
       expect(blocksMinHeight).toBeLessThanOrEqual(360)
     }
   )
+
+  it('caps the pinned stage cell so an open Sprite settings scrolls inside it, never over the blocks', () => {
+    const layout = calmStackedLayout(900, { width: 736 })
+    expect(calmStackedStageMaxHeight(900, layout)).toBe(900 - layout.blocksMinHeight - 10)
+    expect(calmStackedStageMaxHeight(0, layout)).toBeUndefined()
+  })
 
   it('keeps a 120px floor for the blocks when nothing fits', () => {
     expect(calmStackedLayout(300, { width: 736 }).blocksMinHeight).toBe(120)

@@ -286,10 +286,13 @@ const STACKED_ASIDE_MIN = 140
 const STACKED_BLOCKS_MAX_MIN = 360
 const STACKED_BLOCKS_FLOOR = 120
 const STACKED_GAP = 10
-const STACKED_STAGE_CHROME = 52
+// Above the pinned stage: the Run row (56px), a gap, the Enlarge / Reset Stage row (44px) and the
+// gap to the stage. The sprite tiles and Sprite settings below scroll inside the stage cell
+// (calmStackedStageMaxHeight), so they never squeeze the blocks.
+export const CALM_STACKED_STAGE_CHROME = 116
 export function calmStackedLayout(height, { width = 0 } = {}) {
   if (!(height > 0)) return { asideMaxHeight: null, blocksMinHeight: 0 }
-  const stageRow = Math.round(STAGE_H * calmStackedStageScale(width)) + STACKED_STAGE_CHROME
+  const stageRow = Math.round(STAGE_H * calmStackedStageScale(width)) + CALM_STACKED_STAGE_CHROME
   const asideMaxHeight = Math.max(STACKED_ASIDE_MIN, Math.round(height * STACKED_ASIDE_SHARE))
   const topRow = Math.max(stageRow, asideMaxHeight)
   const room = height - topRow - STACKED_GAP
@@ -298,6 +301,13 @@ export function calmStackedLayout(height, { width = 0 } = {}) {
     blocksMinHeight: Math.max(STACKED_BLOCKS_FLOOR, Math.min(STACKED_BLOCKS_MAX_MIN, room)),
   }
 }
+// The stacked stage cell's height cap: what the workspace has left over the Blocks minimum, so an
+// open Sprite settings scrolls inside the cell rather than growing the row over the blocks.
+export function calmStackedStageMaxHeight(height, layout) {
+  if (!(height > 0) || !(layout?.blocksMinHeight > 0)) return undefined
+  return Math.max(0, Math.round(height - layout.blocksMinHeight - STACKED_GAP))
+}
+
 export function calmStackedGridStyle(layout, { aside }) {
   const blocksMinHeight = layout?.blocksMinHeight ?? 0
   return {

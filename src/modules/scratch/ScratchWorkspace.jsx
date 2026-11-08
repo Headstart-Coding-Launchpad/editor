@@ -84,6 +84,7 @@ import {
   createCalmArrival,
   createCalmDragEndStep,
   calmStackedStageScale,
+  calmStackedStageMaxHeight,
   calmStageScale,
   calmFullscreenStageScale,
   calmStageResolution,
@@ -4025,7 +4026,17 @@ export default function ScratchWorkspace({
                     // As wide as the stage: the toolbar and the property row wrap under it rather
                     // than widening the pane and squeezing the blocks.
                     width: STAGE_W * stageScale + 4,
-                    ...(calmStacked ? { gridArea: 'stage', overflow: 'visible' } : null),
+                    ...(calmStacked
+                      ? {
+                          gridArea: 'stage',
+                          overflowX: 'visible',
+                          overflowY: 'auto',
+                          maxHeight: calmStackedStageMaxHeight(
+                            rootSize.height,
+                            calmStackedLayoutNow
+                          ),
+                        }
+                      : null),
                   }
                 : s.stagePane
           }
