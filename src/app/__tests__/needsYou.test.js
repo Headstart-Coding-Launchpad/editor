@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { needsYouEntries, needsYouState, nextErrorRuns, waitWords } from '../needsYou.js'
+import { needsYouState, nextErrorRuns } from '../needsYou.js'
 
 const hint = (failStreak, taskId = 't1') => ({ text: 'x', failStreak, taskId, at: 1 })
 
@@ -28,9 +28,8 @@ describe('needsYouState', () => {
     expect(needsYouState({ studentHint: hint(5) }, { ...opts, hasCheck: false })).toBeNull()
   })
 
-  it('says finished on a pass, only when the task has a check', () => {
-    expect(needsYouState({ checkPassed: true }, opts)?.kind).toBe('finished')
-    expect(needsYouState({ checkPassed: true }, { ...opts, hasCheck: false })).toBeNull()
+  it('is null on a pass or when nothing needs the tutor', () => {
+    expect(needsYouState({ checkPassed: true }, opts)).toBeNull()
     expect(needsYouState({}, opts)).toBeNull()
   })
 })
@@ -55,49 +54,5 @@ describe('nextErrorRuns', () => {
   it('does not count the same run twice', () => {
     const v = nextErrorRuns(undefined, run(1, 'E'))
     expect(nextErrorRuns(v, run(1, 'E'))).toBe(v)
-  })
-})
-
-describe('needsYouEntries', () => {
-  const students = [
-    { anonymousId: 'a', checkPassed: true },
-    { anonymousId: 'b', needsHelp: true },
-    { anonymousId: 'c', needsHelp: true },
-    { anonymousId: 'd', studentHint: hint(4) },
-    { anonymousId: 'e' },
-  ]
-  const seenAt = { 'a:finished': 5, 'b:help': 30, 'c:help': 10, 'd:stuck': 1 }
-
-  it('orders help, then stuck, then finished, longest wait first', () => {
-    const rows = needsYouEntries(students, { taskId: 't1', hasCheck: true, seenAt })
-    expect(rows.map((r) => `${r.studentId}:${r.kind}`)).toEqual([
-      'c:help',
-      'b:help',
-      'd:stuck',
-      'a:finished',
-    ])
-    expect(rows[0].since).toBe(10)
-  })
-
-  it('hides a row the tutor is on until its state changes', () => {
-    const snoozed = new Set(['c:help:10'])
-    const rows = needsYouEntries(students, { taskId: 't1', hasCheck: true, seenAt, snoozed })
-    expect(rows.map((r) => r.studentId)).not.toContain('c')
-    const again = needsYouEntries(students, {
-      taskId: 't1',
-      hasCheck: true,
-      seenAt: { ...seenAt, 'c:help': 99 },
-      snoozed,
-    })
-    expect(again.map((r) => r.studentId)).toContain('c')
-  })
-})
-
-describe('waitWords', () => {
-  it('says how long', () => {
-    expect(waitWords(0, 20000)).toBe('just now')
-    expect(waitWords(0, 125000)).toBe('2 min')
-    expect(waitWords(0, 65 * 60000)).toBe('1 hr 5 min')
-    expect(waitWords(null, 1)).toBe('')
   })
 })

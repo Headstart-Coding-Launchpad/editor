@@ -6,13 +6,11 @@
 // - help: the student pressed "I need help" (`needsHelp`);
 // - error: the latest runs crashed with the same error ERROR_LOOP_RUNS times in a row (counted
 //   on the tutor's screen from `lastRunAt` / `lastRunStatus` / `lastRunError`);
-// - stuck: failed the current task's check STUCK_FAILS times in a row (`studentHint.failStreak`);
-// - finished: passed the current task's check.
-// "Waiting" times start when this tutor screen first saw the state, so a reload restarts them.
+// - stuck: failed the current task's check STUCK_FAILS times in a row (`studentHint.failStreak`).
+// Finished is not here: the list reads it from studentCheckStatus.js.
 //
 // Pure and Node-safe.
 
-export const NEEDS_YOU_KINDS = Object.freeze(['help', 'error', 'stuck', 'finished'])
 export const ERROR_LOOP_RUNS = 3
 export const STUCK_FAILS = 3
 
@@ -53,42 +51,5 @@ export function needsYouState(student, { taskId, hasCheck, errorRuns } = {}) {
   ) {
     return { kind: 'stuck', reason: `Failed the check ${hint.failStreak} times in a row` }
   }
-  if (hasCheck && student.checkPassed) return { kind: 'finished', reason: 'Finished' }
   return null
-}
-
-// The strip's rows: [{ studentId, kind, reason, since }], help first, then error, stuck and
-// finished, and the longest wait first within each. `seenAt` maps `${studentId}:${kind}` to when
-// the tutor first saw it; `snoozed` is a Set of `${studentId}:${kind}:${since}` ("I'm on it").
-export function needsYouEntries(
-  students,
-  { taskId, hasCheck, errorRuns = {}, seenAt = {}, snoozed } = {}
-) {
-  const out = []
-  for (const student of Array.isArray(students) ? students : []) {
-    const id = student?.anonymousId
-    if (!id) continue
-    const state = needsYouState(student, { taskId, hasCheck, errorRuns: errorRuns[id] })
-    if (!state) continue
-    const since = seenAt[`${id}:${state.kind}`] ?? null
-    if (snoozed?.has(`${id}:${state.kind}:${since}`)) continue
-    out.push({ studentId: id, kind: state.kind, reason: state.reason, since })
-  }
-  const rank = (kind) => NEEDS_YOU_KINDS.indexOf(kind)
-  return out.sort(
-    (a, b) =>
-      rank(a.kind) - rank(b.kind) ||
-      (a.since ?? Infinity) - (b.since ?? Infinity) ||
-      a.studentId.localeCompare(b.studentId)
-  )
-}
-
-// "just now", "2 min", "1 hr 5 min": how long a row has waited.
-export function waitWords(since, now) {
-  if (since == null || now == null) return ''
-  const mins = Math.floor(Math.max(0, now - since) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} min`
-  const hrs = Math.floor(mins / 60)
-  return mins % 60 ? `${hrs} hr ${mins % 60} min` : `${hrs} hr`
 }
