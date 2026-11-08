@@ -135,6 +135,19 @@ describe('tallyChoiceAnswers', () => {
       total: 4,
     })
   })
+
+  it('finds the right option when the check is a list', () => {
+    const task = {
+      ...MC,
+      check: [{ type: 'run_attempted' }, { type: 'answer_equals', value: 'b' }],
+    }
+    const tally = tallyChoiceAnswers(task, [
+      { displayName: 'Ava', currentAnswer: 'b' },
+      { displayName: 'Ben', currentAnswer: 'a' },
+    ])
+    expect(tally.correct).toBe('b')
+    expect(tally.right).toBe(1)
+  })
 })
 
 describe('short answers', () => {

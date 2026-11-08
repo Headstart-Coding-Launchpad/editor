@@ -113,7 +113,9 @@ function studentName(student) {
 export function tallyChoiceAnswers(task, students = []) {
   const options = Array.isArray(task?.options) ? task.options : []
   const ids = new Set(options.map((option) => option.id))
-  const correct = task?.check?.type === 'answer_equals' ? (task.check.value ?? null) : null
+  const correct =
+    checkList(task?.check).find((c) => c?.type === 'answer_equals' && c.value != null)?.value ??
+    null
   const counts = Object.fromEntries(options.map((option) => [option.id, 0]))
   const notAnswered = []
   let answered = 0

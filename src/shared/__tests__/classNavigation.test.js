@@ -31,6 +31,12 @@ describe('nextClassTaskId', () => {
   it('moves on from an optional task the class was moved to by hand', () => {
     expect(nextClassTaskId(tasks, 3, { skipOptional: true })).toBe(4)
   })
+
+  it('has no next task when the class task is unknown (never the first task)', () => {
+    expect(nextClassTaskId(tasks, null)).toBeNull()
+    expect(nextClassTaskId(tasks, 99)).toBeNull()
+    expect(nextClassTaskId(tasks, 99, { skipOptional: true })).toBeNull()
+  })
 })
 
 describe('optional counts and position', () => {
@@ -44,5 +50,14 @@ describe('optional counts and position', () => {
     expect(classTaskPosition(tasks, 4)).toEqual({ number: 4, total: 5 })
     expect(classTaskPosition(tasks, 4, { skipOptional: true })).toEqual({ number: 3, total: 3 })
     expect(classTaskPosition(tasks, 3, { skipOptional: true })).toEqual({ number: 3, total: 4 })
+  })
+
+  it('has no place and nothing ahead when the class task is unknown', () => {
+    expect(classTaskPosition(tasks, null)).toEqual({ number: null, total: 5 })
+    expect(classTaskPosition(tasks, 99, { skipOptional: true })).toEqual({
+      number: null,
+      total: 3,
+    })
+    expect(countOptionalAhead(tasks, 99)).toBe(0)
   })
 })
