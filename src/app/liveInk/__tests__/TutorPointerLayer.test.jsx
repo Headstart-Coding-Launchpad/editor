@@ -118,6 +118,77 @@ describe('tutor pointer layer', () => {
     expect(dot.style.top).toBe('100px')
   })
 
+  it('sends no dot over annotatable text and clears a stale one', () => {
+    renderBoth()
+    act(() => {
+      fireEvent.mouseMove(screen.getByTestId('teacher-inner'), { clientX: 250, clientY: 100 })
+    })
+    expect(screen.getByTestId('tutor-pointer-dot')).toBeTruthy()
+    const page = screen.getByTestId('teacher-page')
+    const text = document.createElement('p')
+    text.setAttribute('data-md-anchor', 'p1')
+    const word = document.createElement('b')
+    text.appendChild(word)
+    page.append(text)
+    act(() => {
+      fireEvent.mouseMove(word, { clientX: 300, clientY: 150 })
+    })
+    expect(screen.queryByTestId('tutor-pointer-dot')).toBeNull()
+  })
+
+  it('still sends the dot over a bare ink surface (no anchored text)', () => {
+    renderBoth()
+    const ink = document.createElement('div')
+    ink.setAttribute('data-ink-surface', 'page')
+    screen.getByTestId('teacher-page').append(ink)
+    act(() => {
+      fireEvent.mouseMove(ink, { clientX: 300, clientY: 150 })
+    })
+    expect(screen.getByTestId('tutor-pointer-dot')).toBeTruthy()
+  })
+
+  it('sends no click ripple over text, but does elsewhere', () => {
+    renderBoth()
+    const text = document.createElement('p')
+    text.setAttribute('data-md-anchor', 'p1')
+    screen.getByTestId('teacher-page').append(text)
+    act(() => {
+      fireEvent.mouseDown(text, { clientX: 300, clientY: 150 })
+    })
+    expect(screen.queryByTestId('tutor-click-ripple')).toBeNull()
+    act(() => {
+      fireEvent.mouseDown(screen.getByTestId('teacher-inner'), { clientX: 300, clientY: 150 })
+    })
+    act(() => {
+      fireEvent.mouseDown(screen.getByTestId('teacher-inner'), { clientX: 300, clientY: 150 })
+    })
+    expect(screen.getByTestId('tutor-click-ripple')).toBeTruthy()
+  })
+
+  it('hides a stale dot again when the mouse leaves and re-enters over text', () => {
+    renderBoth()
+    const text = document.createElement('p')
+    text.setAttribute('data-md-anchor', 'p1')
+    screen.getByTestId('teacher-page').append(text)
+    act(() => {
+      fireEvent.mouseMove(text, { clientX: 300, clientY: 150 })
+    })
+    act(() => {
+      fireEvent.mouseOut(text, { relatedTarget: null })
+    })
+    act(() => {
+      fireEvent.mouseMove(screen.getByTestId('teacher-inner'), { clientX: 250, clientY: 100 })
+    })
+    expect(screen.getByTestId('tutor-pointer-dot')).toBeTruthy()
+    act(() => {
+      fireEvent.mouseOut(screen.getByTestId('teacher-inner'), { relatedTarget: null })
+    })
+    act(() => {
+      fireEvent.mouseMove(text, { clientX: 300, clientY: 150 })
+    })
+    expect(screen.queryByTestId('tutor-pointer-dot')).toBeNull()
+  })
+
   it('ripples on the student screen when the tutor clicks, again for a repeat click', () => {
     renderBoth()
     act(() => {
