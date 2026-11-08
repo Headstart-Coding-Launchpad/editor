@@ -311,6 +311,56 @@ describe('calm Scratch: the hint is docked under the explainer', () => {
   })
 })
 
+describe('calm Scratch A+B: the hint inside the card, a small stage that can be enlarged', () => {
+  it('puts the hint inside the explainer card, straight under the steps', () => {
+    panelWidth(1334)
+    render(<LessonTaskContent {...baseProps} />)
+    const card = screen.getByTestId('task-instructions')
+    expect(within(card).getByTestId('task-hint')).toHaveTextContent(/green flag/i)
+  })
+
+  it('keeps the hint in view when the card is folded to its title', async () => {
+    const user = userEvent.setup()
+    panelWidth(1334)
+    render(<LessonTaskContent {...baseProps} />)
+    await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+    expect(screen.queryByText('Make the cat say Hello! 🎉')).not.toBeInTheDocument()
+    expect(screen.getByTestId('task-hint')).toBeVisible()
+  })
+
+  it('gives the explainer column about 208px on a 1024 tablet', () => {
+    panelWidth(992)
+    render(<LessonTaskContent {...baseProps} />)
+    expect(parseInt(screen.getByTestId('scratch-calm-aside').style.width, 10)).toBe(208)
+  })
+
+  it('hands the workspace the hint line for the full-screen stage bar', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm.fullscreenHint).toMatch(/green flag/i)
+    rerender(
+      <LessonTaskContent
+        {...baseProps}
+        task={{ ...baseProps.task, check: { type: 'block_used', opcode: 'looks_say' } }}
+        displayCheckAttempted
+        displayCheckPassed={false}
+        displayCheckSuggestion="Add a **say** block."
+      />
+    )
+    expect(workspaceProps.calm.fullscreenHint).toBe('Add a **say** block.')
+  })
+
+  it('shows the large stage while the tutor broadcasts (Go Live) or presents, never the student’s small one', () => {
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    expect(workspaceProps.calm.bigStage).toBe(false)
+    rerender(<LessonTaskContent {...baseProps} isForcedTeacherLive />)
+    expect(workspaceProps.calm.bigStage).toBe(true)
+    rerender(<LessonTaskContent {...baseProps} teacherPresentation />)
+    expect(workspaceProps.calm.bigStage).toBe(true)
+  })
+})
+
 describe('calm Scratch: review fixes', () => {
   const failedCheck = {
     task: { ...baseProps.task, check: { type: 'block_used', opcode: 'looks_say' } },
