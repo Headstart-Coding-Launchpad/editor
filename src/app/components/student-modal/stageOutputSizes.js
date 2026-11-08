@@ -18,14 +18,19 @@ const SMALL_VW = 0.26
  * The Stage's side in px, always a square. Small: the column's width, unless the column is too
  * short, then smaller so the Output keeps OUTPUT_FLOOR (never below MIN_STAGE). Big: up to
  * `bigWidth`, while the Output keeps OUTPUT_FLOOR, and never below the small side.
- * `used` is the height the toggle row and the Stage take.
+ * `after` is the height the panel under the Output (the name tags) wants, its gap included;
+ * the Stage shrinks for it too. `afterMax` is the most that panel may take (its gap included)
+ * so the Output still keeps its floor once the Stage is at MIN_STAGE; past it the panel
+ * scrolls. Null when there is no panel. `used` is the height the toggle row and the Stage take.
  */
-export function stageSizes({ width, height, big, bigWidth = width * BIG_SHARE }) {
-  const room = height - TOGGLE_ROW - GAP * 2 - OUTPUT_FLOOR
+export function stageSizes({ width, height, big, bigWidth = width * BIG_SHARE, after = 0 }) {
+  const room = height - TOGGLE_ROW - GAP * 2 - OUTPUT_FLOOR - after
   let stage = Math.min(width, Math.max(MIN_STAGE, Math.min(width, room)))
   if (big) stage = Math.max(stage, Math.min(bigWidth, room))
   stage = Math.round(stage)
-  return { stage, used: TOGGLE_ROW + GAP + stage }
+  const used = TOGGLE_ROW + GAP + stage
+  const afterMax = after > 0 ? Math.max(0, height - used - GAP - OUTPUT_FLOOR) : null
+  return { stage, used, afterMax }
 }
 
 /**

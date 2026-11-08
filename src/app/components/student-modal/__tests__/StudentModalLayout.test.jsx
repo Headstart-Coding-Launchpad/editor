@@ -30,8 +30,8 @@ const { stageSizes, columnWidths, OUTPUT_FLOOR, GAP, MIN_STAGE, CODE_MIN } =
 const TASK = { id: 't1', title: 'A Circle and a Name', explainer: 'Look: a circle.' }
 const STAGE = { commands: [{ type: 'circle', x: 0, y: 0, r: 50 }] }
 
-function renderBody(student = {}) {
-  return render(
+function body(student = {}) {
+  return (
     <div data-testid="body">
       <StudentWorkspaceBody
         lesson={{ type: 'python', tasks: [TASK] }}
@@ -48,6 +48,10 @@ function renderBody(student = {}) {
       />
     </div>
   )
+}
+
+function renderBody(student = {}) {
+  return render(body(student))
 }
 
 describe('StudentModal right column', () => {
@@ -85,6 +89,20 @@ describe('StudentModal right column', () => {
       'true'
     )
   })
+
+  it('keeps the same Output (and the Bigger picture choice) when the drawing comes and goes', async () => {
+    const { rerender } = renderBody({ currentStageResult: STAGE })
+    const output = screen.getByTestId('output-panel')
+    const column = screen.getByTestId('student-modal-output-column')
+    await userEvent.click(screen.getByRole('button', { name: 'Bigger picture' }))
+    rerender(body({ currentStageResult: null }))
+    expect(screen.queryByTestId('stage-pane')).toBeNull()
+    expect(screen.getByTestId('output-panel')).toBe(output)
+    expect(screen.getByTestId('student-modal-output-column')).toBe(column)
+    rerender(body({ currentStageResult: STAGE }))
+    expect(screen.getByTestId('output-panel')).toBe(output)
+    expect(screen.getByRole('button', { name: 'Smaller picture' })).toBeInTheDocument()
+  })
 })
 
 describe('stageSizes', () => {
@@ -114,6 +132,38 @@ describe('stageSizes', () => {
     expect(tight.stage).toBeLessThan(600)
     expect(tight.stage).toBeGreaterThanOrEqual(320)
     expect(700 - tight.used - GAP).toBeGreaterThanOrEqual(OUTPUT_FLOOR)
+  })
+
+  it('counts the name-tag panel under the Output, so the Output keeps its floor', () => {
+    for (let height = 480; height <= 1000; height += 20) {
+      for (const big of [false, true]) {
+        for (const after of [0, 120, 268]) {
+          const { stage, used, afterMax } = stageSizes({
+            width: 360,
+            height,
+            big,
+            bigWidth: 580,
+            after,
+          })
+          expect(stage).toBeGreaterThanOrEqual(MIN_STAGE)
+          const shown = Math.min(after, afterMax ?? after)
+          expect(height - used - GAP - shown).toBeGreaterThanOrEqual(OUTPUT_FLOOR)
+        }
+      }
+    }
+    // Room to spare: the panel shows whole, and the Stage shrinks for it.
+    const roomy = stageSizes({ width: 360, height: 900, big: false, after: 200 })
+    expect(roomy.afterMax).toBeGreaterThanOrEqual(200)
+    expect(stageSizes({ width: 360, height: 700, big: false, after: 200 }).stage).toBeLessThan(
+      stageSizes({ width: 360, height: 700, big: false }).stage
+    )
+  })
+
+  it('lets the name-tag panel scroll once the Stage is at its minimum', () => {
+    const { stage, afterMax } = stageSizes({ width: 360, height: 480, big: false, after: 268 })
+    expect(stage).toBe(MIN_STAGE)
+    expect(afterMax).toBeLessThan(268)
+    expect(afterMax).toBeGreaterThanOrEqual(0)
   })
 
   it('never makes the big Stage smaller than the small one', () => {

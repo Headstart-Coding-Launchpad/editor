@@ -461,20 +461,15 @@ export default function StudentWorkspaceBody({
             {highlightComposer}
             {split}
           </div>
-          {stageResult ? (
-            // Python Stage task: the Stage above the Output in this one column.
-            <StageOutputColumn
-              style={s.outputColumn}
-              stageResult={stageResult}
-              output={submitMode ? submitNotice : output(true)}
-              after={variables}
-            />
-          ) : (
-            <div style={s.outputColumn} data-testid="student-modal-output-column">
-              {submitMode ? submitNotice : output(true)}
-              {variables}
-            </div>
-          )}
+          {/* One column element whether or not the last run drew, so the Output and the name
+              tags keep their state (and "Bigger picture" its choice) when a drawing comes or
+              goes: the Stage shows above the Output only when there is one. */}
+          <StageOutputColumn
+            style={s.outputColumn}
+            stageResult={stageResult}
+            output={submitMode ? submitNotice : output(true)}
+            after={variables}
+          />
         </>
       )
     return (
