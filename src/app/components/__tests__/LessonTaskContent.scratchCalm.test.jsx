@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -348,6 +348,33 @@ describe('calm Scratch A+B: the hint inside the card, a small stage that can be 
       />
     )
     expect(workspaceProps.calm.fullscreenHint).toBe('Add a **say** block.')
+  })
+
+  it('while the student has the stage full screen the tutor is not told Instructions is on screen', () => {
+    panelWidth(1334)
+    const onVisiblePanesChange = vi.fn()
+    render(<LessonTaskContent {...baseProps} onVisiblePanesChange={onVisiblePanesChange} />)
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
+    act(() => workspaceProps.calm.onFullscreenChange(true))
+    expect(onVisiblePanesChange.mock.lastCall[0]).not.toContain('instructions')
+    act(() => workspaceProps.calm.onFullscreenChange(false))
+    expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['instructions', 'blocks', 'stage'])
+  })
+
+  it('a tutor forcing Instructions opens the folded card without rebuilding the hint inside it', async () => {
+    const user = userEvent.setup()
+    panelWidth(1334)
+    const { rerender } = render(<LessonTaskContent {...baseProps} />)
+    const hint = screen.getByTestId('task-hint')
+    await user.click(screen.getByRole('button', { name: /Move the cat/ }))
+    rerender(
+      <LessonTaskContent
+        {...baseProps}
+        forcedPaneCommand={{ mode: 'force', panes: ['instructions'], pushedAt: 11 }}
+      />
+    )
+    expect(screen.getByText('Make the cat say Hello! 🎉')).toBeVisible()
+    expect(screen.getByTestId('task-hint')).toBe(hint)
   })
 
   it('shows the large stage while the tutor broadcasts (Go Live) or presents, never the student’s small one', () => {

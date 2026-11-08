@@ -193,8 +193,8 @@ function taskChecks(task) {
 
 // Sprite settings (the sprite property row: x, y, direction, size...) starts open when one of the
 // task's checks reads sprite properties, where the child may need to watch them; else folded.
-export function calmFoldsSpriteProps(task) {
-  return !readsSpriteProperties(taskChecks(task))
+export function calmOpensSpriteSettings(task) {
+  return readsSpriteProperties(taskChecks(task))
 }
 
 // Below this task-panel width (a portrait tablet: 768px screen, ~736px panel) the stage is pinned

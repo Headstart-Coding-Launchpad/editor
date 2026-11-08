@@ -48,11 +48,20 @@ export default function ExplainerPanel({
   // Shown inside the card under the text, folded or not (the calm Scratch screen's hint), so it
   // never scrolls away with the steps and stays when the card folds to its title.
   footer = null,
+  // Bumped to open a folded card (the tutor's force-instructions on the calm Scratch screen),
+  // without remounting it, so the hint in `footer` keeps its state.
+  openRequest = null,
 }) {
   const isFirstView = useFirstView(
     entranceKey == null ? null : firstViewKey('explainer', entranceKey)
   )
   const [collapsed, setCollapsed] = useState(false)
+  const footerRef = useRef(null)
+  const [seenOpenRequest, setSeenOpenRequest] = useState(openRequest)
+  if (seenOpenRequest !== openRequest) {
+    setSeenOpenRequest(openRequest)
+    if (openRequest != null) setCollapsed(false)
+  }
   // The entrance belongs to the task's arrival only: opening the panel again after a ▲/▼ toggle,
   // or new content for the same task (a Builder edit, the complete-code reveal), shows it still.
   // Content arriving into an empty panel is still the arrival.
@@ -92,7 +101,8 @@ export default function ExplainerPanel({
     const panel = panelRef.current
     const el = contentRef.current
     if (!panel || !el) return false
-    return panel.offsetHeight - el.clientHeight + el.scrollHeight > foldIfTallerThan
+    const footerHeight = footerRef.current?.offsetHeight ?? 0
+    return panel.offsetHeight - footerHeight - el.clientHeight + el.scrollHeight > foldIfTallerThan
   }, [foldIfTallerThan])
   useLayoutEffect(() => {
     const fold = autoFoldRef.current
@@ -120,7 +130,8 @@ export default function ExplainerPanel({
     const onPicture = () => {
       if ([...el.querySelectorAll('img')].every((img) => img.complete)) settle()
     }
-    const onRead = () => {
+    const onRead = (event) => {
+      if (footerRef.current?.contains(event?.target)) return
       fold.state = 'done'
     }
     const timer = setTimeout(settle, Math.max(0, fold.deadline - Date.now()))
@@ -262,7 +273,9 @@ export default function ExplainerPanel({
         </div>
       )}
       {footer && (
-        <div style={isCollapsed ? { ...s.footer, paddingTop: 12 } : s.footer}>{footer}</div>
+        <div ref={footerRef} style={isCollapsed ? { ...s.footer, paddingTop: 12 } : s.footer}>
+          {footer}
+        </div>
       )}
       {expanded && !isCollapsed && canExpandOverlay && (
         <>

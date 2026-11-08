@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
-  calmFoldsSpriteProps,
+  calmOpensSpriteSettings,
   calmPaletteFollowUp,
   calmStackedStageScale,
   calmStackedStageMaxHeight,
@@ -443,13 +443,17 @@ describe('calm Scratch layout rules', () => {
   })
 
   it('folds the sprite property row (Sprite settings) unless a check reads sprite properties', () => {
-    expect(calmFoldsSpriteProps({ check: { type: 'block_used', opcode: 'looks_say' } })).toBe(true)
-    expect(calmFoldsSpriteProps({})).toBe(true)
-    expect(calmFoldsSpriteProps({ check: [{ type: 'sprite_property', property: 'x' }] })).toBe(
+    expect(!calmOpensSpriteSettings({ check: { type: 'block_used', opcode: 'looks_say' } })).toBe(
+      true
+    )
+    expect(!calmOpensSpriteSettings({})).toBe(true)
+    expect(!calmOpensSpriteSettings({ check: [{ type: 'sprite_property', property: 'x' }] })).toBe(
       false
     )
     expect(
-      calmFoldsSpriteProps({ check: { type: 'all', checks: [{ type: 'sprite_property_delta' }] } })
+      !calmOpensSpriteSettings({
+        check: { type: 'all', checks: [{ type: 'sprite_property_delta' }] },
+      })
     ).toBe(false)
   })
 
@@ -463,7 +467,7 @@ describe('calm Scratch layout rules', () => {
     ['a manual check', { manualCheck: { type: 'sprite_property', property: 'direction' } }],
     ['a stage check', { codeStages: [{ role: 'support', check: { type: 'sprite_property' } }] }],
   ])('keeps the sprite property row out when %s reads sprite properties', (_, task) => {
-    expect(calmFoldsSpriteProps({ check: { type: 'block_used' }, ...task })).toBe(false)
+    expect(!calmOpensSpriteSettings({ check: { type: 'block_used' }, ...task })).toBe(false)
   })
 
   it('stacks the stage above the blocks only on a portrait-narrow task panel', () => {

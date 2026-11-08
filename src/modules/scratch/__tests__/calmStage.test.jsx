@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
+  CALM_FULLSCREEN_Z,
   CalmRunButton,
   CalmStopButton,
   CalmEnlargeButton,
@@ -97,6 +98,32 @@ describe('Fun moment: Enlarge makes the stage fill the screen, Back brings the w
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('Escape leaves full screen only: a window around it (the tutor’s student window) stays open', async () => {
+    const user = userEvent.setup()
+    const outerEscape = vi.fn()
+    const onKey = (e) => e.key === 'Escape' && outerEscape()
+    window.addEventListener('keydown', onKey)
+    try {
+      render(<StageColumn readOnly />)
+      await user.click(screen.getByRole('button', { name: /Enlarge/ }))
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(outerEscape).not.toHaveBeenCalled()
+      await user.keyboard('{Escape}')
+      expect(outerEscape).toHaveBeenCalledTimes(1)
+    } finally {
+      window.removeEventListener('keydown', onKey)
+    }
+  })
+
+  it('sits under the classroom’s own overlays (the tutor’s Coding Paused screen is 999)', async () => {
+    const user = userEvent.setup()
+    render(<StageColumn />)
+    await user.click(screen.getByRole('button', { name: /Enlarge/ }))
+    expect(CALM_FULLSCREEN_Z).toBeLessThan(200)
+    expect(Number(screen.getByRole('dialog').style.zIndex)).toBe(CALM_FULLSCREEN_Z)
   })
 
   it('a tutor watching (read-only) gets the full-size stage with only Back: no Run, Stop or hint', async () => {

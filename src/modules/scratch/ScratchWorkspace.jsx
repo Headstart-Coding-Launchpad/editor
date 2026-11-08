@@ -77,7 +77,7 @@ import {
   applyBlockScale,
   blockScaleRange,
   blocklyZoomOptions,
-  calmFoldsSpriteProps,
+  calmOpensSpriteSettings,
   calmPaletteFollowUp,
   calmStackedGridStyle,
   calmStackedLayout,
@@ -1230,6 +1230,9 @@ export default function ScratchWorkspace({
   // window (CalmStageShell), in memory only. The blocks stay mounted, hidden behind it, so Back
   // finds the code, the sprites and a running project exactly as they were.
   const [stageFullscreen, setStageFullscreen] = useState(false)
+  const closeStageFullscreen = useCallback(() => setStageFullscreen(false), [])
+  // Sprite settings starts open when a check reads sprite properties (worked out once per task).
+  const calmSettingsStartOpen = useMemo(() => calmOpensSpriteSettings(task), [task])
   const showFullscreen = stageFullscreen && !hideStage
   const enlargeAvailable = calmOn || forceCompact
   const [viewport, setViewport] = useState(() => ({
@@ -1433,16 +1436,24 @@ export default function ScratchWorkspace({
   // Mirrors the rendering conditions above (compact tab switcher, hideStage, and the
   // student's manual stage-collapse rail) so callers — e.g. the teacher's student list —
   // can show what a student is currently looking at without duplicating this logic.
+  // The full-screen stage (Enlarge) shows the stage only: the tutor's card says so.
   useEffect(() => {
     const panes = hideStage
       ? ['blocks']
-      : compact
-        ? [activePane]
-        : stagePanelCollapsed
-          ? ['blocks']
-          : ['blocks', 'stage']
+      : showFullscreen
+        ? ['stage']
+        : compact
+          ? [activePane]
+          : stagePanelCollapsed
+            ? ['blocks']
+            : ['blocks', 'stage']
     onVisiblePanesChangeRef.current?.(panes)
-  }, [hideStage, compact, activePane, stagePanelCollapsed])
+  }, [hideStage, showFullscreen, compact, activePane, stagePanelCollapsed])
+  // The calm screen's explainer card is hidden behind the full-screen stage too (LessonTaskContent
+  // leaves 'instructions' out of the report while this is true).
+  useEffect(() => {
+    calmRef.current?.onFullscreenChange?.(showFullscreen)
+  }, [showFullscreen])
 
   // Teacher "force switch tab" — a one-time jump to Blocks or Stage, applied through the
   // same path as a manual click (so it's remembered like one) rather than a persistent
@@ -1459,6 +1470,14 @@ export default function ScratchWorkspace({
       return
     lastForcedPaneTokenRef.current = forcedPaneToken
     handleActivePaneChange(forcedPane)
+  }, [forcedPane, forcedPaneToken])
+  // A tutor's force command for anything but the stage (Blocks, Instructions) leaves the
+  // full-screen stage, so the child sees what the tutor sent them to.
+  const lastFullscreenForceRef = useRef(forcedPaneToken)
+  useEffect(() => {
+    if (forcedPaneToken == null || lastFullscreenForceRef.current === forcedPaneToken) return
+    lastFullscreenForceRef.current = forcedPaneToken
+    if (forcedPane !== 'stage') setStageFullscreen(false)
   }, [forcedPane, forcedPaneToken])
 
   useEffect(() => {
@@ -3535,6 +3554,7 @@ export default function ScratchWorkspace({
   const spritePropsRow =
     selectedSpriteId !== '__stage__' && !hideSpriteProps ? renderSpriteProps(false) : null
   const calmHasSettings = calmOn && (!!spritePropsRow || !!backdropAddControl)
+  const spriteSettingsStartOpen = calmSettingsStartOpen
   const tileStyle = calmOn ? { ...s.spriteTile, ...s.spriteTileCalm } : s.spriteTile
   const tileThumbStyle = calmOn ? s.spriteTileThumbCalm : s.spriteTileThumb
   const addTileStyle = calmOn ? { ...s.spriteAddTile, ...s.spriteAddTileCalm } : s.spriteAddTile
@@ -3657,7 +3677,7 @@ export default function ScratchWorkspace({
       {/* Calm: always mounted (it only hides with nothing to fold), so selecting the Stage tile
           never forgets that Sprite settings was open. */}
       {calmOn ? (
-        <CalmSpriteSettings available={calmHasSettings} defaultOpen={!calmFoldsSpriteProps(task)}>
+        <CalmSpriteSettings available={calmHasSettings} defaultOpen={spriteSettingsStartOpen}>
           {spritePropsRow}
           {backdropAddControl}
         </CalmSpriteSettings>
@@ -3715,7 +3735,7 @@ export default function ScratchWorkspace({
     afterRun: hasAfterRunCheck,
     afterPlaced: hasAfterBlockPlacedCheck,
   })
-  const closeFullscreen = () => setStageFullscreen(false)
+  const closeFullscreen = closeStageFullscreen
   // Calm: Reset Stage is a small secondary button (beside Enlarge, or in the full-screen bar).
   const calmResetStage = (
     <button
@@ -4146,8 +4166,20 @@ export default function ScratchWorkspace({
             hint={calm?.fullscreenHint ?? ''}
             controls={
               <>
-                <CalmRunButton onRun={handleRun} big={false} />
-                <CalmStopButton onStop={handleStop} big={false} />
+                <CalmRunButton
+                  onRun={() => {
+                    handleRun()
+                    canvasRef.current?.focus?.({ preventScroll: true })
+                  }}
+                  big={false}
+                />
+                <CalmStopButton
+                  onStop={() => {
+                    handleStop()
+                    canvasRef.current?.focus?.({ preventScroll: true })
+                  }}
+                  big={false}
+                />
                 {calmResetStage}
               </>
             }

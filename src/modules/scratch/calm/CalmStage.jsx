@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CALM_FULLSCREEN_BAR_H } from './calmPalette.js'
 
 /**
@@ -121,6 +121,10 @@ function plainHint(text) {
     .trim()
 }
 
+// Over the lesson screen, but under the classroom's own overlays: the tutor's "Coding Paused"
+// screen (999), peer-help prompts (900-950) and the class countdown (200) still show on top.
+export const CALM_FULLSCREEN_Z = 150
+
 // The blocks-pane highlight targets hidden behind the full-screen stage: Back is the way to them.
 const BLOCKS_PANE_REVEALS = 'category costumes_tab sounds_tab'
 
@@ -139,14 +143,20 @@ export function CalmStageShell({
   readOnly = false,
   children,
 }) {
+  const onBackRef = useRef(onBack)
+  onBackRef.current = onBack
+  // Escape goes back, and only that: heard first (window, capture phase) and stopped there, so a
+  // modal around the stage (the tutor's student window closes on Escape) is not closed with it.
   useEffect(() => {
     if (!fullscreen) return undefined
     function onKey(event) {
-      if (event.key === 'Escape') onBack?.()
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      onBackRef.current?.()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [fullscreen, onBack])
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [fullscreen])
 
   return (
     <div
@@ -154,7 +164,7 @@ export function CalmStageShell({
       role={fullscreen ? 'dialog' : undefined}
       aria-modal={fullscreen ? true : undefined}
       aria-label={fullscreen ? 'Stage, full screen' : undefined}
-      style={fullscreen ? s.overlay : s.inline}
+      style={fullscreen ? s.overlay : s.contents}
     >
       {fullscreen && (
         <div style={s.bar}>
@@ -176,9 +186,24 @@ export function CalmStageShell({
           ) : null}
         </div>
       )}
-      <div style={fullscreen ? s.stageArea : s.inlineStage}>{children}</div>
+      <div style={fullscreen ? s.stageArea : s.contents}>{children}</div>
     </div>
   )
+}
+
+// The calm screen's purple outline button (Enlarge, Sprite settings), as the Blocks button.
+const OUTLINE_BUTTON = {
+  alignItems: 'center',
+  minHeight: 44,
+  padding: '6px 14px',
+  borderRadius: 10,
+  border: '1px solid #c4b5fd',
+  background: '#fff',
+  color: '#5b21b6',
+  fontFamily: 'var(--font-body)',
+  fontWeight: 700,
+  fontSize: 15,
+  cursor: 'pointer',
 }
 
 const s = {
@@ -220,48 +245,22 @@ const s = {
     background: '#fff',
     borderRadius: 2,
   },
-  enlarge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 44,
-    padding: '6px 14px',
-    borderRadius: 10,
-    border: '1px solid #c4b5fd',
-    background: '#fff',
-    color: '#5b21b6',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: 15,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
+  enlarge: { ...OUTLINE_BUTTON, display: 'inline-flex', gap: 8, whiteSpace: 'nowrap' },
   settingsWrap: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
   settings: {
+    ...OUTLINE_BUTTON,
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     width: '100%',
-    minHeight: 44,
-    padding: '6px 14px',
-    borderRadius: 10,
-    border: '1px solid #c4b5fd',
-    background: '#fff',
-    color: '#5b21b6',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: 15,
-    cursor: 'pointer',
   },
   settingsOpen: { background: '#f5f3ff', borderColor: '#8b5cf6' },
   settingsPanel: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  inline: { display: 'contents' },
-  inlineStage: { display: 'contents' },
+  contents: { display: 'contents' },
   overlay: {
     position: 'fixed',
     inset: 0,
-    zIndex: 1000,
+    zIndex: CALM_FULLSCREEN_Z,
     display: 'flex',
     flexDirection: 'column',
     background: '#1e1b2e',

@@ -309,6 +309,9 @@ export default function LessonTaskContent({
     calmScratch && taskPanelMeasured && taskPanelSize.width < SCRATCH_CALM_STACK_BREAKPOINT
   // A tutor forcing "instructions" opens a collapsed card again (a fresh, open panel).
   const [calmExplainerOpenings, setCalmExplainerOpenings] = useState(0)
+  // The student has the stage full screen (Enlarge): the card is behind it, so the tutor's card
+  // does not list Instructions as on screen (the workspace reports the stage alone).
+  const [calmStageFullscreen, setCalmStageFullscreen] = useState(false)
   // Stacked, a card too tall for its capped space beside the stage starts folded on the task's
   // first view (ExplainerPanel foldIfTallerThan), never again once a tutor's force reopened it.
   const [calmFoldBase, setCalmFoldBase] = useState({ task: task?.id, openings: 0 })
@@ -402,7 +405,7 @@ export default function LessonTaskContent({
     !hasTaskExplainer || !showExplainerPane
       ? false
       : calmScratch
-        ? !accordionExplainerCollapsed
+        ? !accordionExplainerCollapsed && !calmStageFullscreen
         : useSideExplainer
           ? !explainerCollapsed
           : !accordionExplainerCollapsed
@@ -658,7 +661,8 @@ export default function LessonTaskContent({
         )}
         <ExplainerPanel
           // Calm: each task opens its card fresh, and a tutor's force reopens a folded one.
-          key={calmScratch ? `calm-${task?.id ?? ''}-${calmExplainerOpenings}` : undefined}
+          key={calmScratch ? `calm-${task?.id ?? ''}` : undefined}
+          openRequest={calmScratch ? calmExplainerOpenings : null}
           title={
             hasSandboxExplainer ? 'Instructions' : showsCompleteCode ? 'Complete Code' : task.title
           }
@@ -1117,6 +1121,7 @@ export default function LessonTaskContent({
                   // Go Live and the presentation show the large stage (never stored as the
                   // student's own choice); the student's own view starts small with Enlarge.
                   bigStage: !!(isForcedTeacherLive || teacherPresentation),
+                  onFullscreenChange: setCalmStageFullscreen,
                   fullscreenHint: calmFullscreenHint,
                 }
               : undefined

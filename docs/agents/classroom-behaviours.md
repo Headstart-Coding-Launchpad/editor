@@ -82,7 +82,15 @@ The student's Scratch screen is the calm screen (`capabilities.calmScratch`, the
   the running project, sprite state and the window-level key handlers carry on, and the blocks
   pane stays mounted, only `visibility: hidden` (same size, so Blockly never re-lays out). Back
   carries `data-highlight-reveal="category costumes_tab sounds_tab"`, so a highlight on a hidden
-  palette control pulses Back. Escape also goes back. The state is in memory only, never saved.
+  palette control pulses Back. Escape also goes back (heard first, in the capture phase, and
+  stopped, so the tutor's student window around a watch view is not closed with it). It sits at
+  `CALM_FULLSCREEN_Z` (150), under the classroom's own overlays: Coding Paused, peer help and the
+  countdown still show on top. Full screen reports `['stage']` as the visible panes, and
+  LessonTaskContent leaves `instructions` out (`calm.onFullscreenChange`), so the tutor's card
+  shows the stage alone; a tutor's force command for Blocks or Instructions leaves full screen.
+  Run and Stop in its bar give focus back to the stage, so arrow keys keep driving the sprites.
+  A tutor's force-instructions opens a folded card through ExplainerPanel `openRequest`, never by
+  remounting it, so the hint inside keeps its state. The state is in memory only, never saved.
 - **Go Live and the presentation** pass `calm.bigStage` (`isForcedTeacherLive ||
   teacherPresentation`): the stage shows at the classic large size (`computeStageScale`). It is a
   view-only override and never changes the student's own state.
