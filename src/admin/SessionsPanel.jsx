@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ref, onValue, remove } from 'firebase/database'
-import { collection, onSnapshot } from 'firebase/firestore'
-import { db, firestore } from '../shared/firebase'
+import { db } from '../shared/firebase'
 import { getLessonLinks } from '../shared/lessonLinks'
 import { formatClock } from '../shared/timeAgo'
 import { isStaleSession } from '../shared/staleSessions'
@@ -14,6 +13,7 @@ import {
   AdminTable,
   adminUiStyles,
 } from './AdminUi'
+import { useAdminLessons } from './adminSnapshots'
 
 const STATE_LABELS = { waiting: 'Waiting', active: 'Active', sandbox: 'Sandbox' }
 const STATE_BADGE = {
@@ -28,8 +28,14 @@ export default function SessionsPanel() {
   const [sessionsById, setSessionsById] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [titlesError, setTitlesError] = useState(null)
-  const [titlesById, setTitlesById] = useState({})
+  // Only titles are needed; they come from the lessons copy the other Admin tabs share, so this
+  // tab opens no listener of its own (the web SDK cannot download only the title field).
+  const lessonsSource = useAdminLessons()
+  const titlesError = lessonsSource.error
+  const titlesById = useMemo(
+    () => Object.fromEntries((lessonsSource.data ?? []).map((l) => [l.id, l.title])),
+    [lessonsSource.data]
+  )
   const [closingId, setClosingId] = useState(null)
   const [closeError, setCloseError] = useState(null)
   const [now, setNow] = useState(() => Date.now())
@@ -49,16 +55,6 @@ export default function SessionsPanel() {
         setError(err.message)
         setLoading(false)
       }
-    )
-  }, [])
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(firestore, 'lessons'),
-      (snap) => {
-        setTitlesById(Object.fromEntries(snap.docs.map((d) => [d.id, d.data().title])))
-      },
-      (err) => setTitlesError(err.message)
     )
   }, [])
 

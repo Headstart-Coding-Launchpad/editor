@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SessionsPanel from '../SessionsPanel'
+import { resetAdminSnapshots } from '../adminSnapshots'
 
 const firebaseDbMocks = vi.hoisted(() => ({
   ref: vi.fn((_db, path) => ({ path })),
@@ -48,6 +49,7 @@ function fireLessons(lessons) {
 
 describe('SessionsPanel', () => {
   beforeEach(() => {
+    resetAdminSnapshots()
     vi.clearAllMocks()
     sessionsCallback = null
 
