@@ -65,6 +65,11 @@ import BadgeAwardDialog from './badges/BadgeAwardDialog'
 import CopyCodeEditDialog from './CopyCodeEditDialog'
 import { effectiveCopyCode } from '../../shared/copyCodeOverrides'
 import { heldBadgeIds } from '../../badges/badgeDisplay'
+import { formatTimeAgo } from '../../shared/timeAgo'
+import { describeActivityDevice } from '../../activities/device.js'
+import { readStudentHint } from '../studentHints.js'
+import ModalStrip from './student-modal/ModalStrip'
+import StudentModalLeftColumn from './student-modal/StudentModalLeftColumn'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
 const AUTO_REVEAL_OPTIONS = [
@@ -73,6 +78,36 @@ const AUTO_REVEAL_OPTIONS = [
   { mode: 'support', label: 'All hints (no solution)' },
   { mode: 'solution', label: 'Solution' },
 ]
+
+function useNarrowWindow(width) {
+  const query = `(max-width: ${width - 1}px)`
+  const read = () =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(query).matches
+      : false
+  const [narrow, setNarrow] = useState(read)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined
+    const list = window.matchMedia(query)
+    const onChange = () => setNarrow(list.matches)
+    onChange()
+    list.addEventListener?.('change', onChange)
+    return () => list.removeEventListener?.('change', onChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
+  return narrow
+}
+
+// The strip's "▶ Last run 12s ago": its own clock, so only this chip re-renders as it ages.
+function LastRunAgo({ at }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 5000)
+    return () => clearInterval(timer)
+  }, [at])
+  return <>▶ Last run {formatTimeAgo(at, now)?.replace('Just now', 'just now')}</>
+}
 
 function getModuleDisplayState(module, raw) {
   if (!module) return null
@@ -150,6 +185,12 @@ export default function StudentModal({
   // "Use the starter" override for this student.
   carryWaiting = false,
   onUseCarryStarter = null,
+  // Where this student is in the grid's order ("3/9" between the arrows); both or neither.
+  position = null,
+  total = null,
+  // The hints two or more students are seeing on this task (summariseCommonHints), offered
+  // under the Hint button's caret.
+  commonHints = null,
 }) {
   const iframeRef = useRef(null)
   const [showTopicLibrary, setShowTopicLibrary] = useState(false)
@@ -180,6 +221,13 @@ export default function StudentModal({
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
   const [showCopyCodeDialog, setShowCopyCodeDialog] = useState(false)
   const [showExportDialog, setShowExportDialog] = useState(false)
+  // A class hint picked from the Hint caret, to start the hint box from.
+  const [hintPrefill, setHintPrefill] = useState('')
+  // Below 1280px wide (a tablet, a small laptop) the header's grouped buttons show only their
+  // icons so the line still fits; their names stay in aria-label and title.
+  const narrowHeader = useNarrowWindow(1280)
+  // The left column (instructions, hint, Type this out) folded to a rail.
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -704,677 +752,929 @@ export default function StudentModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [handleCloseRef])
 
+  // ─── What the header, strip and Tools menu offer ─────────────────────────────
+  const studentName = student.displayName
+  const hasEdit = !!(
+    teacherEditState === 'idle' &&
+    onRequestTeacherEdit &&
+    supportsTeacherEdit &&
+    !isInformation &&
+    !isQuiz
+  )
+  const hasTopic = !!(onSendToTopic && topics?.length > 0)
+  const hasCopyCodeEdit = !!(
+    onSetCopyCodeOverride &&
+    task &&
+    lessonModule?.supportsCopyCode === true &&
+    !isInformation &&
+    !isQuiz
+  )
+  const hasVideoCall = !!onSendVideoCallLink
+  // A teacher cannot build the snapshot themselves: currentCode is only fresh while
+  // activeStudentView matches. So this asks the student's own device for one, then reuses the
+  // same preview and Approve step as a student-initiated share.
+  const hasShare =
+    !!onRequestShareSnapshot &&
+    !isInformation &&
+    !isQuizLike &&
+    student.shareRequestedAt == null &&
+    student.shareSnapshotRequestedAt == null
+  const hasFullscreen = !!onRequestFullscreen
+  const hasSupport = canReveal || (canSetStage && stageRequestState !== 'requesting')
+  const hasRunOnStudent = supportsRemoteRun
+  const hasAnswerEditItem = supportsAnswerEdit && !answerEditing
+  const hasTileItem = supportsTileHighlight && !tileHighlightMode
+  const hasMarkOverride = !!(onOverrideCheck && task?.check != null)
+  // Export work: the dialog finds the tasks with work itself.
+  const hasExport = !!lesson?.tasks?.length
+  const hasNudge = !!onNudge && student.online
+  // Broadcasting a student's work is not offered on quiz or activity tasks (teacher-only
+  // broadcasts there).
+  const canBroadcast = !!onGoLiveForAll && !isInformation && allowsStudentBroadcast(task)
+  const hasGoLiveForAll = canBroadcast && !isLiveForAll
+  const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
+  // A hosted activity with its own targets (the Keyboard's keys) is offered too.
+  const hasControlHighlight =
+    !!onPushTeacherControlHighlight &&
+    !isInformation &&
+    (!isQuizLike || isActivity) &&
+    hasControlHighlightTargets(highlightScope, isActivity ? task : null)
+  const showEditModes = !!onRequestTeacherEdit && supportsTeacherEdit && !isInformation && !isQuiz
+  const hasHint = !!onSendHint && !isInformation && !isSessionSandbox
+  const classHints = hasHint ? (commonHints ?? []) : []
+
+  // Where the class is in the lesson: "Task 2 · Move the cat" and a dot per task (short lessons).
+  const lessonTasks = lesson?.tasks ?? []
+  const taskIndex = task ? lessonTasks.findIndex((t) => String(t?.id) === String(task.id)) : -1
+  const taskLabel = task
+    ? taskIndex >= 0
+      ? `Task ${taskIndex + 1} · ${task.title ?? ''}`
+      : (task.title ?? '')
+    : ''
+  const showTaskDots = taskIndex >= 0 && lessonTasks.length > 1 && lessonTasks.length <= 12
+
+  // ─── The "Only you see" strip, in priority order ─────────────────────────────
+  const hint = isSessionSandbox ? null : readStudentHint(student, session?.currentTaskId)
+  const pasted = student.pasteLog?.[task?.id]
+  const scrubResult = isSessionSandbox ? null : scrubResultOf(student)
+  const openTopic = student.currentTopicId
+    ? topics?.find((t) => t.id === student.currentTopicId)
+    : null
+  const hasLastRun = typeof student.lastRunAt === 'number'
+  const stripChips = [
+    student.needsHelp && {
+      key: 'help',
+      tone: 'help',
+      content: (
+        <>
+          🙋 Help needed
+          <button
+            type="button"
+            style={s.helpedButton}
+            onClick={() => onDismissHelp?.(student.anonymousId)}
+            title="Mark as helped"
+          >
+            Helped ✓
+          </button>
+        </>
+      ),
+    },
+    student.lastRunStatus === 'error' &&
+      student.lastRunError && {
+        key: 'error',
+        tone: 'error',
+        title: student.lastRunError,
+        content: `⚠ ${student.lastRunError}`,
+      },
+    hint?.failStreak > 1 && {
+      key: 'fail-streak',
+      tone: 'info',
+      title: 'Checks failed this many times in a row on this task',
+      content: `💬 Failed ${hint.failStreak} in a row`,
+    },
+    shownLineHintCount > 0 &&
+      teacherEditState !== 'editing' && {
+        key: 'line-hints',
+        tone: 'info',
+        testId: 'modal-line-hint-count',
+        title:
+          "The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)",
+        content: `💡 ${shownLineHintCount} line ${shownLineHintCount === 1 ? 'hint' : 'hints'} left in their code`,
+      },
+    carryWaiting && {
+      key: 'carry',
+      tone: 'info',
+      testId: 'modal-carry-waiting',
+      title:
+        'Their task is held until their work from the earlier lesson is found. Match them to the class list, or start them from the starter.',
+      content: (
+        <>
+          ⏳ Waiting for earlier work
+          {onUseCarryStarter && (
+            <button type="button" style={s.chipButton} onClick={() => onUseCarryStarter()}>
+              Use the starter
+            </button>
+          )}
+        </>
+      ),
+    },
+    isLive &&
+      isLiveForAll && {
+        key: 'live',
+        tone: 'live',
+        content: `📡 ${isLiveForAllPanel ? 'SHOWN TO CLASS' : 'LIVE FOR ALL'}`,
+      },
+    declinedNotice &&
+      showEditModes && {
+        key: 'declined',
+        tone: 'error',
+        content: 'Student declined',
+      },
+    stageDeclinedNotice && {
+      key: 'stage-declined',
+      tone: 'error',
+      content: 'Declined the stage change',
+    },
+    nudged && { key: 'nudged', tone: 'good', content: '✓ Nudged' },
+    hasLastRun && {
+      key: 'last-run',
+      tone: 'muted',
+      title: 'When the student last pressed Run',
+      content: <LastRunAgo at={student.lastRunAt} />,
+    },
+    rosterName && {
+      key: 'roster',
+      tone: 'muted',
+      testId: 'modal-roster-name',
+      title: 'Matched on the class list (only you see this)',
+      content: `👥 ${rosterName}`,
+    },
+    pasted?.count > 0 && {
+      key: 'pasted',
+      tone: 'muted',
+      title: `Pasted ${pasted.chars} characters into the editor on this task`,
+      content: `📋 Pasted ×${pasted.count}`,
+    },
+    student.checkPassed &&
+      !isSessionSandbox && { key: 'passed', tone: 'good', content: '✅ Check passed' },
+    scrubResult !== null && {
+      key: 'scrub',
+      tone: 'muted',
+      testId: 'modal-scrub-result',
+      title: "What the checks said after the student's last scrub (cleared by their next Run)",
+      content: scrubResult ? '✓ Passes after scrub' : '✕ Fails after scrub',
+    },
+    itemProgress && {
+      key: 'items',
+      tone: 'muted',
+      testId: 'item-progress',
+      title: 'Items the student has filled in (and got right, where marked per item)',
+      content: `🧩 ${formatTaskItemProgress(itemProgress)}`,
+    },
+    hasOverride && {
+      key: 'override',
+      tone: 'muted',
+      content: student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed',
+    },
+    badgeCount > 0 && {
+      key: 'badges',
+      tone: 'muted',
+      testId: 'modal-badge-count',
+      title: 'Badges awarded this lesson (only you see this)',
+      content: `🏅 ${badgeCount}`,
+    },
+    teacherAssisted && {
+      key: 'assisted',
+      tone: 'muted',
+      title: "You edited this student's answer on this task — the report marks it teacher assisted",
+      content: '✏️ Teacher assisted',
+    },
+    isActivity &&
+      describeActivityDevice(activityState) && {
+        key: 'device',
+        tone: 'muted',
+        content: <ActivityDeviceBadge state={activityState} />,
+      },
+    autoRevealStage && {
+      key: 'every-task',
+      tone: 'info',
+      title: 'A reference opens automatically for this student on every task',
+      content: `📖 Every task: ${AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}`,
+    },
+    teacherLiveReferencePinned && {
+      key: 'live-code',
+      tone: 'info',
+      title: teacherLiveReferencePinnedForStudent
+        ? 'Your live code shows for this student on every task until you turn it off'
+        : 'Your live code shows for the whole class on every task until you turn it off',
+      content: '📌 Live code: kept on',
+    },
+    teacherLiveReferenceHiddenForStudent && {
+      key: 'live-code-hidden',
+      tone: 'info',
+      title: 'Your live code is pinned for the class but hidden for this student',
+      content: '📌 Live code: hidden for this student',
+    },
+    Object.keys(revealedSupportStages).length > 0 && {
+      key: 'reference',
+      tone: 'info',
+      title: 'Student has opened a stage reference',
+      content: 'Reference opened',
+    },
+    examplesOpened > 0 && {
+      key: 'examples',
+      tone: 'info',
+      testId: 'modal-example-opened',
+      title: "Student has opened the worked example in this task's explainer",
+      content: `🔍 Opened example${examplesOpened > 1 ? ` (${examplesOpened})` : ''}`,
+    },
+    student.currentTopicId && {
+      key: 'topic',
+      tone: 'info',
+      title: `Student has topic "${openTopic?.title ?? student.currentTopicId}" open`,
+      content: `📖 ${openTopic?.title ?? student.currentTopicId}`,
+    },
+  ].filter(Boolean)
+
+  // A mode takes the strip over while it is on, so it can always be switched off.
+  const modeRow =
+    canSetStage && stageRequestState === 'requesting' ? (
+      <>
+        <span>Waiting for {studentName}…</span>
+        <span style={s.modeNote}>They accept the stage change on their screen</span>
+        <button
+          type="button"
+          className="btn-ghost-outline"
+          style={s.modeButton}
+          onClick={handleCancelStage}
+        >
+          Cancel
+        </button>
+      </>
+    ) : showEditModes && teacherEditState === 'requesting' ? (
+      <>
+        <span>Waiting for {studentName}…</span>
+        <span style={s.modeNote}>They accept your edit on their screen</span>
+        <button
+          type="button"
+          className="btn-ghost-outline"
+          style={s.modeButton}
+          onClick={handleCancelEdit}
+        >
+          Cancel
+        </button>
+      </>
+    ) : showEditModes && teacherEditState === 'editing' ? (
+      <>
+        <span>✏ You are editing {studentName}&apos;s work</span>
+        <span style={s.modeNote}>They see each change live</span>
+        <button
+          type="button"
+          className="btn-primary"
+          style={{ ...s.modeButton, background: '#0f766e', borderColor: '#0f766e' }}
+          onClick={handleCommitEdit}
+        >
+          Done Editing
+        </button>
+        <button
+          type="button"
+          className="btn-ghost-outline"
+          style={s.modeButton}
+          onClick={handleCancelEdit}
+        >
+          Cancel
+        </button>
+      </>
+    ) : supportsAnswerEdit && answerEditing ? (
+      <>
+        <span>✏️ Editing {studentName}&apos;s answers</span>
+        <span style={s.modeNote}>Their screen updates live</span>
+        <button
+          type="button"
+          className="btn-primary"
+          style={s.modeButton}
+          onClick={() => setAnswerEditing(false)}
+        >
+          Done editing
+        </button>
+      </>
+    ) : supportsTileHighlight && tileHighlightMode ? (
+      <>
+        <span>👀 Tap a tile to outline it for {studentName}</span>
+        <button
+          type="button"
+          className="btn-primary"
+          style={s.modeButton}
+          onClick={() => setTileHighlightMode(false)}
+          aria-pressed={true}
+          data-testid="tile-highlight-toggle"
+        >
+          Done highlighting
+        </button>
+      </>
+    ) : null
+
+  // ─── The Tools menu: every occasional action, in three columns ────────────────
+  const renderSupport = (close) => (
+    <>
+      {canReveal && (
+        <>
+          <div style={s.menuHeadingFirst}>Reveal</div>
+          {canRevealLiveReference && (
+            <button
+              style={sTo.toolBtn}
+              disabled={!teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed}
+              title={
+                teacherLiveReferenceMatchesTask
+                  ? 'Show your live code for this task only'
+                  : "Will work once you're presenting this task in Presentation View"
+              }
+              onClick={() => {
+                close()
+                handleRevealTeacherLiveReference()
+              }}
+            >
+              {teacherLiveReferenceRevealed ? 'Opened: live code' : 'Reveal live code'}
+            </button>
+          )}
+          {revealableStages.map(({ stage, index }) => {
+            const alreadyRevealed = !!revealedSupportStages[index]
+            return (
+              <button
+                key={index}
+                style={sTo.toolBtn}
+                disabled={alreadyRevealed}
+                onClick={() => {
+                  close()
+                  handleRevealSupportStage(index, stage)
+                }}
+              >
+                {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
+                {stage.label || `Stage ${index + 1}`}
+              </button>
+            )
+          })}
+          {completeStage && (
+            <button
+              style={sTo.toolBtn}
+              onClick={() => {
+                close()
+                handleRevealSupportStage(completeStage.index, completeStage.stage)
+                onRemoteReset?.(student.anonymousId, `reveal_stage_${completeStage.index}`)
+              }}
+            >
+              {/* "Reveal solution", or "Reveal solution: Answer" for a named one; never
+                  "Reveal solution: Complete". */}
+              {formatStageLabel(completeStage.stage, completeStage.index).replace(
+                /^Complete(?=:|$)/i,
+                'Reveal solution'
+              )}
+            </button>
+          )}
+          {canSetAutoReveal && (
+            <>
+              <div style={s.autoRevealHeading}>Show on every task</div>
+              <div style={s.segs}>
+                {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
+                  <button
+                    key={mode ?? 'off'}
+                    style={autoRevealStage === mode ? sTo.segOn : sTo.seg}
+                    aria-pressed={autoRevealStage === mode}
+                    onClick={() => {
+                      close()
+                      onSetAutoReveal(student.anonymousId, mode)
+                    }}
+                  >
+                    {autoRevealStage === mode ? '✓ ' : ''}
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {canShowLiveReference && (
+            <>
+              {!canSetAutoReveal && <div style={s.autoRevealHeading}>Show on every task</div>}
+              <button
+                style={sTo.toolBtn}
+                aria-pressed={teacherLiveReferencePinned}
+                disabled={
+                  !teacherLiveReferencePinned &&
+                  !teacherLiveReferenceHiddenForStudent &&
+                  !teacherLiveReferenceMatchesTask
+                }
+                title={
+                  teacherLiveReferencePinned
+                    ? teacherLiveReferencePinnedForClass
+                      ? 'Hide your live code for this student (it stays on for the rest of the class)'
+                      : 'Stop showing your live code to this student'
+                    : teacherLiveReferenceHiddenForStudent
+                      ? 'Show your class-pinned live code to this student again'
+                      : teacherLiveReferenceMatchesTask
+                        ? 'Keep showing your live code on every task until you turn it off'
+                        : "Will work once you're presenting this task in Presentation View"
+                }
+                onClick={() => {
+                  close()
+                  // On → off (written as `false` while the class pin is on); hidden → follow
+                  // the class pin again (null); off → pin.
+                  onSetTeacherLiveReference(
+                    student.anonymousId,
+                    teacherLiveReferencePinned
+                      ? false
+                      : teacherLiveReferenceHiddenForStudent
+                        ? null
+                        : true
+                  )
+                }}
+              >
+                {teacherLiveReferencePinned
+                  ? '📌 Live code: kept on'
+                  : teacherLiveReferenceHiddenForStudent
+                    ? '📌 Show class live code again'
+                    : '📌 Keep showing live code'}
+              </button>
+            </>
+          )}
+        </>
+      )}
+      {canSetStage && stageRequestState !== 'requesting' && (
+        <>
+          <div style={canReveal ? s.autoRevealHeading : s.menuHeadingFirst}>Set stage</div>
+          <div style={s.menuHint}>{studentName} is asked first</div>
+          {stageDeclinedNotice && (
+            <div style={s.menuNote}>The student declined the last change.</div>
+          )}
+          <div style={s.segs}>
+            {stageOptions.map((opt) => (
+              <button
+                key={opt.value}
+                style={sTo.seg}
+                onClick={() => {
+                  close()
+                  handleRequestStage(opt.value, opt.label)
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+
+  const toolColumns = (close) =>
+    [
+      [
+        hasNudge && {
+          key: 'encourage',
+          heading: 'Encourage',
+          body: (
+            <button
+              style={sTo.toolBtn}
+              onClick={() => {
+                close()
+                handleNudge()
+              }}
+              title="Nudge: flash this student's tab and play a chime"
+            >
+              🔔 Nudge
+            </button>
+          ),
+        },
+        (hasGoLiveForAll || hasShare) && {
+          key: 'show',
+          heading: 'Show the class',
+          body: (
+            <>
+              {hasGoLiveForAll && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    onGoLiveForAll()
+                  }}
+                  title="Put this student's work on every screen, live. The class watches until you press Stop Live."
+                >
+                  📡 Take over every screen (Go Live for All)
+                </button>
+              )}
+              {hasShare && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    onRequestShareSnapshot(student.anonymousId)
+                  }}
+                  title="Take a copy of this student's work as it is now. You check it, then classmates can open the copy."
+                >
+                  📤 Share a copy with the class
+                </button>
+              )}
+            </>
+          ),
+        },
+        (hasEdit || hasCopyCodeEdit || hasTopic || hasVideoCall || hasFullscreen) && {
+          key: 'help',
+          heading: 'Help this student',
+          body: (
+            <>
+              {hasEdit && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    handleStartEdit()
+                  }}
+                >
+                  ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
+                </button>
+              )}
+              {hasCopyCodeEdit && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    setShowCopyCodeDialog(true)
+                  }}
+                  title="Change the Type this out text for this student or the whole class"
+                  data-testid="edit-copy-code"
+                >
+                  ⌨️ Edit Type this out
+                </button>
+              )}
+              {hasTopic && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    setShowTopicLibrary(true)
+                  }}
+                >
+                  📖 Send Topic
+                </button>
+              )}
+              {hasVideoCall && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    onSendVideoCallLink(student.anonymousId)
+                  }}
+                >
+                  📹 Send Video Call Link
+                </button>
+              )}
+              {hasFullscreen && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    handleRequestFullscreen()
+                  }}
+                  title="Each student must click a prompt to accept — this can't force it"
+                >
+                  {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
+                </button>
+              )}
+            </>
+          ),
+        },
+      ],
+      [
+        hasMarkOverride && {
+          key: 'mark',
+          heading: 'Mark the task',
+          region: 'Mark the task',
+          body: (
+            <OverrideItems
+              student={student}
+              task={task}
+              onOverrideCheck={onOverrideCheck}
+              onFail={() => setMarkFailOpen(true)}
+              close={close}
+            />
+          ),
+        },
+        (hasRunOnStudent || hasAnswerEditItem || hasTileItem) && {
+          key: 'screen',
+          heading: 'Their screen and answers',
+          body: (
+            <>
+              {hasRunOnStudent && (
+                <button
+                  style={sTo.toolBtn}
+                  disabled={!student.online}
+                  onClick={() => {
+                    close()
+                    handleRemoteRun()
+                  }}
+                  title={
+                    student.online
+                      ? "Run this student's code on their own screen"
+                      : 'Student is offline'
+                  }
+                >
+                  {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
+                </button>
+              )}
+              {hasAnswerEditItem && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    setAnswerEditing(true)
+                    setTileHighlightMode(false)
+                  }}
+                  title="Change this student's answers — updates their screen live"
+                >
+                  ✏️ Edit answers
+                </button>
+              )}
+              {hasTileItem && (
+                <button
+                  style={sTo.toolBtn}
+                  onClick={() => {
+                    close()
+                    setTileHighlightMode(true)
+                    setAnswerEditing(false)
+                  }}
+                  title="Tap a tile on the student's board to outline it on their screen: look again"
+                >
+                  👀 Highlight tiles
+                </button>
+              )}
+            </>
+          ),
+        },
+        hasExport && {
+          key: 'work',
+          heading: 'Their work',
+          body: (
+            <button
+              style={sTo.toolBtn}
+              onClick={() => {
+                close()
+                setShowExportDialog(true)
+              }}
+              title="Download this student's work, or make a name-hidden share link"
+            >
+              🎁 Export work
+            </button>
+          ),
+        },
+        // Highlight/force a tab or the Instructions pane on this student's screen.
+        hasFocus && {
+          key: 'focus',
+          heading: 'Point at their screen',
+          region: 'Focus',
+          body: (
+            <PaneFocusControls
+              lessonType={taskLesson?.type}
+              onHighlight={(panes) =>
+                onPushTeacherPaneCommand(student.anonymousId, { mode: 'highlight', panes })
+              }
+              onForce={(panes) =>
+                onPushTeacherPaneCommand(student.anonymousId, { mode: 'force', panes })
+              }
+              onDone={close}
+            />
+          ),
+        },
+      ],
+      [
+        hasSupport && {
+          key: 'support',
+          heading: stageDeclinedNotice ? 'Support · declined' : 'Support',
+          region: 'Support',
+          body: renderSupport(close),
+        },
+        // Pulse one control (Run, the green flag, a category…) on this student's screen
+        // (src/shared/controlHighlight.js).
+        hasControlHighlight && {
+          key: 'pulse',
+          region: 'Highlight',
+          body: (
+            <ControlHighlightControls
+              lessonType={highlightScope}
+              task={isActivity ? task : null}
+              onHighlight={(target) =>
+                onPushTeacherControlHighlight(student.anonymousId, target, task?.id ?? null)
+              }
+              onDone={close}
+            />
+          ),
+        },
+      ],
+    ]
+      .map((column) => column.filter(Boolean))
+      .filter((column) => column.length > 0)
+
+  const hasAnyTool = toolColumns(() => {}).length > 0 || !!onDecideBadge
+
+  // ─── Body: instructions on the left, the workspace, Output on the right ───────
+  const workspaceCopyCode =
+    lessonModule?.supportsCopyCode === true
+      ? effectiveCopyCode(
+          task,
+          session?.copyCodeOverrides,
+          session?.students?.[student.anonymousId]?.copyCodeOverrides
+        )
+      : null
+  const showLeftColumn =
+    !!task &&
+    !!mirror &&
+    !isSessionSandbox &&
+    !isInformation &&
+    !isQuizLike &&
+    !isCodeArrangeTask &&
+    !showShareRequest &&
+    !showSideQuestView
+  const contentBaseStyle = isInformation
+    ? s.bodyInformation
+    : (isQuiz && !isSessionSandbox) || isActivity
+      ? s.bodyQuiz
+      : isCodeArrangeTask
+        ? s.bodyCodeArrange
+        : mirror === 'code'
+          ? s.bodyPython
+          : mirror === 'blocks'
+            ? s.bodyScratch
+            : mirror === 'view' && ModuleTeacherLiveView
+              ? s.bodyFilesystem
+              : s.bodyHtml
+  const contentStyle = showLeftColumn
+    ? {
+        ...contentBaseStyle,
+        ...s.bodyInColumns,
+        ...(mirror === 'code' ? { flexDirection: 'row' } : null),
+      }
+    : contentBaseStyle
+
   return (
     <div className="ui-modal-backdrop" style={s.overlay} role="dialog" aria-modal="true">
       <div style={s.modal}>
-        {/* Modal header: one fixed-height line. Name and small status chips on the left (they
-            scroll sideways rather than wrap); student switching, Support, Run, More and close on
-            the right. Occasional actions (Nudge, Focus, Go Live for All, Award badge, …) live in
-            More so the line never wraps at common widths. */}
-        <div style={s.header}>
-          <div style={s.headerLeft} data-testid="student-modal-status">
-            <span style={s.name}>{student.displayName}</span>
-            {rosterName && (
-              <span
-                style={s.rosterName}
-                title="Matched on the class list (only you see this)"
-                data-testid="modal-roster-name"
-              >
-                👥 {rosterName}
-              </span>
-            )}
-            {carryWaiting && (
-              <span
-                style={s.rosterName}
-                title="Their task is held until their work from the earlier lesson is found. Match them to the class list, or start them from the starter."
-                data-testid="modal-carry-waiting"
-              >
-                ⏳ Waiting for earlier work
-                {onUseCarryStarter && (
-                  <button
-                    type="button"
-                    style={s.carryStarterButton}
-                    onClick={() => onUseCarryStarter()}
-                  >
-                    Use the starter
-                  </button>
-                )}
-              </span>
-            )}
+        {/* Header: one 48px line. Who and where on the left; the common actions as grouped
+            buttons; everything occasional in Tools. Tutor-only facts live in the strip below. */}
+        <div style={s.header} data-testid="student-modal-header">
+          <div style={s.who} data-testid="student-modal-status">
+            <span style={s.name}>{studentName}</span>
             <PresenceBadge student={student} session={session} />
-            {isLive && (
-              <span style={s.liveBadge}>
-                ● {isLiveForAll ? (isLiveForAllPanel ? 'SHOWN TO CLASS' : 'LIVE FOR ALL') : 'LIVE'}
-              </span>
-            )}
-            {/* Teacher-only badge count; never shown on student screens. */}
-            {badgeCount > 0 && (
-              <span
-                style={s.overrideBadge}
-                title="Badges awarded this lesson (only you see this)"
-                data-testid="modal-badge-count"
-              >
-                🏅 {badgeCount}
-              </span>
-            )}
-            {nudged && <span style={s.overrideBadge}>✓ Nudged</span>}
-            {student.checkPassed && !isSessionSandbox && <span style={s.checkBadge}>✅</span>}
-            {scrubResultOf(student) !== null && !isSessionSandbox && (
-              <span
-                style={s.overrideBadge}
-                title="What the checks said after the student's last scrub (cleared by their next Run)"
-                data-testid="modal-scrub-result"
-              >
-                {scrubResultOf(student) ? '✓ Passes after scrub' : '✕ Fails after scrub'}
-              </span>
-            )}
-            {teacherAssisted && (
-              <span
-                style={s.overrideBadge}
-                title="You edited this student's answer on this task — the report marks it teacher assisted"
-              >
-                ✏️ Teacher assisted
-              </span>
-            )}
-            {isActivity && <ActivityDeviceBadge state={activityState} />}
-            {itemProgress && (
-              <span
-                style={s.overrideBadge}
-                title="Items the student has filled in (and got right, where marked per item)"
-                data-testid="item-progress"
-              >
-                🧩 {formatTaskItemProgress(itemProgress)}
-              </span>
-            )}
-            {hasOverride && (
-              <span style={s.overrideBadge}>
-                {student.checkOverridePassed ? 'Overridden: Passed' : 'Overridden: Failed'}
-              </span>
-            )}
-            {student.needsHelp && (
-              <button
-                style={s.helpedBtn}
-                onClick={() => onDismissHelp?.(student.anonymousId)}
-                title="Mark as helped"
-              >
-                Help Needed — Helped ✓
-              </button>
-            )}
-            {student.pasteLog?.[task?.id]?.count > 0 && (
-              <span
-                style={s.supportBadge}
-                title={`Pasted ${student.pasteLog[task.id].chars} characters into the editor on this task`}
-              >
-                📋 Pasted ×{student.pasteLog[task.id].count}
-              </span>
-            )}
-            {autoRevealStage && (
-              <span
-                style={s.supportBadge}
-                title="A reference opens automatically for this student on every task"
-              >
-                📖 Every task: {AUTO_REVEAL_OPTIONS.find((o) => o.mode === autoRevealStage)?.label}
-              </span>
-            )}
-            {shownLineHintCount > 0 && teacherEditState !== 'editing' && (
-              <span
-                style={s.supportBadge}
-                title="The lesson's 💡 line hints still on this student's code (hints on lines the student has changed are gone)"
-                data-testid="modal-line-hint-count"
-              >
-                💡 {shownLineHintCount} line {shownLineHintCount === 1 ? 'hint' : 'hints'} left in
-                their code
-              </span>
-            )}
-            {teacherLiveReferencePinned && (
-              <span
-                style={s.supportBadge}
-                title={
-                  teacherLiveReferencePinnedForStudent
-                    ? 'Your live code shows for this student on every task until you turn it off'
-                    : 'Your live code shows for the whole class on every task until you turn it off'
-                }
-              >
-                📌 Live code: kept on
-              </span>
-            )}
-            {teacherLiveReferenceHiddenForStudent && (
-              <span
-                style={s.supportBadge}
-                title="Your live code is pinned for the class but hidden for this student"
-              >
-                📌 Live code: hidden for this student
-              </span>
-            )}
-            {Object.keys(revealedSupportStages).length > 0 && (
-              <span style={s.supportBadge} title="Student has opened a stage reference">
-                Reference opened
-              </span>
-            )}
-            {examplesOpened > 0 && (
-              <span
-                style={s.supportBadge}
-                title="Student has opened the worked example in this task's explainer"
-                data-testid="modal-example-opened"
-              >
-                🔍 Opened example{examplesOpened > 1 ? ` (${examplesOpened})` : ''}
-              </span>
-            )}
-            {student.currentTopicId &&
-              (() => {
-                const topic = topics?.find((t) => t.id === student.currentTopicId)
-                return (
-                  <span
-                    style={s.topicBadge}
-                    title={`Student has topic "${topic?.title ?? student.currentTopicId}" open`}
-                  >
-                    📖 {topic?.title ?? student.currentTopicId}
-                  </span>
-                )
-              })()}
           </div>
-          <div style={s.headerRight}>
-            <div style={s.navButtons}>
-              <TipButton
-                style={{ ...s.navBtn, opacity: hasPrev ? 1 : 0.35 }}
-                disabled={!hasPrev}
-                onClick={onPrev}
-                label="Previous student"
-              >
-                ←
-              </TipButton>
-              <TipButton
-                style={{ ...s.navBtn, opacity: hasNext ? 1 : 0.35 }}
-                disabled={!hasNext}
-                onClick={onNext}
-                label="Next student"
-              >
-                →
-              </TipButton>
-            </div>
+          <div style={s.nav}>
+            <TipButton
+              style={{ ...s.navBtn, opacity: hasPrev ? 1 : 0.35 }}
+              disabled={!hasPrev}
+              onClick={onPrev}
+              label="Previous student"
+            >
+              ‹
+            </TipButton>
+            {position != null && total != null && (
+              <span style={s.navCount}>
+                {position}/{total}
+              </span>
+            )}
+            <TipButton
+              style={{ ...s.navBtn, opacity: hasNext ? 1 : 0.35 }}
+              disabled={!hasNext}
+              onClick={onNext}
+              label="Next student"
+            >
+              ›
+            </TipButton>
+          </div>
+          {taskLabel && (
+            <span style={s.taskLabel} title={taskLabel}>
+              {taskLabel}
+            </span>
+          )}
+          {showTaskDots && !narrowHeader && (
+            <span style={s.dots} aria-hidden="true">
+              {lessonTasks.map((t, i) => (
+                <span
+                  key={t?.id ?? i}
+                  style={i < taskIndex ? s.dotDone : i === taskIndex ? s.dotCurrent : s.dot}
+                />
+              ))}
+            </span>
+          )}
+          <span style={s.spacer} />
 
-            {/* A stage request waits on the student's consent. */}
-            {canSetStage && stageRequestState === 'requesting' && (
-              <>
-                <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
+          {(onDecideBadge || (onThumbsUp && student.online) || canBroadcast) && (
+            <div style={s.group}>
+              {onDecideBadge && (
+                <OneTapAwardButton
+                  student={student}
+                  suggestions={badgeSuggestions}
+                  decisions={session?.badges ?? {}}
+                  catalogueBadges={catalogueBadges}
+                  currentTaskId={session?.currentTaskId ?? null}
+                  onDecideBadge={onDecideBadge}
+                  onRevokeBadge={onRevokeBadge}
+                  onOpenPicker={() => setShowBadgeDialog(true)}
+                  variant="header"
+                  showOther={false}
+                  headerClassName=""
+                  headerStyle={s.groupButtonAward}
+                  iconOnly={narrowHeader}
+                />
+              )}
+              {onThumbsUp && student.online && (
                 <button
-                  className="btn-ghost"
-                  style={{ fontSize: 13, padding: '5px 10px' }}
-                  onClick={handleCancelStage}
+                  type="button"
+                  style={s.groupButton}
+                  disabled={thumbsUpSent}
+                  onClick={() => {
+                    onThumbsUp(student.anonymousId)
+                    setThumbsUpSent(true)
+                    setTimeout(() => setThumbsUpSent(false), 2000)
+                  }}
+                  title="Send a 👍: tells this student they're on the right track"
+                  aria-label={`Send ${studentName} a thumbs up`}
                 >
-                  Cancel
+                  {thumbsUpSent ? '✓ Sent' : narrowHeader ? '👍' : '👍 Thumbs up'}
                 </button>
-              </>
-            )}
-
-            {/* Modes that stay visible while they are on, so they can be switched off. The rest of
-                the rarely used controls (Support, Run on student, Edit answers, Highlight tiles,
-                Mark the task) are in More. */}
-            {supportsAnswerEdit && answerEditing && (
+              )}
+              {canBroadcast && !isLiveForAll && (
+                <button
+                  type="button"
+                  style={s.groupButton}
+                  onClick={() => onGoLiveForAll('panel')}
+                  title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
+                  aria-label={narrowHeader ? 'Show to class' : undefined}
+                >
+                  {narrowHeader ? '📺' : '📺 Show to class'}
+                </button>
+              )}
+            </div>
+          )}
+          {hasHint && (
+            <div style={s.group}>
               <button
                 type="button"
-                className="btn-primary"
-                style={{ fontSize: 13, padding: '5px 12px', minHeight: 44, whiteSpace: 'nowrap' }}
-                onClick={() => setAnswerEditing(false)}
-              >
-                Done editing
-              </button>
-            )}
-            {supportsTileHighlight && tileHighlightMode && (
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ fontSize: 13, padding: '5px 12px', minHeight: 44, whiteSpace: 'nowrap' }}
-                onClick={() => setTileHighlightMode(false)}
-                aria-pressed={true}
-                data-testid="tile-highlight-toggle"
-              >
-                Done highlighting
-              </button>
-            )}
-            {markFailOpen && (
-              <OverrideFailModal
-                onCancel={() => setMarkFailOpen(false)}
-                onApply={(hint) => {
-                  onOverrideCheck(student.anonymousId, false, hint || null, task?.id)
-                  setMarkFailOpen(false)
-                }}
-              />
-            )}
-
-            {/* Active edit states (shown outside More dropdown while in progress) */}
-            {onRequestTeacherEdit &&
-              supportsTeacherEdit &&
-              !isInformation &&
-              !isQuiz &&
-              teacherEditState === 'editing' && (
-                <>
-                  <button
-                    className="btn-primary"
-                    style={{
-                      fontSize: 13,
-                      padding: '5px 12px',
-                      background: '#0f766e',
-                      borderColor: '#0f766e',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onClick={handleCommitEdit}
-                  >
-                    Done Editing
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 13, padding: '5px 10px' }}
-                    onClick={handleCancelEdit}
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-            {onRequestTeacherEdit &&
-              supportsTeacherEdit &&
-              !isInformation &&
-              !isQuiz &&
-              teacherEditState === 'requesting' && (
-                <>
-                  <span style={sEd.waitingText}>Waiting for {student.displayName}…</span>
-                  <button
-                    className="btn-ghost"
-                    style={{ fontSize: 13, padding: '5px 10px' }}
-                    onClick={handleCancelEdit}
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-
-            {/* Declined notice */}
-            {onRequestTeacherEdit &&
-              supportsTeacherEdit &&
-              !isInformation &&
-              !isQuiz &&
-              declinedNotice && <span style={sEd.declinedNotice}>Student declined</span>}
-
-            {/* A running broadcast can always be stopped from the header. */}
-            {!isInformation && isLiveForAll && (
-              <button
-                className="btn-danger"
-                style={{ fontSize: 13, padding: '5px 14px', whiteSpace: 'nowrap' }}
-                onClick={onStopLive}
-              >
-                Stop Live
-              </button>
-            )}
-
-            {/* The four common actions, with visible words (a tired tutor on a tablet has no hover):
-                Award badge (one tap on the top suggestion), Thumbs up, Show to class, Help.
-                Everything else is behind More. */}
-            {onDecideBadge && (
-              <OneTapAwardButton
-                student={student}
-                suggestions={badgeSuggestions}
-                decisions={session?.badges ?? {}}
-                catalogueBadges={catalogueBadges}
-                currentTaskId={session?.currentTaskId ?? null}
-                onDecideBadge={onDecideBadge}
-                onRevokeBadge={onRevokeBadge}
-                onOpenPicker={() => setShowBadgeDialog(true)}
-                variant="header"
-              />
-            )}
-            {onThumbsUp && student.online && (
-              <button
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
-                disabled={thumbsUpSent}
-                onClick={() => {
-                  onThumbsUp(student.anonymousId)
-                  setThumbsUpSent(true)
-                  setTimeout(() => setThumbsUpSent(false), 2000)
-                }}
-                title="Send a 👍: tells this student they're on the right track"
-                aria-label={`Send ${student.displayName} a thumbs up`}
-              >
-                {thumbsUpSent ? '✓ Sent' : '👍 Thumbs up'}
-              </button>
-            )}
-            {onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task) && (
-              <button
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
-                onClick={() => onGoLiveForAll('panel')}
-                title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
-              >
-                📺 Show to class
-              </button>
-            )}
-            {onSendHint && !isInformation && !isSessionSandbox && (
-              <button
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
+                style={s.groupButton}
                 onClick={() => setShowHintModal(true)}
                 title="Put your own hint on this student's hint banner, without marking the task passed or failed"
                 data-testid="send-hint-button"
               >
-                💡 Send hint
+                <span aria-hidden="true">💡</span>
+                {narrowHeader ? <span style={s.srOnly}>Hint</span> : ' Hint'}
               </button>
-            )}
-            {onSendMessage && (
-              <button
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '5px 10px', minHeight: 44, whiteSpace: 'nowrap' }}
-                onClick={() => setShowMessageModal(true)}
-                title="Help this student: send them a message"
-              >
-                ✉ Help
-              </button>
-            )}
-
-            {/* More: badge, nudge, broadcast, topic, message, edit code, focus — grouped when idle */}
-            {(() => {
-              const hasEdit = !!(
-                teacherEditState === 'idle' &&
-                onRequestTeacherEdit &&
-                supportsTeacherEdit &&
-                !isInformation &&
-                !isQuiz
-              )
-              const hasTopic = !!(onSendToTopic && topics?.length > 0)
-              const hasCopyCodeEdit = !!(
-                onSetCopyCodeOverride &&
-                task &&
-                lessonModule?.supportsCopyCode === true &&
-                !isInformation &&
-                !isQuiz
-              )
-              const hasVideoCall = !!onSendVideoCallLink
-              // A teacher cannot build the snapshot themselves: currentCode is
-              // only fresh while activeStudentView matches. So this asks the
-              // student's own device for one, then reuses the same preview and
-              // Approve step as a student-initiated share.
-              const hasShare =
-                !!onRequestShareSnapshot &&
-                !isInformation &&
-                !isQuizLike &&
-                student.shareRequestedAt == null &&
-                student.shareSnapshotRequestedAt == null
-              const hasFullscreen = !!onRequestFullscreen
-              // Moved here from the header row (HSC Audit, Visual Review 19): one menu, no
-              // second "Support" or "Override" drop-downs beside it.
-              const hasSupport = canReveal || (canSetStage && stageRequestState !== 'requesting')
-              const hasRunOnStudent = supportsRemoteRun
-              const hasAnswerEditItem = supportsAnswerEdit && !answerEditing
-              const hasTileItem = supportsTileHighlight && !tileHighlightMode
-              const hasMarkOverride = !!(onOverrideCheck && task?.check != null)
-              const renderSupport = (close) => (
-                <>
-                  {canReveal && (
+              {classHints.length > 0 && (
+                <DropdownMenu
+                  label=""
+                  ariaLabel="More hints"
+                  title="Hints the class is seeing"
+                  buttonClassName=""
+                  buttonStyle={s.caretButton}
+                  panelStyle={s.smallMenu}
+                >
+                  {(close) => (
                     <>
-                      <div style={s.menuHeadingFirst}>Reveal</div>
-                      {canRevealLiveReference && (
+                      <div style={s.menuHeadingFirst}>Hints the class is seeing</div>
+                      {classHints.map((entry) => (
                         <button
-                          style={sTo.toolBtn}
-                          disabled={
-                            !teacherLiveReferenceMatchesTask || teacherLiveReferenceRevealed
-                          }
-                          title={
-                            teacherLiveReferenceMatchesTask
-                              ? 'Show your live code for this task only'
-                              : "Will work once you're presenting this task in Presentation View"
-                          }
-                          onClick={() => {
-                            close()
-                            handleRevealTeacherLiveReference()
-                          }}
-                        >
-                          {teacherLiveReferenceRevealed ? 'Opened: live code' : 'Reveal live code'}
-                        </button>
-                      )}
-                      {revealableStages.map(({ stage, index }) => {
-                        const alreadyRevealed = !!revealedSupportStages[index]
-                        return (
-                          <button
-                            key={index}
-                            style={sTo.toolBtn}
-                            disabled={alreadyRevealed}
-                            onClick={() => {
-                              close()
-                              handleRevealSupportStage(index, stage)
-                            }}
-                          >
-                            {alreadyRevealed ? 'Opened: ' : 'Reveal: '}
-                            {stage.label || `Stage ${index + 1}`}
-                          </button>
-                        )
-                      })}
-                      {completeStage && (
-                        <button
+                          key={entry.group}
                           style={sTo.toolBtn}
                           onClick={() => {
                             close()
-                            handleRevealSupportStage(completeStage.index, completeStage.stage)
-                            onRemoteReset?.(
-                              student.anonymousId,
-                              `reveal_stage_${completeStage.index}`
-                            )
+                            setHintPrefill(entry.markdown ?? entry.text)
+                            setShowHintModal(true)
                           }}
+                          title={`${entry.studentIds.length} students see this`}
                         >
-                          {/* "Reveal solution", or "Reveal solution: Answer" for a named one;
-                                never "Reveal solution: Complete". */}
-                          {formatStageLabel(completeStage.stage, completeStage.index).replace(
-                            /^Complete(?=:|$)/i,
-                            'Reveal solution'
-                          )}
-                        </button>
-                      )}
-                      {canSetAutoReveal && (
-                        <>
-                          <div style={s.autoRevealHeading}>Show on every task</div>
-                          {AUTO_REVEAL_OPTIONS.map(({ mode, label }) => (
-                            <button
-                              key={mode ?? 'off'}
-                              style={sTo.toolBtn}
-                              aria-pressed={autoRevealStage === mode}
-                              onClick={() => {
-                                close()
-                                onSetAutoReveal(student.anonymousId, mode)
-                              }}
-                            >
-                              {autoRevealStage === mode ? '✓ ' : ''}
-                              {label}
-                            </button>
-                          ))}
-                        </>
-                      )}
-                      {canShowLiveReference && (
-                        <>
-                          {!canSetAutoReveal && (
-                            <div style={s.autoRevealHeading}>Show on every task</div>
-                          )}
-                          <button
-                            style={sTo.toolBtn}
-                            aria-pressed={teacherLiveReferencePinned}
-                            disabled={
-                              !teacherLiveReferencePinned &&
-                              !teacherLiveReferenceHiddenForStudent &&
-                              !teacherLiveReferenceMatchesTask
-                            }
-                            title={
-                              teacherLiveReferencePinned
-                                ? teacherLiveReferencePinnedForClass
-                                  ? 'Hide your live code for this student (it stays on for the rest of the class)'
-                                  : 'Stop showing your live code to this student'
-                                : teacherLiveReferenceHiddenForStudent
-                                  ? 'Show your class-pinned live code to this student again'
-                                  : teacherLiveReferenceMatchesTask
-                                    ? 'Keep showing your live code on every task until you turn it off'
-                                    : "Will work once you're presenting this task in Presentation View"
-                            }
-                            onClick={() => {
-                              close()
-                              // On → off (written as `false` while the class pin is on);
-                              // hidden → follow the class pin again (null); off → pin.
-                              onSetTeacherLiveReference(
-                                student.anonymousId,
-                                teacherLiveReferencePinned
-                                  ? false
-                                  : teacherLiveReferenceHiddenForStudent
-                                    ? null
-                                    : true
-                              )
-                            }}
-                          >
-                            {teacherLiveReferencePinned
-                              ? '📌 Live code: kept on'
-                              : teacherLiveReferenceHiddenForStudent
-                                ? '📌 Show class live code again'
-                                : '📌 Keep showing live code'}
-                          </button>
-                        </>
-                      )}
-                    </>
-                  )}
-                  {canSetStage && stageRequestState !== 'requesting' && (
-                    <>
-                      <div style={canReveal ? s.menuHeading : s.menuHeadingFirst}>Set stage</div>
-                      {stageDeclinedNotice && (
-                        <div style={s.menuNote}>The student declined the last change.</div>
-                      )}
-                      {stageOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            handleRequestStage(opt.value, opt.label)
-                          }}
-                        >
-                          {opt.label}
+                          💬 {entry.text}
                         </button>
                       ))}
                     </>
                   )}
-                </>
-              )
-              // Export work: the dialog finds the tasks with work itself.
-              const hasExport = !!lesson?.tasks?.length
-              const hasNudge = !!onNudge && student.online
-              // Broadcasting a student's work is not offered on quiz or activity tasks
-              // (teacher-only broadcasts there).
-              const hasGoLiveForAll =
-                !!onGoLiveForAll && !isInformation && !isLiveForAll && allowsStudentBroadcast(task)
-              const hasFocus = !!onPushTeacherPaneCommand && !isInformation && !isQuizLike
-              // A hosted activity with its own targets (the Keyboard's keys) is offered too.
-              const hasControlHighlight =
-                !!onPushTeacherControlHighlight &&
-                !isInformation &&
-                (!isQuizLike || isActivity) &&
-                hasControlHighlightTargets(highlightScope, isActivity ? task : null)
-              if (
-                !hasSupport &&
-                !hasRunOnStudent &&
-                !hasAnswerEditItem &&
-                !hasTileItem &&
-                !hasMarkOverride &&
-                !hasExport &&
-                !hasNudge &&
-                !hasGoLiveForAll &&
-                !hasEdit &&
-                !hasTopic &&
-                !hasVideoCall &&
-                !hasShare &&
-                !hasFullscreen &&
-                !hasFocus &&
-                !hasControlHighlight
-              )
-                return null
-              return (
-                <DropdownMenu label="More" buttonClassName="btn-ghost" panelStyle={s.menuPanel}>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
+          {onSendMessage && (
+            <div style={s.group}>
+              <button
+                type="button"
+                style={s.groupButton}
+                onClick={() => setShowMessageModal(true)}
+                title="Send this student a pop-up message"
+                aria-label={narrowHeader ? 'Message' : undefined}
+              >
+                {narrowHeader ? '✉' : '✉ Message'}
+              </button>
+              {(hasTopic || hasVideoCall) && (
+                <DropdownMenu
+                  label=""
+                  ariaLabel="More ways to message"
+                  buttonClassName=""
+                  buttonStyle={s.caretButton}
+                  panelStyle={s.smallMenu}
+                >
                   {(close) => (
                     <>
-                      {/* Grouped with headings (HSC Audit, Visual Review 19): the three ways of
-                            showing this student's work to the class say what each one does. */}
-                      {hasNudge && <div style={s.menuHeadingFirst}>Encourage</div>}
-                      {hasNudge && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            handleNudge()
-                          }}
-                          title="Nudge: flash this student's tab and play a chime"
-                        >
-                          🔔 Nudge
-                        </button>
-                      )}
-                      {(hasGoLiveForAll || hasShare) && (
-                        <div style={hasNudge ? s.menuHeading : s.menuHeadingFirst}>
-                          Show the class
-                        </div>
-                      )}
-                      {hasGoLiveForAll && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            onGoLiveForAll()
-                          }}
-                          title="Put this student's work on every screen, live. The class watches until you press Stop Live."
-                        >
-                          📡 Take over every screen (Go Live for All)
-                        </button>
-                      )}
-                      {hasShare && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            onRequestShareSnapshot(student.anonymousId)
-                          }}
-                          title="Take a copy of this student's work as it is now. You check it, then classmates can open the copy."
-                        >
-                          📤 Share a copy with the class
-                        </button>
-                      )}
-                      {(hasEdit ||
-                        hasCopyCodeEdit ||
-                        hasTopic ||
-                        hasVideoCall ||
-                        hasFullscreen) && (
-                        <div
-                          style={
-                            hasNudge || hasGoLiveForAll || hasShare
-                              ? s.menuHeading
-                              : s.menuHeadingFirst
-                          }
-                        >
-                          Help this student
-                        </div>
-                      )}
-                      {hasEdit && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            handleStartEdit()
-                          }}
-                        >
-                          ✏ {moduleDefinition?.meta.teacherEditCopy?.action}
-                        </button>
-                      )}
-                      {hasCopyCodeEdit && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            setShowCopyCodeDialog(true)
-                          }}
-                          title="Change the Type this out text for this student or the whole class"
-                          data-testid="edit-copy-code"
-                        >
-                          ⌨️ Edit Type this out
-                        </button>
-                      )}
                       {hasTopic && (
                         <button
                           style={sTo.toolBtn}
@@ -1397,159 +1697,146 @@ export default function StudentModal({
                           📹 Send Video Call Link
                         </button>
                       )}
-                      {hasFullscreen && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            handleRequestFullscreen()
-                          }}
-                          title="Each student must click a prompt to accept — this can't force it"
-                        >
-                          {fullscreenRequested ? '✓ Requested' : '⛶ Ask to go fullscreen'}
-                        </button>
-                      )}
-                      {hasMarkOverride && (
-                        <section aria-label="Mark the task" style={s.menuSection}>
-                          <div style={s.menuHeading}>Mark the task</div>
-                          <OverrideItems
-                            student={student}
-                            task={task}
-                            onOverrideCheck={onOverrideCheck}
-                            onFail={() => setMarkFailOpen(true)}
-                            close={close}
-                          />
-                        </section>
-                      )}
-                      {(hasRunOnStudent || hasAnswerEditItem || hasTileItem) && (
-                        <div style={s.menuHeading}>Their screen and answers</div>
-                      )}
-                      {hasRunOnStudent && (
-                        <button
-                          style={sTo.toolBtn}
-                          disabled={!student.online}
-                          onClick={() => {
-                            close()
-                            handleRemoteRun()
-                          }}
-                          title={
-                            student.online
-                              ? "Run this student's code on their own screen"
-                              : 'Student is offline'
-                          }
-                        >
-                          {remoteRunSent ? 'Run sent ✓' : '▶ Run on student'}
-                        </button>
-                      )}
-                      {hasAnswerEditItem && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            setAnswerEditing(true)
-                            setTileHighlightMode(false)
-                          }}
-                          title="Change this student's answers — updates their screen live"
-                        >
-                          ✏️ Edit answers
-                        </button>
-                      )}
-                      {hasTileItem && (
-                        <button
-                          style={sTo.toolBtn}
-                          onClick={() => {
-                            close()
-                            setTileHighlightMode(true)
-                            setAnswerEditing(false)
-                          }}
-                          title="Tap a tile on the student's board to outline it on their screen: look again"
-                        >
-                          👀 Highlight tiles
-                        </button>
-                      )}
-                      {hasSupport && (
-                        <section aria-label="Support" style={s.menuSection}>
-                          <div style={s.menuHeading}>
-                            {stageDeclinedNotice ? 'Support · declined' : 'Support'}
-                          </div>
-                          {renderSupport(close)}
-                        </section>
-                      )}
-                      {hasExport && (
-                        <>
-                          <div style={s.menuHeading}>Their work</div>
-                          <button
-                            style={sTo.toolBtn}
-                            onClick={() => {
-                              close()
-                              setShowExportDialog(true)
-                            }}
-                            title="Download this student's work, or make a name-hidden share link"
-                          >
-                            🎁 Export work
-                          </button>
-                        </>
-                      )}
-                      {/* Highlight/force a tab or the Instructions pane on this student's screen */}
-                      {hasFocus && (
-                        <section aria-label="Focus" style={s.menuSection}>
-                          <div style={s.menuHeading}>Point at their screen</div>
-                          <PaneFocusControls
-                            lessonType={taskLesson?.type}
-                            onHighlight={(panes) =>
-                              onPushTeacherPaneCommand(student.anonymousId, {
-                                mode: 'highlight',
-                                panes,
-                              })
-                            }
-                            onForce={(panes) =>
-                              onPushTeacherPaneCommand(student.anonymousId, {
-                                mode: 'force',
-                                panes,
-                              })
-                            }
-                            onDone={close}
-                          />
-                        </section>
-                      )}
-                      {/* Pulse one control (Run, the green flag, a category…) on this
-                            student's screen (src/shared/controlHighlight.js) */}
-                      {hasControlHighlight && (
-                        <section aria-label="Highlight" style={s.menuSection}>
-                          <ControlHighlightControls
-                            lessonType={highlightScope}
-                            task={isActivity ? task : null}
-                            onHighlight={(target) =>
-                              onPushTeacherControlHighlight(
-                                student.anonymousId,
-                                target,
-                                task?.id ?? null
-                              )
-                            }
-                            onDone={close}
-                          />
-                        </section>
-                      )}
                     </>
                   )}
                 </DropdownMenu>
-              )
-            })()}
-          </div>
-          <button
-            className="btn-ghost"
-            style={s.closeBtnHeader}
-            onClick={handleClose}
-            aria-label="Close"
-          >
+              )}
+            </div>
+          )}
+          {hasNudge && (
+            <button
+              type="button"
+              style={s.squareButton}
+              onClick={handleNudge}
+              aria-label={`Nudge ${studentName}`}
+              title="Nudge: flash this student's tab and play a chime"
+            >
+              {nudged ? '✓' : '🔔'}
+            </button>
+          )}
+          {/* A running broadcast can always be stopped from the header. */}
+          {!isInformation && isLiveForAll ? (
+            <button type="button" style={s.stopLive} onClick={onStopLive}>
+              <span aria-hidden="true">■</span> Stop Live
+            </button>
+          ) : (
+            hasGoLiveForAll && (
+              <DropdownMenu
+                label={
+                  <>
+                    <span style={s.liveDot} aria-hidden="true" />
+                    Live
+                  </>
+                }
+                buttonClassName=""
+                buttonStyle={s.liveButton}
+                panelStyle={s.smallMenu}
+              >
+                {(close) => (
+                  <>
+                    <button
+                      style={sTo.toolBtn}
+                      onClick={() => {
+                        close()
+                        onGoLiveForAll()
+                      }}
+                      title="Put this student's work on every screen, live. The class watches until you press Stop Live."
+                    >
+                      📡 Take over every screen (Go Live for All)
+                    </button>
+                    <button
+                      style={sTo.toolBtn}
+                      onClick={() => {
+                        close()
+                        onGoLiveForAll('panel')
+                      }}
+                      title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
+                    >
+                      📺 Show to class, they keep coding
+                    </button>
+                  </>
+                )}
+              </DropdownMenu>
+            )
+          )}
+          {hasAnyTool && (
+            <DropdownMenu
+              label="Tools"
+              buttonClassName=""
+              buttonStyle={s.toolsButton}
+              panelStyle={s.toolsPanel}
+            >
+              {(close) => {
+                const columns = toolColumns(close)
+                return (
+                  <div
+                    style={{
+                      ...s.toolsGrid,
+                      gridTemplateColumns: `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`,
+                    }}
+                    data-testid="student-modal-tools"
+                  >
+                    {columns.map((column, c) => (
+                      <div key={c} style={s.toolsColumn}>
+                        {column.map((section, i) => {
+                          const heading = section.heading && (
+                            <div style={i === 0 ? s.menuHeadingFirst : s.menuHeading}>
+                              {section.heading}
+                            </div>
+                          )
+                          return section.region ? (
+                            <section
+                              key={section.key}
+                              aria-label={section.region}
+                              style={s.menuSection}
+                            >
+                              {heading}
+                              {section.body}
+                            </section>
+                          ) : (
+                            <React.Fragment key={section.key}>
+                              {heading}
+                              {section.body}
+                            </React.Fragment>
+                          )
+                        })}
+                      </div>
+                    ))}
+                    {onDecideBadge && (
+                      <div style={s.toolsFooter}>
+                        <button
+                          style={{ ...sTo.toolBtn, width: 'auto' }}
+                          onClick={() => {
+                            close()
+                            setShowBadgeDialog(true)
+                          }}
+                          data-testid="award-other-badge"
+                        >
+                          🏅 Award a different badge…
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              }}
+            </DropdownMenu>
+          )}
+          <button type="button" style={s.closeButton} onClick={handleClose} aria-label="Close">
             ✕
           </button>
         </div>
+        {markFailOpen && (
+          <OverrideFailModal
+            onCancel={() => setMarkFailOpen(false)}
+            onApply={(failHint) => {
+              onOverrideCheck(student.anonymousId, false, failHint || null, task?.id)
+              setMarkFailOpen(false)
+            }}
+          />
+        )}
 
-        {/* A pending share takes over the body. Showing the frozen snapshot and
-            the live workspace at once invited approving one while looking at
-            the other — they are different content, and only the snapshot is
-            what the class would actually receive. */}
+        <ModalStrip chips={stripChips} mode={modeRow} />
+
         {peerHelp && (
           <TeacherPeerHelpStudentPanel
             student={student}
@@ -1566,6 +1853,9 @@ export default function StudentModal({
             total={sideQuestInfo.total}
           />
         )}
+        {/* A pending share takes over the body. Showing the frozen snapshot and the live
+            workspace at once invited approving one while looking at the other — they are
+            different content, and only the snapshot is what the class would actually receive. */}
         {showShareRequest ? (
           <ShareRequestPanel
             student={student}
@@ -1585,11 +1875,13 @@ export default function StudentModal({
           />
         ) : (
           <>
-            <StudentHintPanel
-              student={student}
-              session={session}
-              isSessionSandbox={isSessionSandbox}
-            />
+            {(!showLeftColumn || leftCollapsed) && (
+              <StudentHintPanel
+                student={student}
+                session={session}
+                isSessionSandbox={isSessionSandbox}
+              />
+            )}
             {supportsTileHighlight && (
               <TileHighlightBar
                 active={tileHighlightMode}
@@ -1600,120 +1892,119 @@ export default function StudentModal({
                 onDone={() => setTileHighlightMode(false)}
               />
             )}
-            {/* Content */}
-            <div
-              style={
-                isInformation
-                  ? s.bodyInformation
-                  : (isQuiz && !isSessionSandbox) || isActivity
-                    ? s.bodyQuiz
-                    : isCodeArrangeTask
-                      ? s.bodyCodeArrange
-                      : mirror === 'code'
-                        ? s.bodyPython
-                        : mirror === 'blocks'
-                          ? s.bodyScratch
-                          : mirror === 'view' && ModuleTeacherLiveView
-                            ? s.bodyFilesystem
-                            : s.bodyHtml
-              }
-            >
-              {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
-                <ScratchWorkspace
-                  key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+            <div style={showLeftColumn ? s.bodyColumns : s.bodyPlain}>
+              {showLeftColumn && (
+                <StudentModalLeftColumn
                   task={task}
-                  readOnly={false}
-                  assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-                  initialState={parseScratchState(student.currentCode)}
-                  onStateChange={handleScratchStateChange}
-                />
-              ) : teacherEditState === 'editing' &&
-                teacherEditor?.surface === 'files' &&
-                ModuleTeacherLiveView ? (
-                <ModuleTeacherLiveView
-                  lesson={taskLesson}
-                  displayState={{ files: teacherFiles }}
-                  readOnly={false}
-                  onChange={handleTeacherFileChange}
-                  onTabChange={handleTeacherHtmlTabChange}
-                />
-              ) : teacherEditState === 'editing' &&
-                teacherEditor?.surface === 'view' &&
-                ModuleTeacherLiveView ? (
-                // The module's own view over the code string. Arcade reads the design and its
-                // workspace tab (activeWorkspace / onWorkspaceChange); Electronics reports its
-                // Breadboard/MicroPython tab through onTabChange.
-                <ModuleTeacherLiveView
-                  task={task}
-                  student={student}
-                  displayState={teacherCode}
-                  design={teacherArcadeDesign}
-                  activeWorkspace={teacherWorkspace}
-                  readOnly={false}
-                  onChange={handleTeacherCodeChange}
-                  onDesignChange={handleTeacherArcadeDesignChange}
-                  onWorkspaceChange={handleTeacherWorkspaceChange}
-                  onTabChange={handleTeacherWorkspaceChange}
-                />
-              ) : teacherEditState === 'editing' ? (
-                <div style={s.editorWrap}>
-                  <CodeEditor
-                    value={teacherCode}
-                    language="python"
-                    readOnly={false}
-                    onChange={handleTeacherCodeChange}
-                    style={{ height: '100%' }}
-                  />
-                </div>
-              ) : (
-                <StudentWorkspaceBody
-                  lesson={taskLesson}
-                  task={task}
+                  lessonType={taskLesson?.type}
                   student={student}
                   session={session}
-                  isInformation={isInformation}
-                  isQuiz={isQuiz}
-                  isActivity={isActivity}
-                  activityState={activityState}
                   isSessionSandbox={isSessionSandbox}
-                  mirror={mirror}
-                  isCodeArrangeTask={isCodeArrangeTask}
-                  ModuleTeacherLiveView={ModuleTeacherLiveView}
-                  moduleDisplayState={moduleDisplayState}
-                  files={files}
-                  activeFile={activeFile}
-                  setActiveFile={setActiveFile}
-                  activeFileObj={activeFileObj}
-                  remoteSelection={remoteSelection}
-                  scratchState={scratchState}
-                  spriteState={spriteState}
-                  cursorState={cursorState}
-                  blockDragState={blockDragState}
-                  iframeSrc={iframeSrc}
-                  iframeRef={iframeRef}
-                  canHighlight={canHighlight}
-                  pendingHighlight={pendingHighlight}
-                  highlights={highlightsForActiveFile}
-                  onMirrorSelectionChange={handleMirrorSelectionChange}
-                  onDismissHighlight={handleDismissHighlight}
-                  highlightEmoji={highlightEmoji}
-                  onHighlightEmojiChange={setHighlightEmoji}
-                  highlightNote={highlightNote}
-                  onHighlightNoteChange={setHighlightNote}
-                  onSendHighlight={() => handleSendHighlight(activeFile)}
-                  onCancelHighlight={handleCancelHighlight}
-                  answerEditing={supportsAnswerEdit && answerEditing}
-                  onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
-                  tileHighlights={shownTileHighlights}
-                  typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
-                  typingEntries={typingEntries}
-                  onTileTargetTap={
-                    supportsTileHighlight && tileHighlightMode && !answerEditing
-                      ? handleTileHighlightTap
-                      : null
-                  }
+                  copyCode={workspaceCopyCode}
+                  collapsed={leftCollapsed}
+                  onCollapsedChange={setLeftCollapsed}
                 />
               )}
+              <div style={contentStyle}>
+                {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
+                  <ScratchWorkspace
+                    key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+                    task={task}
+                    readOnly={false}
+                    assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+                    initialState={parseScratchState(student.currentCode)}
+                    onStateChange={handleScratchStateChange}
+                  />
+                ) : teacherEditState === 'editing' &&
+                  teacherEditor?.surface === 'files' &&
+                  ModuleTeacherLiveView ? (
+                  <ModuleTeacherLiveView
+                    lesson={taskLesson}
+                    displayState={{ files: teacherFiles }}
+                    readOnly={false}
+                    onChange={handleTeacherFileChange}
+                    onTabChange={handleTeacherHtmlTabChange}
+                  />
+                ) : teacherEditState === 'editing' &&
+                  teacherEditor?.surface === 'view' &&
+                  ModuleTeacherLiveView ? (
+                  // The module's own view over the code string. Arcade reads the design and its
+                  // workspace tab (activeWorkspace / onWorkspaceChange); Electronics reports its
+                  // Breadboard/MicroPython tab through onTabChange.
+                  <ModuleTeacherLiveView
+                    task={task}
+                    student={student}
+                    displayState={teacherCode}
+                    design={teacherArcadeDesign}
+                    activeWorkspace={teacherWorkspace}
+                    readOnly={false}
+                    onChange={handleTeacherCodeChange}
+                    onDesignChange={handleTeacherArcadeDesignChange}
+                    onWorkspaceChange={handleTeacherWorkspaceChange}
+                    onTabChange={handleTeacherWorkspaceChange}
+                  />
+                ) : teacherEditState === 'editing' ? (
+                  <div style={s.editorWrap}>
+                    <CodeEditor
+                      value={teacherCode}
+                      language="python"
+                      readOnly={false}
+                      onChange={handleTeacherCodeChange}
+                      style={{ height: '100%' }}
+                    />
+                  </div>
+                ) : (
+                  <StudentWorkspaceBody
+                    lesson={taskLesson}
+                    task={task}
+                    student={student}
+                    session={session}
+                    isInformation={isInformation}
+                    isQuiz={isQuiz}
+                    isActivity={isActivity}
+                    activityState={activityState}
+                    isSessionSandbox={isSessionSandbox}
+                    mirror={mirror}
+                    isCodeArrangeTask={isCodeArrangeTask}
+                    ModuleTeacherLiveView={ModuleTeacherLiveView}
+                    moduleDisplayState={moduleDisplayState}
+                    files={files}
+                    activeFile={activeFile}
+                    setActiveFile={setActiveFile}
+                    activeFileObj={activeFileObj}
+                    remoteSelection={remoteSelection}
+                    scratchState={scratchState}
+                    spriteState={spriteState}
+                    cursorState={cursorState}
+                    blockDragState={blockDragState}
+                    iframeSrc={iframeSrc}
+                    iframeRef={iframeRef}
+                    canHighlight={canHighlight}
+                    pendingHighlight={pendingHighlight}
+                    highlights={highlightsForActiveFile}
+                    onMirrorSelectionChange={handleMirrorSelectionChange}
+                    onDismissHighlight={handleDismissHighlight}
+                    highlightEmoji={highlightEmoji}
+                    onHighlightEmojiChange={setHighlightEmoji}
+                    highlightNote={highlightNote}
+                    onHighlightNoteChange={setHighlightNote}
+                    onSendHighlight={() => handleSendHighlight(activeFile)}
+                    onCancelHighlight={handleCancelHighlight}
+                    answerEditing={supportsAnswerEdit && answerEditing}
+                    onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
+                    tileHighlights={shownTileHighlights}
+                    typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
+                    typingEntries={typingEntries}
+                    onTileTargetTap={
+                      supportsTileHighlight && tileHighlightMode && !answerEditing
+                        ? handleTileHighlightTap
+                        : null
+                    }
+                    outputColumn={showLeftColumn}
+                    wideScratch={showLeftColumn}
+                  />
+                )}
+              </div>
             </div>
           </>
         )}
@@ -1804,7 +2095,11 @@ export default function StudentModal({
           student={student}
           onSendMessage={(id, text) => onSendHint(id, text, task?.id)}
           isOpen={showHintModal}
-          onClose={() => setShowHintModal(false)}
+          initialText={hintPrefill}
+          onClose={() => {
+            setShowHintModal(false)
+            setHintPrefill('')
+          }}
         />
       )}
 
@@ -1821,6 +2116,43 @@ export default function StudentModal({
   )
 }
 
+// Brand colours and fonts: HSC Hub/Specs/LaunchPad Style.md (primary #6222cc, Quicksand body,
+// Montserrat titles). The header is one 48px line; buttons in it are 34px, grouped on a lighter
+// band so the tutor reads them as a few groups rather than a row of separate pills.
+const headerButton = {
+  height: 34,
+  padding: '0 9px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 5,
+  border: 'none',
+  background: 'transparent',
+  color: '#fff',
+  fontFamily: 'var(--font-body)',
+  fontWeight: 700,
+  fontSize: 12.5,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+  minHeight: 0,
+  borderRadius: 0,
+}
+
+const menuHeadingBase = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: '#6b7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+const dotBase = {
+  width: 9,
+  height: 9,
+  borderRadius: '50%',
+  border: '1.5px solid #fff',
+  boxSizing: 'border-box',
+}
+
 const s = {
   overlay: {
     position: 'fixed',
@@ -1830,189 +2162,236 @@ const s = {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
-    padding: 24,
+    padding: 12,
   },
+  // Nearly the whole screen: the tutor is here to see the student's work at its real size.
   modal: {
-    background: '#fff',
-    borderRadius: 12,
-    width: 'min(1200px, 92vw)',
-    height: '88vh',
+    background: '#f5f5f5',
+    borderRadius: 10,
+    width: 'calc(100vw - 24px)',
+    height: 'calc(100vh - 24px)',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    boxShadow: '0 20px 50px rgba(20,10,50,0.35)',
   },
   header: {
     background: 'var(--colour-primary)',
     color: '#fff',
-    padding: '0 14px',
-    height: 52,
+    padding: '0 8px 0 12px',
+    height: 48,
     display: 'flex',
     alignItems: 'center',
     flexWrap: 'nowrap',
     flexShrink: 0,
     gap: 8,
+    whiteSpace: 'nowrap',
   },
-  headerLeft: {
+  who: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'nowrap' },
+  name: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: 15,
+    whiteSpace: 'nowrap',
+  },
+  nav: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    minWidth: 0,
-    flex: '1 1 0',
-    flexWrap: 'nowrap',
-    // Many chips at once scroll sideways instead of wrapping the header.
-    overflowX: 'auto',
-    scrollbarWidth: 'none',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
     flexShrink: 0,
-    flexWrap: 'nowrap',
-  },
-  menuPanel: { minWidth: 220, maxHeight: '70vh', overflowY: 'auto' },
-  menuSection: { display: 'flex', flexDirection: 'column', gap: 6 },
-  menuHeadingFirst: {
-    padding: '0 2px 2px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  menuHeading: {
-    borderTop: '1px solid #e5e7eb',
-    marginTop: 4,
-    padding: '6px 2px 2px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  menuNote: { fontSize: 12, color: 'var(--colour-error-text)', padding: '0 2px' },
-  closeBtnHeader: { flexShrink: 0, fontSize: 13, padding: '5px 10px', minWidth: 44, minHeight: 44 },
-  navButtons: {
-    display: 'flex',
-    gap: 2,
-    marginRight: 4,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
   },
   navBtn: {
-    background: 'rgba(255,255,255,0.15)',
-    border: '1px solid rgba(255,255,255,0.3)',
-    color: '#fff',
-    borderRadius: 5,
     width: 30,
-    height: 28,
-    fontSize: '0.95rem',
+    height: 34,
+    border: 'none',
+    background: 'transparent',
+    color: '#fff',
+    fontSize: 18,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 0,
-    transition: 'background 0.15s',
   },
-  name: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.05rem',
-    whiteSpace: 'nowrap',
-  },
-  carryStarterButton: {
-    marginLeft: 6,
-    background: 'rgba(255,255,255,0.9)',
-    color: 'var(--colour-primary)',
-    border: 'none',
-    borderRadius: 999,
-    padding: '0 8px',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  rosterName: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.78rem',
-    whiteSpace: 'nowrap',
-    background: 'rgba(255,255,255,0.18)',
-    borderRadius: 999,
-    padding: '1px 8px',
-  },
-  liveBadge: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.78rem',
-    color: '#86efac',
-    letterSpacing: '0.05em',
-    whiteSpace: 'nowrap',
-  },
-  checkBadge: { fontSize: '1rem', flexShrink: 0 },
-  autoRevealHeading: {
-    borderTop: '1px solid #e5e7eb',
-    marginTop: 4,
-    padding: '6px 10px 2px',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  nudgeBtn: {
-    fontSize: '0.75rem',
-    padding: '2px 8px',
-    color: '#fff',
-    background: 'rgba(255,255,255,0.18)',
-    whiteSpace: 'nowrap',
-  },
-  helpedBtn: {
-    background: '#f59e0b',
-    border: 'none',
-    borderRadius: 5,
-    padding: '3px 10px',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.78rem',
-    color: '#fff',
-    cursor: 'pointer',
-    letterSpacing: '0.02em',
-    whiteSpace: 'nowrap',
-  },
-  overrideBadge: {
-    fontSize: '0.72rem',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    color: 'rgba(255,255,255,0.75)',
-    whiteSpace: 'nowrap',
-    background: 'rgba(255,255,255,0.12)',
-    padding: '2px 7px',
-    borderRadius: 999,
-  },
-  topicBadge: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.75rem',
-    color: '#bae6fd',
-    padding: '3px 8px',
-    background: 'rgba(14,165,233,0.2)',
-    border: '1px solid rgba(14,165,233,0.4)',
-    borderRadius: 999,
-    whiteSpace: 'nowrap',
-    maxWidth: 160,
+  navCount: { fontWeight: 600, fontSize: 12.5, padding: '0 4px' },
+  taskLabel: {
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: 220,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-  },
-  supportBadge: {
-    fontSize: '0.72rem',
-    fontFamily: 'var(--font-body)',
     fontWeight: 700,
-    color: '#bfdbfe',
-    whiteSpace: 'nowrap',
-    background: 'rgba(37,99,235,0.24)',
-    border: '1px solid rgba(191,219,254,0.45)',
-    padding: '2px 7px',
-    borderRadius: 999,
+    fontSize: 13,
   },
+  dots: { display: 'flex', gap: 3, flexShrink: 0 },
+  dot: dotBase,
+  dotDone: { ...dotBase, background: '#fff' },
+  dotCurrent: {
+    ...dotBase,
+    borderColor: 'var(--colour-secondary, #fba504)',
+    background: 'var(--colour-secondary, #fba504)',
+  },
+  spacer: { flex: 1, minWidth: 4 },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    whiteSpace: 'nowrap',
+  },
+  group: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+  },
+  groupButton: { ...headerButton, borderRight: '1px solid rgba(255,255,255,0.22)' },
+  groupButtonAward: {
+    ...headerButton,
+    maxWidth: 200,
+    borderRight: '1px solid rgba(255,255,255,0.22)',
+  },
+  caretButton: {
+    ...headerButton,
+    width: 24,
+    padding: 0,
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.12)',
+  },
+  squareButton: {
+    ...headerButton,
+    width: 34,
+    padding: 0,
+    justifyContent: 'center',
+    fontSize: 17,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.14)',
+    flexShrink: 0,
+  },
+  liveButton: {
+    ...headerButton,
+    padding: '0 11px',
+    gap: 6,
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.6)',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: '#fca5a5',
+    display: 'inline-block',
+  },
+  stopLive: {
+    ...headerButton,
+    padding: '0 12px',
+    gap: 6,
+    borderRadius: 8,
+    background: '#dc2626',
+    border: '1px solid #fecaca',
+    boxShadow: '0 0 0 2px rgba(220,38,38,0.35)',
+    flexShrink: 0,
+  },
+  toolsButton: {
+    ...headerButton,
+    padding: '0 11px',
+    borderRadius: 8,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+  },
+  closeButton: {
+    ...headerButton,
+    width: 34,
+    padding: 0,
+    justifyContent: 'center',
+    fontSize: 18,
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.14)',
+    flexShrink: 0,
+  },
+  smallMenu: { minWidth: 260, maxWidth: 360, whiteSpace: 'normal' },
+  toolsPanel: {
+    width: 'min(820px, calc(100vw - 48px))',
+    maxHeight: 'calc(100vh - 96px)',
+    overflowY: 'auto',
+    padding: 12,
+    borderRadius: 12,
+    border: '1px solid #d9d0ee',
+    boxShadow: '0 16px 40px rgba(40,22,78,0.28)',
+    whiteSpace: 'normal',
+  },
+  toolsGrid: { display: 'grid', gap: 12, color: 'var(--colour-text)' },
+  toolsColumn: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
+  toolsFooter: {
+    gridColumn: '1 / -1',
+    borderTop: '1px solid #eee',
+    paddingTop: 8,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  footerNote: { fontSize: 12, fontWeight: 600, color: '#6b7280' },
+  menuSection: { display: 'flex', flexDirection: 'column', gap: 4 },
+  menuHeadingFirst: { ...menuHeadingBase, padding: '0 2px 2px' },
+  menuHeading: { ...menuHeadingBase, marginTop: 8, padding: '0 2px 2px' },
+  autoRevealHeading: {
+    ...menuHeadingBase,
+    marginTop: 6,
+    padding: '0 2px 2px',
+    fontSize: 11.5,
+    textTransform: 'none',
+  },
+  menuHint: { fontSize: 11.5, fontWeight: 600, color: '#6b7280', padding: '0 2px' },
+  menuNote: { fontSize: 12, color: 'var(--colour-error-text)', padding: '0 2px' },
+  segs: { display: 'flex', flexWrap: 'wrap', gap: 4 },
+  helpedButton: {
+    height: 26,
+    marginRight: -9,
+    borderRadius: 999,
+    background: '#fff',
+    color: '#3b2200',
+    border: '1px solid #92400e',
+    padding: '0 10px',
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+  },
+  chipButton: {
+    height: 24,
+    marginRight: -8,
+    borderRadius: 999,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    border: '1px solid #cdbdec',
+    padding: '0 8px',
+    fontWeight: 700,
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  modeNote: { fontWeight: 600, color: '#6b7280', fontSize: 12.5 },
+  modeButton: { fontSize: 13, padding: '4px 12px', minHeight: 30, whiteSpace: 'nowrap' },
+  // The body: instructions, workspace and Output side by side on the grey page, like the
+  // student's own screen.
+  bodyColumns: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    gap: 12,
+    padding: 12,
+  },
+  bodyPlain: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    background: '#fff',
+  },
+  bodyInColumns: { flex: 1, minWidth: 0, minHeight: 0, padding: 0 },
   bodyPython: {
     flex: 1,
     overflow: 'hidden',
@@ -2034,6 +2413,7 @@ const s = {
     display: 'flex',
     flexDirection: 'row',
     gap: 0,
+    background: '#fff',
   },
   bodyFilesystem: {
     flex: 1,
@@ -2069,35 +2449,39 @@ const s = {
   },
 }
 
-const sEd = {
-  waitingText: {
-    fontFamily: 'var(--font-body)',
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    fontStyle: 'italic',
-    whiteSpace: 'nowrap',
-  },
-  declinedNotice: {
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-    color: '#fca5a5',
-    fontStyle: 'italic',
-    whiteSpace: 'nowrap',
-  },
+const segBase = {
+  minHeight: 28,
+  padding: '0 8px',
+  borderRadius: 6,
+  border: '1px solid #cdbdec',
+  background: '#fff',
+  color: 'var(--colour-primary)',
+  fontFamily: 'var(--font-body)',
+  fontWeight: 700,
+  fontSize: 11.5,
+  cursor: 'pointer',
 }
 
 const sTo = {
   toolBtn: {
     width: '100%',
-    padding: '7px 12px',
-    background: 'rgba(98,34,204,0.06)',
-    color: 'var(--colour-primary-dark)',
-    border: '1px solid rgba(98,34,204,0.18)',
-    borderRadius: 6,
+    minHeight: 32,
+    padding: '6px 9px',
+    background: '#f5f0ff',
+    color: '#4c1d95',
+    border: '1px solid #e4d8fa',
+    borderRadius: 8,
     fontFamily: 'var(--font-body)',
     fontWeight: 600,
-    fontSize: 13,
+    fontSize: 12.5,
     cursor: 'pointer',
     textAlign: 'left',
+  },
+  seg: segBase,
+  segOn: {
+    ...segBase,
+    borderColor: 'var(--colour-primary)',
+    background: 'var(--colour-primary)',
+    color: '#fff',
   },
 }

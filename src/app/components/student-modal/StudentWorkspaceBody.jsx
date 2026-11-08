@@ -116,6 +116,10 @@ export default function StudentWorkspaceBody({
   // Show it, result first: the build's result only (Stage / Turtle drawing, HTML page, output
   // text), big, with no code. Applies to the code, files and turtle mirrors.
   resultOnly = false,
+  // StudentModal: the student's Output in its own always-open right-hand column (code mirror),
+  // and Scratch with its blocks and Stage side by side, as the student sees them.
+  outputColumn = false,
+  wideScratch = false,
 }) {
   const [editableAnswer, pushEditableAnswer] = useTeacherEditableValue(
     student.currentAnswer ?? '',
@@ -385,67 +389,91 @@ export default function StudentWorkspaceBody({
       </div>
     )
 
-  if (mirror === 'code')
+  if (mirror === 'code') {
+    const split = (
+      <CodeStageSplit
+        stageResult={stageResult}
+        fitCode={fitCode}
+        editor={
+          <CodeEditor
+            value={student.currentCode ?? ''}
+            language="python"
+            readOnly
+            remoteSelection={remoteSelection}
+            teacherHighlights={highlights}
+            lineHints={lineHints}
+            lockedLines={lockedLines}
+            peekBand={peekBandFor(student.currentCode ?? '')}
+            runCounts={runCountsFor(student.currentCode ?? '')}
+            variableLinks={variableLinks.editor}
+            onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+            onHighlightDismiss={onDismissHighlight}
+            style={{
+              height: fitCode ? 'auto' : '100%',
+              ...(canHighlight ? s.editorHighlightMode : {}),
+            }}
+          />
+        }
+      />
+    )
+    const submitMode = task?.interactionMode === 'submit' && !isSessionSandbox
+    const submitNotice = (
+      <div style={s.submitNotice}>
+        {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
+      </div>
+    )
+    const output = (open) => (
+      <OutputPanel
+        output={student.currentOutput ?? ''}
+        runStatus={student.lastRunStatus}
+        hasCheck={showMarks && !!task?.check && !isSessionSandbox}
+        checkPassed={showMarks && student.checkPassed}
+        hideStatus={!showMarks}
+        inputPrompt={student.currentInputPrompt ?? null}
+        inputReadOnly
+        mirroredInputValue={student.currentInput ?? ''}
+        // The teacher opened this modal to watch the student, so the
+        // student's run output should appear without an extra click.
+        openOnOutput
+        defaultCollapsed={!open}
+        fill={open}
+        {...(outputColumn ? { collapsible: false } : {})}
+      />
+    )
+    // The student's name-tag panel (showVariables): their last run and predictions.
+    const variables = (
+      <TaskVariablesPanel
+        task={task}
+        synced={student.currentVariables ?? null}
+        code={student.currentCode ?? ''}
+        audience="tutor"
+        hidden={isSessionSandbox}
+        style={s.variablesPanel}
+        {...variableLinks.panel}
+      />
+    )
+    if (outputColumn)
+      return (
+        <>
+          <div style={s.codeColumn}>
+            {highlightComposer}
+            {split}
+          </div>
+          <div style={s.outputColumn} data-testid="student-modal-output-column">
+            {submitMode ? submitNotice : output(true)}
+            {variables}
+          </div>
+        </>
+      )
     return (
       <>
         {highlightComposer}
-        <CodeStageSplit
-          stageResult={stageResult}
-          fitCode={fitCode}
-          editor={
-            <CodeEditor
-              value={student.currentCode ?? ''}
-              language="python"
-              readOnly
-              remoteSelection={remoteSelection}
-              teacherHighlights={highlights}
-              lineHints={lineHints}
-              lockedLines={lockedLines}
-              peekBand={peekBandFor(student.currentCode ?? '')}
-              runCounts={runCountsFor(student.currentCode ?? '')}
-              variableLinks={variableLinks.editor}
-              onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
-              onHighlightDismiss={onDismissHighlight}
-              style={{
-                height: fitCode ? 'auto' : '100%',
-                ...(canHighlight ? s.editorHighlightMode : {}),
-              }}
-            />
-          }
-        />
-        {task?.interactionMode === 'submit' && !isSessionSandbox ? (
-          <div style={s.submitNotice}>
-            {student.lastRunStatus === 'submitted' ? 'Code submitted' : 'Waiting for submission'}
-          </div>
-        ) : (
-          <OutputPanel
-            output={student.currentOutput ?? ''}
-            runStatus={student.lastRunStatus}
-            hasCheck={showMarks && !!task?.check && !isSessionSandbox}
-            checkPassed={showMarks && student.checkPassed}
-            hideStatus={!showMarks}
-            inputPrompt={student.currentInputPrompt ?? null}
-            inputReadOnly
-            mirroredInputValue={student.currentInput ?? ''}
-            // The teacher opened this modal to watch the student, so the
-            // student's run output should appear without an extra click.
-            openOnOutput
-            defaultCollapsed={!outputOpen}
-            fill={outputOpen}
-          />
-        )}
-        {/* The student's name-tag panel (showVariables): their last run and predictions. */}
-        <TaskVariablesPanel
-          task={task}
-          synced={student.currentVariables ?? null}
-          code={student.currentCode ?? ''}
-          audience="tutor"
-          hidden={isSessionSandbox}
-          style={s.variablesPanel}
-          {...variableLinks.panel}
-        />
+        {split}
+        {submitMode ? submitNotice : output(outputOpen)}
+        {variables}
       </>
     )
+  }
 
   if (mirror === 'blocks' && ModuleTeacherLiveView) {
     return (
@@ -459,6 +487,7 @@ export default function StudentWorkspaceBody({
         cursorState={cursorState}
         blockDragState={blockDragState}
         isSessionSandbox={isSessionSandbox}
+        compact={!wideScratch}
         forcedPane={resultOnly && spriteState ? 'stage' : null}
         forcedPaneToken={resultOnly && spriteState ? 1 : null}
       />
@@ -564,6 +593,22 @@ export default function StudentWorkspaceBody({
 }
 
 const s = {
+  codeColumn: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  outputColumn: {
+    width: 'clamp(300px, 26vw, 460px)',
+    flexShrink: 0,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
   resultStack: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8 },
   resultStage: { flex: 1, minHeight: 0 },
   variablesPanel: { flexShrink: 0, maxHeight: 260, marginTop: 8 },

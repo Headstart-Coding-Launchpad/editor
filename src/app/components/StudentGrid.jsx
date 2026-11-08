@@ -885,6 +885,9 @@ export default function StudentGrid({
               ? () => rosterStatus.onUseCarryStarter([expandedStudent.anonymousId])
               : null
           }
+          position={expandedIndex + 1}
+          total={students.length}
+          commonHints={commonHints}
         />
       )}
     </div>

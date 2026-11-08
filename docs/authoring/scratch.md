@@ -583,7 +583,7 @@ stage is full screen (for a palette category or the Costumes and Sounds tabs), o
 pulses.
 
 Tutors can pulse the same controls live, for the whole class ("Highlight Class" in the top bar)
-or one student (the More menu in their workspace view).
+or one student (the Tools menu in their workspace view).
 
 ---
 
