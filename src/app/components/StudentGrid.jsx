@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useLatestRef } from '../hooks/useLatestRef'
-import StudentCard from './StudentCard'
+import StudentListRow from './StudentListRow'
 import StudentModal from './StudentModal'
-import { findTaskById } from '../../shared/taskUtils'
+import MessageCompose from './student-modal/MessageCompose'
+import { deriveTaskContext, findTaskById } from '../../shared/taskUtils'
+import { getEffectiveLessonForTask } from '../../shared/composedLesson'
 import { TopicLibraryDialog } from '../../shared/TopicLibraryView'
 import { MarkdownRenderer } from '../../shared/markdown'
 import BadgeAwardDialog from './badges/BadgeAwardDialog'
@@ -12,7 +14,6 @@ import ShareRequestsBanner from './ShareRequestsBanner'
 import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
 import ClassActivityStrip from './ClassActivityStrip'
 import CommonHintsStrip from './CommonHintsStrip'
-import NeedsYouStrip from './NeedsYouStrip'
 import ConfidenceSpreadStrip from './ConfidenceSpreadStrip'
 import { getTaskActivity } from '../../activities/registry.pure.js'
 import { deriveStudentCheckStatus } from './studentCheckStatus'
@@ -27,6 +28,14 @@ import {
 import { ShowItControls } from './ShowItPanel'
 import { summariseCommonHints } from '../studentHints.js'
 import { classActivities, summariseClassActivities } from '../studentActivity'
+import { needsYouState, nextErrorRuns } from '../needsYou.js'
+import {
+  classifyStudentRow,
+  orderStudentRows,
+  rowGroup,
+  sameOutputSummary,
+  summariseRowStates,
+} from '../studentList.js'
 
 export default function StudentGrid({
   students = [],
@@ -140,6 +149,25 @@ export default function StudentGrid({
   )
 
   const [showBadgeDialog, setShowBadgeDialog] = useState(false)
+  // The compact list (sketch v2, 8 Nov 2026): the row opened in place, help rows the tutor said
+  // "I'm on it" to, the Finished filter, and the row menu's Award badge / Send hint / Message.
+  const [openRowId, setOpenRowId] = useState(null)
+  const [ackedHelp, setAckedHelp] = useState(() => new Set())
+  const [finishedOnly, setFinishedOnly] = useState(false)
+  const [awardFor, setAwardFor] = useState(null)
+  const [compose, setCompose] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(timer)
+  }, [])
+  // Tutor-side counters, advanced from each render's data (idempotent for the same data): the
+  // needsYou error-run counter, when this screen first saw help / Away, when each student was
+  // last seen active (tutor clock), and the list order.
+  const errorRunsRef = useRef({})
+  const seenAtRef = useRef({})
+  const activityRef = useRef({})
+  const orderRef = useRef(null)
   const selectedStudents = students.filter((st) => selectedIds.has(st.anonymousId))
   const suggestionCount = badgeSuggestions?.suggestions?.length ?? 0
   const sessionLive = session?.state === 'active' || session?.state === 'sandbox'
@@ -196,9 +224,6 @@ export default function StudentGrid({
     setTimeout(() => setFullscreenRequested(false), 2000)
   }
 
-  const expandedIndex = students.findIndex((s) => s.anonymousId === expandedStudentId)
-  const expandedStudent = expandedIndex >= 0 ? students[expandedIndex] : null
-
   function handleExpand(student) {
     onGoLive?.(student.anonymousId)
     setExpandedStudentId(student.anonymousId)
@@ -230,15 +255,15 @@ export default function StudentGrid({
 
   function handlePrev() {
     if (expandedIndex > 0) {
-      const prevStudent = students[expandedIndex - 1]
+      const prevStudent = ordered[expandedIndex - 1]
       onGoLive?.(prevStudent.anonymousId)
       setExpandedStudentId(prevStudent.anonymousId)
     }
   }
 
   function handleNext() {
-    if (expandedIndex < students.length - 1) {
-      const nextStudent = students[expandedIndex + 1]
+    if (expandedIndex < ordered.length - 1) {
+      const nextStudent = ordered[expandedIndex + 1]
       onGoLive?.(nextStudent.anonymousId)
       setExpandedStudentId(nextStudent.anonymousId)
     }
@@ -269,6 +294,66 @@ export default function StudentGrid({
   const passedCount = checkStatuses.filter((status) => status.passed).length
   const errorCount = checkStatuses.filter((status) => status.errored).length
   const failedCount = checkStatuses.filter((status) => status.failed).length
+
+  // Each row's one status (src/app/studentList.js). Stuck uses the Needs you rules (needsYou.js)
+  // during a live lesson only, as the old Needs you strip did.
+  const trackStuck = session?.state === 'active'
+  const errorRuns = {}
+  const rowStates = {}
+  const liveKeys = new Set()
+  students.forEach((student, i) => {
+    const id = student.anonymousId
+    errorRuns[id] = nextErrorRuns(errorRunsRef.current[id], student)
+    const needs = needsYouState(student, {
+      taskId: session?.currentTaskId,
+      hasCheck: trackStuck && hasCheck,
+      errorRuns: trackStuck ? errorRuns[id] : undefined,
+    })
+    const state = classifyStudentRow(student, {
+      checkStatus: checkStatuses[i],
+      needs,
+      errorRuns: errorRuns[id],
+    })
+    rowStates[id] = state
+    for (const key of [
+      state.status === 'help' ? `${id}:help` : null,
+      state.presence === 'away' ? `${id}:away` : null,
+    ]) {
+      if (!key) continue
+      liveKeys.add(key)
+      if (seenAtRef.current[key] == null) seenAtRef.current[key] = Date.now()
+    }
+    const raw = Math.max(Number(student.lastActivityAt) || 0, Number(student.lastRunAt) || 0)
+    const seen = activityRef.current[id]
+    if (raw && seen?.raw !== raw) {
+      activityRef.current[id] = { raw, at: seen ? Date.now() : Math.min(Date.now(), raw) }
+    }
+  })
+  errorRunsRef.current = errorRuns
+  for (const key of Object.keys(seenAtRef.current)) {
+    if (!liveKeys.has(key)) delete seenAtRef.current[key]
+  }
+  const helpSince = (id) => seenAtRef.current[`${id}:help`] ?? null
+  const isAcked = (id) => ackedHelp.has(`${id}:${helpSince(id)}`)
+  const order = orderStudentRows(students, {
+    groupOf: (student) =>
+      rowGroup(rowStates[student.anonymousId], { acked: isAcked(student.anonymousId) }),
+    prev: orderRef.current,
+    pinnedId: openRowId,
+  })
+  orderRef.current = order
+  const studentsById = Object.fromEntries(students.map((st) => [st.anonymousId, st]))
+  const ordered = order.ids.map((id) => studentsById[id]).filter(Boolean)
+  const counts = summariseRowStates(Object.values(rowStates))
+  const sameOutput = sameOutputSummary(students)
+  // Composed lessons need the task's own module (getEffectiveLessonForTask), as StudentCard does.
+  const taskContext = currentTask
+    ? deriveTaskContext(getEffectiveLessonForTask(lesson, currentTask), currentTask, session)
+    : null
+  const isCodeTask =
+    !!taskContext && !taskContext.isInformation && !taskContext.isActivity && !taskContext.isQuiz
+  const expandedIndex = ordered.findIndex((st) => st.anonymousId === expandedStudentId)
+  const expandedStudent = expandedIndex >= 0 ? ordered[expandedIndex] : null
 
   if (collapsed) {
     const runCount = students.filter((s) => s.lastRunStatus != null).length
@@ -479,15 +564,118 @@ export default function StudentGrid({
     </DropdownMenu>
   )
 
-  // The status row under the title: count chips and Fullscreen All.
+  // The header's plain count line (finished, stuck, failed, error, away, offline): it replaces
+  // the old check / cross / warning chips and the Needs you strip's Finished line.
+  const summaryParts = [
+    counts.finished > 0 && {
+      key: 'finished',
+      text: `${counts.finished} finished`,
+      title: 'Students who passed the completion check',
+    },
+    counts.stuck > 0 && {
+      key: 'stuck',
+      text: `${counts.stuck} stuck`,
+      title: 'Failed the check 3 times in a row, or the same error 3 runs in a row',
+    },
+    counts.failed > 0 && {
+      key: 'failed',
+      text: `${counts.failed} failed`,
+      title: 'Students who failed the completion check',
+    },
+    counts.error > 0 && {
+      key: 'error',
+      text: `${counts.error} error`,
+      title: 'Students whose latest run crashed with an error',
+    },
+    counts.away > 0 && {
+      key: 'away',
+      text: `${counts.away} away`,
+      title: 'Online, but their tab is not focused',
+    },
+    counts.offline > 0 && { key: 'offline', text: `${counts.offline} offline`, title: 'Offline' },
+  ].filter(Boolean)
+
+  // The status row under the title: the count line, roster and joining chips, Fullscreen All.
   const hasStatusRow =
     joiningCount > 0 ||
     (!!onOpenRoster &&
       (unmatchedCount > 0 || !!rosterStatus?.needsClass || carryWaitingIds.size > 0)) ||
-    (hasCheck && (passedCount > 0 || failedCount > 0)) ||
-    errorCount > 0 ||
+    summaryParts.length > 0 ||
+    !!sameOutput ||
     nudgedAway ||
     (!!onRequestFullscreenAll && students.length > 0)
+
+  const visibleRows = finishedOnly
+    ? ordered.filter((st) => rowStates[st.anonymousId]?.status === 'finished')
+    : ordered
+  const helpRows = finishedOnly
+    ? []
+    : visibleRows.filter((st) => order.groups[st.anonymousId] === 0)
+  const otherRows = finishedOnly
+    ? visibleRows
+    : visibleRows.filter((st) => order.groups[st.anonymousId] !== 0)
+  const openId = openRowId && studentsById[openRowId] ? openRowId : null
+
+  function renderRow(student) {
+    const id = student.anonymousId
+    const state = rowStates[id]
+    return (
+      <StudentListRow
+        key={id}
+        student={student}
+        state={state}
+        lesson={lesson}
+        session={session}
+        now={now}
+        since={state.status === 'help' ? helpSince(id) : (seenAtRef.current[`${id}:away`] ?? null)}
+        activityAt={activityRef.current[id]?.at ?? null}
+        helpAcked={isAcked(id)}
+        onAckHelp={(studentId) =>
+          setAckedHelp((prev) => new Set(prev).add(`${studentId}:${helpSince(studentId)}`))
+        }
+        open={openId === id}
+        onToggleOpen={(studentId) =>
+          setOpenRowId((prev) => (prev === studentId ? null : studentId))
+        }
+        onOpenStudent={handleExpand}
+        onThumbsUp={onThumbsUpStudent}
+        onNudge={onNudgeStudent}
+        onRename={onRename}
+        onRemove={onRemove}
+        onAwardBadge={onDecideBadge ? setAwardFor : null}
+        onSendHint={onSendHint ? (st) => setCompose({ kind: 'hint', student: st }) : null}
+        onSendMessage={onSendMessage ? (st) => setCompose({ kind: 'message', student: st }) : null}
+        onRequestFullscreen={onRequestFullscreenStudent}
+        onOpenSideQuest={handleOpenSideQuest}
+        onOpenRoster={onOpenRoster}
+        selectMode={selectMode}
+        selected={selectedIds.has(id)}
+        onToggleSelect={toggleSelected}
+        highlighted={highlightedIds.has(id)}
+        live={session?.activeStudentView === id}
+        activities={activities[id] ?? []}
+        rosterUnmatched={unmatchedIds.has(id)}
+        carryWaiting={carryWaitingIds.has(id)}
+        badgePendingCount={badgeSuggestions?.pendingCountByStudent?.[id] ?? 0}
+        isCodeTask={isCodeTask}
+        isInformation={!!taskContext?.isInformation}
+        cardProps={{
+          lessonId,
+          onNudge: onNudgeStudent,
+          onThumbsUp: onThumbsUpStudent,
+          badgeSuggestionList: badgeSuggestions?.suggestions ?? [],
+          catalogueBadges,
+          onDecideBadge,
+          onRevokeBadge,
+          onShowResponse,
+          onHideResponse,
+          onSetShownResponseName,
+          badgeAwardedCount: badgeSuggestions?.awardedCountByStudent?.[id] ?? 0,
+          rosterName: rosterStatus?.namesByStudent?.[id] ?? null,
+        }}
+      />
+    )
+  }
 
   return (
     <div style={s.wrap} data-testid="student-grid">
@@ -496,9 +684,16 @@ export default function StudentGrid({
           class actions (its dot means someone is Away or a badge suggestion is waiting) and
           the collapse arrow. The status row under it holds the count chips and Fullscreen
           All, and wraps rather than overlapping. */}
-      <div style={s.header}>
-        <span style={s.label}>
-          Students <span style={s.labelCount}>({students.length})</span>
+      <div style={s.header} data-testid="student-grid-header">
+        <span style={s.titleGroup}>
+          <span style={s.label}>
+            Students <span style={s.labelCount}>({students.length})</span>
+          </span>
+          {counts.help > 0 && (
+            <span style={s.helpChip} data-testid="help-count" title="Students asking for help">
+              ✋ {counts.help} need{counts.help === 1 ? 's' : ''} help
+            </span>
+          )}
         </span>
         <div style={s.headerRight}>
           {hasClassMenu && classMenu}
@@ -539,28 +734,13 @@ export default function StudentGrid({
                 {carryWaitingIds.size > 0 ? ` · ⏳ ${carryWaitingIds.size}` : ''}
               </button>
             )}
-          {hasCheck && passedCount > 0 && (
-            <span
-              style={{ ...s.checkCountBadge, background: 'var(--colour-success)' }}
-              title="Students who passed the completion check"
-            >
-              ✓ {passedCount}
-            </span>
-          )}
-          {hasCheck && failedCount > 0 && (
-            <span
-              style={{ ...s.checkCountBadge, background: 'var(--colour-error)' }}
-              title="Students who failed the completion check"
-            >
-              ✕ {failedCount}
-            </span>
-          )}
-          {errorCount > 0 && (
-            <span
-              style={{ ...s.checkCountBadge, background: '#ea580c' }}
-              title="Students whose latest run crashed with an error"
-            >
-              ⚠ {errorCount}
+          {summaryParts.length > 0 && (
+            <span style={s.summary} data-testid="student-list-summary">
+              {summaryParts.map((part) => (
+                <span key={part.key} title={part.title} style={s.summaryPart}>
+                  {part.text}
+                </span>
+              ))}
             </span>
           )}
           {nudgedAway && (
@@ -578,17 +758,20 @@ export default function StudentGrid({
               {fullscreenRequested ? '✓ Requested' : '⛶ Fullscreen All'}
             </button>
           )}
+          {sameOutput && (
+            <span
+              style={s.sameOutput}
+              data-testid="same-output"
+              title={sameOutput.studentIds.map((id) => studentNames[id]).join(', ')}
+            >
+              {sameOutput.count} show the same output:{' '}
+              <code style={s.sameOutputText}>{sameOutput.text}</code>
+            </span>
+          )}
         </div>
       )}
 
       <JoiningStudentsList joiningStudents={joiningStudents} onAdmit={onAdmitJoining} />
-      {onReadPendingShare && (
-        <ShareRequestsBanner
-          students={students}
-          onReview={handleExpand}
-          onDecline={onDeclineShare}
-        />
-      )}
 
       {students.length === 0 ? (
         <div style={s.empty}>
@@ -705,15 +888,6 @@ export default function StudentGrid({
               </button>
             </div>
           )}
-          {session?.state === 'active' && (
-            <NeedsYouStrip
-              students={students}
-              taskId={session?.currentTaskId}
-              hasCheck={hasCheck}
-              names={studentNames}
-              onOpen={handleExpand}
-            />
-          )}
           <ClassActivityStrip
             entries={activitySummary}
             names={studentNames}
@@ -732,46 +906,73 @@ export default function StudentGrid({
             highlighted={highlightedIds.size > 0 ? highlightedGroup : null}
             onHighlight={setHighlightedGroup}
           />
-          <div style={s.grid}>
-            {students.map((student) => (
-              <StudentCard
-                key={student.anonymousId}
-                student={student}
-                lesson={lesson}
-                lessonId={lessonId}
-                session={session}
-                onRename={onRename}
-                onRemove={onRemove}
-                onExpand={handleExpand}
-                onNudge={onNudgeStudent}
-                onThumbsUp={onThumbsUpStudent}
-                badgeSuggestionList={badgeSuggestions?.suggestions ?? []}
-                catalogueBadges={catalogueBadges}
-                onDecideBadge={onDecideBadge}
-                onRevokeBadge={onRevokeBadge}
-                onShowResponse={onShowResponse}
-                onHideResponse={onHideResponse}
-                onSetShownResponseName={onSetShownResponseName}
-                badgePendingCount={
-                  badgeSuggestions?.pendingCountByStudent?.[student.anonymousId] ?? 0
-                }
-                badgeAwardedCount={
-                  badgeSuggestions?.awardedCountByStudent?.[student.anonymousId] ?? 0
-                }
-                activities={activities[student.anonymousId] ?? []}
-                onOpenSideQuest={handleOpenSideQuest}
-                highlighted={highlightedIds.has(student.anonymousId)}
-                selectMode={selectMode}
-                selected={selectedIds.has(student.anonymousId)}
-                onToggleSelect={toggleSelected}
-                rosterName={rosterStatus?.namesByStudent?.[student.anonymousId] ?? null}
-                rosterUnmatched={unmatchedIds.has(student.anonymousId)}
-                carryWaiting={carryWaitingIds.has(student.anonymousId)}
-                onOpenRoster={onOpenRoster}
+          {/* One compact row per student: help rows first (amber, with I'm on it), then the
+              share requests, the Finished filter, everyone else, and offline last. */}
+          <div style={s.list} data-testid="student-list">
+            {helpRows.map(renderRow)}
+            {onReadPendingShare && (
+              <ShareRequestsBanner
+                students={students}
+                onReview={handleExpand}
+                onDecline={onDeclineShare}
               />
-            ))}
+            )}
+            {counts.finished > 0 && (
+              <div style={s.finishedLine} data-testid="finished-filter">
+                <span>
+                  <span aria-hidden="true">✓</span> Finished ({counts.finished})
+                </span>
+                <button
+                  type="button"
+                  style={s.finishedBtn}
+                  aria-pressed={finishedOnly}
+                  onClick={() => setFinishedOnly((v) => !v)}
+                  title={
+                    finishedOnly
+                      ? 'Show every student again'
+                      : 'Show only the students who finished'
+                  }
+                >
+                  {finishedOnly ? 'Show all' : 'Show'}
+                </button>
+              </div>
+            )}
+            {otherRows.map(renderRow)}
           </div>
         </>
+      )}
+
+      {awardFor && onDecideBadge && (
+        <BadgeAwardDialog
+          students={[{ anonymousId: awardFor.anonymousId, displayName: awardFor.displayName }]}
+          decisions={session?.badges ?? {}}
+          catalogueBadges={catalogueBadges}
+          suggestions={badgeSuggestions?.suggestions ?? []}
+          taskId={session?.currentTaskId ?? null}
+          onDecideBadge={onDecideBadge}
+          onRevokeBadge={onRevokeBadge}
+          onClose={() => setAwardFor(null)}
+        />
+      )}
+
+      {/* The row menu's Send hint and Message: the student window's own compose box and
+          handlers (StudentModal.jsx), without opening the window. */}
+      {compose?.kind === 'hint' && onSendHint && (
+        <MessageCompose
+          variant="hint"
+          student={compose.student}
+          isOpen
+          onSendMessage={(id, text) => onSendHint(id, text, session?.currentTaskId ?? null)}
+          onClose={() => setCompose(null)}
+        />
+      )}
+      {compose?.kind === 'message' && onSendMessage && (
+        <MessageCompose
+          student={compose.student}
+          isOpen
+          onSendMessage={onSendMessage}
+          onClose={() => setCompose(null)}
+        />
       )}
 
       {showBadgeDialog && onDecideBadge && selectedStudents.length > 0 && (
@@ -832,7 +1033,7 @@ export default function StudentGrid({
           onStopLive={() => onStopLive?.()}
           onClose={handleClose}
           hasPrev={expandedIndex > 0}
-          hasNext={expandedIndex < students.length - 1}
+          hasNext={expandedIndex < ordered.length - 1}
           onPrev={handlePrev}
           onNext={handleNext}
           onRemoteReset={onRemoteReset}
@@ -886,7 +1087,7 @@ export default function StudentGrid({
               : null
           }
           position={expandedIndex + 1}
-          total={students.length}
+          total={ordered.length}
           commonHints={commonHints}
         />
       )}
@@ -995,14 +1196,79 @@ const s = {
     lineHeight: 1.25,
     whiteSpace: 'nowrap',
   },
-  grid: {
+  // One column of compact rows (StudentListRow), 2px apart.
+  list: {
     flex: 1,
     overflowY: 'auto',
-    padding: 8,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
-    gap: 7,
-    alignContent: 'start',
+    padding: '4px 6px 6px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
+  titleGroup: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 },
+  helpChip: {
+    background: '#f59e0b',
+    color: '#fff',
+    borderRadius: 999,
+    padding: '2px 8px',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    minWidth: 0,
+  },
+  summary: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    columnGap: 8,
+    rowGap: 0,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.74rem',
+    fontWeight: 600,
+    minWidth: 0,
+  },
+  summaryPart: { whiteSpace: 'nowrap' },
+  sameOutput: {
+    flexBasis: '100%',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.74rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  sameOutputText: {
+    fontFamily: "'JetBrains Mono', monospace",
+    background: 'rgba(255,255,255,0.18)',
+    borderRadius: 3,
+    padding: '0 4px',
+  },
+  finishedLine: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexShrink: 0,
+    height: 24,
+    padding: '0 8px',
+    borderRadius: 6,
+    background: 'var(--colour-success-bg, #ecfdf5)',
+    color: 'var(--colour-success-text)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    fontWeight: 700,
+  },
+  finishedBtn: {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    color: 'var(--colour-success-text)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    fontWeight: 700,
+    textDecoration: 'underline',
+    cursor: 'pointer',
   },
   empty: {
     flex: 1,

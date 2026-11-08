@@ -119,9 +119,7 @@ describe('rowGroup and orderStudentRows', () => {
 
 describe('output text', () => {
   it('uses the last line of output, or the error when the run crashed', () => {
-    expect(rowOutputText({ currentOutput: 'a\nhello\n\n', lastRunStatus: 'success' })).toBe(
-      'hello'
-    )
+    expect(rowOutputText({ currentOutput: 'a\nhello\n\n', lastRunStatus: 'success' })).toBe('hello')
     expect(
       rowOutputText({
         lastRunStatus: 'error',

@@ -1,11 +1,13 @@
-// The tutor's "Needs you" strip above the student grid (Hub #224, research note 25 Oct: show the
-// few students who need the tutor, quiet for everyone else). Built only from what the tutor's
-// screen already receives, so nothing new is written to Firebase:
+// Who needs the tutor (Hub #224, research note 25 Oct: show the few students who need the tutor,
+// quiet for everyone else). The compact student list (studentList.js, StudentGrid) uses these
+// rules for its Needs help and Stuck rows; the old "Needs you" strip was folded into it (8 Nov
+// 2026). Built only from what the tutor's screen already receives, so nothing new is written to
+// Firebase:
 // - help: the student pressed "I need help" (`needsHelp`);
 // - error: the latest runs crashed with the same error ERROR_LOOP_RUNS times in a row (counted
 //   on the tutor's screen from `lastRunAt` / `lastRunStatus` / `lastRunError`);
 // - stuck: failed the current task's check STUCK_FAILS times in a row (`studentHint.failStreak`);
-// - finished: passed the current task's check, ready for a stretch.
+// - finished: passed the current task's check.
 // "Waiting" times start when this tutor screen first saw the state, so a reload restarts them.
 //
 // Pure and Node-safe.

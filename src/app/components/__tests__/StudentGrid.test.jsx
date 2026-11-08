@@ -4,15 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import StudentGrid from '../StudentGrid'
 
-vi.mock('../StudentCard', () => ({
-  default: ({ student, onExpand }) => (
-    <div data-testid="student-card">
-      <span>{student.displayName}</span>
-      <button onClick={() => onExpand(student)}>Expand {student.displayName}</button>
-    </div>
-  ),
-}))
-
 vi.mock('../../../shared/TopicLibraryView', () => ({
   TopicLibraryDialog: () => <div data-testid="topic-library" />,
 }))
@@ -77,6 +68,15 @@ const STUDENTS = [
   { anonymousId: 's3', displayName: 'Carol', online: true, lastRunStatus: null, checkPassed: null },
 ]
 
+// Opens a student's window the compact list's way: open their row, then Open.
+async function openStudent(user, name) {
+  const row = screen.getAllByTestId('student-row').find((el) => el.dataset.studentName === name)
+  await user.click(within(row).getByTestId('row-main'))
+  await user.click(
+    within(within(row).getByTestId('row-open')).getByRole('button', { name: `Open ${name}` })
+  )
+}
+
 function mkProps(overrides = {}) {
   return {
     students: STUDENTS,
@@ -124,9 +124,9 @@ describe('StudentGrid pause control visibility', () => {
 
 describe('StudentGrid', () => {
   describe('expanded (default) state', () => {
-    it('renders one card per student', () => {
+    it('renders one compact row per student', () => {
       render(<StudentGrid {...mkProps()} />)
-      expect(screen.getAllByTestId('student-card')).toHaveLength(3)
+      expect(screen.getAllByTestId('student-row')).toHaveLength(3)
     })
 
     it('renders the display name of each student', () => {
@@ -310,7 +310,7 @@ describe('StudentGrid', () => {
   })
 
   describe('header', () => {
-    it('keeps the title line to Students (n), ⋯ and the collapse arrow; chips and Fullscreen All go in the row below', () => {
+    it('keeps the title line to Students (n), ⋯ and the collapse arrow; counts and Fullscreen All go in the row below', () => {
       render(
         <StudentGrid
           {...mkProps({
@@ -324,7 +324,7 @@ describe('StudentGrid', () => {
         />
       )
       expect(screen.getByText('Students')).toHaveTextContent('Students (3)')
-      const header = screen.getByText('Students').parentElement
+      const header = screen.getByTestId('student-grid-header')
       expect(header.style.flexWrap).toBe('nowrap')
       expect(within(header).queryByText('⛶ Fullscreen All')).not.toBeInTheDocument()
       expect(
@@ -446,35 +446,36 @@ describe('StudentGrid', () => {
   })
 
   describe('expand and modal navigation', () => {
-    it('renders StudentModal for the expanded student when a card is expanded', async () => {
+    it('renders StudentModal for the student when their row is opened and Open is clicked', async () => {
       const user = userEvent.setup()
       render(<StudentGrid {...mkProps()} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await openStudent(user, 'Alice')
       expect(screen.getByTestId('student-modal')).toBeInTheDocument()
       expect(screen.getByTestId('modal-name')).toHaveTextContent('Alice')
     })
 
-    it('advances to the next student when Next is clicked in the modal', async () => {
+    // Next / Prev follow the list's order: Bob is offline, so he is last.
+    it('advances to the next student in the list when Next is clicked in the modal', async () => {
       const user = userEvent.setup()
       render(<StudentGrid {...mkProps()} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await openStudent(user, 'Alice')
       expect(screen.getByTestId('modal-name')).toHaveTextContent('Alice')
       await user.click(screen.getByRole('button', { name: 'Next student' }))
-      expect(screen.getByTestId('modal-name')).toHaveTextContent('Bob')
+      expect(screen.getByTestId('modal-name')).toHaveTextContent('Carol')
     })
 
-    it('moves to the previous student when Prev is clicked in the modal', async () => {
+    it('moves to the previous student in the list when Prev is clicked in the modal', async () => {
       const user = userEvent.setup()
       render(<StudentGrid {...mkProps()} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Bob' }))
+      await openStudent(user, 'Bob')
       await user.click(screen.getByRole('button', { name: 'Prev student' }))
-      expect(screen.getByTestId('modal-name')).toHaveTextContent('Alice')
+      expect(screen.getByTestId('modal-name')).toHaveTextContent('Carol')
     })
 
     it('closes the modal when Close is clicked', async () => {
       const user = userEvent.setup()
       render(<StudentGrid {...mkProps()} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await openStudent(user, 'Alice')
       expect(screen.getByTestId('student-modal')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Close modal' }))
       expect(screen.queryByTestId('student-modal')).not.toBeInTheDocument()
@@ -484,7 +485,7 @@ describe('StudentGrid', () => {
       const user = userEvent.setup()
       const onSendVideoCallLink = vi.fn()
       render(<StudentGrid {...mkProps({ onSendVideoCallLink })} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await openStudent(user, 'Alice')
       await user.click(screen.getByRole('button', { name: 'Send video call link' }))
       expect(onSendVideoCallLink).toHaveBeenCalledWith('s1')
     })
@@ -493,7 +494,7 @@ describe('StudentGrid', () => {
       const user = userEvent.setup()
       const onSetCopyCodeOverride = vi.fn()
       render(<StudentGrid {...mkProps({ onSetCopyCodeOverride })} />)
-      await user.click(screen.getByRole('button', { name: 'Expand Alice' }))
+      await openStudent(user, 'Alice')
       await user.click(screen.getByRole('button', { name: 'Edit Type this out' }))
       expect(onSetCopyCodeOverride).toHaveBeenCalledWith('s1', 1, 'x')
     })
@@ -663,32 +664,50 @@ describe('StudentGrid joining students', () => {
   })
 })
 
-describe('StudentGrid needs-you strip', () => {
+// The old Needs you strip is folded into the compact list: help rows sit at the top with I'm on
+// it, and Finished (N) replaces its names line.
+describe('StudentGrid help rows (was the needs-you strip)', () => {
   const helpStudents = [
     ...STUDENTS,
     { anonymousId: 's4', displayName: 'Dan', online: true, needsHelp: true },
   ]
+  const names = () => screen.getAllByTestId('student-row').map((row) => row.dataset.studentName)
 
-  it('lists a help request, opens the student, and hides it on I am on it', async () => {
+  it('puts a help request first, opens the student, and moves it down on I am on it', async () => {
     const props = mkProps({ students: helpStudents, lesson: LESSON_WITH_CHECK })
     render(<StudentGrid {...props} />)
-    const strip = screen.getByTestId('needs-you')
-    expect(within(strip).getByText('Needs you (1)')).toBeInTheDocument()
-    const row = screen.getByTestId('needs-you-help-s4')
-    expect(row).toHaveTextContent('Asked for help')
-    fireEvent.click(within(row).getByTitle('Open Dan'))
+    expect(names()[0]).toBe('Dan')
+    const row = screen.getAllByTestId('student-row')[0]
+    expect(within(row).getByTestId('row-status')).toHaveTextContent('Needs help')
+    fireEvent.mouseEnter(row)
+    fireEvent.click(within(row).getByRole('button', { name: 'Open Dan' }))
     expect(props.onGoLive).toHaveBeenCalledWith('s4')
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }))
     fireEvent.click(within(row).getByRole('button', { name: /on it/ }))
-    expect(screen.queryByTestId('needs-you-help-s4')).not.toBeInTheDocument()
-    expect(screen.getByTestId('needs-you-finished')).toHaveTextContent('Alice')
+    expect(names()).toEqual(['Alice', 'Carol', 'Dan', 'Bob'])
+    expect(screen.getByTestId('finished-filter')).toHaveTextContent('Finished (1)')
   })
 
-  it('is not shown outside a live session', () => {
+  it('does not call anyone Stuck outside a live session', () => {
+    const stuck = STUDENTS.map((st) =>
+      st.anonymousId === 's3'
+        ? {
+            ...st,
+            lastRunStatus: 'success',
+            checkPassed: false,
+            studentHint: { text: 'x', failStreak: 4, taskId: '1' },
+          }
+        : st
+    )
     render(
       <StudentGrid
-        {...mkProps({ students: helpStudents, session: { state: 'sandbox', currentTaskId: 1 } })}
+        {...mkProps({
+          students: stuck,
+          lesson: LESSON_WITH_CHECK,
+          session: { state: 'sandbox', currentTaskId: 1 },
+        })}
       />
     )
-    expect(screen.queryByTestId('needs-you')).not.toBeInTheDocument()
+    expect(screen.getByTestId('student-grid').textContent).not.toMatch(/Stuck/)
   })
 })

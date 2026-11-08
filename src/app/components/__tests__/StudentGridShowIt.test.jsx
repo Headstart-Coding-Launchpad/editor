@@ -4,18 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import StudentGrid from '../StudentGrid'
 
-vi.mock('../StudentCard', () => ({
-  default: ({ student, selectMode, selected, onToggleSelect }) => (
-    <div data-testid="student-card">
-      <span>{student.displayName}</span>
-      {selectMode && (
-        <button aria-pressed={selected} onClick={() => onToggleSelect(student.anonymousId)}>
-          Pick {student.displayName}
-        </button>
-      )}
-    </div>
-  ),
-}))
 vi.mock('../../../shared/TopicLibraryView', () => ({
   TopicLibraryDialog: () => <div />,
 }))
@@ -56,8 +44,8 @@ describe('Show it picker', () => {
     const user = userEvent.setup()
     const props = renderGrid()
     await openPicker(user)
-    await user.click(screen.getByRole('button', { name: 'Pick B' }))
-    await user.click(screen.getByRole('button', { name: 'Pick D' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Select B' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Select D' }))
     await user.click(screen.getByRole('button', { name: '📺 Show it' }))
     expect(props.onShowIt).toHaveBeenCalledWith(['sB', 'sD'])
   })
@@ -67,7 +55,7 @@ describe('Show it picker', () => {
     const props = renderGrid()
     await openPicker(user)
     for (const n of ['A', 'B', 'C', 'D']) {
-      await user.click(screen.getByRole('button', { name: `Pick ${n}` }))
+      await user.click(screen.getByRole('checkbox', { name: `Select ${n}` }))
     }
     const button = screen.getByRole('button', { name: /Show it \(max 3\)/ })
     expect(button).toBeDisabled()

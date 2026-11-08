@@ -195,7 +195,7 @@ describe('compact student list: a row opens in place', () => {
     const fold = screen.getByTestId('row-more')
     expect(within(fold).getByLabelText(/Pasted ×2/)).toBeInTheDocument()
     expect(within(fold).getByLabelText(/Can see: Info \+ Code/)).toBeInTheDocument()
-    await user.click(within(open).getByRole('button', { name: /^Open/ }))
+    await user.click(within(open).getByRole('button', { name: 'Open Gus' }))
     expect(props.onGoLive).toHaveBeenCalledWith('g')
     expect(screen.getByTestId('modal-name')).toHaveTextContent('Gus')
   })
@@ -266,13 +266,13 @@ describe('compact student list: nothing a tutor could do is lost', () => {
     menu = await openMenu(user, 'Dev')
     await user.click(within(menu).getByRole('menuitem', { name: /Send hint/ }))
     await user.type(screen.getByRole('textbox'), 'Look at line 3')
-    await user.click(screen.getByRole('button', { name: /Send/ }))
+    await user.click(screen.getByRole('button', { name: 'Send hint' }))
     expect(handlers.onSendHint).toHaveBeenCalledWith('d', 'Look at line 3', 1)
 
     menu = await openMenu(user, 'Dev')
     await user.click(within(menu).getByRole('menuitem', { name: /Message/ }))
     await user.type(screen.getByRole('textbox'), 'Well done')
-    await user.click(screen.getByRole('button', { name: /Send/ }))
+    await user.click(screen.getByRole('button', { name: 'Send' }))
     expect(handlers.onSendMessage).toHaveBeenCalledWith('d', 'Well done')
 
     menu = await openMenu(user, 'Dev')
@@ -331,7 +331,12 @@ describe('compact student list: nothing a tutor could do is lost', () => {
       st('a', 'Ann', { checkPassed: true, lastRunStatus: 'success', sideQuestOpen: 0 }),
       st('b', 'Ben'),
     ]
-    render(<StudentGrid {...mkProps({ students })} />)
+    // The activity model reads the session's own student records, as TeacherView passes them.
+    const session = {
+      ...SESSION,
+      students: Object.fromEntries(students.map((s) => [s.anonymousId, s])),
+    }
+    render(<StudentGrid {...mkProps({ students, session })} />)
     expect(within(rowOf('Ann')).getByTestId('row-note')).toHaveTextContent('on side-quest')
     await user.click(within(rowOf('Ben')).getByRole('button', { name: 'Actions for Ben' }))
     expect(screen.queryByRole('menuitem', { name: /See their side-quest/ })).toBeNull()

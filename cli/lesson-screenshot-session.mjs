@@ -250,6 +250,12 @@ async function captureOne({ shot, tutor, pages, outPath }) {
       .getByText(shot.student, { exact: true })
       .first()
       .click({ timeout: 6000 })
+    // The compact list opens the row in place; its Open button opens the student window.
+    await tutor
+      .getByTestId('student-grid')
+      .getByRole('button', { name: `Open ${shot.student}`, exact: true })
+      .first()
+      .click({ timeout: 6000 })
     await wait(tutor, 2000)
     await settle(tutor, 300)
     await tutor.screenshot({ path: outPath })

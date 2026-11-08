@@ -187,7 +187,12 @@ export default function StudentCard({
   // Held on a cross-lesson carry task until their earlier-lesson work is found (⏳ marker).
   carryWaiting = false,
   onOpenRoster = null,
+  // 'card' (default): the whole clickable card. 'detail': the same chips, output and buttons
+  // without the name, rename, remove and thumbs-up (the compact list's row carries those), as
+  // the More fold of an opened row in the student list (StudentListRow.jsx).
+  variant = 'card',
 }) {
+  const detail = variant === 'detail'
   // The 🗺️ "on side-quest" activity opens their side-quest (not in multi-select).
   const opensSideQuest = (activity) =>
     activity?.kind === 'side_quest' && !!onOpenSideQuest && !selectMode
@@ -401,31 +406,42 @@ export default function StudentCard({
     // every card - over half the height budget - was the loudest thing on the wall, and
     // was identical on all eight, so it carried nothing about the student it belonged to.
     <div
-      style={{
-        ...s.card,
-        ...checkCardStyle,
-        ...s.cardClickable,
-        ...(selectMode && selected ? s.cardSelected : null),
-        ...(highlighted ? s.cardHighlighted : null),
-      }}
-      className="card"
-      role={selectMode ? 'checkbox' : 'button'}
-      aria-checked={selectMode ? selected : undefined}
-      tabIndex={0}
-      aria-label={selectMode ? `Select ${student.displayName}` : `Expand ${student.displayName}`}
-      onClick={activate}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget) return
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          activate()
-        }
-      }}
+      style={
+        detail
+          ? s.detail
+          : {
+              ...s.card,
+              ...checkCardStyle,
+              ...s.cardClickable,
+              ...(selectMode && selected ? s.cardSelected : null),
+              ...(highlighted ? s.cardHighlighted : null),
+            }
+      }
+      className={detail ? undefined : 'card'}
+      data-testid={detail ? 'student-card-detail' : undefined}
+      {...(detail
+        ? {}
+        : {
+            role: selectMode ? 'checkbox' : 'button',
+            'aria-checked': selectMode ? selected : undefined,
+            tabIndex: 0,
+            'aria-label': selectMode
+              ? `Select ${student.displayName}`
+              : `Expand ${student.displayName}`,
+            onClick: activate,
+            onKeyDown: (event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                activate()
+              }
+            },
+          })}
     >
       {/* Header row */}
       <div style={s.header}>
         <div style={s.nameRow}>
-          {selectMode && (
+          {selectMode && !detail && (
             <span
               style={{ ...s.selectBox, ...(selected ? s.selectBoxOn : null) }}
               aria-hidden="true"
@@ -433,8 +449,10 @@ export default function StudentCard({
               {selected ? '✓' : ''}
             </span>
           )}
-          <span style={{ ...s.statusDot, background: statusColour }} title={presenceTitle} />
-          {editing ? (
+          {!detail && (
+            <span style={{ ...s.statusDot, background: statusColour }} title={presenceTitle} />
+          )}
+          {detail ? null : editing ? (
             <form
               onSubmit={handleRename}
               style={s.nameForm}
@@ -536,28 +554,32 @@ export default function StudentCard({
               ▶ {formatLastRun(student.lastRunAt)}
             </span>
           )}
-          <button
-            style={s.pencil}
-            onClick={(event) => {
-              event.stopPropagation()
-              setEditing((e) => !e)
-            }}
-            title="Rename student"
-          >
-            ✏️
-          </button>
-          <button
-            style={s.removeBtn}
-            onClick={(event) => {
-              event.stopPropagation()
-              if (window.confirm(`Remove ${student.displayName} from the session?`)) {
-                onRemove?.(student.anonymousId)
-              }
-            }}
-            title="Remove student"
-          >
-            ✕
-          </button>
+          {!detail && (
+            <button
+              style={s.pencil}
+              onClick={(event) => {
+                event.stopPropagation()
+                setEditing((e) => !e)
+              }}
+              title="Rename student"
+            >
+              ✏️
+            </button>
+          )}
+          {!detail && (
+            <button
+              style={s.removeBtn}
+              onClick={(event) => {
+                event.stopPropagation()
+                if (window.confirm(`Remove ${student.displayName} from the session?`)) {
+                  onRemove?.(student.anonymousId)
+                }
+              }}
+              title="Remove student"
+            >
+              ✕
+            </button>
+          )}
         </div>
         <div style={s.badgeRow}>
           {/* Online is the default and is already carried by the status dot; only an
@@ -587,7 +609,7 @@ export default function StudentCard({
               {nudged ? '✓' : '🔔'}
             </TipButton>
           )}
-          {onThumbsUp && student.online && (
+          {onThumbsUp && student.online && !detail && (
             <TipButton
               style={{ ...s.thumbsUpBtn, ...(thumbsUpSent ? s.thumbsUpBtnSent : null) }}
               disabled={thumbsUpSent}
@@ -1063,6 +1085,8 @@ export default function StudentCard({
 }
 
 const s = {
+  // The More fold of an opened row in the compact list: no card chrome of its own.
+  detail: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   // The Python Stage thumbnail beside the output lines.
   stageSnippetRow: { display: 'flex', gap: 8, alignItems: 'stretch' },
   cardStage: { flex: '0 0 auto', width: 64, height: 64 },
