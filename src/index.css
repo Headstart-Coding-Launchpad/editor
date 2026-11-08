@@ -1017,6 +1017,11 @@ select {
   flex-wrap: nowrap;
 }
 
+/* Labels stay on one line, so the row keeps its height on a 1024 tablet. */
+.teacher-session-controls .teacher-session-controls__action {
+  white-space: nowrap;
+}
+
 .teacher-top-row__present {
   border: 1px solid #fff;
   border-radius: 8px;
