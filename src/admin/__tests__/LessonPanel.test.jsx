@@ -3,9 +3,13 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import LessonPanel from '../LessonPanel'
+import { resetAdminSnapshots } from '../adminSnapshots'
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db, name) => ({ __collection: name })),
+  collection: vi.fn((_db, ...path) => ({
+    __collection: path[path.length - 1],
+    __path: path.join('/'),
+  })),
   collectionGroup: vi.fn((_db, name) => ({ __collectionGroup: name })),
   query: vi.fn((q) => q),
   orderBy: vi.fn(),
@@ -38,7 +42,16 @@ vi.mock('../../shared/lessonLinks', () => ({
   }),
 }))
 
-import { deleteDoc, getDocs, limit, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  collectionGroup,
+  deleteDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 
 let snapshotCallbacks = {}
 let errorCallbacks = {}
@@ -91,7 +104,16 @@ function fireFeedback(feedback = []) {
   })
 }
 
+// A lesson's reports and feedback are listened to only once its row is opened, so tests fire
+// them again after opening it.
+let lastDetail = { reports: [], feedback: [] }
+function fireLessonDetail() {
+  fireReports(lastDetail.reports)
+  fireFeedback(lastDetail.feedback)
+}
+
 function fireAll({ lessons = [], levels = [], classes = [], reports = [], feedback = [] } = {}) {
+  lastDetail = { reports, feedback }
   fireLessons(lessons)
   fireLevels(levels)
   fireClasses(classes)
@@ -140,6 +162,7 @@ const ELECTRONICS_LESSON = {
 
 describe('LessonPanel', () => {
   beforeEach(() => {
+    resetAdminSnapshots()
     vi.clearAllMocks()
     snapshotCallbacks = {}
     errorCallbacks = {}
@@ -429,6 +452,7 @@ describe('LessonPanel', () => {
     expect(screen.queryByText('Clarify the example.')).not.toBeInTheDocument()
 
     await openLesson(user)
+    fireLessonDetail()
     expect(screen.getByRole('button', { name: 'Share Links' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Reports.*1 total/i }))
@@ -438,15 +462,63 @@ describe('LessonPanel', () => {
     expect(screen.getByText('Clarify the example.')).toBeInTheDocument()
   })
 
-  it('reads only the newest 300 session reports', () => {
+  it('downloads no session reports or feedback until a lesson is opened', () => {
     render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
 
-    expect(limit).toHaveBeenCalledWith(300)
+    expect(collectionGroup).not.toHaveBeenCalled()
+    expect(snapshotCallbacks.sessionReports).toBeUndefined()
+    expect(snapshotCallbacks.feedback).toBeUndefined()
   })
 
-  it('shows an error when the session reports or feedback listeners fail', () => {
+  it("reads only the opened lesson's newest 20 reports, with Load more for the next 20", async () => {
+    const user = userEvent.setup()
     render(<LessonPanel />)
-    fireAll()
+    fireAll({ lessons: [PYTHON_LESSON] })
+    await openFirstLevel(user)
+    await openLesson(user)
+
+    expect(collection).toHaveBeenCalledWith({}, 'lessons', 'py-intro', 'sessionReports')
+    expect(collection).toHaveBeenCalledWith({}, 'lessons', 'py-intro', 'feedback')
+    expect(limit).toHaveBeenLastCalledWith(20)
+
+    fireReports(
+      Array.from({ length: 20 }, (_, i) => ({
+        id: `r${i}`,
+        lessonId: 'py-intro',
+        lessonTitle: `Run ${i}`,
+        startedAt: 1000 - i,
+      }))
+    )
+    await user.click(screen.getByRole('button', { name: /Reports.*newest 20/i }))
+    await user.click(screen.getByRole('button', { name: 'Load more reports' }))
+    expect(limit).toHaveBeenLastCalledWith(40)
+  })
+
+  it('does not download the lessons on the Classes tab', () => {
+    render(<LessonPanel view="classes" />)
+
+    expect(snapshotCallbacks.lessons).toBeUndefined()
+    expect(snapshotCallbacks.classes).toBeDefined()
+  })
+
+  it('shares the lessons download between the Lessons and Levels tabs', () => {
+    const first = render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+    first.unmount()
+    render(<LessonPanel view="levels" />)
+
+    const lessonListens = onSnapshot.mock.calls.filter(([ref]) => ref.__collection === 'lessons')
+    expect(lessonListens).toHaveLength(1)
+    expect(screen.getByText('1 lesson')).toBeInTheDocument()
+  })
+
+  it('shows an error when the session reports or feedback listeners fail', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+    await openFirstLevel(user)
+    await openLesson(user)
 
     act(() => {
       errorCallbacks.sessionReports?.(new Error('reports denied'))
@@ -483,6 +555,7 @@ describe('LessonPanel', () => {
 
     await openFirstLevel(user)
     await openLesson(user)
+    fireLessonDetail()
     await user.click(screen.getByRole('button', { name: /Feedback.*1 open \/ 1 total/i }))
     await user.click(screen.getByRole('button', { name: 'Resolve' }))
 
