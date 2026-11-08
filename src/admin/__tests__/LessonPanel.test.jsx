@@ -495,6 +495,30 @@ describe('LessonPanel', () => {
     expect(limit).toHaveBeenLastCalledWith(40)
   })
 
+  it('offers Retry when the next page of lesson reports fails', async () => {
+    const user = userEvent.setup()
+    render(<LessonPanel />)
+    fireAll({ lessons: [PYTHON_LESSON] })
+    await openFirstLevel(user)
+    await openLesson(user)
+    fireReports(
+      Array.from({ length: 20 }, (_, i) => ({
+        id: `r${i}`,
+        lessonId: 'py-intro',
+        lessonTitle: `Run ${i}`,
+        startedAt: 1000 - i,
+      }))
+    )
+    await user.click(screen.getByRole('button', { name: /Reports.*newest 20/i }))
+    await user.click(screen.getByRole('button', { name: 'Load more reports' }))
+    act(() => errorCallbacks.sessionReports?.(new Error('quota')))
+
+    const calls = onSnapshot.mock.calls.length
+    await user.click(screen.getByRole('button', { name: 'Retry loading more reports' }))
+    expect(onSnapshot.mock.calls.length).toBe(calls + 1)
+    expect(limit).toHaveBeenLastCalledWith(40)
+  })
+
   it('does not download the lessons on the Classes tab', () => {
     render(<LessonPanel view="classes" />)
 

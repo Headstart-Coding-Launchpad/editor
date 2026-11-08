@@ -13,7 +13,7 @@ import {
   AdminTable,
   adminUiStyles,
 } from './AdminUi'
-import { REPORT_PAGE_SIZE, useAdminLessons, useRecentReports } from './adminSnapshots'
+import { REPORT_PAGE_SIZE, useAdminLessons, useLoadMore, useRecentReports } from './adminSnapshots'
 
 const EMPTY = Object.freeze([])
 
@@ -55,6 +55,12 @@ export default function SoloPanel() {
   useEffect(() => {
     if (reportsSource.data) setReports(reportsSource.data)
   }, [reportsSource.data])
+  const reportsMore = useLoadMore({
+    source: reportsSource,
+    size: reportsSource.data?.length ?? 0,
+    count: reportCount,
+    pageSize: REPORT_PAGE_SIZE,
+  })
   const lessons = lessonsSource.data ?? EMPTY
   const reportsError = reportsSource.error
   const [soloLog, setSoloLog] = useState(null)
@@ -130,7 +136,7 @@ export default function SoloPanel() {
       {reportsError && (
         <AdminMessage tone="error">Could not load side-quest reports: {reportsError}</AdminMessage>
       )}
-      {reports.length >= reportCount && (
+      {reportsMore.hasMore && (
         <AdminMessage>
           Side-quests come from the newest {reports.length} session reports only.{' '}
           <button
@@ -138,10 +144,14 @@ export default function SoloPanel() {
             className="btn-ghost-outline"
             style={adminUiStyles.actionBtn}
             disabled={reportsSource.loading}
-            onClick={() => setReportCount((count) => count + REPORT_PAGE_SIZE)}
-            aria-label="Load more reports"
+            onClick={
+              reportsMore.failed
+                ? reportsSource.retry
+                : () => setReportCount((count) => count + REPORT_PAGE_SIZE)
+            }
+            aria-label={reportsMore.failed ? 'Retry loading more reports' : 'Load more reports'}
           >
-            {reportsSource.loading ? 'Loading…' : 'Load more'}
+            {reportsSource.loading ? 'Loading…' : reportsMore.failed ? 'Retry' : 'Load more'}
           </button>
         </AdminMessage>
       )}

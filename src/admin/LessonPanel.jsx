@@ -41,7 +41,7 @@ import { useAuth } from '../auth/useAuth'
 import { saveAfterClassFeedback } from '../app/afterClassFeedback'
 import { AdminCell, AdminTable } from './AdminUi'
 import ClassRosterEditor from './ClassRosterEditor'
-import { REPORT_PAGE_SIZE, useAdminLessons, useAdminSnapshot } from './adminSnapshots'
+import { REPORT_PAGE_SIZE, useAdminLessons, useAdminSnapshot, useLoadMore } from './adminSnapshots'
 
 function makeBuilderUrl(lessonId) {
   return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
@@ -233,13 +233,14 @@ function useLessonReports(lessonId, count) {
         orderBy('startedAt', 'desc'),
         limit(count)
       ),
-    (snap) => snap.docs.map((d) => ({ id: d.id, lessonId, ...d.data() }))
+    (snap) => snap.docs.map((d) => ({ id: d.id, lessonId, ...d.data() })),
+    { family: `lessonReports:${lessonId}` }
   )
 }
 
 function useLessonFeedback(lessonId) {
   return useAdminSnapshot(
-    `lessonFeedback:${lessonId}`,
+    `lessonFeedback:id:${lessonId}`,
     () => collection(firestore, 'lessons', lessonId, 'feedback'),
     (snap) =>
       snap.docs
@@ -1281,6 +1282,12 @@ function LessonAdminPanel({
     if (reportsSource.data) setShownReports(reportsSource.data)
   }, [reportsSource.data])
   const reports = shownReports
+  const reportsMore = useLoadMore({
+    source: reportsSource,
+    size: reportsSource.data?.length ?? 0,
+    count: reportCount,
+    pageSize: REPORT_PAGE_SIZE,
+  })
   const feedback = feedbackSource.data ?? EMPTY
 
   return (
@@ -1353,8 +1360,10 @@ function LessonAdminPanel({
           lesson={lesson}
           reports={reports}
           loading={reportsSource.loading}
-          hasMore={reports.length >= reportCount}
+          hasMore={reportsMore.hasMore}
+          failed={reportsMore.failed}
           onLoadMore={() => setReportCount((count) => count + REPORT_PAGE_SIZE)}
+          onRetry={reportsSource.retry}
           onViewReport={onViewReport}
         />
       )}
@@ -1369,7 +1378,16 @@ function LessonAdminPanel({
   )
 }
 
-function LessonReportsSection({ lesson, reports, loading, hasMore, onLoadMore, onViewReport }) {
+function LessonReportsSection({
+  lesson,
+  reports,
+  loading,
+  hasMore,
+  failed,
+  onLoadMore,
+  onRetry,
+  onViewReport,
+}) {
   const meta = loading
     ? 'Loading...'
     : hasMore
@@ -1401,10 +1419,10 @@ function LessonReportsSection({ lesson, reports, loading, hasMore, onLoadMore, o
           className="btn-ghost-outline"
           style={s.loadMoreBtn}
           disabled={loading}
-          onClick={onLoadMore}
-          aria-label="Load more reports"
+          onClick={failed ? onRetry : onLoadMore}
+          aria-label={failed ? 'Retry loading more reports' : 'Load more reports'}
         >
-          {loading ? 'Loading...' : 'Load more'}
+          {loading ? 'Loading...' : failed ? 'Retry' : 'Load more'}
         </button>
       )}
     </CollapsibleDetail>

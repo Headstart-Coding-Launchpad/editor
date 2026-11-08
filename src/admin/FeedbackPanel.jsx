@@ -9,7 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
-import { useAdminSnapshot } from './adminSnapshots'
+import { useAdminSnapshot, useLoadMore } from './adminSnapshots'
 
 // Platform feedback is read a page at a time, newest first, with Load more.
 export const PLATFORM_FEEDBACK_PAGE_SIZE = 30
@@ -94,7 +94,8 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
         orderBy('submittedAt', 'desc'),
         limit(platformCount)
       ),
-    mapPlatform
+    mapPlatform,
+    { family: 'platformFeedback' }
   )
   // While a bigger page loads, keep showing the smaller one.
   const [platformPage, setPlatformPage] = useState(null)
@@ -104,12 +105,18 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
   // Lesson feedback stays one unlimited listener: ordering or filtering a collection-group query
   // needs a Firestore index that is not deployed. The docs are short text.
   const lessonSource = useAdminSnapshot(
-    'lessonFeedback:all',
+    'feedbackAll',
     () => collectionGroup(firestore, 'feedback'),
     mapLessonFeedback
   )
   const platform = platformPage?.items ?? EMPTY
-  const platformHasMore = (platformPage?.size ?? 0) >= platformCount
+  const platformMore = useLoadMore({
+    source: platformSource,
+    size: platformSource.data?.size ?? 0,
+    count: platformCount,
+    pageSize: PLATFORM_FEEDBACK_PAGE_SIZE,
+  })
+  const platformHasMore = platformMore.hasMore
   const allLesson = lessonSource.data ?? EMPTY
   const loadingPlatform = platformSource.loading && !platformPage
   const loadingLesson = lessonSource.loading
@@ -202,10 +209,16 @@ export default function FeedbackPanel({ subtab, onSubtabChange }) {
               className="btn-ghost-outline"
               style={s.loadMore}
               disabled={platformSource.loading}
-              onClick={() => setPlatformCount((count) => count + PLATFORM_FEEDBACK_PAGE_SIZE)}
-              aria-label="Load more feedback"
+              onClick={
+                platformMore.failed
+                  ? platformSource.retry
+                  : () => setPlatformCount((count) => count + PLATFORM_FEEDBACK_PAGE_SIZE)
+              }
+              aria-label={
+                platformMore.failed ? 'Retry loading more feedback' : 'Load more feedback'
+              }
             >
-              {platformSource.loading ? 'Loading…' : 'Load more'}
+              {platformSource.loading ? 'Loading…' : platformMore.failed ? 'Retry' : 'Load more'}
             </button>
           )}
         </div>
