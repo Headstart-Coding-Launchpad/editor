@@ -1,9 +1,23 @@
 import React, { useState } from 'react'
 import { flattenTasks, getTaskPriority } from '../../shared/taskUtils'
 import { isHostedActivityTask } from '../../activities/registry.pure.js'
+import { countOptionalAhead, countOptionalTasks } from '../../shared/classNavigation'
 
-function OptionalBadge({ task }) {
-  if (getTaskPriority(task) !== 'optional') return null
+function isOptionalTask(task) {
+  return getTaskPriority(task) === 'optional'
+}
+
+// While Skip optional tasks is on an optional row says Next jumps over it; otherwise it keeps
+// the small "optional" badge.
+function OptionalBadge({ task, skipped }) {
+  if (!isOptionalTask(task)) return null
+  if (skipped) {
+    return (
+      <span style={s.skippedTag} title="Skip optional tasks is on: Next jumps over this task">
+        skipped by Next
+      </span>
+    )
+  }
   return (
     <span style={s.optionalBadge} title="Optional task">
       optional
@@ -23,6 +37,10 @@ export default function TaskNavigator({
   sandboxStaging,
   collapsed,
   onToggle,
+  // The tutor's "Skip optional tasks" switch (session.skipOptionalTasks): Next jumps over
+  // optional tasks. Their rows stay visible, greyed, and still preview when clicked.
+  skipOptional = false,
+  onSkipOptionalChange,
 }) {
   const total = students.length
   const runCount = students.filter((st) => st.lastRunStatus != null && st.lastRunAt).length
@@ -39,6 +57,9 @@ export default function TaskNavigator({
     return `${runCount}/${total} run${checked}`
   }
   const flatTasks = flattenTasks(tasks)
+  const optionalCount = countOptionalTasks(flatTasks)
+  const optionalAhead = countOptionalAhead(flatTasks, currentTaskId)
+  const isSkipped = (task) => skipOptional && isOptionalTask(task) && task.id !== currentTaskId
   // Navigate Prev/Next relative to what's currently displayed (preview or session task)
   const displayId = previewTaskId ?? currentTaskId
   const displayIndex = flatTasks.findIndex((t) => t.id === displayId)
@@ -106,14 +127,17 @@ export default function TaskNavigator({
                   subtasks.map((task) => {
                     const isCurrent = task.id === currentTaskId
                     const isPreview = previewTaskId && task.id === previewTaskId
+                    const skipped = isSkipped(task)
 
                     return (
                       <button
                         key={task.id}
+                        data-skipped={skipped ? 'true' : undefined}
                         style={{
                           ...s.subtaskItem,
                           ...(isCurrent ? s.subtaskItemActive : {}),
                           ...(isPreview && !isCurrent ? s.subtaskItemPreview : {}),
+                          ...(skipped ? s.itemSkipped : {}),
                           ...(isSandbox || sandboxStaging
                             ? { opacity: 0.45, cursor: 'default' }
                             : {}),
@@ -123,7 +147,7 @@ export default function TaskNavigator({
                         <span style={s.subtaskDot} />
                         <div style={s.detail}>
                           <span style={s.taskTitle}>{task.title}</span>
-                          <OptionalBadge task={task} />
+                          <OptionalBadge task={task} skipped={skipped} />
                           {isCurrent && total > 0 && statLine(task) && (
                             <span style={s.stat}>{statLine(task)}</span>
                           )}
@@ -140,14 +164,17 @@ export default function TaskNavigator({
           // Standalone task
           const isCurrent = item.id === currentTaskId
           const isPreview = previewTaskId && item.id === previewTaskId
+          const skipped = isSkipped(item)
 
           return (
             <button
               key={item.id}
+              data-skipped={skipped ? 'true' : undefined}
               style={{
                 ...s.item,
                 ...(isCurrent ? s.itemActive : {}),
                 ...(isPreview && !isCurrent ? s.itemPreview : {}),
+                ...(skipped ? s.itemSkipped : {}),
                 ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
               }}
               onClick={() => !isSandbox && !sandboxStaging && onTaskSelect?.(item.id)}
@@ -155,7 +182,7 @@ export default function TaskNavigator({
               <span style={s.num}>{item.id}</span>
               <div style={s.detail}>
                 <span style={s.taskTitle}>{item.title}</span>
-                <OptionalBadge task={item} />
+                <OptionalBadge task={item} skipped={skipped} />
                 {isCurrent && total > 0 && statLine(item) && (
                   <span style={s.stat}>{statLine(item)}</span>
                 )}
@@ -201,8 +228,36 @@ export default function TaskNavigator({
         </button>
       </div>
 
-      {/* Sandbox toggle */}
-      <div style={s.sandboxArea}>
+      {/* Footer: the Skip optional tasks setting (a switch, not a task row) above Sandbox. */}
+      <div style={s.sandboxArea} data-testid="task-nav-footer">
+        {optionalCount > 0 && onSkipOptionalChange && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={skipOptional}
+            aria-label="Skip optional tasks"
+            style={s.skipSwitch}
+            onClick={() => onSkipOptionalChange(!skipOptional)}
+            title="When on, Next (presentation window and the countdown) jumps over optional tasks"
+          >
+            <span
+              aria-hidden="true"
+              style={{ ...s.switchTrack, ...(skipOptional ? s.switchTrackOn : {}) }}
+            >
+              <span style={{ ...s.switchKnob, ...(skipOptional ? s.switchKnobOn : {}) }} />
+            </span>
+            <span style={s.skipText}>
+              <span style={s.skipLabel}>Skip optional tasks</span>
+              <span style={s.skipHint}>
+                {skipOptional
+                  ? optionalAhead > 0
+                    ? `Next skips ${optionalAhead} optional`
+                    : 'No optional tasks ahead'
+                  : `${optionalCount} optional in this lesson`}
+              </span>
+            </span>
+          </button>
+        )}
         {isSandbox ? (
           // The yellow sandbox bar above the work area has the one Deactivate Sandbox button
           // (there used to be two; HSC Audit, Visual Review 24).
@@ -486,6 +541,63 @@ const s = {
     padding: '8px 12px 12px',
     borderTop: '1px solid #e5e7eb',
     flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  itemSkipped: {
+    opacity: 0.55,
+  },
+  skippedTag: {
+    alignSelf: 'flex-start',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    color: '#6b7280',
+    whiteSpace: 'nowrap',
+  },
+  skipSwitch: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    padding: 0,
+    background: 'transparent',
+    border: 'none',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  switchTrack: {
+    position: 'relative',
+    width: 30,
+    height: 16,
+    borderRadius: 999,
+    background: '#d1d5db',
+    flexShrink: 0,
+    transition: 'background 0.15s',
+  },
+  switchTrackOn: { background: 'var(--colour-primary)' },
+  switchKnob: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: '#fff',
+    transition: 'left 0.15s',
+  },
+  switchKnobOn: { left: 16 },
+  skipText: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  skipLabel: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.76rem',
+    fontWeight: 600,
+    color: 'var(--colour-text)',
+  },
+  skipHint: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.68rem',
+    color: '#6b7280',
   },
   sandboxNote: {
     margin: 0,

@@ -978,6 +978,12 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     await update(ref(db, `sessions/${lessonId}`), { isPaused })
   }
 
+  // The tutor's "Skip optional tasks" switch: Next (presentation window, the countdown's Next
+  // task) jumps over optional tasks. A session-level flag written like isPaused; absent = off.
+  async function setSkipOptionalTasks(on) {
+    await update(ref(db, `sessions/${lessonId}`), { skipOptionalTasks: on ? true : null })
+  }
+
   // Browsers only allow entering fullscreen from a direct user gesture, so this can't
   // force students into fullscreen — it just timestamps a request that each student's
   // client shows as a one-click prompt (see StudentStatusBanners).
@@ -2489,6 +2495,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     hideResponse,
     setShownResponseName,
     setAutoRevealStage,
+    setSkipOptionalTasks,
     setExplainerShowComplete,
     setActiveStudentView,
     setTeacherLive,

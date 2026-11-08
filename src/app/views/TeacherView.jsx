@@ -160,6 +160,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     nudgeAwayStudents,
     admitJoiningStudent,
     setAutoRevealStage,
+    setSkipOptionalTasks,
     setActiveStudentView,
     setTeacherLive,
     updateTeacherLive,
@@ -1127,6 +1128,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             sandboxStaging={sandboxStaging}
             collapsed={leftCollapsed}
             onToggle={() => setLeftCollapsed((v) => !v)}
+            skipOptional={!!session?.skipOptionalTasks}
+            onSkipOptionalChange={session ? setSkipOptionalTasks : undefined}
           />
         </aside>
 

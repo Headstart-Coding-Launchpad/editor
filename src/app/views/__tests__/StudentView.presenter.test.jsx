@@ -305,4 +305,27 @@ describe('Presentation window bar', () => {
     expect(screen.queryByTestId('countdown-ended-strip')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /countdown/i })).not.toBeInTheDocument()
   })
+
+  it('Next jumps past optional tasks while Skip optional tasks is on', async () => {
+    const hook = presenterSession({ skipOptionalTasks: true })
+    await renderPresenter(hook)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Next' })))
+    expect(hook.setTaskId).toHaveBeenCalledWith(4)
+  })
+
+  it('Next steps onto an optional task while skipping is off', async () => {
+    const hook = presenterSession()
+    await renderPresenter(hook)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Next' })))
+    expect(hook.setTaskId).toHaveBeenCalledWith(3)
+  })
+
+  it('says Next skips optional tasks in the Time’s up strip', async () => {
+    await renderPresenter(
+      presenterSession({ skipOptionalTasks: true, classCountdown: endedCountdown() })
+    )
+    expect(await screen.findByTestId('countdown-ended-strip')).toHaveTextContent(
+      'Task 2 of 3 · Next skips 1 optional'
+    )
+  })
 })

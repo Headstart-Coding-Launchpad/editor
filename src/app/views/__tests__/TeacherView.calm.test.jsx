@@ -149,3 +149,21 @@ describe('TeacherView countdown ended', () => {
     expect(sessionCommands.addClassCountdownTime).toHaveBeenCalledWith(60_000)
   })
 })
+
+describe('TeacherView Skip optional tasks', () => {
+  beforeEach(() => reset({ state: 'active', currentTaskId: 1, students: {} }))
+
+  it('writes the switch to the session from the task list footer', async () => {
+    await renderTeacherView()
+    await act(async () =>
+      fireEvent.click(screen.getByRole('switch', { name: /Skip optional tasks/ }))
+    )
+    expect(sessionCommands.setSkipOptionalTasks).toHaveBeenCalledWith(true)
+  })
+
+  it('shows optional rows greyed while the session flag is on', async () => {
+    mockSession = { ...mockSession, skipOptionalTasks: true }
+    await renderTeacherView()
+    expect(screen.getByRole('button', { name: /Bonus/ })).toHaveAttribute('data-skipped', 'true')
+  })
+})

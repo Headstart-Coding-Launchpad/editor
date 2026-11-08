@@ -100,3 +100,59 @@ describe('TaskNavigator current-task line', () => {
     expect(screen.queryByText(/ run/)).not.toBeInTheDocument()
   })
 })
+
+describe('TaskNavigator Skip optional tasks', () => {
+  const lessonTasks = [
+    { id: 1, title: 'Task one' },
+    { id: 2, title: 'Bonus quiz', priority: 'optional' },
+    { id: 3, title: 'Task three' },
+    { id: 4, title: 'Extra stage', priority: 'optional' },
+  ]
+
+  it('shows the switch in the footer, off by default, and reports a change', () => {
+    const onSkipOptionalChange = vi.fn()
+    render(
+      <TaskNavigator
+        tasks={lessonTasks}
+        currentTaskId={1}
+        onTaskSelect={vi.fn()}
+        skipOptional={false}
+        onSkipOptionalChange={onSkipOptionalChange}
+      />
+    )
+    const toggle = screen.getByRole('switch', { name: /Skip optional tasks/ })
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByTestId('task-nav-footer')).toContainElement(toggle)
+    toggle.click()
+    expect(onSkipOptionalChange).toHaveBeenCalledWith(true)
+  })
+
+  it('greys optional rows with a "skipped by Next" tag while on, and they still preview', () => {
+    const onTaskSelect = vi.fn()
+    render(
+      <TaskNavigator
+        tasks={lessonTasks}
+        currentTaskId={1}
+        onTaskSelect={onTaskSelect}
+        skipOptional
+        onSkipOptionalChange={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('switch', { name: /Skip optional tasks/ })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    expect(screen.getByText('Next skips 2 optional')).toBeInTheDocument()
+    const bonus = screen.getByRole('button', { name: /Bonus quiz/ })
+    expect(bonus).toHaveAttribute('data-skipped', 'true')
+    expect(bonus).toHaveTextContent('skipped by Next')
+    expect(screen.getByRole('button', { name: /Task three/ })).not.toHaveAttribute('data-skipped')
+    bonus.click()
+    expect(onTaskSelect).toHaveBeenCalledWith(2)
+  })
+
+  it('has no switch when the lesson has no optional tasks', () => {
+    render(<TaskNavigator tasks={tasks} currentTaskId={1} onSkipOptionalChange={vi.fn()} />)
+    expect(screen.queryByRole('switch', { name: /Skip optional tasks/ })).not.toBeInTheDocument()
+  })
+})

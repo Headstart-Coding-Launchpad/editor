@@ -1550,8 +1550,8 @@ export default function StudentView({
       <button
         className="btn-ghost presentation-header-btn"
         style={s.presentationBtn}
-        disabled={currentIndex >= flatTasks.length - 1}
-        onClick={() => handleSoloNavigate(flatTasks[currentIndex + 1]?.id)}
+        disabled={presenterNextTaskId == null}
+        onClick={() => handleSoloNavigate(presenterNextTaskId)}
         aria-label="Next"
         title="Next task"
       >
