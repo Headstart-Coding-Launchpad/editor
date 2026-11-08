@@ -7,6 +7,7 @@ function renderBanner(overrides = {}) {
   const props = {
     taskNumber: 3,
     taskTitle: 'Variables',
+    classTaskNumber: 2,
     onCancel: vi.fn(),
     onConfirm: vi.fn(),
     ...overrides,
@@ -16,25 +17,36 @@ function renderBanner(overrides = {}) {
 }
 
 describe('TeacherPreviewBanner', () => {
-  it('shows task number and title', () => {
+  it('says which task is previewed and where the class still is', () => {
     renderBanner()
-    expect(screen.getByText(/Preview — Task 3: Variables/)).toBeInTheDocument()
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent(
+      'Previewing task 3 · Variables. The class is still on task 2.'
+    )
   })
 
-  it('uses empty string when taskTitle is undefined', () => {
+  it('leaves the title out when there is none', () => {
     renderBanner({ taskTitle: undefined })
-    expect(screen.getByText(/Preview — Task 3:/)).toBeInTheDocument()
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent(
+      'Previewing task 3. The class is still on task 2.'
+    )
   })
 
-  it('calls onCancel when back button is clicked', () => {
+  it('calls onCancel when Back is clicked', () => {
     const props = renderBanner()
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Current Task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to task 2' }))
     expect(props.onCancel).toHaveBeenCalledOnce()
   })
 
-  it('calls onConfirm when move button is clicked', () => {
+  it('calls onConfirm when Move class here is clicked', () => {
     const props = renderBanner()
-    fireEvent.click(screen.getByRole('button', { name: 'Move All to This Task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Move class here' }))
     expect(props.onConfirm).toHaveBeenCalledOnce()
+  })
+
+  it('says Next still skips a greyed optional task', () => {
+    renderBanner({ skippedByNext: true })
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent(
+      'Skip optional tasks is on, so Next skips this task'
+    )
   })
 })

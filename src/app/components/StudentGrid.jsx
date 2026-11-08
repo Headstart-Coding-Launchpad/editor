@@ -113,6 +113,8 @@ export default function StudentGrid({
   // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
   rosterStatus = null,
   onOpenRoster,
+  // The tutor's Class menu (Focus Class, Highlight Class) from TeacherView, in the header.
+  classControls = null,
 }) {
   const [showExtraTools] = useExtraClassToolsOn()
   const joiningCount = joiningStudents.length
@@ -714,6 +716,7 @@ export default function StudentGrid({
           )}
         </span>
         <div style={s.headerRight}>
+          {classControls}
           {hasClassMenu && classMenu}
           <button style={s.toggleBtn} onClick={onToggle} title="Collapse Students">
             ›

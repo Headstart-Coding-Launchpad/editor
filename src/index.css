@@ -1011,6 +1011,53 @@ select {
   font-size: 2.6rem;
 }
 
+/* Teacher view top row (TeacherSessionControls.jsx, calm teacher view): one fixed-height row.
+   Present is the white primary; Countdown and the quieter Rate share one outlined group. */
+.teacher-session-controls {
+  flex-wrap: nowrap;
+}
+
+.teacher-top-row__present.btn-primary {
+  background: #fff;
+  color: var(--colour-primary-dark);
+  border-color: #fff;
+}
+
+.teacher-top-row__group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+}
+
+.teacher-top-row__group .teacher-session-controls__action {
+  border: none;
+}
+
+.teacher-top-row__quiet {
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.teacher-top-row__countdown-ended {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fde68a;
+  color: #78350f;
+}
+
+/* The student list header's Class menu (Focus Class, Highlight Class). */
+.student-grid-class-menu {
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* Teacher view centre card (TeacherAnswerCard.jsx): "Task N · title" on the brand bar, a small
    Answer / Starter toggle, the answer below. */
 .teacher-answer-card {
@@ -1341,8 +1388,31 @@ select {
 }
 
 .teacher-preview-banner {
-  background: #eff6ff;
-  border: 1px solid #93c5fd;
+  /* Amber: previewing is clearly not moving the class (calm teacher view). */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  background: #fffbeb;
+  border: 2px solid #f59e0b;
+}
+
+.teacher-preview-banner__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.teacher-preview-banner__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.teacher-preview-banner__hint {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  color: #78350f;
 }
 
 .teacher-sandbox-banner {
@@ -1354,7 +1424,7 @@ select {
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 0.88rem;
-  color: #1e40af;
+  color: #78350f;
 }
 
 .teacher-sandbox-banner__text {
@@ -1370,10 +1440,10 @@ select {
   padding: 5px 12px;
 }
 
-.teacher-preview-banner__btn {
-  color: #1e40af;
-  border: 1px solid #1e40af;
-  background: transparent;
+.teacher-preview-banner__btn.btn-ghost-outline {
+  color: var(--colour-primary-dark);
+  border: 1px solid var(--colour-primary);
+  background: #fff;
 }
 
 .teacher-sandbox-banner__btn--warn {

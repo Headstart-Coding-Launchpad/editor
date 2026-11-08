@@ -27,13 +27,63 @@ function renderControls(overrides = {}) {
   return props
 }
 
-describe('TeacherSessionControls', () => {
-  it('shows session status and static actions', () => {
-    renderControls()
+// Reports, Report a problem, Account, Peer help, Edit Lesson, Admin and Go Live sit in More.
+function openMore() {
+  fireEvent.click(screen.getByRole('button', { name: /^More/ }))
+}
 
+describe('TeacherSessionControls', () => {
+  it('keeps one calm row: Present, Countdown, Rate, Add Video Call, End Session, More', () => {
+    renderControls({
+      onStartClassCountdown: vi.fn(),
+      onAddClassCountdownTime: vi.fn(),
+      onClearClassCountdown: vi.fn(),
+      onUpdateVideoCallLink: vi.fn(),
+      rateControl: <button type="button">Rate</button>,
+      peerHelpMenu: <button type="button">Peer help</button>,
+      onGoLive: vi.fn(),
+    })
+    const row = screen.getByTestId('teacher-top-row')
+    const names = Array.from(row.querySelectorAll('button')).map(
+      (button) => button.getAttribute('aria-label') ?? button.textContent.trim()
+    )
+    expect(names).toEqual([
+      'Open the presentation window',
+      'Class countdown',
+      'Rate',
+      '📹 Add Video Call',
+      'End Session',
+      'More ▾',
+    ])
+    expect(screen.queryByRole('button', { name: /Go Live/ })).not.toBeInTheDocument()
+  })
+
+  it('puts Reports, Report a problem, Account, Peer help, Admin and Go Live in More', () => {
+    const props = renderControls({
+      peerHelpMenu: <button type="button">🤝 Peer help</button>,
+      onGoLive: vi.fn(),
+    })
+    expect(screen.queryByRole('button', { name: 'Reports' })).not.toBeInTheDocument()
+    openMore()
     expect(screen.getByText('Session: active')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Presentation Window' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Admin' })).toBeInTheDocument()
+    for (const name of ['Reports', 'Report a problem', 'Account', '🤝 Peer help', 'Admin']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument()
+    }
+    fireEvent.click(screen.getByRole('button', { name: '📡 Go Live' }))
+    expect(props.onGoLive).toHaveBeenCalledOnce()
+  })
+
+  it('Present opens the presentation window', () => {
+    const props = renderControls()
+    fireEvent.click(screen.getByRole('button', { name: 'Open the presentation window' }))
+    expect(props.onOpenPresentationWindow).toHaveBeenCalledOnce()
+  })
+
+  it('shows the Stop live control in the row only while the tutor is live', () => {
+    renderControls({ goLiveControl: <button type="button">■ Stop live</button> })
+    expect(screen.getByTestId('teacher-top-row')).toContainElement(
+      screen.getByRole('button', { name: '■ Stop live' })
+    )
   })
 
   it('shows an always-visible control to turn off the class live-code pin', () => {
@@ -53,6 +103,7 @@ describe('TeacherSessionControls', () => {
 
   it('delegates return to admin', () => {
     const props = renderControls()
+    openMore()
     fireEvent.click(screen.getByRole('button', { name: 'Admin' }))
     expect(props.onReturnToAdmin).toHaveBeenCalledOnce()
   })
@@ -75,6 +126,7 @@ describe('TeacherSessionControls', () => {
     const props = renderControls({ session: { state: 'active' } })
 
     expect(screen.queryByRole('button', { name: 'Feedback' })).not.toBeInTheDocument()
+    openMore()
     fireEvent.click(screen.getByRole('button', { name: 'Report a problem' }))
     expect(props.onReportProblem).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'End Session' }))
@@ -84,12 +136,14 @@ describe('TeacherSessionControls', () => {
 
   it('delegates opening the reports panel', () => {
     const props = renderControls()
+    openMore()
     fireEvent.click(screen.getByRole('button', { name: 'Reports' }))
     expect(props.onOpenReports).toHaveBeenCalledOnce()
   })
 
   it('hides Edit Lesson and the quick poll button by default', () => {
     renderControls({ onLaunchPoll: vi.fn() })
+    openMore()
     expect(screen.queryByRole('button', { name: 'Edit Lesson' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Poll/ })).not.toBeInTheDocument()
   })
@@ -103,6 +157,7 @@ describe('TeacherSessionControls', () => {
   it('delegates opening the edit lesson modal', () => {
     window.localStorage.setItem('headstart_extra_class_tools', '1')
     const props = renderControls()
+    openMore()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Lesson' }))
     expect(props.onOpenEditLesson).toHaveBeenCalledOnce()
   })
@@ -194,6 +249,8 @@ describe('TeacherSessionControls', () => {
         onBroadcastVideoCallLink,
       })
 
+      // Send to all lives in the video call popover, so the row keeps one Video Call button.
+      fireEvent.click(screen.getByRole('button', { name: '📹 Video Call' }))
       fireEvent.click(screen.getByRole('button', { name: '📹 Send to all' }))
 
       expect(onBroadcastVideoCallLink).toHaveBeenCalledTimes(1)

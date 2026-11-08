@@ -8,6 +8,20 @@ import {
   parseCountdownMinutes,
 } from '../../shared/classCountdown'
 import ClassCountdownPill from './ClassCountdownPill'
+import { useCountdownRemaining } from '../hooks/useClassCountdown'
+import { formatClock } from '../../shared/timeAgo'
+
+// The button's own text: the time left while a countdown runs ("⏱ 4:52"), "⏱ 0:00" in amber
+// once it ends, else "⏱ Countdown". Ticks on its own so the top bar does not re-render.
+function CountdownButtonText({ countdown, serverTimeOffset }) {
+  const remainingMs = useCountdownRemaining(countdown, serverTimeOffset)
+  if (remainingMs == null) return <>⏱ Countdown</>
+  return (
+    <span className={remainingMs <= 0 ? 'teacher-top-row__countdown-ended' : undefined}>
+      ⏱ {formatClock(Math.ceil(remainingMs / 1000))}
+    </span>
+  )
+}
 
 /**
  * The teacher's ⏱ Countdown button and popover (TeacherSessionControls): quick presets, custom
@@ -78,7 +92,7 @@ export default function ClassCountdownControl({
         aria-label="Class countdown"
         title="Show a countdown on every student screen and the presentation window"
       >
-        ⏱ {running ? 'Countdown ●' : 'Countdown'}
+        <CountdownButtonText countdown={countdown} serverTimeOffset={serverTimeOffset} />
       </button>
       {open && (
         <div style={s.panel} className="ui-popover" role="group" aria-label="Class countdown">

@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome }) {
+export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome, studentCount }) {
   return (
     <div
       className="teacher-end-modal__overlay ui-modal-backdrop"
@@ -10,7 +10,11 @@ export default function TeacherEndSessionModal({ onClose, onEnd, onEndAndGoHome 
     >
       <div className="teacher-end-modal">
         <div className="teacher-end-modal__header">
-          <h2 className="teacher-end-modal__title">End Session?</h2>
+          <h2 className="teacher-end-modal__title">
+            {studentCount > 0
+              ? `End the session for all ${studentCount} student${studentCount === 1 ? '' : 's'}?`
+              : 'End Session?'}
+          </h2>
         </div>
         <div className="teacher-end-modal__content">
           <p className="teacher-end-modal__body">

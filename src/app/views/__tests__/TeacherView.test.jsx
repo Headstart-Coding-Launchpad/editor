@@ -60,7 +60,10 @@ vi.mock('../../components/TeacherSandboxBanner', () => ({ default: capture('sand
 vi.mock('../../components/TopBar', () => ({
   default: ({ right }) => <header data-testid="top-bar">{right}</header>,
 }))
-vi.mock('../../components/TeacherSessionControls', () => ({ default: () => null }))
+// The calm top row renders the Rate control beside Countdown (rateControl).
+vi.mock('../../components/TeacherSessionControls', () => ({
+  default: ({ rateControl }) => <>{rateControl}</>,
+}))
 vi.mock('../../components/student-modal/PaneFocusDropdown', () => ({ default: () => null }))
 vi.mock('../../components/StudentGrid', () => ({ default: () => null }))
 vi.mock('../../components/ExplainerPanel', () => ({

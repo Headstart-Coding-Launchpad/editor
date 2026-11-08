@@ -2,10 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { sortedShareEntries } from '../sharedWorkspacePayload'
 import ClassCountdownControl from './ClassCountdownControl'
 import TeacherPollControl from './polls/TeacherPollControl'
+import DropdownMenu from './student-modal/DropdownMenu'
 import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
 
-const BREAKPOINT_NARROW = 1300 // collapse secondary buttons into Menu dropdown
-const BREAKPOINT_COMPACT = 950 // also hide status text from bar (shown inside dropdown instead)
+// The teacher view's top row (calm teacher view, sketch v2): one fixed-height row of Present,
+// Countdown (with the quieter Rate beside it), Add Video Call, End Session (it asks first, in
+// TeacherEndSessionModal) and More. Reports, Report a problem, Account, Peer help, Edit Lesson
+// (extra class tools), Admin and Go Live are in More. Status-only extras (Shared work, the
+// pinned live code, Stop live while the tutor is live, a quick poll) appear only while they
+// apply.
 
 export default function TeacherSessionControls({
   session,
@@ -36,14 +41,18 @@ export default function TeacherSessionControls({
   // with false). Pinning is done from the Live tab; turning it off lives here so it is
   // reachable whether or not Presentation View is showing the task.
   onUnpinLiveReference,
+  // The ⭐ Rate control (TaskRatingPanel), shown beside Countdown.
+  rateControl = null,
+  // Go Live from this window, in More (the tutor normally goes live from the presentation
+  // window); `goLiveDisabledReason` greys it out. `goLiveControl` (Stop live and, for a live
+  // started here, the layout buttons) shows in the row only while the tutor is live.
+  onGoLive,
+  goLiveDisabledReason = null,
+  goLiveControl = null,
 }) {
   const [showExtraTools] = useExtraClassToolsOn()
   const state = session?.state
   const isRunning = state === 'active' || state === 'sandbox'
-
-  const [width, setWidth] = useState(() => window.innerWidth)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef(null)
 
   const [sharesOpen, setSharesOpen] = useState(false)
   const sharesRef = useRef(null)
@@ -60,28 +69,9 @@ export default function TeacherSessionControls({
     [session?.sharedWorkspaces]
   )
 
-  const narrow = width < BREAKPOINT_NARROW
-  const compact = width < BREAKPOINT_COMPACT
   const openAccount = () => {
     window.location.hash = '#/account'
   }
-
-  useEffect(() => {
-    function onResize() {
-      setWidth(window.innerWidth)
-    }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  useEffect(() => {
-    if (!menuOpen) return
-    function onDown(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [menuOpen])
 
   useEffect(() => {
     if (!sharesOpen) return
@@ -137,131 +127,105 @@ export default function TeacherSessionControls({
     }
   }
 
-  return (
-    <div className="teacher-session-controls">
-      {!compact && (
-        <span className="teacher-session-controls__status">
-          {session ? `Session: ${state}` : 'No session'}
-        </span>
-      )}
-
-      {narrow ? (
-        <div ref={menuRef} style={sDD.wrap}>
-          <button
-            className="btn-ghost teacher-session-controls__action"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-expanded={menuOpen}
-          >
-            Menu ▾
-          </button>
-          {menuOpen && (
-            <div style={sDD.panel} className="ui-popover">
-              {compact && (
-                <span style={sDD.statusLabel}>{session ? `Session: ${state}` : 'No session'}</span>
-              )}
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
-                  onOpenPresentationWindow()
-                }}
-              >
-                Presentation Window
-              </button>
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
-                  onOpenReports()
-                }}
-              >
-                Reports
-              </button>
-              {showExtraTools && (
-                <button
-                  style={sDD.item}
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onOpenEditLesson()
-                  }}
-                >
-                  Edit Lesson
-                </button>
-              )}
-              {onReportProblem && (
-                <button
-                  style={sDD.item}
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onReportProblem()
-                  }}
-                >
-                  Report a problem
-                </button>
-              )}
-              {onReturnToAdmin && (
-                <button
-                  style={sDD.item}
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onReturnToAdmin()
-                  }}
-                >
-                  Admin
-                </button>
-              )}
-              <button
-                style={sDD.item}
-                onClick={() => {
-                  setMenuOpen(false)
-                  openAccount()
-                }}
-              >
-                Account
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
+  const moreMenu = (
+    <DropdownMenu
+      label="More"
+      buttonClassName="btn-ghost teacher-session-controls__action"
+      title="Reports, Report a problem, Account, Peer help and more"
+      panelStyle={sDD.morePanel}
+    >
+      {(close) => (
         <>
-          <button
-            className="btn-ghost teacher-session-controls__action"
-            onClick={onOpenPresentationWindow}
-          >
-            Presentation Window
-          </button>
-          <button className="btn-ghost teacher-session-controls__action" onClick={onOpenReports}>
-            Reports
-          </button>
-          {showExtraTools && (
-            <button
-              className="btn-ghost teacher-session-controls__action"
-              onClick={onOpenEditLesson}
-            >
-              Edit Lesson
-            </button>
-          )}
+          <span style={sDD.statusLabel}>{session ? `Session: ${state}` : 'No session'}</span>
+          <MoreItem
+            label="Reports"
+            onClick={() => {
+              close()
+              onOpenReports()
+            }}
+          />
           {onReportProblem && (
-            <button
-              className="btn-ghost teacher-session-controls__action"
-              onClick={onReportProblem}
-            >
-              Report a problem
-            </button>
+            <MoreItem
+              label="Report a problem"
+              onClick={() => {
+                close()
+                onReportProblem()
+              }}
+            />
+          )}
+          <MoreItem
+            label="Account"
+            onClick={() => {
+              close()
+              openAccount()
+            }}
+          />
+          {session && isRunning && peerHelpMenu && <div style={sDD.nested}>{peerHelpMenu}</div>}
+          {showExtraTools && (
+            <MoreItem
+              label="Edit Lesson"
+              onClick={() => {
+                close()
+                onOpenEditLesson()
+              }}
+            />
           )}
           {/* Admin accounts only (TeacherView passes no handler to a teacher). */}
           {onReturnToAdmin && (
-            <button
-              className="btn-ghost teacher-session-controls__action"
-              onClick={onReturnToAdmin}
-            >
-              Admin
-            </button>
+            <MoreItem
+              label="Admin"
+              onClick={() => {
+                close()
+                onReturnToAdmin()
+              }}
+            />
           )}
-          <button className="btn-ghost teacher-session-controls__action" onClick={openAccount}>
-            Account
-          </button>
+          {session && onGoLive && !goLiveControl && (
+            <MoreItem
+              label="📡 Go Live"
+              disabled={!!goLiveDisabledReason}
+              title={
+                goLiveDisabledReason ??
+                'Go Live from this window: students watch your screen (usually done from the presentation window)'
+              }
+              onClick={() => {
+                close()
+                onGoLive()
+              }}
+            />
+          )}
         </>
+      )}
+    </DropdownMenu>
+  )
+
+  return (
+    <div className="teacher-session-controls" data-testid="teacher-top-row">
+      <button
+        type="button"
+        className="btn-primary teacher-session-controls__action teacher-top-row__present"
+        onClick={onOpenPresentationWindow}
+        aria-label="Open the presentation window"
+        title="Open the presentation window (or bring it to the front)"
+      >
+        ▶ Present
+      </button>
+
+      {/* Countdown with the quieter Rate beside it. Kept out of More: the teacher reaches for
+          the countdown mid-task. */}
+      {((isRunning && onStartClassCountdown) || rateControl) && (
+        <div className="teacher-top-row__group">
+          {isRunning && onStartClassCountdown && (
+            <ClassCountdownControl
+              countdown={session?.classCountdown}
+              serverTimeOffset={serverTimeOffset}
+              onStart={onStartClassCountdown}
+              onAddTime={onAddClassCountdownTime}
+              onClear={onClearClassCountdown}
+            />
+          )}
+          {rateControl}
+        </div>
       )}
 
       {session && onRemoveSharedWorkspace && shareEntries.length > 0 && (
@@ -344,8 +308,6 @@ export default function TeacherSessionControls({
         />
       )}
 
-      {session && isRunning && peerHelpMenu}
-
       {session && onUpdateVideoCallLink && (
         <div ref={videoLinkRef} style={sDD.wrap}>
           <button
@@ -395,32 +357,24 @@ export default function TeacherSessionControls({
                   {videoLinkSaving ? 'Saving…' : 'Save'}
                 </button>
               </div>
+              {/* Pops the saved link up for every student, including the waiting room and
+                  name screen. */}
+              {session.videoCallLink && onBroadcastVideoCallLink && state !== 'ended' && (
+                <button
+                  style={sDD.item}
+                  onClick={handleBroadcastVideoLink}
+                  disabled={videoBroadcastSent}
+                  title="Pop up the video call link for every student, including the waiting room and name screen"
+                >
+                  {videoBroadcastSent ? '✓ Sent' : '📹 Send to all'}
+                </button>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {session?.videoCallLink && onBroadcastVideoCallLink && state !== 'ended' && (
-        <button
-          className="btn-ghost teacher-session-controls__action"
-          onClick={handleBroadcastVideoLink}
-          disabled={videoBroadcastSent}
-          title="Pop up the video call link for every student, including the waiting room and name screen"
-        >
-          {videoBroadcastSent ? '✓ Sent' : '📹 Send to all'}
-        </button>
-      )}
-
-      {/* Kept out of the narrow Menu: the teacher reaches for it mid-task. */}
-      {isRunning && onStartClassCountdown && (
-        <ClassCountdownControl
-          countdown={session?.classCountdown}
-          serverTimeOffset={serverTimeOffset}
-          onStart={onStartClassCountdown}
-          onAddTime={onAddClassCountdownTime}
-          onClear={onClearClassCountdown}
-        />
-      )}
+      {goLiveControl}
 
       {state === 'waiting' && (
         <button className="btn-primary teacher-session-controls__action" onClick={onStartSession}>
@@ -437,7 +391,17 @@ export default function TeacherSessionControls({
           Restart Session
         </button>
       )}
+
+      {moreMenu}
     </div>
+  )
+}
+
+function MoreItem({ label, onClick, disabled = false, title }) {
+  return (
+    <button type="button" style={sDD.item} onClick={onClick} disabled={disabled} title={title}>
+      {label}
+    </button>
   )
 }
 
@@ -472,6 +436,8 @@ const sDD = {
     display: 'block',
     fontStyle: 'italic',
   },
+  morePanel: { minWidth: 200, color: 'var(--colour-text)' },
+  nested: { display: 'flex', flexDirection: 'column' },
   item: {
     width: '100%',
     padding: '7px 12px',

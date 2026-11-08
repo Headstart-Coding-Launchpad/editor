@@ -17,7 +17,14 @@ const VIEWPORT_MARGIN = 8
 // it (fill-height modules, activities, quizzes that scale to fit). The popover is
 // portalled to <body> with `position: fixed` so no `overflow: hidden` ancestor can
 // clip it and it never takes part in the workspace's layout.
-export default function TaskRatingPanel({ taskId, taskTitle, existingRating, onSave }) {
+// `compact`: the quieter "⭐ Rate" beside Countdown in the calm teacher top row.
+export default function TaskRatingPanel({
+  taskId,
+  taskTitle,
+  existingRating,
+  onSave,
+  compact = false,
+}) {
   const [open, setOpen] = useState(false)
   const [rating, setRating] = useState(existingRating?.rating ?? 0)
   const [whatWorkedWell, setWhatWorkedWell] = useState(existingRating?.whatWorkedWell ?? '')
@@ -122,7 +129,8 @@ export default function TaskRatingPanel({ taskId, taskTitle, existingRating, onS
   }
 
   const savedRating = existingRating?.rating ?? null
-  const buttonLabel = savedRating != null ? `⭐ ${savedRating}` : '⭐ Rate this task'
+  const buttonLabel =
+    savedRating != null ? `⭐ ${savedRating}` : compact ? '⭐ Rate' : '⭐ Rate this task'
   const accessibleName =
     savedRating != null ? `Rate this task (rated ${savedRating} out of 5)` : 'Rate this task'
 
@@ -131,7 +139,7 @@ export default function TaskRatingPanel({ taskId, taskTitle, existingRating, onS
       <button
         ref={buttonRef}
         type="button"
-        className="btn-ghost teacher-session-controls__action"
+        className={`btn-ghost teacher-session-controls__action${compact ? ' teacher-top-row__quiet' : ''}`}
         style={styles.trigger}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}

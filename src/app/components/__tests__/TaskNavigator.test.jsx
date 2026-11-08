@@ -9,69 +9,35 @@ const tasks = [
   { id: 3, title: 'Task three' },
 ]
 
-describe('TaskNavigator Prev/Next during sandbox mode', () => {
-  it('lets Prev/Next select a task when not in sandbox', () => {
+describe('TaskNavigator task rows (calm teacher view: no Prev / Next)', () => {
+  it('has no Prev / Next buttons; clicking a task selects it for preview', () => {
     const onTaskSelect = vi.fn()
-    render(
-      <TaskNavigator
-        tasks={tasks}
-        currentTaskId={2}
-        onTaskSelect={onTaskSelect}
-        isSandbox={false}
-        sandboxStaging={false}
-      />
-    )
-
-    screen.getByRole('button', { name: /Next/ }).click()
+    render(<TaskNavigator tasks={tasks} currentTaskId={2} onTaskSelect={onTaskSelect} />)
+    expect(screen.queryByRole('button', { name: /Prev/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Next/ })).not.toBeInTheDocument()
+    screen.getByRole('button', { name: /Task three/ }).click()
     expect(onTaskSelect).toHaveBeenCalledWith(3)
   })
 
-  it('does not select a task when Prev/Next is clicked during sandbox mode', () => {
+  it('does not select a task during sandbox mode or staging', () => {
     const onTaskSelect = vi.fn()
-    render(
-      <TaskNavigator
-        tasks={tasks}
-        currentTaskId={2}
-        onTaskSelect={onTaskSelect}
-        isSandbox
-        sandboxStaging={false}
-      />
+    const { unmount } = render(
+      <TaskNavigator tasks={tasks} currentTaskId={2} onTaskSelect={onTaskSelect} isSandbox />
     )
-
-    screen.getByRole('button', { name: /Next/ }).click()
-    screen.getByRole('button', { name: /Prev/ }).click()
+    screen.getByRole('button', { name: /Task three/ }).click()
+    unmount()
+    render(
+      <TaskNavigator tasks={tasks} currentTaskId={2} onTaskSelect={onTaskSelect} sandboxStaging />
+    )
+    screen.getByRole('button', { name: /Task three/ }).click()
     expect(onTaskSelect).not.toHaveBeenCalled()
   })
 
-  it('does not select a task when Prev/Next is clicked during sandbox staging', () => {
-    const onTaskSelect = vi.fn()
-    render(
-      <TaskNavigator
-        tasks={tasks}
-        currentTaskId={2}
-        onTaskSelect={onTaskSelect}
-        isSandbox={false}
-        sandboxStaging
-      />
-    )
-
-    screen.getByRole('button', { name: /Next/ }).click()
-    expect(onTaskSelect).not.toHaveBeenCalled()
-  })
-
-  it('visually dims Prev/Next during sandbox mode, matching every other task-select control', () => {
-    render(
-      <TaskNavigator
-        tasks={tasks}
-        currentTaskId={2}
-        onTaskSelect={vi.fn()}
-        isSandbox
-        sandboxStaging={false}
-      />
-    )
-
-    const next = screen.getByRole('button', { name: /Next/ })
-    expect(next).toHaveStyle({ opacity: 0.45 })
+  it('tags the class’s row "class is here" while another task is previewed', () => {
+    const { rerender } = render(<TaskNavigator tasks={tasks} currentTaskId={2} />)
+    expect(screen.queryByText('class is here')).not.toBeInTheDocument()
+    rerender(<TaskNavigator tasks={tasks} currentTaskId={2} previewTaskId={3} />)
+    expect(screen.getByRole('button', { name: /Task two/ })).toHaveTextContent('class is here')
   })
 })
 

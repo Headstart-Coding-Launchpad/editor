@@ -240,3 +240,82 @@ describe('TeacherView Answer panel', () => {
     await waitFor(() => expect(captured.editor.answerShown).toBe(false))
   })
 })
+
+describe('TeacherView top row and Class menu', () => {
+  beforeEach(() => reset({ state: 'active', currentTaskId: 1, students: {} }))
+
+  it('keeps Focus Class, Highlight Class and Go Live out of the top bar', async () => {
+    await renderTeacherView()
+    const row = screen.getByTestId('teacher-top-row')
+    expect(row).not.toHaveTextContent('Focus Class')
+    expect(row).not.toHaveTextContent('Highlight Class')
+    expect(row).not.toHaveTextContent('Go Live')
+    expect(row).toHaveTextContent('Present')
+  })
+
+  it('moves Focus Class and Highlight Class into a Class menu in the student header', async () => {
+    await renderTeacherView()
+    expect(captured.grid.classControls).toBeTruthy()
+    render(captured.grid.classControls)
+    fireEvent.click(screen.getByRole('button', { name: 'Class ▾' }))
+    expect(screen.getByRole('button', { name: /Focus Class/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Highlight Class/ })).toBeInTheDocument()
+  })
+
+  it('Present brings an open presentation window to the front instead of opening another', async () => {
+    const popup = { closed: false, focus: vi.fn(), close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(popup)
+    await renderTeacherView()
+    fireEvent.click(screen.getByRole('button', { name: 'Open the presentation window' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open the presentation window' }))
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(popup.focus).toHaveBeenCalled()
+    open.mockRestore()
+  })
+})
+
+describe('TeacherView previewing a task', () => {
+  beforeEach(() => reset({ state: 'active', currentTaskId: 1, students: {} }))
+
+  it('says the class is still on its task, with Move class here and Back', async () => {
+    await renderTeacherView()
+    expect(screen.queryByRole('button', { name: /Prev/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Four/ }))
+    const banner = screen.getByTestId('teacher-preview-banner')
+    expect(banner).toHaveTextContent('Previewing task 4 · Four. The class is still on task 1.')
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Move class here' })))
+    expect(sessionCommands.setTaskId).toHaveBeenCalledWith(4)
+  })
+
+  it('Back returns to the class’s task without moving anyone', async () => {
+    await renderTeacherView()
+    fireEvent.click(screen.getByRole('button', { name: /Two/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to task 1' }))
+    expect(screen.queryByTestId('teacher-preview-banner')).not.toBeInTheDocument()
+    expect(sessionCommands.setTaskId).not.toHaveBeenCalled()
+  })
+
+  it('arrow keys step the preview and Escape goes back', async () => {
+    await renderTeacherView()
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent('Previewing task 2')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent('Previewing task 3')
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent('Previewing task 2')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('teacher-preview-banner')).not.toBeInTheDocument()
+    expect(sessionCommands.setTaskId).not.toHaveBeenCalled()
+  })
+
+  it('a greyed optional task only previews and says Next still skips it', async () => {
+    mockSession = { ...mockSession, skipOptionalTasks: true }
+    await renderTeacherView()
+    fireEvent.click(screen.getByRole('button', { name: /Bonus/ }))
+    expect(screen.getByTestId('teacher-preview-banner')).toHaveTextContent(
+      'Skip optional tasks is on'
+    )
+    expect(sessionCommands.setTaskId).not.toHaveBeenCalled()
+    expect(sessionCommands.setSkipOptionalTasks).not.toHaveBeenCalled()
+  })
+})

@@ -5,7 +5,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/useAuth'
 import { useSession } from '../hooks/useSession'
 import { defaultShowItView } from '../../shared/showIt'
-import { findTaskById, flattenTasks, filterTasksByMode } from '../../shared/taskUtils'
+import {
+  findTaskById,
+  flattenTasks,
+  filterTasksByMode,
+  getTaskPriority,
+} from '../../shared/taskUtils'
 import {
   applyLessonOverride,
   publishLessonTasks,
@@ -77,6 +82,7 @@ import TeacherGoLiveControl from './teacher/TeacherGoLiveControl'
 import { getModuleDefinition } from '../../modules/definitions'
 import { sandboxModuleLabel } from './teacher/sandboxModuleLabel'
 import PaneFocusDropdown from '../components/student-modal/PaneFocusDropdown'
+import DropdownMenu from '../components/student-modal/DropdownMenu'
 import ControlHighlightDropdown from '../components/student-modal/ControlHighlightMenu'
 import { highlightScopeForTask } from '../../shared/controlHighlight'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
@@ -574,6 +580,43 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     }
   }
 
+  // The task list has no Prev / Next (calm teacher view): ← and → step the preview through the
+  // tasks without moving the class, Escape goes back to the class's task. Ignored while typing,
+  // in a dialog, or in the sandbox.
+  const previewKeysRef = useRef(null)
+  previewKeysRef.current = { flat: flattenTasks(filterTasksByMode(lesson?.tasks ?? [], 'live')) }
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
+      if (!['ArrowLeft', 'ArrowRight', 'Escape'].includes(event.key)) return
+      const target = event.target
+      if (
+        target instanceof Element &&
+        target.closest(
+          'input, textarea, select, [contenteditable="true"], .cm-editor, [role="dialog"]'
+        )
+      ) {
+        return
+      }
+      if (document.querySelector('[aria-modal="true"]')) return
+      const { flat, blocked } = previewKeysRef.current
+      if (blocked) return
+      if (event.key === 'Escape') {
+        setPreviewTaskId(null)
+        return
+      }
+      setPreviewTaskId((preview) => {
+        const shownId = preview ?? previewKeysRef.current.classTaskId
+        const index = flat.findIndex((t) => t.id === shownId)
+        const next = flat[index + (event.key === 'ArrowRight' ? 1 : -1)]
+        if (!next) return preview
+        return next.id === previewKeysRef.current.classTaskId ? null : next.id
+      })
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   function handleEnterSandbox() {
     setPreviewTaskId(null)
     const currentTask = flattenTasks(lesson?.tasks ?? []).find((task) => task.id === currentTaskId)
@@ -799,6 +842,12 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   }
 
   function handleOpenPresentationWindow() {
+    // Already open: bring it to the front rather than reloading it.
+    const open = presentationWindowRef.current
+    if (open && !open.closed) {
+      open.focus?.()
+      return
+    }
     const base = `${window.location.origin}${window.location.pathname}#/lesson/${lessonId}`
     presentationWindowRef.current = window.open(
       `${base}?teacher=true&present=true`,
@@ -896,6 +945,11 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       ? (lesson?.fork?.className ?? sessionClass.classId)
       : (classList.find((cls) => cls.id === sessionClass.classId)?.name ?? sessionClass.classId)
   const isPreviewing = previewTaskId !== null && !isInSandbox
+  previewKeysRef.current = {
+    flat: flatTasks,
+    classTaskId: currentTaskId,
+    blocked: isInSandbox,
+  }
 
   async function handleSendStageToAll(action) {
     const studentIds = Object.keys(session?.students ?? {})
@@ -1030,6 +1084,46 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             onShow: setAnswerShown,
             otherLabel: 'Question only',
           }
+  // Focus Class and Highlight Class, in a Class menu in the student list's header.
+  const showFocusClass =
+    !!session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task))
+  const showHighlightClass =
+    !!session &&
+    !!classHighlightTask &&
+    (isCodeTask(classHighlightTask) || !!classHighlightActivity)
+  const classControls =
+    showFocusClass || showHighlightClass ? (
+      <DropdownMenu
+        label="Class"
+        buttonClassName="student-grid-class-menu"
+        title="Focus Class and Highlight Class: point every student at a pane or a control"
+      >
+        {/* Information and activity/quiz tasks have no explainer or workspace panes to focus
+            (a sandbox parked on an activity still shows the workspace). */}
+        {showFocusClass && (
+          <PaneFocusDropdown
+            label="Focus Class"
+            lessonType={editorLesson?.type}
+            onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
+            onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
+          />
+        )}
+        {/* Pulse one control (Run, the green flag, a block category…) on every student's
+            screen, for the task the class is on (its effective module type). */}
+        {showHighlightClass && (
+          <ControlHighlightDropdown
+            label="Highlight Class"
+            lessonType={classHighlightType}
+            task={classHighlightActivity ? currentTask : null}
+            onHighlight={(target) =>
+              pushClassControlHighlight(target, isInSandbox ? null : (currentTask?.id ?? null))
+            }
+            onClear={clearClassControlHighlight}
+          />
+        )}
+      </DropdownMenu>
+    ) : null
+
   const editorPanel = (
     <TeacherEditorPanel
       lesson={editorLesson}
@@ -1066,56 +1160,10 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
         lessonLevel={lesson.level}
         lessonNumber={lesson.lessonNumber}
         isSandbox={isSandbox}
+        singleRow
+        shortBrand
         right={
           <>
-            {/* A popover from the top bar, not a panel in <main>, so it never resizes the
-                task workspace (see TaskRatingPanel). */}
-            {task && !isInformationTask && !isInSandbox && (
-              <TaskRatingPanel
-                taskId={task.id}
-                taskTitle={task.title}
-                existingRating={session?.taskRatingLog?.[task.id] ?? null}
-                onSave={setTaskRating}
-              />
-            )}
-            {/* Information and activity/quiz tasks have no explainer or workspace panes to
-                focus (a sandbox parked on an activity still shows the workspace). */}
-            {session && !isInformationTask && (isInSandbox || !isHostedActivityTask(task)) && (
-              <PaneFocusDropdown
-                label="Focus Class"
-                clearHeader
-                lessonType={editorLesson?.type}
-                onHighlight={(panes) => pushClassPaneCommand({ mode: 'highlight', panes })}
-                onForce={(panes) => pushClassPaneCommand({ mode: 'force', panes })}
-              />
-            )}
-            {/* Pulse one control (Run, the green flag, a block category…) on every student's
-                screen, for the task the class is on (its effective module type). */}
-            {session &&
-              !!classHighlightTask &&
-              (isCodeTask(classHighlightTask) || !!classHighlightActivity) && (
-                <ControlHighlightDropdown
-                  label="Highlight Class"
-                  lessonType={classHighlightType}
-                  task={classHighlightActivity ? currentTask : null}
-                  onHighlight={(target) =>
-                    pushClassControlHighlight(
-                      target,
-                      isInSandbox ? null : (currentTask?.id ?? null)
-                    )
-                  }
-                  onClear={clearClassControlHighlight}
-                />
-              )}
-            {session && !isInSandbox && (
-              <TeacherGoLiveControl
-                teacherLive={session.teacherLive}
-                onStart={handleStartDashboardLive}
-                onStop={() => setTeacherLive(null)}
-                onLayoutChange={(layout) => updateTeacherLive({ layout })}
-                disabled={session.state !== 'active'}
-              />
-            )}
             <TeacherSessionControls
               session={session}
               onOpenPresentationWindow={handleOpenPresentationWindow}
@@ -1144,6 +1192,43 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
               onUnpinLiveReference={setTeacherLiveReferenceForClass}
               peerHelpMenu={
                 <TeacherPeerHelpMenu session={session} lesson={lesson} peerHelp={peerHelp} />
+              }
+              // The quieter Rate beside Countdown: a popover, not a panel in <main>, so it never
+              // resizes the task workspace (see TaskRatingPanel).
+              rateControl={
+                task && !isInformationTask && !isInSandbox ? (
+                  <TaskRatingPanel
+                    compact
+                    taskId={task.id}
+                    taskTitle={task.title}
+                    existingRating={session?.taskRatingLog?.[task.id] ?? null}
+                    onSave={setTaskRating}
+                  />
+                ) : null
+              }
+              // Go Live is in More (the tutor goes live from the presentation window); while
+              // the tutor is live, Stop live (and a dashboard live's layout) shows in the row.
+              onGoLive={session && !isInSandbox ? handleStartDashboardLive : undefined}
+              goLiveDisabledReason={
+                session?.state !== 'active'
+                  ? 'Start the session first'
+                  : session?.teacherLive?.active && session.teacherLive.source === 'student'
+                    ? "A student's work is live. Stop that first."
+                    : null
+              }
+              goLiveControl={
+                session &&
+                !isInSandbox &&
+                session.teacherLive?.active &&
+                session.teacherLive.source === 'teacher' ? (
+                  <TeacherGoLiveControl
+                    teacherLive={session.teacherLive}
+                    onStart={handleStartDashboardLive}
+                    onStop={() => setTeacherLive(null)}
+                    onLayoutChange={(layout) => updateTeacherLive({ layout })}
+                    disabled={session.state !== 'active'}
+                  />
+                ) : null
               }
             />
           </>
@@ -1204,6 +1289,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             <TeacherPreviewBanner
               taskNumber={displayIndex + 1}
               taskTitle={task?.title}
+              classTaskNumber={flatTasks.findIndex((t) => t.id === currentTaskId) + 1}
+              skippedByNext={!!session?.skipOptionalTasks && getTaskPriority(task) === 'optional'}
               onCancel={() => setPreviewTaskId(null)}
               onConfirm={() => handleTaskChange(previewTaskId)}
             />
@@ -1391,6 +1478,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             openSideQuestRequest={openSideQuestRequest}
             rosterStatus={rosterStatus}
             onOpenRoster={() => setShowMatchDialog(true)}
+            classControls={classControls}
           />
         </aside>
       </div>
@@ -1435,6 +1523,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
 
       {showEndModal && (
         <TeacherEndSessionModal
+          studentCount={students.length}
           onClose={() => setShowEndModal(false)}
           onEnd={() => handleEndSession(false)}
           onEndAndGoHome={() => handleEndSession(true)}

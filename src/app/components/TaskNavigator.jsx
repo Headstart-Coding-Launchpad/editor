@@ -60,9 +60,8 @@ export default function TaskNavigator({
   const optionalCount = countOptionalTasks(flatTasks)
   const optionalAhead = countOptionalAhead(flatTasks, currentTaskId)
   const isSkipped = (task) => skipOptional && isOptionalTask(task) && task.id !== currentTaskId
-  // Navigate Prev/Next relative to what's currently displayed (preview or session task)
-  const displayId = previewTaskId ?? currentTaskId
-  const displayIndex = flatTasks.findIndex((t) => t.id === displayId)
+  // While the tutor previews another task, the class's own row says so.
+  const previewing = previewTaskId != null && previewTaskId !== currentTaskId
 
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const map = {}
@@ -148,6 +147,9 @@ export default function TaskNavigator({
                         <div style={s.detail}>
                           <span style={s.taskTitle}>{task.title}</span>
                           <OptionalBadge task={task} skipped={skipped} />
+                          {isCurrent && previewing && (
+                            <span style={s.classHereTag}>class is here</span>
+                          )}
                           {isCurrent && total > 0 && statLine(task) && (
                             <span style={s.stat}>{statLine(task)}</span>
                           )}
@@ -183,6 +185,7 @@ export default function TaskNavigator({
               <div style={s.detail}>
                 <span style={s.taskTitle}>{item.title}</span>
                 <OptionalBadge task={item} skipped={skipped} />
+                {isCurrent && previewing && <span style={s.classHereTag}>class is here</span>}
                 {isCurrent && total > 0 && statLine(item) && (
                   <span style={s.stat}>{statLine(item)}</span>
                 )}
@@ -194,40 +197,9 @@ export default function TaskNavigator({
         })}
       </div>
 
-      {/* Previous / Next — navigates relative to displayed task (preview or session) */}
-      <div style={s.navButtons}>
-        <button
-          className="btn-secondary"
-          style={{
-            ...s.navBtn,
-            ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
-          }}
-          disabled={displayIndex <= 0}
-          onClick={() => {
-            if (isSandbox || sandboxStaging) return
-            const prev = flatTasks[displayIndex - 1]
-            if (prev) onTaskSelect?.(prev.id)
-          }}
-        >
-          ← Prev
-        </button>
-        <button
-          className="btn-secondary"
-          style={{
-            ...s.navBtn,
-            ...(isSandbox || sandboxStaging ? { opacity: 0.45, cursor: 'default' } : {}),
-          }}
-          disabled={displayIndex >= flatTasks.length - 1}
-          onClick={() => {
-            if (isSandbox || sandboxStaging) return
-            const next = flatTasks[displayIndex + 1]
-            if (next) onTaskSelect?.(next.id)
-          }}
-        >
-          Next →
-        </button>
-      </div>
-
+      {/* No Prev / Next here (calm teacher view): clicking a task previews it, and ← / → step
+          the preview (TeacherView). The class moves from the presentation window, the
+          countdown's Next task or the preview banner's Move class here. */}
       {/* Footer: the Skip optional tasks setting (a switch, not a task row) above Sandbox. */}
       <div style={s.sandboxArea} data-testid="task-nav-footer">
         {optionalCount > 0 && onSkipOptionalChange && (
@@ -347,9 +319,11 @@ const s = {
     background: '#f0eafa',
     borderLeftColor: 'var(--colour-primary)',
   },
+  // The previewed row: a dashed amber outline, matching the amber preview banner.
   itemPreview: {
-    background: '#eff6ff',
-    borderLeftColor: '#3b82f6',
+    background: '#fffbeb',
+    outline: '2px dashed #f59e0b',
+    outlineOffset: -2,
   },
   num: {
     width: 22,
@@ -432,8 +406,9 @@ const s = {
     borderLeftColor: 'var(--colour-primary)',
   },
   subtaskItemPreview: {
-    background: '#eff6ff',
-    borderLeftColor: '#3b82f6',
+    background: '#fffbeb',
+    outline: '2px dashed #f59e0b',
+    outlineOffset: -2,
   },
   subtaskDot: {
     width: 6,
@@ -525,17 +500,16 @@ const s = {
     userSelect: 'none',
     marginTop: 4,
   },
-  navButtons: {
-    display: 'flex',
-    gap: 8,
-    padding: '8px 12px',
-    borderTop: '1px solid #e5e7eb',
-    flexShrink: 0,
-  },
-  navBtn: {
-    flex: 1,
-    fontSize: 13,
-    padding: '6px 0',
+  classHereTag: {
+    alignSelf: 'flex-start',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    color: '#fff',
+    background: '#15803d',
+    borderRadius: 4,
+    padding: '1px 5px',
+    whiteSpace: 'nowrap',
   },
   sandboxArea: {
     padding: '8px 12px 12px',
