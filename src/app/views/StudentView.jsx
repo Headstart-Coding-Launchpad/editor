@@ -49,6 +49,13 @@ import useClassCountdown from '../hooks/useClassCountdown'
 import ClassCountdownPill from '../components/ClassCountdownPill'
 import ClassProgressStrip from '../components/ClassProgressStrip'
 import TimesUpBanner from '../components/TimesUpBanner'
+import ClassCountdownEndedStrip from '../components/ClassCountdownEndedStrip'
+import { MINUTE_MS } from '../../shared/classCountdown'
+import {
+  classTaskPosition,
+  countOptionalAhead,
+  nextClassTaskId,
+} from '../../shared/classNavigation'
 import TaskChangeFlash from '../components/TaskChangeFlash'
 import TimingRunControl from '../components/TimingRunControl'
 import useVideoCallPrompt, { VIDEO_CALL_PROMPT_PHASES } from '../hooks/useVideoCallPrompt'
@@ -221,6 +228,8 @@ export default function StudentView({
     createLiveInkWriter,
     setShowItView,
     setShowItOptOut,
+    addClassCountdownTime,
+    clearClassCountdown,
   } = useSession(useRealtimeSession ? sessionKey : null, {
     enabled: useRealtimeSession,
     keepPresenter: teacherPresentation,
@@ -1498,12 +1507,32 @@ export default function StudentView({
       />
     ) : null
 
+  // The presentation window's Next and the countdown's "Next task" skip optional tasks while
+  // the tutor's Skip optional tasks switch is on (session.skipOptionalTasks).
+  const skipOptional = !!session?.skipOptionalTasks
+  const presenterNextTaskId = teacherPresentation
+    ? nextClassTaskId(flatTasks, currentTaskId, { skipOptional })
+    : null
+  const presenterPosition = classTaskPosition(flatTasks, currentTaskId, { skipOptional })
+  const presenterOptionalAhead = skipOptional ? countOptionalAhead(flatTasks, currentTaskId) : 0
+  const presenterPlaceNote = teacherPresentation
+    ? `Task ${presenterPosition.number} of ${presenterPosition.total}${
+        presenterOptionalAhead > 0 ? ` · Next skips ${presenterOptionalAhead} optional` : ''
+      }`
+    : null
+  async function handlePresenterCountdownNext() {
+    if (presenterNextTaskId == null) return
+    handleSoloNavigate(presenterNextTaskId)
+    await clearClassCountdown?.()
+  }
+
   const topBarRight = teacherPresentation ? (
     <div style={s.presentationControls}>
       <ClassCountdownPill
         countdown={classCountdown}
         serverTimeOffset={serverTimeOffset}
         variant="presentation"
+        hideWhenExpired
       />
       <button
         className="btn-ghost presentation-header-btn"
@@ -1713,6 +1742,17 @@ export default function StudentView({
         right={topBarRight}
         singleRow
       />
+      {teacherPresentation && (
+        <ClassCountdownEndedStrip
+          countdown={classCountdown}
+          serverTimeOffset={serverTimeOffset}
+          onAddMinute={() => addClassCountdownTime?.(MINUTE_MS)}
+          onClear={() => clearClassCountdown?.()}
+          onNextTask={presenterNextTaskId != null ? handlePresenterCountdownNext : null}
+          note={presenterPlaceNote}
+          variant="presentation"
+        />
+      )}
       {(teacherPresentation || goLiveOn) && (
         <ClassProgressStrip
           session={session}

@@ -1011,6 +1011,69 @@ select {
   font-size: 2.6rem;
 }
 
+/* Countdown ended (ClassCountdownEndedStrip.jsx): a light amber strip under the top bar on the
+   teacher view and the presentation window with +1 min, Clear: stay here and Next task. It sits
+   in the page flow (never covers the workspace) and only shows at zero. */
+.countdown-ended-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 6px 16px;
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  font-family: var(--font-body);
+  color: #92400e;
+}
+
+.countdown-ended-strip__title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.countdown-ended-strip__btn {
+  padding: 5px 12px;
+  border: 1px solid var(--colour-primary);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.countdown-ended-strip__btn--next {
+  /* #15803d keeps white text above 4.5:1. */
+  background: #15803d;
+  border-color: #15803d;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+.countdown-ended-strip__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+.countdown-ended-strip__note {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.countdown-ended-strip--presentation .countdown-ended-strip__title {
+  font-size: 1.15rem;
+}
+
 /* Task-change flash (TaskChangeFlash.jsx): a full-width title band under the 52px top bar when the
    class moves to a new task. Slides in, holds ~1.2s, slides out; the 1600ms length mirrors
    MOTION_MS.taskFlash. White on --colour-primary is about 8:1. Never takes a click or focus. */

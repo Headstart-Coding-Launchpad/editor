@@ -26,6 +26,9 @@ import TaskSlideTransition from '../components/TaskSlideTransition'
 import { usePreloadNeighbourImages } from '../../shared/preloadImages'
 import StudentGrid from '../components/StudentGrid'
 import TeacherTimers from '../components/TeacherTimers'
+import ClassCountdownEndedStrip from '../components/ClassCountdownEndedStrip'
+import { MINUTE_MS } from '../../shared/classCountdown'
+import { nextClassTaskId } from '../../shared/classNavigation'
 import TeacherSessionControls from '../components/TeacherSessionControls'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
@@ -739,6 +742,15 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     return buildDashboardLivePayload({ lesson, taskId, work, layout })
   }
 
+  // The countdown's "Next task": the whole class moves on (past optional tasks while Skip
+  // optional tasks is on; classNextTaskId below) and the countdown goes. Nothing moves when the
+  // countdown ends.
+  async function handleCountdownNextTask() {
+    if (classNextTaskId == null) return
+    await handleTaskChange(classNextTaskId)
+    await clearClassCountdown()
+  }
+
   async function handleStartDashboardLive() {
     await setActiveStudentView(null)
     await setTeacherLive(dashboardLivePayloadFor(session?.currentTaskId ?? currentTaskId, 'both'))
@@ -808,6 +820,9 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   const sandboxLesson = getEffectiveLessonForModule(lesson, activeSandboxModuleId)
   const editorLesson = isInSandbox ? sandboxLesson : displayedLesson
   const currentTask = flatTasks.find((t) => t.id === (session?.currentTaskId ?? currentTaskId))
+  const classNextTaskId = nextClassTaskId(flatTasks, session?.currentTaskId ?? currentTaskId, {
+    skipOptional: !!session?.skipOptionalTasks,
+  })
   // The class highlight menu lists the controls of the task the students are on (in the
   // sandbox, the sandbox's task), by its effective module type.
   const classHighlightTask = isInSandbox ? task : currentTask
@@ -1069,6 +1084,16 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
         }
       />
       <TeacherPeerHelpAlertBanner session={session} peerHelp={peerHelp} />
+      {!isInSandbox && (
+        <ClassCountdownEndedStrip
+          countdown={session?.classCountdown}
+          serverTimeOffset={serverTimeOffset}
+          onAddMinute={() => addClassCountdownTime(MINUTE_MS)}
+          onClear={clearClassCountdown}
+          onNextTask={classNextTaskId != null ? handleCountdownNextTask : null}
+          note="Class countdown finished · nothing moves by itself"
+        />
+      )}
       <TeacherTimers
         session={session}
         task={currentTask}

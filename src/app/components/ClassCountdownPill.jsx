@@ -21,9 +21,12 @@ export default function ClassCountdownPill({
   countdown,
   serverTimeOffset = 0,
   variant = 'student',
+  // The presentation window shows the Time's up strip (ClassCountdownEndedStrip) instead.
+  hideWhenExpired = false,
 }) {
   const remainingMs = useCountdownRemaining(countdown, serverTimeOffset)
   if (remainingMs == null) return null
+  if (hideWhenExpired && remainingMs <= 0) return null
 
   const expired = remainingMs <= 0
   const warning = !expired && remainingMs <= COUNTDOWN_WARNING_MS
