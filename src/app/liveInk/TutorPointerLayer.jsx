@@ -18,16 +18,18 @@ import {
 //   TutorPointerLayer    - a student's screen; draws a dot and click ripples on the same pane
 // Both are non-interactive (pointer-events: none) and add no controls.
 
-const TEXT_SELECTOR = `[${MD_ANCHOR_ATTR}], [data-ink-surface]`
+const TEXT_SELECTOR = `[${MD_ANCHOR_ATTR}]`
 
 export function TutorPointerTracker({ writer }) {
   useEffect(() => {
     if (!writer) return undefined
     let overText = false
+    // Over annotatable text the dot and ripples would drift (text wraps differently per
+    // screen); the anchored laser (Draw > Pointer) is correct there, so send none.
+    const isOverText = (event) =>
+      event.target instanceof Element && Boolean(event.target.closest(TEXT_SELECTOR))
     function onMove(event) {
-      // Over annotatable text the dot would drift (text wraps differently per screen); the
-      // anchored laser (Draw > Pointer) is correct there, so drop any stale dot and send none.
-      if (event.target instanceof Element && event.target.closest(TEXT_SELECTOR)) {
+      if (isOverText(event)) {
         if (!overText) writer.hideTutorPointer?.()
         overText = true
         return
@@ -38,12 +40,15 @@ export function TutorPointerTracker({ writer }) {
       if (at) writer.moveTutorPointer?.({ pane: pane.id, ...at })
     }
     function onDown(event) {
+      if (isOverText(event)) return
       const pane = tutorPaneOf(event.target)
       const at = pane && fractionsInPane(pane.el, event.clientX, event.clientY)
       if (at) writer.tutorClick?.({ pane: pane.id, ...at })
     }
     function onLeave(event) {
-      if (!event.relatedTarget) writer.hideTutorPointer?.()
+      if (event.relatedTarget) return
+      overText = false
+      writer.hideTutorPointer?.()
     }
     // scroll doesn't bubble, so listen in the capture phase to hear nested scrollers.
     function onScroll(event) {
