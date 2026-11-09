@@ -2139,7 +2139,8 @@ select {
   padding: 0 10px;
   border: 1px solid var(--ui-border-neutral);
   border-radius: 999px;
-  background: #fff;
+  /* background-color only: the global select caret is a background-image */
+  background-color: #fff;
   font-family: var(--font-body);
   font-size: 0.84rem;
   color: var(--colour-primary);
@@ -2147,7 +2148,7 @@ select {
 }
 .te-status-chip--on {
   border-color: var(--colour-primary);
-  background: #f3ecff;
+  background-color: #f3ecff;
 }
 .te-status-line__format {
   position: relative;
