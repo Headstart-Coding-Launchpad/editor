@@ -71,4 +71,49 @@ describe('withClosedPaletteScrollArea', () => {
       )
     ).toEqual(wide)
   })
+
+  it('is built once per base class', () => {
+    expect(withClosedPaletteScrollArea(FakeMetricsManager)).toBe(Manager)
+  })
+
+  it('falls back to the stock scroll area when the flyout cannot be asked', () => {
+    for (const ws of [
+      { ...workspace({ open: false, contentLeft: -248 }), getFlyout: undefined },
+      { ...workspace({ open: false, contentLeft: -248 }), getFlyout: () => null },
+      {
+        ...workspace({ open: false, contentLeft: -248 }),
+        getFlyout: () => {
+          throw new Error('renamed')
+        },
+      },
+    ]) {
+      expect(new Manager(ws).getScrollMetrics()).toEqual(
+        new FakeMetricsManager(ws).getScrollMetrics()
+      )
+    }
+    const noWorkspace = new Manager(undefined)
+    noWorkspace.getViewMetrics = () => ({ width: 100 })
+    noWorkspace.getContentMetrics = () => ({ left: 0, width: 10 })
+    expect(() => noWorkspace.getScrollMetrics()).not.toThrow()
+  })
+
+  it('widens by pixels at a block scale other than 1', () => {
+    // The base takes view and content in pixels at any scale (it divides by scale afterwards), so
+    // the strip, a pixel width, is added as is.
+    class Scaled extends FakeMetricsManager {
+      getScrollMetrics(scaled, view, content) {
+        const r = super.getScrollMetrics(scaled, view, content)
+        const k = scaled ? this.workspace_.scale : 1
+        return { left: r.left / k, width: r.width / k }
+      }
+    }
+    const ws = { ...workspace({ open: false, contentLeft: -248 }), scale: 0.65 }
+    const m = new (withClosedPaletteScrollArea(Scaled))(ws)
+    const pixels = m.getScrollMetrics(false)
+    expect(pixels.left).toBeLessThanOrEqual(0)
+    expect(pixels.left + pixels.width).toBeGreaterThanOrEqual(451)
+    const units = m.getScrollMetrics(true)
+    expect(units.left).toBeCloseTo(pixels.left / 0.65)
+    expect(units.width).toBeCloseTo(pixels.width / 0.65)
+  })
 })
