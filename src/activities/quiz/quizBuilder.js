@@ -11,6 +11,30 @@ export function makeDefaultQuizOptions() {
   ]
 }
 
+// Old lesson files can hold quiz options as plain strings ("Yes") rather than {id, text}
+// objects, which crashed the Builder. Strings and numbers become {id, text}; an object without
+// an id gets its letter; anything else (null, arrays) is skipped. Returns the task itself when
+// every option is already an object with an id.
+export function withQuizOptionObjects(task) {
+  const options = task?.options
+  if (!Array.isArray(options)) return task
+  const fine = options.every(
+    (option) => option && typeof option === 'object' && !Array.isArray(option) && option.id
+  )
+  if (fine) return task
+  const normalized = options
+    .map((option) => {
+      if (typeof option === 'string' || typeof option === 'number') return { text: String(option) }
+      if (option && typeof option === 'object' && !Array.isArray(option)) return option
+      return null
+    })
+    .filter(Boolean)
+    .map((option, index) =>
+      option.id ? option : { ...option, id: String.fromCharCode(97 + index) }
+    )
+  return { ...task, options: normalized }
+}
+
 function renumberQuizOptions(options) {
   return options.map((option, index) => ({ ...option, id: String.fromCharCode(97 + index) }))
 }
