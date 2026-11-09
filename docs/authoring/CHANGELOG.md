@@ -37,6 +37,22 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-09
+
+- **The Builder's task editor has three tabs: Content, Settings, Authoring notes.** Content opens
+  first: title and minutes on one row, then one line for Priority, Must see, Available in and
+  the Task format chip (click it for Code / Information / Quiz / Activity / Arrange), then the
+  code, quiz or activity, then the explainer. Settings holds the optional features (Copy code
+  panel, Block brackets, Name-tag panel, Stage target, Live scrubbing, Slow-mo) and the Task
+  options fold. Authoring notes holds what the Authoring metadata fold held (intent, task
+  activity, badge hints). No field changed; a validation error on a field in another tab shows
+  as a red count on that tab, and the Builder remembers the last tab until it is reloaded. The
+  Classroom's Edit Lesson keeps one column. A quiz whose `options` are plain strings (old files)
+  no longer crashes the editor: it shows them as options and saves them as `{ id, text }` on the
+  next edit.
+  - Affects: builder, quiz_multiple_choice, quiz_poll · Existing lessons: no changes needed ·
+    Resolves: none
+
 ## 2026-11-08
 
 - **`priority: optional` tasks can be skipped by the tutor, and the teacher view shows the
