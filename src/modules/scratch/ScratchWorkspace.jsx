@@ -97,6 +97,7 @@ import {
   restorePaletteCategory,
   revealBlocksBesideFlyout,
   topFlyoutCategory,
+  withClosedPaletteScrollArea,
 } from './calm/calmPalette.js'
 import { CalmPaletteToggle } from './calm/CalmControls.jsx'
 import {
@@ -2064,6 +2065,7 @@ export default function ScratchWorkspace({
     const ws = Blockly.inject(div, {
       toolbox: buildToolboxForSprite(spriteId),
       renderer: 'zelos',
+      plugins: { metricsManager: withClosedPaletteScrollArea(Blockly.MetricsManager) },
       grid: { spacing: 24, length: 2, colour: '#eee', snap: true },
       // Zoom is fully automatic (see computeBlockScale/blockScaleRef) — no manual wheel-zoom
       // or on-canvas zoom controls, since a student fighting an auto-zoom that keeps

@@ -343,6 +343,27 @@ export function blocklyZoomOptions(calm, scale) {
   return { controls: false, wheel: false, startScale, minScale: range.min, maxScale: range.max }
 }
 
+// A closed palette leaves its strip of the script area still counted as outside Blockly's view (the
+// canvas origin stays put, so the script never moves). A block dropped there put the view out of
+// the scroll area (half a view past the content), so Blockly scrolled to follow it and the block
+// jumped back to the strip's edge ("it moves back to the center"). While the palette is hidden the
+// scroll area is worked out for a view as wide as the whole script area, so the drop stays put.
+export function withClosedPaletteScrollArea(MetricsManager) {
+  return class extends MetricsManager {
+    getScrollMetrics(scaled, view, content) {
+      const flyout = this.workspace_.getFlyout?.()
+      if (!flyout || flyout.isVisible?.() !== false)
+        return super.getScrollMetrics(scaled, view, content)
+      const v = view || this.getViewMetrics(false)
+      return super.getScrollMetrics(
+        scaled,
+        { ...v, width: v.width + this.getAbsoluteMetrics().left },
+        content
+      )
+    }
+  }
+}
+
 // Applies the block size to a workspace. Blockly's setScale scrolls the canvas even when the size
 // is unchanged (it re-centres the view): on the calm screen, where every palette open or close
 // re-applies the size, that moved the script about 105px on screen each time. There it is only
