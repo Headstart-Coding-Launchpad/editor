@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -56,17 +56,9 @@ describe('AdminPortal and the shared Admin listeners', () => {
     expect(signOut).toHaveBeenCalledTimes(1)
   })
 
-  it('the header Lesson Builder button opens the Builder start screen in a new tab', () => {
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
-    try {
-      renderPortal()
-      fireEvent.click(screen.getByRole('button', { name: /Lesson Builder/ }))
-      expect(open).toHaveBeenCalledTimes(1)
-      expect(open.mock.calls[0][0]).toMatch(/#\/builder(\?|$)/)
-      expect(open.mock.calls[0][0]).not.toContain('load=')
-      expect(open.mock.calls[0][1]).toBe('_blank')
-    } finally {
-      open.mockRestore()
-    }
+  it('has no Lesson Builder button in the header (Admin > Lessons opens the Builder)', () => {
+    renderPortal()
+    const header = screen.getByRole('banner')
+    expect(within(header).queryByRole('button', { name: /Lesson Builder/ })).toBeNull()
   })
 })
