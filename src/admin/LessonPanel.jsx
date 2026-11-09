@@ -1301,8 +1301,8 @@ function LessonAdminPanel({
           onClose={onCloseShare}
           onCopy={onCopyLink}
         />
-        <button className="btn-ghost-outline" style={s.actionBtn} onClick={onEditInBuilder}>
-          Edit in Builder
+        <button className="btn-primary" style={s.editBuilderBtn} onClick={onEditInBuilder}>
+          ✎ Edit in Builder
         </button>
         <button className="btn-danger" style={s.actionBtn} disabled={deleting} onClick={onDelete}>
           {deleting ? '...' : 'Delete'}
@@ -1534,6 +1534,11 @@ const s = {
     letterSpacing: '0.02em',
   },
   actions: { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
+  editBuilderBtn: {
+    padding: '5px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+  },
   actionBtn: {
     padding: '4px 7px',
     fontSize: '0.76rem',

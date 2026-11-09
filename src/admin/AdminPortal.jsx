@@ -47,6 +47,15 @@ export default function AdminPortal() {
     navigate(`/admin/${activeTab}/${sub}`)
   }
 
+  // The Builder start screen in its own tab (as + New Lesson and Edit in Builder open it).
+  function openBuilder() {
+    window.open(
+      `${window.location.origin}${window.location.pathname}#/builder?advanced=1`,
+      '_blank',
+      'noopener,noreferrer'
+    )
+  }
+
   async function handleLogout() {
     try {
       await signOut(auth)
@@ -60,6 +69,9 @@ export default function AdminPortal() {
       <header style={s.header}>
         <span style={s.brand}>Headstart Coding — Admin</span>
         <div style={s.headerRight}>
+          <button className="btn-primary" style={s.builderBtn} onClick={openBuilder}>
+            ✎ Lesson Builder
+          </button>
           <span style={s.userEmail}>{user?.email}</span>
           <button
             className="btn-ghost-outline"
@@ -146,6 +158,11 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.85rem',
     color: 'rgba(255,255,255,0.8)',
+  },
+  builderBtn: {
+    padding: '6px 14px',
+    fontSize: '0.85rem',
+    fontWeight: 700,
   },
   logoutBtn: {
     padding: '5px 14px',
