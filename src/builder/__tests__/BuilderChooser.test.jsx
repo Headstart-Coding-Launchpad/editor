@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const authState = { user: { uid: 't1' }, role: 'teacher', loading: false }
+
 vi.mock('../../shared/firebase', () => ({ db: {}, auth: {}, firestore: {} }))
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db, _col, id) => ({ id })),
@@ -15,20 +17,21 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../../shared/lessonService', () => ({
   fetchLessonList: vi.fn(async () => [
     { id: 'l1', type: 'composed', title: 'First lesson', tasks: [] },
-    { id: 'l2', type: 'composed', title: 'Second lesson', draft: true, tasks: [] },
   ]),
 }))
 vi.mock('../views/BuilderView', () => ({
-  default: ({ lesson, advanced }) => (
+  default: ({ lesson, advanced, onNew }) => (
     <div data-testid="builder-view" data-advanced={String(advanced)}>
-      {lesson.id}
+      {lesson.id || 'blank'}
+      <button type="button" onClick={onNew}>
+        All lessons
+      </button>
     </div>
   ),
 }))
-vi.mock('../../auth/useAuth', () => ({
-  useAuth: () => ({ user: { uid: 't1' }, role: 'teacher', loading: false }),
-}))
+vi.mock('../../auth/useAuth', () => ({ useAuth: () => authState }))
 
+import { fetchLessonList } from '../../shared/lessonService'
 import BuilderApp from '../App'
 
 function renderAt(entries) {
@@ -37,6 +40,7 @@ function renderAt(entries) {
       <Routes>
         <Route path="/builder" element={<BuilderApp />} />
         <Route path="/account" element={<div>Account page</div>} />
+        <Route path="/admin/:tab?" element={<div>Admin lessons page</div>} />
         <Route path="/lesson/:id" element={<div>Lesson page</div>} />
         <Route path="/" element={<div>Home page</div>} />
       </Routes>
@@ -45,38 +49,37 @@ function renderAt(entries) {
 }
 
 describe('Lesson Builder start screen', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+    authState.role = 'teacher'
+  })
 
-  it('opens straight on the lesson in ?load= with no lesson step', async () => {
+  it('opens straight on the lesson in ?load= with no start step', async () => {
     renderAt(['/builder?load=l1'])
     const view = await screen.findByTestId('builder-view')
     expect(view).toHaveTextContent('l1')
     expect(view).toHaveAttribute('data-advanced', 'false')
+    expect(screen.queryByRole('button', { name: 'New lesson' })).not.toBeInTheDocument()
+  })
+
+  it('is a calm start screen: New lesson, Upload lesson file and a pointer to Admin, no lesson list', async () => {
+    renderAt(['/builder'])
+    expect(await screen.findByRole('button', { name: 'New lesson' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Upload lesson file' })).toBeInTheDocument()
+    expect(screen.getByText(/To edit an existing lesson, open it from Admin/)).toBeInTheDocument()
+    expect(screen.queryByText(/First lesson/)).not.toBeInTheDocument()
     expect(screen.queryByText('Open a lesson')).not.toBeInTheDocument()
+    expect(fetchLessonList).not.toHaveBeenCalled()
   })
 
-  it('with no lesson shows a plain list with draft flags, and opens a lesson from it', async () => {
+  it('New lesson opens a blank lesson in the Builder', async () => {
     const user = userEvent.setup()
-    renderAt(['/builder'])
-    expect(await screen.findByText(/First lesson/)).toBeInTheDocument()
-    expect(screen.getByText('Draft')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /First lesson/ }))
-    await waitFor(() => expect(screen.getByTestId('builder-view')).toHaveTextContent('l1'))
-  })
-
-  it('hides blank-lesson, upload and several-module options by default', async () => {
-    renderAt(['/builder'])
-    await screen.findByText(/First lesson/)
-    expect(screen.queryByRole('button', { name: 'New blank lesson' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /JSON/ })).not.toBeInTheDocument()
-    expect(screen.queryByText(/several module types|composed/i)).not.toBeInTheDocument()
-  })
-
-  it('shows them with ?advanced=1', async () => {
     renderAt(['/builder?advanced=1'])
-    await screen.findByText(/First lesson/)
-    expect(screen.getByRole('button', { name: 'New blank lesson' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Open a lesson file/ })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'New lesson' }))
+    const view = await screen.findByTestId('builder-view')
+    expect(view).toHaveTextContent('blank')
+    expect(view).toHaveAttribute('data-advanced', 'true')
   })
 
   it('has a way back and an account link', async () => {
@@ -95,6 +98,31 @@ describe('Lesson Builder start screen', () => {
       expect(screen.getByText('Lesson page')).toBeInTheDocument()
     } finally {
       length.mockRestore()
+    }
+  })
+
+  it('the toolbar All lessons takes an admin back to Admin > Lessons', async () => {
+    authState.role = 'admin'
+    const user = userEvent.setup()
+    renderAt(['/builder?load=l1'])
+    await user.click(await screen.findByRole('button', { name: 'All lessons' }))
+    expect(await screen.findByText('Admin lessons page')).toBeInTheDocument()
+  })
+
+  it('All lessons still asks first when there are unsaved changes', async () => {
+    authState.role = 'admin'
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    localStorage.setItem('headstart_builder_current', JSON.stringify({ id: 'l9', tasks: [] }))
+    const user = userEvent.setup()
+    try {
+      renderAt(['/builder'])
+      await user.click(await screen.findByRole('button', { name: 'Restore' }))
+      await user.click(await screen.findByRole('button', { name: 'All lessons' }))
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('builder-view')).toHaveTextContent('l9')
+      await waitFor(() => expect(screen.queryByText('Admin lessons page')).not.toBeInTheDocument())
+    } finally {
+      confirm.mockRestore()
     }
   })
 })
