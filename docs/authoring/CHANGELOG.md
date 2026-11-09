@@ -39,13 +39,13 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-09
 
-- **Open existing lessons from Admin, not the Builder.** The Builder's start screen no longer lists
-  lessons: it offers New lesson and Upload lesson file only. To edit a lesson, use Admin > Lessons,
-  open the lesson row and press "✎ Edit in Builder" (or a `#/builder?load=<lessonId>` link). Admin's
-  header has a new orange "Lesson Builder" button for the start screen, and the Builder's All
-  lessons button takes admins back to Admin > Lessons. Saved lesson fields are unchanged.
+- **Admin > Lessons is the way into the Builder.** The Builder has no start screen and no lesson
+  list. Start a lesson with Admin > Lessons "+ New Lesson" (opens a blank lesson) or "Upload JSON";
+  edit one by opening its row and pressing "✎ Edit in Builder" (or a `#/builder?load=<lessonId>`
+  link). Opening `#/builder` with no lesson takes an admin to Admin > Lessons. The Builder's All
+  lessons button takes admins back there. Saved lesson fields are unchanged.
 - Affects: Builder, Admin Lessons · Existing lessons: no changes needed ·
-  Resolves: none (Builder entry sketch, Ryan OK 9 Nov 2026)
+  Resolves: none (Builder entry, Ryan's decision 9 Nov 2026)
 
 ## 2026-11-08
 
