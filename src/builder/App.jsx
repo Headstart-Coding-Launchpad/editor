@@ -270,7 +270,7 @@ const s = {
     borderRadius: 12,
     boxShadow: '0 8px 30px rgba(98, 34, 204, 0.18), 0 4px 10px rgba(0, 0, 0, 0.06)',
   },
-  startCard: { width: 560 },
+  startCard: { width: 640, maxWidth: '94vw' },
   cardHeader: {
     background: 'var(--colour-primary)',
     padding: '20px 24px 16px',
