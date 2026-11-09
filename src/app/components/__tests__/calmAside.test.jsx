@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { act, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CalmAsideSlot, useCalmAside } from '../calmAside'
+import TaskSlideTransition, { TASK_TRANSITION_MS } from '../TaskSlideTransition'
 
 // A slot inside a child that changes on its own (like ScratchWorkspace showing `calm.aside` only
 // once it has loaded): the parent does not re-render when it appears or goes.
@@ -111,5 +112,32 @@ describe('calm aside host', () => {
       </Harness>
     )
     expect(screen.queryByTestId('inline')).not.toBeInTheDocument()
+  })
+})
+
+describe('calm aside host across a task slide', () => {
+  it('keeps the card in the new task after the leaving slide goes (Scratch to Scratch)', () => {
+    vi.useFakeTimers()
+    try {
+      function Panel({ task }) {
+        const { aside, portal } = useCalmAside(true)
+        return (
+          <>
+            <TaskSlideTransition transitionKey={task} order={task}>
+              <CalmAsideSlot aside={aside} testId={`slot-${task}`} />
+            </TaskSlideTransition>
+            {portal(<Card />)}
+          </>
+        )
+      }
+      const { rerender } = render(<Panel task={1} />)
+      rerender(<Panel task={2} />)
+      act(() => {
+        vi.advanceTimersByTime(TASK_TRANSITION_MS + 50)
+      })
+      expect(within(screen.getByTestId('slot-2')).getByTestId('card')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

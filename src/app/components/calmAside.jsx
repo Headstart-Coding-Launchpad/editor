@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useIsLeavingTaskSlide } from './TaskSlideTransition'
 
 // The calm Scratch explainer column (task card + docked hint) renders into ONE DOM node, the
 // host, that moves between slots: the side column, or beside the pinned stage when the panel is
@@ -130,9 +131,12 @@ export function useCalmAside(wanted) {
 export function CalmAsideSlot({ aside, style, testId }) {
   const ref = useRef(null)
   const { host, onMove, onRemount } = aside ?? {}
+  // The leaving task's snapshot (TaskSlideTransition) holds a stale copy of this slot: it must not
+  // take the host from the entering one, or the card goes with it when the slide ends.
+  const leaving = useIsLeavingTaskSlide()
   useLayoutEffect(() => {
     const slot = ref.current
-    if (!slot || !host) return undefined
+    if (leaving || !slot || !host) return undefined
     const moved = savedStates.has(host)
     slot.appendChild(host)
     if (moved && hasMedia(host)) {
@@ -148,6 +152,6 @@ export function CalmAsideSlot({ aside, style, testId }) {
       slot.removeChild(host)
       onMove?.()
     }
-  }, [host, onMove, onRemount])
+  }, [leaving, host, onMove, onRemount])
   return <div ref={ref} data-testid={testId} style={style} />
 }
