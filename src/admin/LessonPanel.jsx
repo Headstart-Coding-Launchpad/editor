@@ -42,10 +42,7 @@ import { saveAfterClassFeedback } from '../app/afterClassFeedback'
 import { AdminCell, AdminTable } from './AdminUi'
 import ClassRosterEditor from './ClassRosterEditor'
 import { REPORT_PAGE_SIZE, useAdminLessons, useAdminSnapshot, useLoadMore } from './adminSnapshots'
-
-function makeBuilderUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
-}
+import { openBuilder } from './builderLinks'
 
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
 const EMPTY = Object.freeze([])
@@ -341,7 +338,7 @@ export default function LessonPanel({ view = 'lessons' }) {
     setForkingId(lesson.id)
     try {
       const { fork } = await publishLessonFork(lesson, cls)
-      window.open(makeBuilderUrl(fork.id), '_blank', 'noopener,noreferrer')
+      openBuilder({ load: fork.id })
     } catch (err) {
       window.alert('Failed to fork lesson: ' + err.message)
     } finally {
@@ -350,7 +347,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   function handleEditInBuilder(lesson) {
-    window.open(makeBuilderUrl(lesson.id), '_blank', 'noopener,noreferrer')
+    openBuilder({ load: lesson.id })
   }
 
   function handleToggleShare(lessonId) {
@@ -370,11 +367,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   function handleNewLesson() {
-    window.open(
-      `${window.location.origin}${window.location.pathname}#/builder?advanced=1`,
-      '_blank',
-      'noopener,noreferrer'
-    )
+    openBuilder({ advanced: true })
   }
 
   const uploadInputRef = useRef(null)
@@ -1301,8 +1294,8 @@ function LessonAdminPanel({
           onClose={onCloseShare}
           onCopy={onCopyLink}
         />
-        <button className="btn-ghost-outline" style={s.actionBtn} onClick={onEditInBuilder}>
-          Edit in Builder
+        <button className="btn-primary" style={s.editBuilderBtn} onClick={onEditInBuilder}>
+          ✎ Edit in Builder
         </button>
         <button className="btn-danger" style={s.actionBtn} disabled={deleting} onClick={onDelete}>
           {deleting ? '...' : 'Delete'}
@@ -1534,6 +1527,11 @@ const s = {
     letterSpacing: '0.02em',
   },
   actions: { display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap' },
+  editBuilderBtn: {
+    padding: '5px 12px',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+  },
   actionBtn: {
     padding: '4px 7px',
     fontSize: '0.76rem',

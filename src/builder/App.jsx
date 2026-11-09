@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { firestore } from '../shared/firebase'
-import { fetchLessonList } from '../shared/lessonService'
-import { formatLessonLabel, isAttachedCompanion } from '../shared/lessonOrder'
 import { decodeLessonFromFirestore } from '../shared/lessonBlocksCodec'
 import { useAuth } from '../auth/useAuth'
 import BuilderView from './views/BuilderView'
@@ -27,11 +25,15 @@ const normalizeLoadedLesson = (lesson) => ({
 })
 
 export default function BuilderApp() {
+  const { role } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const loadIdOnMount = useRef(searchParams.get('load'))
-  // Hand-building tools (new blank lesson, upload JSON, module set-up) stay hidden unless the
-  // URL carries ?advanced=1.
+  // Hand-building tools in the editor (module set-up, the task module picker, Upload file) stay
+  // hidden unless the URL carries ?advanced=1. Admin's + New Lesson links here with ?advanced=1 and
+  // no load, which opens a blank lesson; there is no start screen (Ryan, 9 Nov 2026).
   const advanced = searchParams.get('advanced') === '1'
+  const newLessonOnMount = useRef(advanced && !loadIdOnMount.current)
   const [lesson, setLesson] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [restorePrompt, setRestorePrompt] = useState(false)
@@ -65,6 +67,7 @@ export default function BuilderApp() {
         /* ignore */
       }
     }
+    if (newLessonOnMount.current) setLesson(blankLesson())
     setReady(true)
   }, [])
 
@@ -125,7 +128,7 @@ export default function BuilderApp() {
                 }}
                 onClick={() => {
                   localStorage.removeItem(LS_KEY)
-                  setLesson(null)
+                  setLesson(newLessonOnMount.current ? blankLesson() : null)
                   setDirty(false)
                   setRestorePrompt(false)
                   setReady(true)
@@ -142,21 +145,7 @@ export default function BuilderApp() {
 
   if (!ready && !lesson) return null
 
-  if (!lesson) {
-    return (
-      <LessonListScreen
-        advanced={advanced}
-        onChoose={() => {
-          setLesson(blankLesson())
-          setDirty(false)
-        }}
-        onUpload={(uploaded) => {
-          setLesson(uploaded)
-          setDirty(false)
-        }}
-      />
-    )
-  }
+  if (!lesson) return <NoLesson />
 
   return (
     <BuilderView
@@ -164,264 +153,48 @@ export default function BuilderApp() {
       dirty={dirty}
       advanced={advanced}
       onUpdate={updateLesson}
-      onNew={() => {
-        if (
-          dirty &&
-          !confirm(
-            'You have unsaved changes - download your lesson first.\n\nAre you sure you want to start a new lesson?'
-          )
-        )
-          return
-        localStorage.removeItem(LS_KEY)
-        setLesson(null)
-        setDirty(false)
-      }}
+      // All lessons (admins only, as only Admin lists lessons): back to Admin > Lessons.
+      onNew={
+        role === 'admin'
+          ? () => {
+              if (
+                dirty &&
+                !confirm(
+                  'You have unsaved changes - download your lesson first.\n\nAre you sure you want to leave this lesson?'
+                )
+              )
+                return
+              localStorage.removeItem(LS_KEY)
+              setDirty(false)
+              navigate('/admin/lessons')
+            }
+          : undefined
+      }
       onMarkSaved={() => setDirty(false)}
     />
   )
 }
 
-function LessonListScreen({ advanced, onChoose, onUpload }) {
-  const { role, user } = useAuth()
+// No lesson to open (Ryan, 9 Nov 2026): there is no start screen. Admin > Lessons has + New Lesson,
+// Upload JSON and Edit, so an admin goes there (replacing history, so Back does not loop here).
+// Non-admins never use the Builder: a one-line note with a way home.
+function NoLesson() {
+  const { role, loading } = useAuth()
   const navigate = useNavigate()
-  const [lessons, setLessons] = useState(null)
-  const [error, setError] = useState(null)
-  const [loadingId, setLoadingId] = useState(null)
+  const isAdmin = role === 'admin'
 
   useEffect(() => {
-    let cancelled = false
-    fetchLessonList()
-      .then((items) => !cancelled && setLessons(items))
-      .catch((err) => !cancelled && setError(err.message))
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (!loading && isAdmin) navigate('/admin/lessons', { replace: true })
+  }, [loading, isAdmin, navigate])
 
-  // A way back (HSC Audit, Visual Review 27): to the page the tutor came from, or, when the
-  // Builder opened in its own tab, the Admin Portal (admins) or the home page.
-  function handleBack() {
-    if (window.history.length > 1) navigate(-1)
-    else navigate(role === 'admin' ? '/admin' : '/')
-  }
-
-  function handleUpload() {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.json'
-    input.onchange = (e) => {
-      const file = e.target.files[0]
-      if (!file) return
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        try {
-          const parsed = JSON.parse(ev.target.result)
-          if (!parsed.id || !parsed.tasks || !parsed.type) throw new Error('Unrecognised format')
-          onUpload(normalizeLoadedLesson(parsed))
-        } catch (err) {
-          alert('Could not load file: ' + err.message)
-        }
-      }
-      reader.readAsText(file)
-    }
-    input.click()
-  }
-
-  async function handleSelect(lessonId) {
-    setLoadingId(lessonId)
-    try {
-      const snap = await getDoc(doc(firestore, 'lessons', lessonId))
-      if (!snap.exists()) {
-        alert('Lesson not found.')
-        return
-      }
-      onUpload(normalizeLoadedLesson(decodeLessonFromFirestore(snap.data())))
-    } catch (err) {
-      alert('Could not load lesson: ' + err.message)
-    } finally {
-      setLoadingId(null)
-    }
-  }
-
+  if (loading || isAdmin) return null
   return (
     <div style={s.centreScreen}>
-      <div
-        style={{
-          ...s.card,
-          ...s.choiceCard,
-          maxHeight: '90%',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-        className="card"
-      >
-        <div style={{ ...s.cardHeader, ...s.cardHeaderRow }}>
-          <button type="button" style={s.backBtn} onClick={handleBack} aria-label="Back">
-            ← Back
-          </button>
-          <span style={{ ...s.logo, flex: 1, minWidth: 0 }}>
-            Headstart Coding - LaunchPad | Lesson Builder
-          </span>
-          {user && (
-            <button type="button" style={s.backBtn} onClick={() => navigate('/account')}>
-              Account
-            </button>
-          )}
-        </div>
-        <div style={{ ...s.cardBody, overflowY: 'auto' }}>
-          <div>
-            <h1 style={s.choiceTitle}>Open a lesson</h1>
-            <p style={s.choiceText}>Pick a lesson to look over and edit.</p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {!lessons && !error && <p style={fp.hint}>Loading lessons…</p>}
-            {error && <p style={{ ...fp.hint, color: '#ef4444' }}>Error: {error}</p>}
-            {lessons && lessons.length === 0 && <p style={fp.hint}>No lessons yet.</p>}
-            {lessons &&
-              lessons.map((lesson) => {
-                // fetchLessonList returns the shared order, so a Solo Challenge follows its parent.
-                const isCompanion = isAttachedCompanion(lesson, lessons)
-                return (
-                  <button
-                    key={lesson.id}
-                    style={isCompanion ? { ...fp.row, ...fp.companionRow } : fp.row}
-                    onClick={() => handleSelect(lesson.id)}
-                    disabled={loadingId === lesson.id}
-                  >
-                    <span style={fp.rowTitle}>
-                      {formatLessonLabel(lesson)}
-                      {lesson.draft === true && <span style={fp.draftTag}>Draft</span>}
-                      {isCompanion && <span style={fp.companionTag}>Solo Challenge</span>}
-                    </span>
-                    {loadingId === lesson.id && <span style={fp.rowLoading}>Loading…</span>}
-                  </button>
-                )
-              })}
-          </div>
-          {advanced && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn-ghost-outline" style={s.uploadBtn} onClick={onChoose}>
-                New blank lesson
-              </button>
-              <button className="btn-ghost-outline" style={s.uploadBtn} onClick={handleUpload}>
-                Open a lesson file (JSON)
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <p style={s.note}>
+        Lessons are made in Admin. <Link to="/">Go to the home page</Link>
+      </p>
     </div>
   )
-}
-
-const fp = {
-  backdrop: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 50,
-    background: 'rgba(17, 24, 39, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modal: {
-    width: 'min(560px, 92vw)',
-    maxHeight: '80vh',
-    background: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
-  },
-  header: {
-    background: 'var(--colour-primary)',
-    padding: '14px 18px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexShrink: 0,
-  },
-  title: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    color: '#fff',
-    fontSize: '0.95rem',
-  },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#fff',
-    fontSize: '1.3rem',
-    cursor: 'pointer',
-    lineHeight: 1,
-    padding: '0 2px',
-  },
-  body: {
-    overflowY: 'auto',
-    padding: '12px 14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  hint: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.9rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  row: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    background: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: 8,
-    padding: '10px 14px',
-    cursor: 'pointer',
-    textAlign: 'left',
-    width: '100%',
-  },
-  rowTitle: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.92rem',
-    color: 'var(--colour-text)',
-  },
-  companionRow: {
-    marginLeft: 22,
-    width: 'calc(100% - 22px)',
-  },
-  companionTag: {
-    marginLeft: 8,
-    padding: '1px 7px',
-    borderRadius: 999,
-    background: '#ede9fe',
-    color: '#5b21b6',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    verticalAlign: 'middle',
-  },
-  draftTag: {
-    marginLeft: 8,
-    padding: '1px 7px',
-    borderRadius: 999,
-    background: '#fef3c7',
-    color: '#92400e',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    verticalAlign: 'middle',
-  },
-  rowMeta: {
-    fontFamily: 'var(--font-code)',
-    fontSize: '0.78rem',
-    color: '#9ca3af',
-  },
-  rowLoading: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.78rem',
-    color: 'var(--colour-primary)',
-  },
 }
 
 const s = {
@@ -438,24 +211,9 @@ const s = {
     borderRadius: 12,
     boxShadow: '0 8px 30px rgba(98, 34, 204, 0.18), 0 4px 10px rgba(0, 0, 0, 0.06)',
   },
-  choiceCard: { width: 740 },
   cardHeader: {
     background: 'var(--colour-primary)',
     padding: '20px 24px 16px',
-  },
-  cardHeaderRow: { display: 'flex', alignItems: 'center', gap: 12 },
-  backBtn: {
-    background: 'rgba(255,255,255,0.15)',
-    border: '1px solid rgba(255,255,255,0.4)',
-    color: '#fff',
-    borderRadius: 6,
-    padding: '6px 12px',
-    minHeight: 36,
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    flexShrink: 0,
   },
   logo: {
     fontFamily: 'var(--font-title)',
@@ -476,52 +234,13 @@ const s = {
     lineHeight: 1.6,
     color: 'var(--colour-text)',
   },
-  choiceTitle: {
+  note: {
     margin: 0,
-    fontFamily: 'var(--font-title)',
-    color: 'var(--colour-text)',
-    fontSize: '1.35rem',
-  },
-  choiceText: {
-    margin: '6px 0 0',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.92rem',
-    color: '#6b7280',
-    lineHeight: 1.5,
-  },
-  choiceGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: 12,
-  },
-  choiceButton: {
-    border: '1px solid #e5e7eb',
-    borderRadius: 8,
+    padding: '14px 20px',
     background: '#fff',
-    textAlign: 'left',
-    padding: 16,
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-  uploadBtn: {
-    alignSelf: 'flex-start',
-    color: 'var(--colour-primary)',
-    border: '1px solid var(--colour-primary)',
-    padding: '8px 12px',
-    fontSize: '0.86rem',
-  },
-  choiceName: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    color: 'var(--colour-primary)',
-    fontSize: '1rem',
-  },
-  choiceDescription: {
+    borderRadius: 10,
     fontFamily: 'var(--font-body)',
-    color: '#4b5563',
-    fontSize: '0.86rem',
-    lineHeight: 1.45,
+    fontSize: '0.95rem',
+    color: 'var(--colour-text)',
   },
 }

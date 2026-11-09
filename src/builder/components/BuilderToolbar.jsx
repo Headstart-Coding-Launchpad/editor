@@ -31,9 +31,16 @@ export default function BuilderToolbar({
             Account
           </button>
         )}
-        <button className="btn-ghost" style={s.btn} onClick={onNew}>
-          All lessons
-        </button>
+        {role === 'admin' && onNew && (
+          <button
+            className="btn-ghost"
+            style={s.btn}
+            onClick={onNew}
+            title="Back to Admin > Lessons"
+          >
+            All lessons
+          </button>
+        )}
         {advanced && (
           <button className="btn-ghost" style={s.btn} onClick={onUpload}>
             Upload file
