@@ -42,10 +42,7 @@ import { saveAfterClassFeedback } from '../app/afterClassFeedback'
 import { AdminCell, AdminTable } from './AdminUi'
 import ClassRosterEditor from './ClassRosterEditor'
 import { REPORT_PAGE_SIZE, useAdminLessons, useAdminSnapshot, useLoadMore } from './adminSnapshots'
-
-function makeBuilderUrl(lessonId) {
-  return `${window.location.origin}${window.location.pathname}#/builder?load=${lessonId}`
-}
+import { openBuilder } from './builderLinks'
 
 const UNASSIGNED_LEVEL_ID = '__unassigned__'
 const EMPTY = Object.freeze([])
@@ -341,7 +338,7 @@ export default function LessonPanel({ view = 'lessons' }) {
     setForkingId(lesson.id)
     try {
       const { fork } = await publishLessonFork(lesson, cls)
-      window.open(makeBuilderUrl(fork.id), '_blank', 'noopener,noreferrer')
+      openBuilder({ load: fork.id })
     } catch (err) {
       window.alert('Failed to fork lesson: ' + err.message)
     } finally {
@@ -350,7 +347,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   function handleEditInBuilder(lesson) {
-    window.open(makeBuilderUrl(lesson.id), '_blank', 'noopener,noreferrer')
+    openBuilder({ load: lesson.id })
   }
 
   function handleToggleShare(lessonId) {
@@ -370,11 +367,7 @@ export default function LessonPanel({ view = 'lessons' }) {
   }
 
   function handleNewLesson() {
-    window.open(
-      `${window.location.origin}${window.location.pathname}#/builder?advanced=1`,
-      '_blank',
-      'noopener,noreferrer'
-    )
+    openBuilder({ advanced: true })
   }
 
   const uploadInputRef = useRef(null)

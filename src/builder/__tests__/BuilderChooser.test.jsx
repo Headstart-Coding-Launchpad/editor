@@ -14,24 +14,20 @@ vi.mock('firebase/firestore', () => ({
     data: () => ({ id: ref.id, type: 'composed', title: `Lesson ${ref.id}`, tasks: [] }),
   })),
 }))
-vi.mock('../../shared/lessonService', () => ({
-  fetchLessonList: vi.fn(async () => [
-    { id: 'l1', type: 'composed', title: 'First lesson', tasks: [] },
-  ]),
-}))
-vi.mock('../views/BuilderView', () => ({
-  default: ({ lesson, advanced, onNew }) => (
-    <div data-testid="builder-view" data-advanced={String(advanced)}>
-      {lesson.id || 'blank'}
-      <button type="button" onClick={onNew}>
-        All lessons
-      </button>
-    </div>
-  ),
-}))
+// BuilderView stands in with the real toolbar, so All lessons shows (or not) as it really does.
+vi.mock('../views/BuilderView', async () => {
+  const { default: BuilderToolbar } = await vi.importActual('../components/BuilderToolbar')
+  return {
+    default: ({ lesson, advanced, onNew }) => (
+      <div data-testid="builder-view" data-advanced={String(advanced)}>
+        <BuilderToolbar role={authState.role} errors={[]} onNew={onNew} />
+        {lesson.id || 'blank'}
+      </div>
+    ),
+  }
+})
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => authState }))
 
-import { fetchLessonList } from '../../shared/lessonService'
 import BuilderApp from '../App'
 
 function renderAt(entries) {
@@ -68,9 +64,7 @@ describe('Lesson Builder start screen', () => {
     expect(await screen.findByRole('button', { name: 'New lesson' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Upload lesson file' })).toBeInTheDocument()
     expect(screen.getByText(/To edit an existing lesson, open it from Admin/)).toBeInTheDocument()
-    expect(screen.queryByText(/First lesson/)).not.toBeInTheDocument()
     expect(screen.queryByText('Open a lesson')).not.toBeInTheDocument()
-    expect(fetchLessonList).not.toHaveBeenCalled()
   })
 
   it('New lesson opens a blank lesson in the Builder', async () => {
@@ -107,6 +101,12 @@ describe('Lesson Builder start screen', () => {
     renderAt(['/builder?load=l1'])
     await user.click(await screen.findByRole('button', { name: 'All lessons' }))
     expect(await screen.findByText('Admin lessons page')).toBeInTheDocument()
+  })
+
+  it('a non-admin sees no All lessons button', async () => {
+    renderAt(['/builder?load=l1'])
+    expect(await screen.findByTestId('builder-view')).toHaveTextContent('l1')
+    expect(screen.queryByRole('button', { name: 'All lessons' })).not.toBeInTheDocument()
   })
 
   it('All lessons still asks first when there are unsaved changes', async () => {

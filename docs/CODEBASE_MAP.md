@@ -13,7 +13,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `src/main.jsx` | App DOM entry — renders App into #root |
 | `src/App.jsx` | Root router (HashRouter): `/login`, `/lesson/:lessonId`, `/code`, `/playground/:type`, `/admin`, `/builder`, and fallback to LandingPage |
 | `src/index.css` | Global styles: brand CSS custom properties, button variants, status dots, animations, syntax highlight overrides |
-| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, composed-lesson creation, restore/save dialogs, start screen (New lesson / Upload lesson file, no lesson list); All lessons sends admins to Admin > Lessons |
+| `src/builder/App.jsx` | Builder route component: lesson lifecycle, localStorage auto-save, composed-lesson creation, restore/save dialogs, start screen (New lesson / Upload lesson file, no lesson list); All lessons (admins only) goes to Admin > Lessons |
 
 ---
 
@@ -34,6 +34,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | File | Role |
 |---|---|
 | `AdminPortal.jsx` | Admin portal shell: header with the orange Lesson Builder button (Builder start screen, new tab), account/sign-out actions and tab switcher between Lessons, Levels, Classes, Sessions, Topics, Shared Assets, Badges, Shared Work, Accounts, and Feedback panels |
+| `builderLinks.js` | `makeBuilderUrl({ load, advanced })` and `openBuilder(...)`: Admin's links into the Lesson Builder in a new tab (header Lesson Builder, + New Lesson, Edit in Builder, a fresh fork) |
 | `SharedWorkPanel.jsx` | Shared Work tab: Firestore `sharedWork` share links from Export work (`listShareLinks`), newest first, live by default or all; title (opens `/share/:id`), module, date, live/expired/revoked with days left, and Revoke (`revokeShareLink`) |
 | `AdminUi.jsx` | Shared Admin Portal UI primitives for panels, buttons, status pills, filters, and empty states |
 | `adminSnapshots.js` | `useAdminSnapshot(key, makeQuery, map, { family })` returns `{ data, loading, error, retry }`: one shared Firestore listener per Admin source for every panel using it, kept 2 minutes after the last closes, so switching Admin tabs reads nothing new (Firestore cost cuts, 8 Nov 2026). A null key is not loading; Load more stops the smaller page of the same `family` at once; a failed source restarts for a new panel or `retry`. Tied to the signed-in user: `watchAdminSnapshotsAuth()` (installed once by `AdminPortal`'s mount effect) follows Firebase `onAuthStateChanged`, so any sign-out (button, session expiry, another tab) or a different user drops the cache. `useLoadMore` keeps Load more while the page came back full (and as Retry if the bigger page fails); `useAdminLessons` (Lessons, Levels, Solo, Sessions titles), `useRecentReports(count)`, `REPORT_PAGE_SIZE` = 20 |
@@ -401,7 +402,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 | `GroupEditor.jsx` | Inline editor for a task group's title and subtask count summary |
 | `ValidationPanel.jsx` | Collapsible errors/warnings panel with tabbed view and per-warning ignore action |
 | `TaskFeedbackPanel.jsx` | Collapsible panel showing teacher-submitted lesson feedback items for the selected task, plus (admins) the task's preview review notes read-only, newest first |
-| `BuilderToolbar.jsx` | Top toolbar: branding, dirty indicator, and all action buttons (new/upload/preview/print/download/publish) |
+| `BuilderToolbar.jsx` | Top toolbar: branding, dirty indicator, and all action buttons (All lessons and Save for admins only; upload/preview/print/download) |
 
 ### Lesson Meta Sub-components (`src/builder/components/lesson-meta/`)
 

@@ -163,21 +163,23 @@ export default function BuilderApp() {
       dirty={dirty}
       advanced={advanced}
       onUpdate={updateLesson}
-      onNew={() => {
-        if (
-          dirty &&
-          !confirm(
-            'You have unsaved changes - download your lesson first.\n\nAre you sure you want to leave this lesson?'
-          )
-        )
-          return
-        localStorage.removeItem(LS_KEY)
-        setDirty(false)
-        // All lessons: admins go back to Admin > Lessons (the Builder no longer lists lessons);
-        // anyone else returns to the start screen.
-        if (role === 'admin') navigate('/admin/lessons')
-        else setLesson(null)
-      }}
+      // All lessons (admins only, as only Admin lists lessons): back to Admin > Lessons.
+      onNew={
+        role === 'admin'
+          ? () => {
+              if (
+                dirty &&
+                !confirm(
+                  'You have unsaved changes - download your lesson first.\n\nAre you sure you want to leave this lesson?'
+                )
+              )
+                return
+              localStorage.removeItem(LS_KEY)
+              setDirty(false)
+              navigate('/admin/lessons')
+            }
+          : undefined
+      }
       onMarkSaved={() => setDirty(false)}
     />
   )

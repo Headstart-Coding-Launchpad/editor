@@ -6,6 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import LoadingScreen from '../app/components/LoadingScreen'
 import AppVersionFooter from './AppVersionFooter'
 import { watchAdminSnapshotsAuth } from './adminSnapshots'
+import { openBuilder } from './builderLinks'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
 const BadgesPanel = lazy(() => import('./BadgesPanel'))
@@ -47,15 +48,6 @@ export default function AdminPortal() {
     navigate(`/admin/${activeTab}/${sub}`)
   }
 
-  // The Builder start screen in its own tab (as + New Lesson and Edit in Builder open it).
-  function openBuilder() {
-    window.open(
-      `${window.location.origin}${window.location.pathname}#/builder?advanced=1`,
-      '_blank',
-      'noopener,noreferrer'
-    )
-  }
-
   async function handleLogout() {
     try {
       await signOut(auth)
@@ -69,7 +61,11 @@ export default function AdminPortal() {
       <header style={s.header}>
         <span style={s.brand}>Headstart Coding — Admin</span>
         <div style={s.headerRight}>
-          <button className="btn-primary" style={s.builderBtn} onClick={openBuilder}>
+          <button
+            className="btn-primary"
+            style={s.builderBtn}
+            onClick={() => openBuilder({ advanced: true })}
+          >
             ✎ Lesson Builder
           </button>
           <span style={s.userEmail}>{user?.email}</span>
