@@ -74,9 +74,8 @@ export default function TaskEditor({
 }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
   // The Builder's tab (Content, Settings, Authoring notes), remembered across tasks this session.
-  const [activeTab, setActiveTab] = useState(() =>
-    sessionEdit ? 'content' : getRememberedTaskEditorTab()
-  )
+  // null until the author picks one: the remembered tab, checked against this task's tabs below.
+  const [chosenTab, setActiveTab] = useState(null)
   // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
   // since this section is author-only and adds noise for a lesson ready for full validation.
   const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(
@@ -609,15 +608,20 @@ export default function TaskEditor({
   const codeFeatures = !isQuiz && !isInformation && !showsActivity && !isCodeArrange
   const showsCopyCode = !isQuiz && !isInformation && !showsActivity && supportsCopyCode
   const showsTaskOptions = codeFeatures
-  const hasSettings =
-    showsCopyCode ||
-    (codeFeatures &&
-      (usesPythonEditor || usesVariablesPanel || usesStageTarget || usesScrub || usesPythonSlowMo))
+  // Code tasks always have Task options, so the Settings tab has fields for them.
+  const hasSettings = showsCopyCode || codeFeatures
   const tabErrors = taskEditorTabErrorCounts(
     validationErrors,
     (lesson.tasks ?? []).findIndex((t) => t?.id === task.id) + 1,
-    { hasSettings: hasSettings || showsTaskOptions }
+    { hasSettings }
   )
+  const activeTab =
+    chosenTab ??
+    (sessionEdit
+      ? 'content'
+      : getRememberedTaskEditorTab(
+          hasSettings ? ['content', 'settings', 'notes'] : ['content', 'notes']
+        ))
 
   const titleRow = (
     <div className="te-title-row">
@@ -1035,12 +1039,17 @@ export default function TaskEditor({
   }
 
   function handleTabKeyDown(event) {
-    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-    if (!step) return
-    event.preventDefault()
+    const count = TASK_EDITOR_TABS.length
     const index = TASK_EDITOR_TABS.findIndex((t) => t.id === activeTab)
-    const next =
-      TASK_EDITOR_TABS[(index + step + TASK_EDITOR_TABS.length) % TASK_EDITOR_TABS.length]
+    const target = {
+      ArrowRight: (index + 1) % count,
+      ArrowLeft: (index - 1 + count) % count,
+      Home: 0,
+      End: count - 1,
+    }[event.key]
+    if (target === undefined) return
+    event.preventDefault()
+    const next = TASK_EDITOR_TABS[target]
     chooseTab(next.id)
     event.currentTarget.parentElement?.querySelector(`#te-tab-${next.id}`)?.focus()
   }
@@ -1058,7 +1067,7 @@ export default function TaskEditor({
               type="button"
               role="tab"
               aria-selected={selected}
-              aria-controls="te-tab-panel"
+              aria-controls={`te-tab-panel-${id}`}
               tabIndex={selected ? 0 : -1}
               className="te-editor-tab"
               onClick={() => chooseTab(id)}
@@ -1078,14 +1087,22 @@ export default function TaskEditor({
           )
         })}
       </div>
-      <div
-        className="te-tab-panel"
-        role="tabpanel"
-        id="te-tab-panel"
-        aria-labelledby={`te-tab-${activeTab}`}
-      >
-        {activeTab === 'settings' ? (
-          hasSettings || showsTaskOptions ? (
+      {/* Every panel stays mounted (hidden when not chosen) so the code editor's undo, cursor
+          and scroll, and the HTML preview iframe, survive a trip to another tab. */}
+      {TASK_EDITOR_TABS.map(({ id }) => (
+        <div
+          key={id}
+          className="te-tab-panel"
+          role="tabpanel"
+          id={`te-tab-panel-${id}`}
+          aria-labelledby={`te-tab-${id}`}
+          hidden={activeTab !== id}
+        >
+          {id === 'content' ? (
+            contentTab
+          ) : id === 'notes' ? (
+            <div style={s.authoringMetaSection}>{authoringMetaFields}</div>
+          ) : hasSettings ? (
             <>
               {optionalFeatures}
               {taskOptions}
@@ -1095,13 +1112,9 @@ export default function TaskEditor({
               No extra settings for this task format. Priority, Must see and Available in are on the
               Content tab.
             </p>
-          )
-        ) : activeTab === 'notes' ? (
-          <div style={s.authoringMetaSection}>{authoringMetaFields}</div>
-        ) : (
-          contentTab
-        )}
-      </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

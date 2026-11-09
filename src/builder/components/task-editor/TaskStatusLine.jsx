@@ -15,6 +15,7 @@ export default function TaskStatusLine({
 }) {
   const [formatsOpen, setFormatsOpen] = useState(false)
   const wrapRef = useRef(null)
+  const chipRef = useRef(null)
   const current = formats.find((f) => f.value === activeFormat) ?? formats[0]
 
   useEffect(() => {
@@ -23,6 +24,8 @@ export default function TaskStatusLine({
       if (event.type === 'keydown' && event.key !== 'Escape') return
       if (event.type === 'mousedown' && wrapRef.current?.contains(event.target)) return
       setFormatsOpen(false)
+      // Escape puts focus back on the chip (the format buttons it was on are gone).
+      if (event.type === 'keydown') chipRef.current?.focus()
     }
     document.addEventListener('mousedown', close)
     document.addEventListener('keydown', close)
@@ -71,6 +74,7 @@ export default function TaskStatusLine({
 
       <div className="te-status-line__format" ref={wrapRef}>
         <button
+          ref={chipRef}
           type="button"
           className="te-status-chip te-status-chip--format"
           aria-haspopup="true"

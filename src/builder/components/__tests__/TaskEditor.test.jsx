@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskEditor from '../TaskEditor'
 import { forgetTaskEditorTab } from '../task-editor/taskEditorTabs'
@@ -115,6 +115,11 @@ function openTab(name) {
   fireEvent.click(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
 }
 
+// The tab panel on show (every panel stays mounted; the others are hidden).
+function shownPanel() {
+  return within(screen.getByRole('tabpanel'))
+}
+
 afterEach(() => forgetTaskEditorTab())
 
 // In the Builder the editable authoring metadata is the Authoring notes tab (always open there);
@@ -125,7 +130,7 @@ describe('TaskEditor authoring metadata (Task Activity field + Authoring notes t
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
     openTab('Authoring notes')
-    expect(screen.getByText('Task activity')).toBeInTheDocument()
+    expect(shownPanel().getByText('Task activity')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Pair-share discussion')).toBeInTheDocument()
   })
 
@@ -142,14 +147,14 @@ describe('TaskEditor authoring metadata (Task Activity field + Authoring notes t
   it('on a draft, the Content tab shows the read-only preview copy and no editable field', () => {
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
-    expect(screen.getAllByText('Authoring metadata', { exact: false })).toHaveLength(1)
-    expect(screen.queryByDisplayValue('Pair-share discussion')).not.toBeInTheDocument()
+    expect(shownPanel().getAllByText('Authoring metadata', { exact: false })).toHaveLength(1)
+    expect(shownPanel().queryByDisplayValue('Pair-share discussion')).not.toBeInTheDocument()
   })
 
   it('when the lesson is not a draft, the preview copy folds but the Authoring notes tab is open', () => {
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: false })} onUpdate={vi.fn()} />)
-    expect(screen.queryByText('Task activity')).not.toBeInTheDocument()
+    expect(shownPanel().queryByText('Task activity')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Show authoring metadata' })).toHaveLength(1)
 
     openTab('Authoring notes')

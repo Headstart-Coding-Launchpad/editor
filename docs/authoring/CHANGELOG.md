@@ -46,10 +46,12 @@ Entries written before 2026-09-29 are not tagged.
   panel, Block brackets, Name-tag panel, Stage target, Live scrubbing, Slow-mo) and the Task
   options fold. Authoring notes holds what the Authoring metadata fold held (intent, task
   activity, badge hints). No field changed; a validation error on a field in another tab shows
-  as a red count on that tab, and the Builder remembers the last tab until it is reloaded. The
-  Classroom's Edit Lesson keeps one column. A quiz whose `options` are plain strings (old files)
-  no longer crashes the editor: it shows them as options and saves them as `{ id, text }` on the
-  next edit.
+  as a red count on that tab, and the Builder remembers the last tab until it is reloaded (a
+  task with nothing on that tab, such as Settings on a quiz, opens on Content). Switching tabs
+  keeps the code editor's undo and the HTML preview. The Classroom's Edit Lesson keeps one
+  column. A quiz whose `options` are plain strings (old files) no longer crashes the editor: it
+  shows them as options and saves them as `{ id, text }` on the next edit, with the stored
+  correct answer still selected.
   - Affects: builder, quiz_multiple_choice, quiz_poll · Existing lessons: no changes needed ·
     Resolves: none
 

@@ -65,7 +65,68 @@ describe('TaskEditor tabs: Content, Settings, Authoring notes', () => {
     expect(within(panel).getByRole('button', { name: 'Run' })).toBeInTheDocument()
     // Settings and notes are not on Content.
     expect(screen.queryByRole('checkbox', { name: /coloured brackets/i })).toBeNull()
-    expect(screen.queryByDisplayValue('Students meet the Stage.')).toBeNull()
+    expect(screen.getByDisplayValue('Students meet the Stage.')).not.toBeVisible()
+  })
+
+  it('keeps every tab mounted: the code editor survives a trip to Settings', async () => {
+    const user = userEvent.setup()
+    render(<Editor />)
+    const run = screen.getByRole('button', { name: 'Run' })
+    await user.click(tab('Settings'))
+    expect(run).toBeInTheDocument()
+    expect(run).not.toBeVisible()
+    await user.click(tab('Content'))
+    expect(screen.getByRole('button', { name: 'Run' })).toBe(run)
+    expect(run).toBeVisible()
+  })
+
+  it('Home and End jump to the first and last tab', async () => {
+    const user = userEvent.setup()
+    render(<Editor />)
+    tab('Content').focus()
+    await user.keyboard('{End}')
+    expect(tab('Authoring notes')).toHaveAttribute('aria-selected', 'true')
+    expect(tab('Authoring notes')).toHaveFocus()
+    await user.keyboard('{Home}')
+    expect(tab('Content')).toHaveAttribute('aria-selected', 'true')
+    expect(tab('Content')).toHaveFocus()
+  })
+
+  it('Escape closes the format popover and puts focus back on the chip', async () => {
+    const user = userEvent.setup()
+    render(<Editor />)
+    const chip = screen.getByRole('button', { name: /Task format/ })
+    await user.click(chip)
+    screen.getByRole('button', { name: /^Quiz$/ }).focus()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('button', { name: /^Quiz$/ })).toBeNull()
+    expect(chip).toHaveFocus()
+  })
+
+  it('opens on Content when the remembered tab has nothing for this task (Settings on a quiz)', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<Editor />)
+    await user.click(tab('Settings'))
+    unmount()
+    render(
+      <Editor
+        initialTask={{
+          id: 6,
+          title: 'Pick one',
+          taskType: 'quiz',
+          quizType: 'multiple_choice',
+          question: 'Which?',
+          options: [
+            { id: 'a', text: 'Yes' },
+            { id: 'b', text: 'No' },
+          ],
+        }}
+      />
+    )
+    expect(tab('Content')).toHaveAttribute('aria-selected', 'true')
+    // Choosing Settings by hand still shows the placeholder.
+    await user.click(tab('Settings'))
+    expect(screen.getByText(/No extra settings for this task format/)).toBeVisible()
   })
 
   it('the status line still sets priority, must see and mode as before', async () => {
@@ -145,6 +206,21 @@ describe('taskEditorTabErrorCounts', () => {
       { hasSettings: true }
     )
     expect(counts).toEqual({ content: 2, settings: 1, notes: 1 })
+  })
+
+  it('routes on the error text, not the task title in the label', () => {
+    expect(
+      taskEditorTabErrorCounts(
+        ['Task 3 ("Check your tests") estimated time must be a positive number of minutes'],
+        3,
+        { hasSettings: true }
+      )
+    ).toEqual({ content: 1, settings: 0, notes: 0 })
+    expect(
+      taskEditorTabErrorCounts(['Task 3 ("Intro") copyCode must be text'], 3, {
+        hasSettings: true,
+      })
+    ).toEqual({ content: 0, settings: 1, notes: 0 })
   })
 
   it('puts check errors on Content when the task has no Settings (a quiz)', () => {

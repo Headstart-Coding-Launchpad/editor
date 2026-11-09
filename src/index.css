@@ -2105,6 +2105,9 @@ select {
   flex-direction: column;
   gap: 18px;
 }
+.te-tab-panel[hidden] {
+  display: none;
+}
 .te-tab-empty {
   margin: 0;
   font-family: var(--font-body);

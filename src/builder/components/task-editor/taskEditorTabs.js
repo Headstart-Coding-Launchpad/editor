@@ -11,7 +11,10 @@ export const TASK_EDITOR_TABS = [
 // remounts for each task, and the author keeps the tab they were working in.
 let rememberedTab = 'content'
 
-export function getRememberedTaskEditorTab() {
+// `shownTabs` lists the tabs that hold something for this task; a remembered tab that does not
+// (Settings on a quiz) opens Content instead.
+export function getRememberedTaskEditorTab(shownTabs) {
+  if (Array.isArray(shownTabs) && !shownTabs.includes(rememberedTab)) return 'content'
   return rememberedTab
 }
 
@@ -45,7 +48,8 @@ export function taskEditorTabErrorCounts(errors, taskNumber, { hasSettings = tru
     if (typeof error !== 'string' || !error.startsWith(prefix)) continue
     const next = error.charAt(prefix.length)
     if (next !== ' ' && next !== '' && next !== ':') continue
-    const rest = error.slice(prefix.length)
+    // Route on the error text only: the label can carry the task title, Task 3 ("<title>").
+    const rest = error.slice(prefix.length).replace(/^\s*\(".*?"\)/, '')
     if (NOTES_FIELDS.test(rest)) counts.notes += 1
     else if (hasSettings && SETTINGS_FIELDS.test(rest)) counts.settings += 1
     else counts.content += 1
