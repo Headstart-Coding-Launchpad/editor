@@ -159,13 +159,19 @@ describe('line hint note box', () => {
   function notes(state) {
     const found = []
     for (const source of state.facet(EditorView.decorations)) {
-      const set = typeof source === 'function' ? source() : source
-      const cursor = set.iter()
+      // Only state-computed sets (no view needed); skip view-plugin functions.
+      if (!source || typeof source === 'function' || typeof source.iter !== 'function') continue
+      const cursor = source.iter()
       while (cursor.value) {
+        if (!cursor.value.spec?.widget) {
+          cursor.next()
+          continue
+        }
         found.push({
           from: cursor.from,
           block: cursor.value.spec.block,
           side: cursor.value.spec.side,
+          widget: cursor.value.spec.widget,
           dom: cursor.value.spec.widget.toDOM(),
         })
         cursor.next()
@@ -187,5 +193,43 @@ describe('line hint note box', () => {
     expect(note.dom.className).toBe('cm-lineHintNote')
     expect(note.dom.textContent).toBe('Hint: First · Second')
     expect(state.doc.toString()).toBe(DOC)
+    expect(note.dom.getAttribute('role')).toBe('note')
+    expect(note.dom.title).toBe('Hint: First · Second')
+  })
+
+  it('shows a note for a hint on line 1', () => {
+    const state = stateWithHints(DOC, [{ line: 1, text: 'Start here' }])
+    const found = notes(state)
+    expect(found).toHaveLength(1)
+    expect(found[0].from).toBe(0)
+    expect(found[0].dom.textContent).toBe('Hint: Start here')
+  })
+
+  it('shows one box per hinted line, each at its own line', () => {
+    const state = stateWithHints(DOC, [
+      { line: 3, text: 'Print it' },
+      { line: 1, text: 'Start here' },
+    ])
+    const found = notes(state)
+    expect(found.map((n) => n.from)).toEqual([state.doc.line(1).from, state.doc.line(3).from])
+    expect(found.map((n) => n.dom.textContent)).toEqual(['Hint: Start here', 'Hint: Print it'])
+  })
+
+  it('drops the box when its line is deleted', () => {
+    let state = stateWithHints(DOC, [
+      { line: 2, text: 'Change the colour' },
+      { line: 3, text: 'Print it' },
+    ])
+    const line = state.doc.line(2)
+    state = deleteRange(state, line.from, line.to + 1)
+    const found = notes(state)
+    expect(found).toHaveLength(1)
+    expect(found[0].from).toBe(state.doc.line(2).from)
+    expect(found[0].dom.textContent).toBe('Hint: Print it')
+  })
+
+  it('gives the height map an estimate', () => {
+    const [note] = notes(stateWithHints(DOC, [{ line: 2, text: 'x' }]))
+    expect(note.widget.estimatedHeight).toBeGreaterThan(0)
   })
 })

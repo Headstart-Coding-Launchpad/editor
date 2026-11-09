@@ -297,7 +297,13 @@ class LineHintNoteWidget extends WidgetType {
     const note = document.createElement('div')
     note.className = 'cm-lineHintNote'
     note.textContent = `Hint: ${this.text}`
+    note.title = `Hint: ${this.text}`
+    note.setAttribute('role', 'note')
     return note
+  }
+  // A one-line guess so the height map barely moves when the real height is measured.
+  get estimatedHeight() {
+    return 26
   }
   // The note is display only: clicks and the cursor pass straight through it.
   ignoreEvent() {
@@ -364,7 +370,7 @@ const lineHintTheme = EditorView.baseTheme({
     fontFamily: 'var(--font-body, sans-serif)',
     fontSize: '0.88em',
     width: 'fit-content',
-    maxWidth: '60ch',
+    maxWidth: 'min(60ch, calc(100% - 12px))',
     boxSizing: 'border-box',
     whiteSpace: 'normal',
     overflowWrap: 'anywhere',
