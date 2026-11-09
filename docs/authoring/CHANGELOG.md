@@ -39,6 +39,13 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-09
 
+- **Line hints show in a small note box above their line.** A `#>` / `lineHints` hint used to
+  trail the end of its line in faint text and, when long, wrapped under the code. It now sits in a
+  pale-amber "Hint: ..." box on the line above, wrapping inside the box, so a hint can be a full
+  sentence (for example "Add a while loop here that repeats the two lines below"). The 💡 gutter
+  marker and tooltip stay.
+- Affects: python, html, turtle (line hints) · Existing lessons: no changes needed ·
+  Resolves: none (Ryan, 9 Nov 2026, Python L2B 10)
 - **The Builder's task editor has three tabs: Content, Settings, Authoring notes.** Content opens
   first: title and minutes on one row, then one line for Priority, Must see, Available in and
   the Task format chip (click it for Code / Information / Quiz / Activity / Arrange), then the

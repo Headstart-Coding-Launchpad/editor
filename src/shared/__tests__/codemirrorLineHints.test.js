@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { history, undo, undoDepth } from '@codemirror/commands'
 import { getLineHints, lineHintsExtension, setLineHints } from '../codemirror.js'
 import { chooseLineHints, parseLineHints } from '../lineHints.js'
 
 // Per docs/TESTING.md the EditorView/DOM is not unit-tested: these drive the line-hint
-// StateField through an EditorState. The gutter icon and ghost text rendering need a real
+// StateField through an EditorState. The gutter icon and note box rendering need a real
 // browser check.
 
 function stateWithHints(doc, hints) {
@@ -151,5 +152,84 @@ describe('line hints StateField', () => {
     const saved = 'import random\nx = 1\nprint("hi")\ncolour = "red"'
     const state = stateWithHints(saved, chooseLineHints(saved, [hints]))
     expect(getLineHints(state)).toEqual([{ line: 4, text: 'Change the colour' }])
+  })
+})
+
+describe('line hint note box', () => {
+  function notes(state) {
+    const found = []
+    for (const source of state.facet(EditorView.decorations)) {
+      // Only state-computed sets (no view needed); skip view-plugin functions.
+      if (!source || typeof source === 'function' || typeof source.iter !== 'function') continue
+      const cursor = source.iter()
+      while (cursor.value) {
+        if (!cursor.value.spec?.widget) {
+          cursor.next()
+          continue
+        }
+        found.push({
+          from: cursor.from,
+          block: cursor.value.spec.block,
+          side: cursor.value.spec.side,
+          widget: cursor.value.spec.widget,
+          dom: cursor.value.spec.widget.toDOM(),
+        })
+        cursor.next()
+      }
+    }
+    return found
+  }
+
+  it('shows the hint as a block note on the line above, not at the end of the hinted line', () => {
+    const state = stateWithHints(DOC, [
+      { line: 2, text: 'First' },
+      { line: 2, text: 'Second' },
+    ])
+    const [note, ...rest] = notes(state)
+    expect(rest).toEqual([])
+    expect(note.from).toBe(state.doc.line(2).from)
+    expect(note.block).toBe(true)
+    expect(note.side).toBeLessThan(0)
+    expect(note.dom.className).toBe('cm-lineHintNote')
+    expect(note.dom.textContent).toBe('Hint: First · Second')
+    expect(state.doc.toString()).toBe(DOC)
+    expect(note.dom.getAttribute('role')).toBe('note')
+    expect(note.dom.title).toBe('Hint: First · Second')
+  })
+
+  it('shows a note for a hint on line 1', () => {
+    const state = stateWithHints(DOC, [{ line: 1, text: 'Start here' }])
+    const found = notes(state)
+    expect(found).toHaveLength(1)
+    expect(found[0].from).toBe(0)
+    expect(found[0].dom.textContent).toBe('Hint: Start here')
+  })
+
+  it('shows one box per hinted line, each at its own line', () => {
+    const state = stateWithHints(DOC, [
+      { line: 3, text: 'Print it' },
+      { line: 1, text: 'Start here' },
+    ])
+    const found = notes(state)
+    expect(found.map((n) => n.from)).toEqual([state.doc.line(1).from, state.doc.line(3).from])
+    expect(found.map((n) => n.dom.textContent)).toEqual(['Hint: Start here', 'Hint: Print it'])
+  })
+
+  it('drops the box when its line is deleted', () => {
+    let state = stateWithHints(DOC, [
+      { line: 2, text: 'Change the colour' },
+      { line: 3, text: 'Print it' },
+    ])
+    const line = state.doc.line(2)
+    state = deleteRange(state, line.from, line.to + 1)
+    const found = notes(state)
+    expect(found).toHaveLength(1)
+    expect(found[0].from).toBe(state.doc.line(2).from)
+    expect(found[0].dom.textContent).toBe('Hint: Print it')
+  })
+
+  it('gives the height map an estimate', () => {
+    const [note] = notes(stateWithHints(DOC, [{ line: 2, text: 'x' }]))
+    expect(note.widget.estimatedHeight).toBeGreaterThan(0)
   })
 })
