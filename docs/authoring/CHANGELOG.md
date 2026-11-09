@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-09
 
+- **Line hints show in a small note box above their line.** A `#>` / `lineHints` hint used to
+  trail the end of its line in faint text and, when long, wrapped under the code. It now sits in a
+  pale-amber "Hint: ..." box on the line above, wrapping inside the box, so a hint can be a full
+  sentence (for example "Add a while loop here that repeats the two lines below"). The 💡 gutter
+  marker and tooltip stay.
+- Affects: python, html, turtle (line hints) · Existing lessons: no changes needed ·
+  Resolves: none (Ryan, 9 Nov 2026, Python L2B 10)
+
 - **Admin > Lessons is the way into the Builder.** The Builder has no start screen and no lesson
   list. Start a lesson with Admin > Lessons "+ New Lesson" (opens a blank lesson) or "Upload JSON";
   edit one by opening its row and pressing "✎ Edit in Builder" (or a `#/builder?load=<lessonId>`

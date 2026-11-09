@@ -285,7 +285,7 @@ export function getLineHints(state) {
   }))
 }
 
-class LineHintGhostWidget extends WidgetType {
+class LineHintNoteWidget extends WidgetType {
   constructor(text) {
     super()
     this.text = text
@@ -294,11 +294,14 @@ class LineHintGhostWidget extends WidgetType {
     return other.text === this.text
   }
   toDOM() {
-    const ghost = document.createElement('span')
-    ghost.className = 'cm-lineHintGhost'
-    ghost.textContent = this.text
-    ghost.title = this.text
-    return ghost
+    const note = document.createElement('div')
+    note.className = 'cm-lineHintNote'
+    note.textContent = `Hint: ${this.text}`
+    return note
+  }
+  // The note is display only: clicks and the cursor pass straight through it.
+  ignoreEvent() {
+    return true
   }
 }
 
@@ -324,9 +327,11 @@ class LineHintGutterMarker extends GutterMarker {
 const lineHintDecorations = EditorView.decorations.compute([lineHintsField], (state) =>
   Decoration.set(
     hintsByLine(state).map(({ line, texts }) =>
-      Decoration.widget({ widget: new LineHintGhostWidget(texts.join(' · ')), side: 2 }).range(
-        line.to
-      )
+      Decoration.widget({
+        widget: new LineHintNoteWidget(texts.join(' · ')),
+        block: true,
+        side: -1,
+      }).range(line.from)
     )
   )
 )
@@ -347,14 +352,22 @@ const lineHintTheme = EditorView.baseTheme({
     cursor: 'help',
     fontSize: '0.8em',
   },
-  // Padding, not margin: the cursor at the end of a hinted line is drawn against the ghost's
-  // box, so a margin would leave it floating out past the line's last character.
-  '.cm-lineHintGhost': {
-    paddingLeft: '1.5em',
-    color: '#9ca3af',
+  // A small note box on the line above the hinted line; long hints wrap inside the box.
+  '.cm-lineHintNote': {
+    margin: '2px 8px 2px 4px',
+    padding: '2px 8px',
+    background: '#fff7e0',
+    border: '1px solid #f5c542',
+    borderRadius: '4px',
+    color: '#7a5b00',
     fontStyle: 'italic',
     fontFamily: 'var(--font-body, sans-serif)',
     fontSize: '0.88em',
+    width: 'fit-content',
+    maxWidth: '60ch',
+    boxSizing: 'border-box',
+    whiteSpace: 'normal',
+    overflowWrap: 'anywhere',
     userSelect: 'none',
     WebkitUserSelect: 'none',
     pointerEvents: 'none',

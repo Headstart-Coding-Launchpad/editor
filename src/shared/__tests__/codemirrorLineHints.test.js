@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { history, undo, undoDepth } from '@codemirror/commands'
 import { getLineHints, lineHintsExtension, setLineHints } from '../codemirror.js'
 import { chooseLineHints, parseLineHints } from '../lineHints.js'
 
 // Per docs/TESTING.md the EditorView/DOM is not unit-tested: these drive the line-hint
-// StateField through an EditorState. The gutter icon and ghost text rendering need a real
+// StateField through an EditorState. The gutter icon and note box rendering need a real
 // browser check.
 
 function stateWithHints(doc, hints) {
@@ -151,5 +152,40 @@ describe('line hints StateField', () => {
     const saved = 'import random\nx = 1\nprint("hi")\ncolour = "red"'
     const state = stateWithHints(saved, chooseLineHints(saved, [hints]))
     expect(getLineHints(state)).toEqual([{ line: 4, text: 'Change the colour' }])
+  })
+})
+
+describe('line hint note box', () => {
+  function notes(state) {
+    const found = []
+    for (const source of state.facet(EditorView.decorations)) {
+      const set = typeof source === 'function' ? source() : source
+      const cursor = set.iter()
+      while (cursor.value) {
+        found.push({
+          from: cursor.from,
+          block: cursor.value.spec.block,
+          side: cursor.value.spec.side,
+          dom: cursor.value.spec.widget.toDOM(),
+        })
+        cursor.next()
+      }
+    }
+    return found
+  }
+
+  it('shows the hint as a block note on the line above, not at the end of the hinted line', () => {
+    const state = stateWithHints(DOC, [
+      { line: 2, text: 'First' },
+      { line: 2, text: 'Second' },
+    ])
+    const [note, ...rest] = notes(state)
+    expect(rest).toEqual([])
+    expect(note.from).toBe(state.doc.line(2).from)
+    expect(note.block).toBe(true)
+    expect(note.side).toBeLessThan(0)
+    expect(note.dom.className).toBe('cm-lineHintNote')
+    expect(note.dom.textContent).toBe('Hint: First · Second')
+    expect(state.doc.toString()).toBe(DOC)
   })
 })
