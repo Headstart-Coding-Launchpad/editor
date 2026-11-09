@@ -6,7 +6,6 @@ import { useAuth } from '../auth/useAuth'
 import LoadingScreen from '../app/components/LoadingScreen'
 import AppVersionFooter from './AppVersionFooter'
 import { watchAdminSnapshotsAuth } from './adminSnapshots'
-import { openBuilder } from './builderLinks'
 
 const AccountManagement = lazy(() => import('./AccountManagement'))
 const BadgesPanel = lazy(() => import('./BadgesPanel'))
@@ -61,13 +60,6 @@ export default function AdminPortal() {
       <header style={s.header}>
         <span style={s.brand}>Headstart Coding — Admin</span>
         <div style={s.headerRight}>
-          <button
-            className="btn-primary"
-            style={s.builderBtn}
-            onClick={() => openBuilder({ advanced: true })}
-          >
-            ✎ Lesson Builder
-          </button>
           <span style={s.userEmail}>{user?.email}</span>
           <button
             className="btn-ghost-outline"
@@ -154,11 +146,6 @@ const s = {
     fontFamily: 'var(--font-body)',
     fontSize: '0.85rem',
     color: 'rgba(255,255,255,0.8)',
-  },
-  builderBtn: {
-    padding: '6px 14px',
-    fontSize: '0.85rem',
-    fontWeight: 700,
   },
   logoutBtn: {
     padding: '5px 14px',
