@@ -6,6 +6,12 @@ playwright-report/
 test-results/
 .env
 .env.local
+.env.*
+!.env.example
+*adminsdk*.json
+serviceAccount*.json
+*.pem
+*.key
 *.log
 .DS_Store
 .claude/worktrees
