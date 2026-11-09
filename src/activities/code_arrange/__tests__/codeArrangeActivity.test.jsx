@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import TaskEditor from '../../../builder/components/TaskEditor'
 import { getTaskFormat } from '../../registry.pure.js'
@@ -164,13 +164,15 @@ describe('Builder task format grid', () => {
   it('offers Arrange in a composed lesson', () => {
     const lesson = { id: 'l', title: 'L', type: 'composed', tasks: [task] }
     render(<TaskEditor task={task} lesson={lesson} onUpdate={vi.fn()} composedLesson={lesson} />)
-    expect(screen.getByRole('button', { name: /Arrange/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Task format/ }))
+    expect(screen.getByRole('button', { name: /^Arrange$/ })).toBeInTheDocument()
   })
 
   it('does not offer Arrange outside a composed lesson', () => {
     const lesson = { id: 'l', title: 'L', type: 'python', tasks: [task] }
     render(<TaskEditor task={task} lesson={lesson} onUpdate={vi.fn()} />)
-    expect(screen.getByRole('button', { name: /Information/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Arrange/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Task format/ }))
+    expect(screen.getByRole('button', { name: /^Information$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Arrange$/ })).toBeNull()
   })
 })

@@ -339,6 +339,7 @@ export default function BuilderView({
                 composedLesson={lesson.type === 'composed' ? lesson : null}
                 advanced={advanced}
                 parentGroup={selectedTaskGroup}
+                validationErrors={errors}
                 onUpdate={(updated) => {
                   handleLessonUpdate((prev) => ({
                     ...prev,

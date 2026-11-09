@@ -1,7 +1,8 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskEditor from '../TaskEditor'
+import { forgetTaskEditorTab } from '../task-editor/taskEditorTabs'
 
 // TaskEditor pulls in CodeMirror, Pyodide, the Scratch VM, and asset-browser machinery through
 // its sibling editor components; none of that is exercised by an information task, so it is
@@ -110,15 +111,21 @@ function makeLesson(overrides = {}) {
   return { id: 'demo-lesson', type: 'python', tasks: [], ...overrides }
 }
 
-// An information task shows "Authoring metadata" twice by design: once in TaskEditor's own
-// editable field (feature 2), and once read-only inside TaskPreviewPanel (feature 1). Both
-// collapse independently under the same lesson.draft rule, so these tests disambiguate by
-// document order — the editable field is always first — rather than assuming a single instance.
-describe('TaskEditor authoring metadata (Task Activity field + collapse)', () => {
+function openTab(name) {
+  fireEvent.click(screen.getByRole('tab', { name: new RegExp(`^${name}`) }))
+}
+
+afterEach(() => forgetTaskEditorTab())
+
+// In the Builder the editable authoring metadata is the Authoring notes tab (always open there);
+// the Content tab keeps TaskPreviewPanel's read-only copy, which still folds by lesson.draft.
+// The Classroom's Edit Lesson (sessionEdit) has no tabs: the fields start folded at the bottom.
+describe('TaskEditor authoring metadata (Task Activity field + Authoring notes tab)', () => {
   it('renders an editable Task activity field near Authoring intent, seeded from task.taskActivity', () => {
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
-    expect(screen.getAllByText('Task activity').length).toBeGreaterThanOrEqual(1)
+    openTab('Authoring notes')
+    expect(screen.getByText('Task activity')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Pair-share discussion')).toBeInTheDocument()
   })
 
@@ -126,40 +133,38 @@ describe('TaskEditor authoring metadata (Task Activity field + collapse)', () =>
     const task = makeInformationTask()
     const onUpdate = vi.fn()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={onUpdate} />)
+    openTab('Authoring notes')
     const input = screen.getByDisplayValue('Pair-share discussion')
     fireEvent.change(input, { target: { value: 'Quick demo' } })
     expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ taskActivity: 'Quick demo' }))
   })
 
-  it('is visible by default when the lesson is a draft, in both the editable field and the read-only preview', () => {
+  it('on a draft, the Content tab shows the read-only preview copy and no editable field', () => {
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
-    expect(screen.getAllByText('Authoring metadata', { exact: false })).toHaveLength(2)
-    expect(screen.getAllByText('Task activity')).toHaveLength(2)
+    expect(screen.getAllByText('Authoring metadata', { exact: false })).toHaveLength(1)
+    expect(screen.queryByDisplayValue('Pair-share discussion')).not.toBeInTheDocument()
   })
 
-  it('collapses the editable field by default when the lesson is not a draft, and expands on click', () => {
+  it('when the lesson is not a draft, the preview copy folds but the Authoring notes tab is open', () => {
     const task = makeInformationTask()
     render(<TaskEditor task={task} lesson={makeLesson({ draft: false })} onUpdate={vi.fn()} />)
-    // Both the editor's own field and TaskPreviewPanel's read-only section start collapsed.
     expect(screen.queryByText('Task activity')).not.toBeInTheDocument()
-    const showButtons = screen.getAllByRole('button', { name: 'Show authoring metadata' })
-    expect(showButtons).toHaveLength(2)
-
-    // The first, in document order, is TaskEditor's own editable authoring-metadata field.
-    fireEvent.click(showButtons[0])
-    expect(screen.getByDisplayValue('Pair-share discussion')).toBeInTheDocument()
-    // The preview panel's read-only copy remains collapsed independently.
     expect(screen.getAllByRole('button', { name: 'Show authoring metadata' })).toHaveLength(1)
+
+    openTab('Authoring notes')
+    expect(screen.getByDisplayValue('Pair-share discussion')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Collapse authoring metadata' })).toBeNull()
   })
 
-  it('in the Classroom’s Edit Lesson, starts folded below Priority, even on a draft', () => {
+  it('in the Classroom’s Edit Lesson, has no tabs and starts folded below Priority, even on a draft', () => {
     const task = makeInformationTask()
     render(
       <TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} sessionEdit />
     )
+    expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.queryByDisplayValue('Pair-share discussion')).not.toBeInTheDocument()
-    const [priority] = screen.getAllByText('Priority')
+    const priority = screen.getByLabelText('Priority')
     const [editorMeta] = screen
       .getAllByRole('button', { name: 'Show authoring metadata' })
       .filter((button) => priority.compareDocumentPosition(button) & 4)
@@ -169,6 +174,7 @@ describe('TaskEditor authoring metadata (Task Activity field + collapse)', () =>
   it('shows the audit times as readable dates, not raw timestamps', () => {
     const task = { ...makeInformationTask(), intentLastChangedAt: '2026-10-15T14:01:59.909Z' }
     render(<TaskEditor task={task} lesson={makeLesson({ draft: true })} onUpdate={vi.fn()} />)
+    openTab('Authoring notes')
     expect(screen.queryByText(/2026-10-15T14:01:59/)).not.toBeInTheDocument()
     expect(screen.getByText(/Intent updated: 15 Oct 2026/)).toBeInTheDocument()
   })
@@ -186,6 +192,7 @@ describe('TaskEditor block brackets toggle', () => {
 
   it('is checked by default for a Python code task', () => {
     render(<TaskEditor task={codeTask()} lesson={makeLesson()} onUpdate={vi.fn()} />)
+    openTab('Settings')
     expect(screen.getByRole('checkbox', { name: /coloured brackets/i })).toBeChecked()
   })
 
@@ -194,6 +201,7 @@ describe('TaskEditor block brackets toggle', () => {
     const { rerender } = render(
       <TaskEditor task={codeTask()} lesson={makeLesson()} onUpdate={onUpdate} />
     )
+    openTab('Settings')
     fireEvent.click(screen.getByRole('checkbox', { name: /coloured brackets/i }))
     expect(onUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ showBlocks: false }))
 
@@ -212,6 +220,7 @@ describe('TaskEditor block brackets toggle', () => {
     render(
       <TaskEditor task={codeTask()} lesson={makeLesson({ type: 'html' })} onUpdate={vi.fn()} />
     )
+    openTab('Settings')
     expect(screen.queryByRole('checkbox', { name: /coloured brackets/i })).not.toBeInTheDocument()
   })
 })
