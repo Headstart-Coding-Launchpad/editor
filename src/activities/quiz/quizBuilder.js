@@ -11,6 +11,49 @@ export function makeDefaultQuizOptions() {
   ]
 }
 
+// Old lesson files can hold quiz options as plain strings ("Yes") rather than {id, text}
+// objects, which crashed the Builder. Strings and numbers become {id, text}; an object without
+// an id gets the first letter no other option uses; anything else (null, arrays) is skipped. A
+// stored answer that was a string option's text moves to that option's new id. Returns the task
+// itself when every option is already an object with an id.
+export function withQuizOptionObjects(task) {
+  const options = task?.options
+  if (!Array.isArray(options)) return task
+  const fine = options.every(
+    (option) => option && typeof option === 'object' && !Array.isArray(option) && option.id
+  )
+  if (fine) return task
+  const kept = options
+    .map((option) => {
+      if (typeof option === 'string' || typeof option === 'number') {
+        return { option: { text: String(option) }, fromText: true }
+      }
+      if (option && typeof option === 'object' && !Array.isArray(option)) return { option }
+      return null
+    })
+    .filter(Boolean)
+  const used = new Set(kept.map(({ option }) => option.id).filter(Boolean))
+  let letter = 0
+  const nextLetter = () => {
+    let id = String.fromCharCode(97 + letter)
+    while (used.has(id)) id = String.fromCharCode(97 + ++letter)
+    used.add(id)
+    return id
+  }
+  const normalized = kept.map((entry) =>
+    entry.option.id ? entry : { ...entry, option: { ...entry.option, id: nextLetter() } }
+  )
+  const answer = task.check?.value
+  const answered =
+    answer != null &&
+    normalized.find(({ option, fromText }) => fromText && option.text === String(answer))
+  return {
+    ...task,
+    options: normalized.map(({ option }) => option),
+    ...(answered ? { check: { ...task.check, value: answered.option.id } } : {}),
+  }
+}
+
 function renumberQuizOptions(options) {
   return options.map((option, index) => ({ ...option, id: String.fromCharCode(97 + index) }))
 }

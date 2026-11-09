@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskEditor from '../components/TaskEditor'
@@ -38,8 +38,13 @@ function Editor({ initialTask, onUpdate = () => {}, composedLesson = null }) {
   )
 }
 
+// The formats sit behind the Task format chip on the Content tab's status line: open it first.
 function formatButton(name) {
-  return screen.getByRole('button', { name: new RegExp(`^${name}$`) })
+  const pattern = new RegExp(`^${name}$`)
+  const shown = screen.queryByRole('button', { name: pattern })
+  if (shown) return shown
+  fireEvent.click(screen.getByRole('button', { name: /^Task format/ }))
+  return screen.getByRole('button', { name: pattern })
 }
 
 function lastUpdate(onUpdate) {

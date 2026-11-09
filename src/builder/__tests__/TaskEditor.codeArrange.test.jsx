@@ -30,7 +30,9 @@ describe('TaskEditor code_arrange format', () => {
 
     render(<TaskEditor task={task} lesson={lesson} onUpdate={onUpdate} composedLesson={lesson} />)
 
-    await user.click(screen.getByRole('button', { name: /Arrange/ }))
+    // The formats sit behind the Task format chip on the Content tab's status line.
+    await user.click(screen.getByRole('button', { name: /^Task format/ }))
+    await user.click(screen.getByRole('button', { name: /^Arrange$/ }))
 
     expect(onUpdate).toHaveBeenCalledTimes(1)
     const updated = onUpdate.mock.calls[0][0]

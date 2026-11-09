@@ -46,7 +46,21 @@ Entries written before 2026-09-29 are not tagged.
   marker and tooltip stay.
 - Affects: python, html, turtle (line hints) · Existing lessons: no changes needed ·
   Resolves: none (Ryan, 9 Nov 2026, Python L2B 10)
-
+- **The Builder's task editor has three tabs: Content, Settings, Authoring notes.** Content opens
+  first: title and minutes on one row, then one line for Priority, Must see, Available in and
+  the Task format chip (click it for Code / Information / Quiz / Activity / Arrange), then the
+  code, quiz or activity, then the explainer. Settings holds the optional features (Copy code
+  panel, Block brackets, Name-tag panel, Stage target, Live scrubbing, Slow-mo) and the Task
+  options fold. Authoring notes holds what the Authoring metadata fold held (intent, task
+  activity, badge hints). No field changed; a validation error on a field in another tab shows
+  as a red count on that tab, and the Builder remembers the last tab until it is reloaded (a
+  task with nothing on that tab, such as Settings on a quiz, opens on Content). Switching tabs
+  keeps the code editor's undo and the HTML preview. The Classroom's Edit Lesson keeps one
+  column. A quiz whose `options` are plain strings (old files) no longer crashes the editor: it
+  shows them as options and saves them as `{ id, text }` on the next edit, with the stored
+  correct answer still selected.
+  - Affects: builder, quiz_multiple_choice, quiz_poll · Existing lessons: no changes needed ·
+    Resolves: none
 - **Admin > Lessons is the way into the Builder.** The Builder has no start screen and no lesson
   list. Start a lesson with Admin > Lessons "+ New Lesson" (opens a blank lesson) or "Upload JSON";
   edit one by opening its row and pressing "✎ Edit in Builder" (or a `#/builder?load=<lessonId>`

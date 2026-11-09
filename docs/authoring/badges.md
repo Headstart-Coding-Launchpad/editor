@@ -266,7 +266,7 @@ tasks:
 Unknown badge ids, other keys, and out-of-range options are validation errors
 ([validation-errors.md](validation-errors.md)).
 
-**In the Builder:** task editor → Authoring metadata → **Badge hints** (every task except
+**In the Builder:** task editor → Authoring notes tab → **Badge hints** (every task except
 information tasks). *Also suggest* offers the pattern and activity badges and *Never suggest* the
 rule-backed ones, so only valid ids can be picked; a badge is in one list at most, and clearing
 both lists removes `badgeHints`. A read-only line above them names the badges the task's

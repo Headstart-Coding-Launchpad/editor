@@ -7,12 +7,7 @@ import { resolveAssetsPath } from '../../shared/assetPaths'
 import { useLessonStorageAssets } from '../../shared/useLessonStorageAssets'
 import { useTypeAssets } from '../../shared/useTypeAssets'
 import { copyStarterToComplete } from '../lessonUtils'
-import {
-  Field,
-  TaskFormatIcon,
-  SpriteManager,
-  BackdropManager,
-} from './task-editor/TaskEditorFields'
+import { Field, SpriteManager, BackdropManager } from './task-editor/TaskEditorFields'
 import { QuizTypePicker, ActivityGallery } from './task-editor/ActivityPickers'
 import ActivitySection from './task-editor/ActivitySection'
 import {
@@ -25,7 +20,7 @@ import {
   getModuleHostedActivityUi,
   getTaskActivityUi,
 } from '../../activities/registry.js'
-import { toQuizTask } from '../../activities/quiz/quizBuilder.js'
+import { toQuizTask, withQuizOptionObjects } from '../../activities/quiz/quizBuilder.js'
 import { commonTaskFields, convertTaskToActivity } from '../taskFormat'
 import { ScratchToolboxPicker } from '../../modules/scratch/scratchEditors'
 import { useTaskEditorState } from '../hooks/useTaskEditorState'
@@ -35,6 +30,13 @@ import BadgeHintsField from './task-editor/BadgeHintsField'
 import ShowVariablesField from './task-editor/ShowVariablesField'
 import StageTargetField from './task-editor/StageTargetField'
 import ScrubField from './task-editor/ScrubField'
+import TaskStatusLine from './task-editor/TaskStatusLine'
+import {
+  TASK_EDITOR_TABS,
+  getRememberedTaskEditorTab,
+  rememberTaskEditorTab,
+  taskEditorTabErrorCounts,
+} from './task-editor/taskEditorTabs'
 import PythonSlowMoField from '../../modules/python/slowMo/SlowMoField'
 import { declaresPythonSlowMo } from '../../modules/python/slowMo/config'
 import { getLessonModule } from '../../modules/registry'
@@ -66,8 +68,14 @@ export default function TaskEditor({
   advanced = true, // the Builder passes false unless ?advanced=1 (hides the task module picker)
   // The Classroom's Edit Lesson: authoring metadata starts folded, at the bottom.
   sessionEdit = false,
+  // The lesson's validation errors (BuilderView); this task's are counted on the tab that edits
+  // the field, so an error on a hidden tab still shows.
+  validationErrors = [],
 }) {
   const [selectedFile, setSelectedFile] = useState(task.starterFiles?.[0]?.name ?? '')
+  // The Builder's tab (Content, Settings, Authoring notes), remembered across tasks this session.
+  // null until the author picks one: the remembered tab, checked against this task's tabs below.
+  const [chosenTab, setActiveTab] = useState(null)
   // Visible by default while authoring a Draft lesson; collapsed by default once Draft is off,
   // since this section is author-only and adds noise for a lesson ready for full validation.
   const [authoringMetaCollapsed, setAuthoringMetaCollapsed] = useState(
@@ -499,8 +507,51 @@ export default function TaskEditor({
     </button>
   ) : null
 
-  // Author-only notes. In the Classroom's Edit Lesson (`sessionEdit`) they start folded and
-  // sit at the bottom, under what a tutor changes mid-lesson (HSC Audit, Visual Review 26).
+  // Author-only notes. In the Builder they are the Authoring notes tab, always open; in the
+  // Classroom's Edit Lesson (`sessionEdit`) they start folded and sit at the bottom, under what a
+  // tutor changes mid-lesson (HSC Audit, Visual Review 26).
+  const authoringMetaFields = (
+    <>
+      <Field
+        label="Authoring intent (Markdown)"
+        hint="Visible to authors only; students never see this field."
+      >
+        <ExplainerEditor
+          title={task.title || 'Task intent'}
+          value={task.intent ?? ''}
+          onChange={(value) => set('intent', value)}
+          lessonType={lesson.type}
+          inlineCodeLanguages={explainerInlineCodeLanguages}
+          assets={lesson.assets ?? []}
+          assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+          storageAssets={allStorageAssets}
+        />
+      </Field>
+
+      <Field label="Task activity" hint="Visible to authors only; students never see this field.">
+        <input
+          className="te-input"
+          value={task.taskActivity ?? ''}
+          onChange={(e) => set('taskActivity', e.target.value)}
+          placeholder="e.g. Pair-share discussion, quick demo, whiteboard sketch"
+        />
+      </Field>
+
+      {task.taskType !== 'information' && <BadgeHintsField task={task} onChange={setBadgeHints} />}
+
+      {(task.intentLastChangedAt || task.taskLastChangedAt) && (
+        <div style={s.auditMeta}>
+          {task.intentLastChangedAt && (
+            <span>Intent updated: {formatAuditTime(task.intentLastChangedAt)}</span>
+          )}
+          {task.taskLastChangedAt && (
+            <span>Task content updated: {formatAuditTime(task.taskLastChangedAt)}</span>
+          )}
+        </div>
+      )}
+    </>
+  )
+
   const authoringMeta = authoringMetaCollapsed ? (
     <CollapsedPanelRail
       onClick={() => setAuthoringMetaCollapsed(false)}
@@ -523,78 +574,73 @@ export default function TaskEditor({
             style={s.authoringMetaCollapseBtn}
           />
         </div>
-
-        <Field
-          label="Authoring intent (Markdown)"
-          hint="Visible to authors only; students never see this field."
-        >
-          <ExplainerEditor
-            title={task.title || 'Task intent'}
-            value={task.intent ?? ''}
-            onChange={(value) => set('intent', value)}
-            lessonType={lesson.type}
-            inlineCodeLanguages={explainerInlineCodeLanguages}
-            assets={lesson.assets ?? []}
-            assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
-            storageAssets={allStorageAssets}
-          />
-        </Field>
-
-        <Field label="Task activity" hint="Visible to authors only; students never see this field.">
-          <input
-            className="te-input"
-            value={task.taskActivity ?? ''}
-            onChange={(e) => set('taskActivity', e.target.value)}
-            placeholder="e.g. Pair-share discussion, quick demo, whiteboard sketch"
-          />
-        </Field>
-
-        {task.taskType !== 'information' && (
-          <BadgeHintsField task={task} onChange={setBadgeHints} />
-        )}
-
-        {(task.intentLastChangedAt || task.taskLastChangedAt) && (
-          <div style={s.auditMeta}>
-            {task.intentLastChangedAt && (
-              <span>Intent updated: {formatAuditTime(task.intentLastChangedAt)}</span>
-            )}
-            {task.taskLastChangedAt && (
-              <span>Task content updated: {formatAuditTime(task.taskLastChangedAt)}</span>
-            )}
-          </div>
-        )}
+        {authoringMetaFields}
       </div>
     </AnimatedPanelShell>
   )
 
-  return (
-    <div className="te-wrap">
-      {parentGroup ? (
-        <Field label="Task title">
-          <input
-            className="te-input"
-            value={task.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="e.g. Counted loops"
-          />
-        </Field>
-      ) : (
-        <Field label="Task title">
-          <input
-            className="te-input"
-            value={task.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="e.g. Hello World"
-          />
-        </Field>
-      )}
+  const taskFormats = [
+    {
+      value: TASK_FORMATS.code,
+      label: moduleAuthoring?.codeFormat.label ?? 'Code',
+      iconType: moduleAuthoring?.codeFormat.icon ?? 'code',
+    },
+    { value: 'information', label: 'Information', iconType: 'information' },
+    { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
+    { value: 'activity', label: 'Activity', iconType: 'activity' },
+    // Module-hosted activity formats (Arrange), where the activity allows them
+    // (availableIn: composed lessons for code_arrange).
+    ...getModuleHostedActivityDefinitions()
+      .filter((definition) => definition.availableIn(composedLesson))
+      .map((definition) => ({
+        value: definition.id,
+        label: definition.label,
+        iconType: definition.id,
+      })),
+  ]
+  const activeFormat = showsActivity
+    ? 'activity'
+    : isQuiz || isInformation || isCodeArrange
+      ? taskFormat
+      : 'code'
 
-      <Field label="Estimated time (minutes)">
+  // What the Settings tab holds for this task (code tasks: optional features and Task options).
+  const codeFeatures = !isQuiz && !isInformation && !showsActivity && !isCodeArrange
+  const showsCopyCode = !isQuiz && !isInformation && !showsActivity && supportsCopyCode
+  const showsTaskOptions = codeFeatures
+  // Code tasks always have Task options, so the Settings tab has fields for them.
+  const hasSettings = showsCopyCode || codeFeatures
+  const tabErrors = taskEditorTabErrorCounts(
+    validationErrors,
+    (lesson.tasks ?? []).findIndex((t) => t?.id === task.id) + 1,
+    { hasSettings }
+  )
+  const activeTab =
+    chosenTab ??
+    (sessionEdit
+      ? 'content'
+      : getRememberedTaskEditorTab(
+          hasSettings ? ['content', 'settings', 'notes'] : ['content', 'notes']
+        ))
+
+  const titleRow = (
+    <div className="te-title-row">
+      <Field label="Task title">
+        <input
+          className="te-input"
+          value={task.title}
+          onChange={(e) => set('title', e.target.value)}
+          placeholder={parentGroup ? 'e.g. Counted loops' : 'e.g. Hello World'}
+        />
+      </Field>
+
+      <Field label="Minutes">
         <input
           className="te-input"
           type="number"
           min="0.5"
           step="0.5"
+          aria-label="Estimated time (minutes)"
           value={task.estimatedMinutes ?? ''}
           onChange={(e) => {
             const value = e.target.value
@@ -605,63 +651,72 @@ export default function TaskEditor({
             const parsed = Number.parseFloat(value)
             set('estimatedMinutes', Math.max(0.5, Number.isFinite(parsed) ? parsed : 0.5))
           }}
-          placeholder="e.g. 10 or 7.5"
+          placeholder="e.g. 7.5"
         />
       </Field>
+    </div>
+  )
 
-      {!sessionEdit && authoringMeta}
+  const statusLine = (
+    <TaskStatusLine
+      task={task}
+      onPriorityChange={setPriority}
+      onMustSeeChange={(checked) => set('mustSee', checked ? true : undefined)}
+      onModeChange={(mode) => set('taskMode', mode === 'both' ? undefined : mode)}
+      formats={taskFormats}
+      activeFormat={activeFormat}
+      onFormatChange={handleTaskTypeChange}
+    />
+  )
 
-      <Field label="Priority">
-        <div className="te-priority-grid">
-          {[
-            { value: 'core', label: 'Core', hint: 'Expected lesson path' },
-            { value: 'optional', label: 'Optional', hint: 'Safe to skip' },
-          ].map((option) => {
-            const active = (task.priority ?? 'core') === option.value
+  const moduleField = !isInformation &&
+    !isQuiz &&
+    !showsActivity &&
+    advanced &&
+    composedLesson?.type === 'composed' && (
+      <Field
+        label="Code task module"
+        hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
+      >
+        <div className="te-info-type-grid">
+          {(moduleActivity?.hostModules ?? LESSON_MODULE_TYPES).map((moduleType) => {
+            const active = task.moduleType === moduleType
+            const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
             return (
               <button
-                key={option.value}
+                key={moduleType}
                 type="button"
                 className={
                   active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
                 }
-                onClick={() => setPriority(option.value)}
+                onClick={() => handleModuleChange(moduleType)}
               >
-                <span className="te-info-type-label">{option.label}</span>
-                <span className="te-info-type-hint">{option.hint}</span>
+                <span className="te-info-type-label">
+                  {icon} {shortLabel}
+                </span>
+                <span className="te-info-type-hint">{pickerHint}</span>
               </button>
             )
           })}
         </div>
       </Field>
+    )
 
-      <Field label="Must see">
-        <label
-          className={
-            task.mustSee
-              ? 'te-option-toggle-card te-option-toggle-card--active'
-              : 'te-option-toggle-card'
-          }
-        >
-          <input
-            type="checkbox"
-            checked={!!task.mustSee}
-            onChange={(e) => set('mustSee', e.target.checked ? true : undefined)}
-            className="te-option-choice-input"
-            data-testid="task-must-see"
-          />
-          <span className="te-option-choice-title">Must see (warn before the class skips it)</span>
-        </label>
-      </Field>
-
-      <Field label="Available in">
+  const informationFields = isInformation && (
+    <>
+      <Field label="Information type">
         <div className="te-info-type-grid">
           {[
-            { value: 'both', label: 'Both', hint: 'Live and solo mode' },
-            { value: 'live', label: 'Live only', hint: 'During live sessions' },
-            { value: 'solo', label: 'Solo only', hint: 'In solo mode' },
+            { value: 'standard', label: 'Standard', hint: 'Markdown explainer' },
+            { value: 'recap', label: 'Two Pane View', hint: 'Two editable markdown panes' },
+            { value: 'introduction', label: 'Introduction', hint: 'Lesson metadata slide' },
+            {
+              value: 'badges',
+              label: 'Badge Summary',
+              hint: "🎖️ Today's Coding Moments (live only)",
+            },
           ].map((option) => {
-            const active = (task.taskMode ?? 'both') === option.value
+            const active = (task.informationType ?? 'standard') === option.value
             return (
               <button
                 key={option.value}
@@ -669,7 +724,7 @@ export default function TaskEditor({
                 className={
                   active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
                 }
-                onClick={() => set('taskMode', option.value === 'both' ? undefined : option.value)}
+                onClick={() => set('informationType', option.value)}
               >
                 <span className="te-info-type-label">{option.label}</span>
                 <span className="te-info-type-hint">{option.hint}</span>
@@ -679,129 +734,9 @@ export default function TaskEditor({
         </div>
       </Field>
 
-      <Field label="Task format">
-        <div className="te-task-format-grid">
-          {[
-            {
-              value: TASK_FORMATS.code,
-              label: moduleAuthoring?.codeFormat.label ?? 'Code',
-              iconType: moduleAuthoring?.codeFormat.icon ?? 'code',
-            },
-            { value: 'information', label: 'Information', iconType: 'information' },
-            { value: 'quiz', label: 'Quiz', iconType: 'quiz' },
-            { value: 'activity', label: 'Activity', iconType: 'activity' },
-            // Module-hosted activity formats (Arrange), where the activity allows them
-            // (availableIn: composed lessons for code_arrange).
-            ...getModuleHostedActivityDefinitions()
-              .filter((definition) => definition.availableIn(composedLesson))
-              .map((definition) => ({
-                value: definition.id,
-                label: definition.label,
-                iconType: definition.id,
-              })),
-          ].map(({ value, label, iconType }) => {
-            const active =
-              value ===
-              (showsActivity
-                ? 'activity'
-                : isQuiz || isInformation || isCodeArrange
-                  ? taskFormat
-                  : 'code')
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={active}
-                className={
-                  active ? 'te-task-format-btn te-task-format-btn--active' : 'te-task-format-btn'
-                }
-                onClick={() => handleTaskTypeChange(value)}
-              >
-                <TaskFormatIcon type={iconType} />
-                <span className="te-task-format-label">{label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </Field>
-
-      {!isInformation &&
-        !isQuiz &&
-        !showsActivity &&
-        advanced &&
-        composedLesson?.type === 'composed' && (
-          <Field
-            label="Code task module"
-            hint="Choose the workspace for this task. Changing it clears code, checks, stages, and carry-through settings."
-          >
-            <div className="te-info-type-grid">
-              {(moduleActivity?.hostModules ?? LESSON_MODULE_TYPES).map((moduleType) => {
-                const active = task.moduleType === moduleType
-                const { icon, shortLabel, pickerHint } = getModuleDefinition(moduleType).meta
-                return (
-                  <button
-                    key={moduleType}
-                    type="button"
-                    className={
-                      active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
-                    }
-                    onClick={() => handleModuleChange(moduleType)}
-                  >
-                    <span className="te-info-type-label">
-                      {icon} {shortLabel}
-                    </span>
-                    <span className="te-info-type-hint">{pickerHint}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
-        )}
-
-      {isInformation && (
-        <Field label="Information type">
-          <div className="te-info-type-grid">
-            {[
-              { value: 'standard', label: 'Standard', hint: 'Markdown explainer' },
-              { value: 'recap', label: 'Two Pane View', hint: 'Two editable markdown panes' },
-              { value: 'introduction', label: 'Introduction', hint: 'Lesson metadata slide' },
-              {
-                value: 'badges',
-                label: 'Badge Summary',
-                hint: "🎖️ Today's Coding Moments (live only)",
-              },
-            ].map((option) => {
-              const active = (task.informationType ?? 'standard') === option.value
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={
-                    active ? 'te-info-type-btn te-info-type-btn--active' : 'te-info-type-btn'
-                  }
-                  onClick={() => set('informationType', option.value)}
-                >
-                  <span className="te-info-type-label">{option.label}</span>
-                  <span className="te-info-type-hint">{option.hint}</span>
-                </button>
-              )
-            })}
-          </div>
-        </Field>
-      )}
-
-      {isInformation && (task.informationType ?? 'standard') === 'recap' && (
+      {(task.informationType ?? 'standard') === 'recap' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              color: 'var(--colour-text)',
-            }}
-          >
-            Left pane (Markdown)
-          </span>
+          <span style={s.markdownLabel}>Left pane (Markdown)</span>
           <ExplainerEditor
             title={task.title}
             value={task.leftContent ?? ''}
@@ -814,47 +749,185 @@ export default function TaskEditor({
           />
         </div>
       )}
+    </>
+  )
 
-      {(task.informationType ?? 'standard') !== 'introduction' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontWeight: 600,
-                fontSize: '0.88rem',
-                color: 'var(--colour-text)',
-              }}
-            >
-              {isInformation && (task.informationType ?? 'standard') === 'recap'
-                ? 'Right pane (Markdown)'
-                : 'Explainer (Markdown)'}
-            </span>
-            <label className="te-check-toggle">
-              <input
-                type="checkbox"
-                checked={task.explainer !== null && task.explainer !== undefined}
-                onChange={(e) => set('explainer', e.target.checked ? '' : null)}
-              />
-              Enable
-            </label>
-          </div>
-          {task.explainer !== null && task.explainer !== undefined && (
-            <ExplainerEditor
-              title={task.title}
-              value={task.explainer}
-              onChange={(v) => set('explainer', v)}
-              lessonType={lesson.type}
-              inlineCodeLanguages={explainerInlineCodeLanguages}
-              assets={lesson.assets ?? []}
-              assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
-              storageAssets={allStorageAssets}
-            />
-          )}
-        </div>
+  const explainerField = (task.informationType ?? 'standard') !== 'introduction' && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={s.markdownLabel}>
+          {isInformation && (task.informationType ?? 'standard') === 'recap'
+            ? 'Right pane (Markdown)'
+            : 'Explainer (Markdown)'}
+        </span>
+        <label className="te-check-toggle">
+          <input
+            type="checkbox"
+            checked={task.explainer !== null && task.explainer !== undefined}
+            onChange={(e) => set('explainer', e.target.checked ? '' : null)}
+          />
+          Enable
+        </label>
+      </div>
+      {task.explainer !== null && task.explainer !== undefined && (
+        <ExplainerEditor
+          title={task.title}
+          value={task.explainer}
+          onChange={(v) => set('explainer', v)}
+          lessonType={lesson.type}
+          inlineCodeLanguages={explainerInlineCodeLanguages}
+          assets={lesson.assets ?? []}
+          assetsPath={lesson.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
+          storageAssets={allStorageAssets}
+        />
       )}
+    </div>
+  )
 
-      {!isQuiz && !isInformation && !showsActivity && supportsCopyCode && (
+  // Old string-shaped quiz options are shown (and saved on the next edit) as {id, text}.
+  const quizTask = isQuiz ? withQuizOptionObjects(task) : task
+
+  const taskBody = isInformation ? (
+    <TaskPreviewPanel task={task} draft={lesson.draft}>
+      <div className="te-info-preview">
+        <InformationTask task={task} lesson={lesson} />
+      </div>
+    </TaskPreviewPanel>
+  ) : isQuiz ? (
+    <>
+      <QuizTypePicker task={task} onSelect={handleActivityChange} />
+      {(() => {
+        // Each quiz sub-type's editor lives in its activity's ui.jsx (BuilderEditor).
+        const QuizEditor = getTaskActivityUi(task)?.BuilderEditor
+        return QuizEditor ? (
+          <QuizEditor task={quizTask} onUpdate={onUpdate} lessonType={lesson.type} />
+        ) : null
+      })()}
+      <TaskPreviewPanel task={task} draft={lesson.draft}>
+        <QuizTask
+          task={quizTask}
+          showQuestion
+          selectedAnswer={quizSelectedAnswer}
+          onSelectAnswer={handleQuizPreviewSelect}
+          submitted={runStatus === 'submitted'}
+          checkPassed={checkResults?.every((r) => r.passed) ?? false}
+        />
+        {checkResults !== null &&
+          (() => {
+            const allPassed = checkResults.every((r) => r.passed)
+            return (
+              <div
+                style={{
+                  border: '1px solid',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.88rem',
+                  lineHeight: 1.6,
+                  background: allPassed ? '#f0fdf4' : '#fffbeb',
+                  borderColor: allPassed ? '#bbf7d0' : '#fde68a',
+                }}
+              >
+                {task.quizType === 'confidence'
+                  ? 'Rating submitted — any confidence level completes this task.'
+                  : task.quizType === 'poll'
+                    ? 'Vote recorded — polls are never marked; any choice completes this task.'
+                    : allPassed
+                      ? 'Check passes — students will see the completion banner.'
+                      : task.quizType === 'match' || task.quizType === 'fill_blank'
+                        ? 'Check does not pass — try placing the correct answers in the preview.'
+                        : 'Check does not pass — review the answer or check configuration.'}
+              </div>
+            )
+          })()}
+      </TaskPreviewPanel>
+    </>
+  ) : showsActivity ? (
+    isActivity ? (
+      <ActivitySection
+        task={task}
+        lesson={lesson}
+        onUpdate={onUpdate}
+        onChooseActivity={handleActivityChange}
+      />
+    ) : (
+      <ActivityGallery task={task} onSelect={handleActivityChange} />
+    )
+  ) : moduleActivity?.BuilderEditor ? (
+    <moduleActivity.BuilderEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
+  ) : incompleteDraftWorkspace ? (
+    <div style={s.incompleteDraft}>
+      This draft task has no {moduleAuthoring.missingStarterLabel} yet. Choose the Code format above
+      to initialise the standard editor fields, then continue editing the task.
+    </div>
+  ) : lessonMod?.BuilderWorkspace ? (
+    <lessonMod.BuilderWorkspace
+      task={task}
+      lesson={lesson}
+      onUpdate={onUpdate}
+      codeTab={codeTab}
+      codeStages={codeStages}
+      activePythonCode={activePythonCode}
+      selectedFile={selectedFile}
+      selectedCompleteFile={selectedCompleteFile}
+      setSelectedFile={setSelectedFile}
+      setSelectedCompleteFile={setSelectedCompleteFile}
+      running={running}
+      runningTests={runningTests}
+      pyodideStatus={pyodideStatus}
+      htmlPreviewOpen={htmlPreviewOpen}
+      setHtmlPreviewOpen={setHtmlPreviewOpen}
+      iframeSrc={iframeSrc}
+      iframeRef={iframeRef}
+      inputPrompt={inputPrompt}
+      output={output}
+      runStatus={runStatus}
+      checkResult={checkResult}
+      setCheckResult={setCheckResult}
+      checkResults={checkResults}
+      incorrectCheckResults={incorrectCheckResults}
+      testResults={testResults}
+      handleCodeTabChange={handleCodeTabChange}
+      handleAddStage={handleAddStage}
+      handleRemoveStage={handleRemoveStage}
+      handleRun={handleRun}
+      handleStop={handleStop}
+      handleRunTests={handleRunTests}
+      handleTestChecks={handleTestChecks}
+      handleInputSubmit={handleInputSubmit}
+      resetToStarterBtn={resetToStarterBtn}
+    />
+  ) : (
+    <div style={s.unknownType}>
+      Unrecognised lesson type "{lesson.type}" — no builder workspace available for this task.
+    </div>
+  )
+
+  // Content: what the task is (title, minutes, set-once line), then the body first. Information
+  // tasks keep their type, panes and explainer above the preview.
+  const contentTab = (
+    <>
+      {titleRow}
+      {statusLine}
+      {moduleField}
+      {isInformation ? (
+        <>
+          {informationFields}
+          {explainerField}
+          {taskBody}
+        </>
+      ) : (
+        <>
+          {taskBody}
+          {explainerField}
+        </>
+      )}
+    </>
+  )
+
+  const optionalFeatures = (
+    <>
+      {showsCopyCode && (
         <Field label="Copy code panel" hint="optional">
           <div style={s.copyCodeEditor}>
             <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
@@ -907,7 +980,7 @@ export default function TaskEditor({
         </Field>
       )}
 
-      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesPythonEditor && (
+      {codeFeatures && usesPythonEditor && (
         <Field label="Block brackets" hint="optional">
           <label className="te-check-toggle" style={{ alignSelf: 'flex-start' }}>
             <input
@@ -920,173 +993,148 @@ export default function TaskEditor({
         </Field>
       )}
 
-      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesVariablesPanel && (
-        <ShowVariablesField task={task} onUpdate={onUpdate} />
-      )}
+      {codeFeatures && usesVariablesPanel && <ShowVariablesField task={task} onUpdate={onUpdate} />}
 
-      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesStageTarget && (
-        <StageTargetField task={task} onUpdate={onUpdate} />
-      )}
+      {codeFeatures && usesStageTarget && <StageTargetField task={task} onUpdate={onUpdate} />}
 
-      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesScrub && (
-        <ScrubField task={task} onUpdate={onUpdate} />
-      )}
+      {codeFeatures && usesScrub && <ScrubField task={task} onUpdate={onUpdate} />}
 
-      {!isQuiz && !isInformation && !showsActivity && !isCodeArrange && usesPythonSlowMo && (
+      {codeFeatures && usesPythonSlowMo && (
         <Field label="Slow-mo" hint="optional">
           <PythonSlowMoField task={task} onUpdate={onUpdate} />
         </Field>
       )}
+    </>
+  )
 
-      {isInformation && (
-        <TaskPreviewPanel task={task} draft={lesson.draft}>
-          <div className="te-info-preview">
-            <InformationTask task={task} lesson={lesson} />
-          </div>
-        </TaskPreviewPanel>
-      )}
+  const taskOptions = showsTaskOptions && (
+    <TaskOptionsSection
+      task={task}
+      lesson={lessonWithStorageAssets}
+      onUpdate={onUpdate}
+      activePythonCode={activePythonCode}
+      activeFiles={activeFiles}
+      output={output}
+      setCheckResults={setCheckResults}
+      setRunStatus={setRunStatus}
+      handleInteractionModeChange={handleInteractionModeChange}
+    />
+  )
 
-      {!isQuiz && !isInformation && !isCodeArrange && !showsActivity && (
-        <TaskOptionsSection
-          task={task}
-          lesson={lessonWithStorageAssets}
-          onUpdate={onUpdate}
-          activePythonCode={activePythonCode}
-          activeFiles={activeFiles}
-          output={output}
-          setCheckResults={setCheckResults}
-          setRunStatus={setRunStatus}
-          handleInteractionModeChange={handleInteractionModeChange}
-        />
-      )}
+  // The Classroom's Edit Lesson: one column, no tabs, authoring notes folded at the bottom.
+  if (sessionEdit) {
+    return (
+      <div className="te-wrap">
+        {contentTab}
+        {optionalFeatures}
+        {taskOptions}
+        {authoringMeta}
+      </div>
+    )
+  }
 
-      {!isInformation && <div className="te-divider" />}
+  function chooseTab(tab) {
+    setActiveTab(tab)
+    rememberTaskEditorTab(tab)
+  }
 
-      {isInformation ? null : isQuiz ? (
-        <>
-          <QuizTypePicker task={task} onSelect={handleActivityChange} />
-          {(() => {
-            // Each quiz sub-type's editor lives in its activity's ui.jsx (BuilderEditor).
-            const QuizEditor = getTaskActivityUi(task)?.BuilderEditor
-            return QuizEditor ? (
-              <QuizEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-            ) : null
-          })()}
-          <TaskPreviewPanel task={task} draft={lesson.draft}>
-            <QuizTask
-              task={task}
-              showQuestion
-              selectedAnswer={quizSelectedAnswer}
-              onSelectAnswer={handleQuizPreviewSelect}
-              submitted={runStatus === 'submitted'}
-              checkPassed={checkResults?.every((r) => r.passed) ?? false}
-            />
-            {checkResults !== null &&
-              (() => {
-                const allPassed = checkResults.every((r) => r.passed)
-                return (
-                  <div
-                    style={{
-                      border: '1px solid',
-                      borderRadius: 8,
-                      padding: '10px 14px',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.88rem',
-                      lineHeight: 1.6,
-                      background: allPassed ? '#f0fdf4' : '#fffbeb',
-                      borderColor: allPassed ? '#bbf7d0' : '#fde68a',
-                    }}
-                  >
-                    {task.quizType === 'confidence'
-                      ? 'Rating submitted — any confidence level completes this task.'
-                      : task.quizType === 'poll'
-                        ? 'Vote recorded — polls are never marked; any choice completes this task.'
-                        : allPassed
-                          ? 'Check passes — students will see the completion banner.'
-                          : task.quizType === 'match' || task.quizType === 'fill_blank'
-                            ? 'Check does not pass — try placing the correct answers in the preview.'
-                            : 'Check does not pass — review the answer or check configuration.'}
-                  </div>
-                )
-              })()}
-          </TaskPreviewPanel>
-        </>
-      ) : showsActivity ? (
-        isActivity ? (
-          <ActivitySection
-            task={task}
-            lesson={lesson}
-            onUpdate={onUpdate}
-            onChooseActivity={handleActivityChange}
-          />
-        ) : (
-          <ActivityGallery task={task} onSelect={handleActivityChange} />
-        )
-      ) : moduleActivity?.BuilderEditor ? (
-        <moduleActivity.BuilderEditor task={task} onUpdate={onUpdate} lessonType={lesson.type} />
-      ) : incompleteDraftWorkspace ? (
-        <div style={s.incompleteDraft}>
-          This draft task has no {moduleAuthoring.missingStarterLabel} yet. Choose the Code format
-          above to initialise the standard editor fields, then continue editing the task.
-        </div>
-      ) : lessonMod?.BuilderWorkspace ? (
-        <lessonMod.BuilderWorkspace
-          task={task}
-          lesson={lesson}
-          onUpdate={onUpdate}
-          codeTab={codeTab}
-          codeStages={codeStages}
-          activePythonCode={activePythonCode}
-          selectedFile={selectedFile}
-          selectedCompleteFile={selectedCompleteFile}
-          setSelectedFile={setSelectedFile}
-          setSelectedCompleteFile={setSelectedCompleteFile}
-          running={running}
-          runningTests={runningTests}
-          pyodideStatus={pyodideStatus}
-          htmlPreviewOpen={htmlPreviewOpen}
-          setHtmlPreviewOpen={setHtmlPreviewOpen}
-          iframeSrc={iframeSrc}
-          iframeRef={iframeRef}
-          inputPrompt={inputPrompt}
-          output={output}
-          runStatus={runStatus}
-          checkResult={checkResult}
-          setCheckResult={setCheckResult}
-          checkResults={checkResults}
-          incorrectCheckResults={incorrectCheckResults}
-          testResults={testResults}
-          handleCodeTabChange={handleCodeTabChange}
-          handleAddStage={handleAddStage}
-          handleRemoveStage={handleRemoveStage}
-          handleRun={handleRun}
-          handleStop={handleStop}
-          handleRunTests={handleRunTests}
-          handleTestChecks={handleTestChecks}
-          handleInputSubmit={handleInputSubmit}
-          resetToStarterBtn={resetToStarterBtn}
-        />
-      ) : (
+  function handleTabKeyDown(event) {
+    const count = TASK_EDITOR_TABS.length
+    const index = TASK_EDITOR_TABS.findIndex((t) => t.id === activeTab)
+    const target = {
+      ArrowRight: (index + 1) % count,
+      ArrowLeft: (index - 1 + count) % count,
+      Home: 0,
+      End: count - 1,
+    }[event.key]
+    if (target === undefined) return
+    event.preventDefault()
+    const next = TASK_EDITOR_TABS[target]
+    chooseTab(next.id)
+    event.currentTarget.parentElement?.querySelector(`#te-tab-${next.id}`)?.focus()
+  }
+
+  return (
+    <div className="te-wrap">
+      <div className="te-editor-tabs" role="tablist" aria-label="Task editor">
+        {TASK_EDITOR_TABS.map(({ id, label }) => {
+          const selected = activeTab === id
+          const errorCount = tabErrors[id]
+          return (
+            <button
+              key={id}
+              id={`te-tab-${id}`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`te-tab-panel-${id}`}
+              tabIndex={selected ? 0 : -1}
+              className="te-editor-tab"
+              onClick={() => chooseTab(id)}
+              onKeyDown={handleTabKeyDown}
+            >
+              {label}
+              {errorCount > 0 && (
+                <span
+                  className="te-editor-tab__count"
+                  aria-label={`${errorCount} error${errorCount === 1 ? '' : 's'}`}
+                  title={`${errorCount} validation error${errorCount === 1 ? '' : 's'} here`}
+                >
+                  {errorCount}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      {/* Every panel stays mounted (hidden when not chosen) so the code editor's undo, cursor
+          and scroll, and the HTML preview iframe, survive a trip to another tab. */}
+      {TASK_EDITOR_TABS.map(({ id }) => (
         <div
-          style={{
-            padding: '10px 12px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: 8,
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.86rem',
-            color: '#991b1b',
-          }}
+          key={id}
+          className="te-tab-panel"
+          role="tabpanel"
+          id={`te-tab-panel-${id}`}
+          aria-labelledby={`te-tab-${id}`}
+          hidden={activeTab !== id}
         >
-          Unrecognised lesson type "{lesson.type}" — no builder workspace available for this task.
+          {id === 'content' ? (
+            contentTab
+          ) : id === 'notes' ? (
+            <div style={s.authoringMetaSection}>{authoringMetaFields}</div>
+          ) : hasSettings ? (
+            <>
+              {optionalFeatures}
+              {taskOptions}
+            </>
+          ) : (
+            <p className="te-tab-empty">
+              No extra settings for this task format. Priority, Must see and Available in are on the
+              Content tab.
+            </p>
+          )}
         </div>
-      )}
-      {sessionEdit && authoringMeta}
+      ))}
     </div>
   )
 }
 
 const s = {
+  markdownLabel: {
+    fontFamily: 'var(--font-body)',
+    fontWeight: 600,
+    fontSize: '0.88rem',
+    color: 'var(--colour-text)',
+  },
+  unknownType: {
+    padding: '10px 12px',
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: 8,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.86rem',
+    color: '#991b1b',
+  },
   authoringMetaSection: {
     display: 'flex',
     flexDirection: 'column',
