@@ -23,6 +23,7 @@ class HttpsError extends Error {
     this.code = code
   }
 }
+const loggerError = vi.fn()
 const stubs = {
   'firebase-admin/app': { initializeApp: () => {} },
   'firebase-admin/auth': { getAuth: () => authMock },
@@ -31,6 +32,7 @@ const stubs = {
     FieldValue: { serverTimestamp: () => 'ts', delete: () => 'del' },
   },
   'firebase-functions/v2/https': { onCall: (_opts, fn) => fn, HttpsError },
+  'firebase-functions/logger': { error: (...a) => loggerError(...a) },
   'firebase-functions/v2/scheduler': { onSchedule: (_opts, fn) => fn },
 }
 const origLoad = Module._load
@@ -124,5 +126,38 @@ describe('createAccount input checks', () => {
     authMock.setCustomUserClaims.mockRejectedValue(new Error('boom'))
     await expect(call('createAccount', good)).rejects.toMatchObject({ code: 'internal' })
     expect(authMock.deleteUser).toHaveBeenCalledWith('new1')
+    expect(loggerError).toHaveBeenCalled()
+  })
+})
+
+describe('requireAdmin lookup failure', () => {
+  it('turns a failed live lookup into permission-denied', async () => {
+    authMock.getUser.mockRejectedValue(new Error('user-not-found'))
+    await expect(call('enableAccount', { uid: 'x' })).rejects.toMatchObject({
+      code: 'permission-denied',
+    })
+  })
+})
+
+describe('every admin function validates its input', () => {
+  const fnsList = [
+    'setUserRole',
+    'setUserHandle',
+    'disableAccount',
+    'enableAccount',
+    'deleteAccount',
+    'updateAccountPassword',
+  ]
+  for (const fn of fnsList) {
+    it(`${fn} rejects missing data and non-string uid`, async () => {
+      await expect(call(fn, undefined)).rejects.toMatchObject({ code: 'invalid-argument' })
+      await expect(call(fn, { uid: 5 })).rejects.toMatchObject({ code: 'invalid-argument' })
+      await expect(call(fn, { uid: '' })).rejects.toMatchObject({ code: 'invalid-argument' })
+    })
+  }
+  it('updateAccountPassword rejects a numeric password', async () => {
+    await expect(
+      call('updateAccountPassword', { uid: 'u', password: 12345678901 })
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
   })
 })

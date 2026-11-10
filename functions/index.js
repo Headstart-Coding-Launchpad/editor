@@ -2,6 +2,7 @@ const { initializeApp } = require('firebase-admin/app')
 const { getAuth } = require('firebase-admin/auth')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const logger = require('firebase-functions/logger')
 const { normaliseHandle } = require('./handles')
 
 initializeApp()
@@ -35,10 +36,23 @@ async function requireAdmin(auth) {
   if (!auth || auth.token.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Admin access required.')
   }
-  const user = await getAuth().getUser(auth.uid)
+  // Note: an ID token already issued stays valid up to 1h after a demotion/disable (not fixable here).
+  let user
+  try {
+    user = await getAuth().getUser(auth.uid)
+  } catch {
+    throw new HttpsError('permission-denied', 'Admin access required.')
+  }
   if (user.disabled || user.customClaims?.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Admin access required.')
   }
+}
+
+// Shared input guard: tolerates missing data, needs a non-empty string uid.
+function uidOf(data) {
+  const uid = data?.uid
+  if (typeof uid !== 'string' || !uid) throw new HttpsError('invalid-argument', 'uid is required.')
+  return uid
 }
 
 const SA = 'firebase-adminsdk-fbsvc@headstartcoding-repl.iam.gserviceaccount.com'
@@ -82,6 +96,7 @@ exports.createAccount = onCall(
           createdAt: FieldValue.serverTimestamp(),
         })
     } catch (err) {
+      logger.error('createAccount setup failed; rolling back Auth user', user.uid, err)
       // Roll back the Auth user so state stays consistent and the admin can retry.
       await getAuth()
         .deleteUser(user.uid)
@@ -100,8 +115,9 @@ exports.setUserRole = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid, role } = data
-    if (!uid || !['teacher', 'admin'].includes(role)) {
+    const uid = uidOf(data)
+    const { role } = data
+    if (!['teacher', 'admin'].includes(role)) {
       throw new HttpsError('invalid-argument', 'uid and a valid role are required.')
     }
     if (uid === auth.uid) {
@@ -125,8 +141,7 @@ exports.setUserHandle = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid } = data
-    if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
+    const uid = uidOf(data)
     const handle = handleOf(data)
     if (handle) await assertHandleFree(handle, uid)
     const existing = (await getAuth().getUser(uid)).customClaims ?? {}
@@ -146,8 +161,7 @@ exports.disableAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid } = data
-    if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
+    const uid = uidOf(data)
     if (uid === auth.uid) {
       throw new HttpsError('invalid-argument', 'Cannot disable your own account.')
     }
@@ -162,8 +176,7 @@ exports.enableAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid } = data
-    if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
+    const uid = uidOf(data)
     await getAuth().updateUser(uid, { disabled: false })
     await db().collection('users').doc(uid).update({ disabled: false })
   }
@@ -174,8 +187,7 @@ exports.deleteAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid } = data
-    if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
+    const uid = uidOf(data)
     if (uid === auth.uid) {
       throw new HttpsError('invalid-argument', 'Cannot delete your own account.')
     }
@@ -191,8 +203,9 @@ exports.updateAccountPassword = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
     await requireAdmin(auth)
-    const { uid, password } = data
-    if (!uid || !password || password.length < 8) {
+    const uid = uidOf(data)
+    const { password } = data
+    if (typeof password !== 'string' || password.length < 8) {
       throw new HttpsError('invalid-argument', 'uid and password (min 8 chars) are required.')
     }
     if (uid === auth.uid) {
