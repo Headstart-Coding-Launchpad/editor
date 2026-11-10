@@ -131,14 +131,15 @@ function Marker({ host, b, label, color = '#e11d48' }) {
         height: b.height,
         outline: `2px solid ${color}`,
         pointerEvents: 'none',
+        zIndex: 5,
       }}
     >
       <span
         style={{
           position: 'absolute',
-          right: -4,
+          left: -4,
           top: -4,
-          transform: 'translate(100%,-50%)',
+          transform: 'translate(-100%,-50%)',
           background: color,
           color: '#fff',
           font: '700 11px sans-serif',
@@ -175,7 +176,7 @@ function Panel({ title, sub, children, measure, onMeasured }) {
       <div style={{ font: '13px sans-serif', color: '#555', marginBottom: 8 }}>{sub}</div>
       <div
         ref={ref}
-        style={{ position: 'relative', border: '1px solid #ccc', padding: 20, minHeight: 300 }}
+        style={{ position: 'relative', border: '1px solid #ccc', padding: '20px 20px 20px 60px', minHeight: 300 }}
       >
         {children}
         {b && (
