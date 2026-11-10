@@ -29,7 +29,7 @@ Field reference for `python` module code tasks in a `composed` lesson. Set `modu
 
 **Stage object:** `role` may be `starter`, `support`, or `complete`; omitted `role` defaults to `support`. The first Starter is the default, and teachers may apply any Starter to a class or individual learner. Every Support stage is an offerable read-only reference. A Complete stage can be revealed read-only before the student or teacher explicitly takes it over, using the same preview-then-replace flow as a Support stage. Legacy `core` and `extension` roles remain readable as Support, and `solution` remains readable as Complete.
 
-**Stage `show` (Complete stages):** `show: change` shows the student only what changes, not the whole program; `show: full` (the default, or no field) shows it all as before. See **Change view** below.
+**Stage `show` (Complete and Support stages):** `show: change` shows the student only what changes, not the whole stage; `show: full` (the default, or no field) shows it all as before. See **Change view** below.
 
 **Current authoring convention:** author `codeStages` entries with `role: starter` and `role: complete` instead of the separate `starterCode`/`completeCode` fields — see the Minimal Example below. `starterCode`/`completeCode` remain fully supported at runtime (student, teacher-live, reset, carry-through, preview, print, and sandbox paths all still read them when an equivalent stage is absent), but the current Builder authoring UI no longer creates or edits them. See `docs/authoring/legacy-lesson-compatibility.md` for the full compatibility table.
 
@@ -50,11 +50,31 @@ A Complete stage usually differs from the student's code by a line or two, but i
 - **Too much change.** The stage shows the whole program with the changed lines marked, and "A lot changed in this step, so here is all of the code. Green lines are new, red lines go." when more than half of its lines are new or re-indented, there are more than 3 separate changes, one block of new lines is more than 8 lines, or a new line has no line that places it. There is no **Show only the changes** then.
 - **Nothing to do.** "Your code already matches this step".
 - **Controls.** **Show all the code** shows the whole program with the changes marked, with its 🔒 Locked tags and your line hints (**Show only the changes** goes back). The changes on their own show no lock tags or line hints. In Solo, the load button reads **Replace my code with this** while the changes of the Complete stage it loads show; it still loads the whole stage. The tutor's send stage and the Solo "See complete code" use the same view, against that student's own code.
-- **Writing for it.** Keep each Complete a small, local change from the step before it, so the place line makes sense; split a step that rewrites most of the program. Python only (Python module tasks); `show: change` on a Support stage, or in another module, is ignored with a warning.
+- **Writing for it.** Keep each Complete a small, local change from the step before it, so the place line makes sense; split a step that rewrites most of the program. Python only (Python module tasks); `show: change` on a Starter stage, or in another module, is ignored with a warning.
+- **On a Support stage.** A Support stage is a few lines of the program, not all of it, so `show: change` reads it as an excerpt: the new lines show in green, each placed by a line of the student's own code (**after this line** / **before this line**), as on a Complete stage. The student's lines the excerpt leaves out are never shown as lines to remove. A line of theirs shows as changed (red, or one `±` row) only when a new line of the excerpt only extends it or swaps a small piece of it (`range(5)` to `range(3)`); a line that is very different is just a new line. The excerpt may sit at any indent (lifted out of a `def` or loop): the student's lines are read at its indent, so only a line it moves deeper or shallower than its neighbours shows as a re-indent. So give each new line a line of the student's code next to it in the excerpt to place it by (the validator warns when no line of a Support stage is in the starter code, or when it holds all of the starter code): an excerpt of new lines only has no place, and shows all of itself in green with "Here is all of this hint. Green lines are new, red lines go." The "more than half of the lines are new" fall-back does not apply (most of a hint is new); more than 3 separate changes or a new block of more than 8 lines still shows the whole excerpt. **Show all the code** shows the whole excerpt, marked. To remove a whole line, or anything at the very start or end of the program, use a Complete stage. The tutor's send stage (a Support stage revealed from the roster) shows the same view against that student's code.
 
 The Copy code panel can use the same look: `copyAfter: "size -= step"` (or `copyBefore` for a change at the top) shows that line dimmed, then the `copyCode` lines in green with `+`. A typed line that only extends the place line itself, or the starter line right next to it on the typed side (just after a `copyAfter` line, just before a `copyBefore` line), shows only the extension, as in the change view; any other line stays all green. The starter is the task's Starter stage, else `starterCode`. Write the line exactly as it is in the starter (spaces at the start and end don't matter). `copyCode` stays an example the student types, so checks are unchanged. A tutor's own "Type this out" text drops the place line.
 
-On the student's screen (the calm code screen, Python only) the Copy code lines and a Complete stage's change view share one box titled **What to change** above the code: the change view when the Complete stage is open, else the Copy code lines, never both. It is open when the task opens and folds to one line after the first passing Run (never a failed one), once per task view; a tap opens it again and it then stays as the student leaves it. Name it "the *What to change* box" in lesson text. The touch key row puts the symbols this task's code uses (its complete code, code stages and `copyCode`) first, so a new symbol is one tap away.
+On the student's screen (the calm code screen, Python only) the Copy code lines and a Complete stage's change view share one box titled **What to change** above the code: the change view when that stage is open, else the Copy code lines, never both. A Support stage's change view is a hint, only part of the program, so it shows in its own **What to change** box and the Copy code lines stay (the load button still says it loads the complete code). It is open when the task opens and folds to one line after the first passing Run (never a failed one), once per task view; a tap opens it again and it then stays as the student leaves it. Name it "the *What to change* box" in lesson text. The touch key row puts the symbols this task's code uses (its complete code, code stages and `copyCode`) first, so a new symbol is one tap away.
+
+A Support stage with the change view (the hint names `circle(...)`, a line the student already has, so the new `text(...)` line is placed after it; the student's other lines are left out):
+
+```yaml
+codeStages:
+  - label: Starter
+    role: starter
+    code: |
+      from stage import *
+      background("skyblue")
+      circle(50, "gold", x=200, y=150)
+      square(40, "brown", x=80, y=260)
+  - label: Hint 1
+    role: support
+    show: change
+    code: |
+      circle(50, "gold", x=200, y=150)
+      text("Hi!", x=200, y=240)
+```
 
 ```yaml
 copyCode: "turn += 10"

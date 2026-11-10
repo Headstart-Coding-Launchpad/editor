@@ -488,6 +488,47 @@ describe('Calm code screen: one box, never two', () => {
     expect(screen.getByTestId('stage-change-view')).toBeInTheDocument()
     expect(lastWorkspaceProps().whatToChange.hideCopyCode).toBe(true)
   })
+
+  // A Support hint is only part of the program: the Type this out copy stays, and the load
+  // button still says it loads the complete code (never "Replace my code with this").
+  it('a revealed Support change view keeps the Type this out copy and an honest load button', () => {
+    const supportTask = {
+      ...task,
+      copyCode: 'circle(90, "orange", x=100, y=250)',
+      codeStages: [
+        task.codeStages[0],
+        {
+          label: 'Hint',
+          role: 'support',
+          show: 'change',
+          code: 'background("black")\ncircle(90, "orange")',
+        },
+        { ...task.codeStages[1], show: undefined },
+      ],
+    }
+    render(
+      <LessonTaskContent
+        {...baseProps}
+        task={supportTask}
+        cs={csAt({
+          completePreviewShown: false,
+          activeSupportStageIndex: 1,
+          supportStageReveals: { 1: { source: 'teacher' } },
+          checkFailCount: 1,
+          handleShowCompleteCode: () => {},
+        })}
+        displayCheckAttempted
+        displayCheckPassed={false}
+        canOfferCompleteSolution
+      />
+    )
+    expect(screen.getByTestId('stage-change-view')).toBeInTheDocument()
+    expect(lastWorkspaceProps().whatToChange.hideCopyCode).toBe(false)
+    expect(
+      screen.queryByRole('button', { name: 'Replace my code with this' })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /complete code/i })).toBeInTheDocument()
+  })
 })
 
 describe('Calm code screen: the hint after the student moves on', () => {

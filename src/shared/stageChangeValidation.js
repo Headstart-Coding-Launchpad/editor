@@ -9,10 +9,11 @@ export const STAGE_SHOW_VALUES = ['full', 'change']
 const COPY_ANCHOR_FIELDS = ['copyAfter', 'copyBefore']
 
 /**
- * `changeView`: whether this module shows a Complete stage's change view (Python). Elsewhere
- * `show: 'change'` is ignored, with a warning.
+ * `changeView`: whether this module shows a Complete or Support stage's change view (Python).
+ * Elsewhere `show: 'change'` is ignored, with a warning.
  */
 export function validateStageChange(task, n, errors, warnings, { changeView = false } = {}) {
+  const starterLines = starterLineSet(task)
   ;(Array.isArray(task?.codeStages) ? task.codeStages : []).forEach((stage, index) => {
     if (stage?.show == null) return
     const where = `Task ${n} stage ${index + 1}`
@@ -23,10 +24,12 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
     if (stage.show !== 'change') return
     if (!changeView) {
       warnings.push(`${where} show: "change" works in Python lessons only; it is ignored here`)
-    } else if (getStageRole(stage) !== 'complete') {
+    } else if (!['complete', 'support'].includes(getStageRole(stage))) {
       warnings.push(
-        `${where} show: "change" works on a Complete stage only; this stage shows in full`
+        `${where} show: "change" works on a Complete or Support stage only; it is ignored here`
       )
+    } else if (getStageRole(stage) === 'support' && starterLines) {
+      warnSupportExcerpt(stage, where, starterLines, warnings)
     }
   })
 
@@ -54,10 +57,7 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
   }
   // The named line should be in the code the student starts from. Carried code can't be read
   // here, so a task that carries is not checked.
-  if (task?.carryCodeFrom != null || task?.carryCodeFromLesson != null) return
-  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
-  if (typeof starter !== 'string') return
-  const starterLines = new Set(cleanCodeLines(starter).map((line) => line.trim()))
+  if (!starterLines) return
   for (const field of present) {
     const text = typeof task[field] === 'string' ? task[field].trim() : ''
     if (text && !starterLines.has(text)) {
@@ -65,5 +65,40 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
         `Task ${n} ${field} "${text}" is not a line of the starter code, so students may not find it`
       )
     }
+  }
+}
+
+// The trimmed non-blank lines of the code the student starts from, or null when that can't be
+// read here: carried code, or no starter code.
+function starterLineSet(task) {
+  if (task?.carryCodeFrom != null || task?.carryCodeFromLesson != null) return null
+  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
+  if (typeof starter !== 'string') return null
+  const found = new Set(cleanCodeLines(starter).map((line) => line.trim()))
+  found.delete('')
+  return found
+}
+
+// A Support stage's change view reads it as an excerpt (computeStageChange `excerpt`): the lines
+// it leaves out never show as removals, and its new lines are placed by lines it shares with the
+// student's code. Two ways that goes wrong, both only warnings (the hint still shows).
+function warnSupportExcerpt(stage, where, starterLines, warnings) {
+  if (typeof stage.code !== 'string' || !starterLines.size) return
+  const stageLines = new Set(cleanCodeLines(stage.code).map((line) => line.trim()))
+  stageLines.delete('')
+  if (!stageLines.size) return
+  const shared = [...starterLines].filter((line) => stageLines.has(line)).length
+  if (starterLines.size >= 2 && shared === starterLines.size) {
+    warnings.push(
+      `${where} show: "change" reads a Support stage as a few lines of the program, ` +
+        'but this one holds the whole starter code: lines it leaves out never show as lines ' +
+        'to remove, so use a Complete stage for a whole program'
+    )
+  } else if (shared === 0) {
+    warnings.push(
+      `${where} show: "change" places a Support stage's new lines by lines of the ` +
+        "student's code, but none of its lines is in the starter code, so all of it shows " +
+        'in green and nothing shows as removed'
+    )
   }
 }

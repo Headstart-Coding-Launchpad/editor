@@ -125,7 +125,9 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task … stage … show must be "full" or "change"` | A stage's `show` has another value. | Use `show: change` or remove it. |
-| `Task … stage … show: "change" works on a Complete stage only; this stage shows in full` (warning) | `show: change` on a Starter or Support stage. | Move it to the Complete stage. |
+| `Task … stage … show: "change" works on a Complete or Support stage only; it is ignored here` (warning) | `show: change` on a Starter stage. | Move it to a Complete or Support stage. |
+| `Task … stage … show: "change" reads a Support stage as a few lines of the program, but this one holds the whole starter code: …` (warning) | A Support stage with `show: change` that holds every line of the starter code: the lines it leaves out never show as lines to remove. | Cut it to the few lines that change (with a line of the student's code beside each new one), or use a Complete stage. |
+| `Task … stage … show: "change" places a Support stage's new lines by lines of the student's code, but none of its lines is in the starter code, …` (warning) | A Support stage with `show: change` that shares no line with the starter code, so its new lines have no place and it all shows in green. Not checked when the task carries code. | Add a line of the starter code next to each new line, or drop `show: change`. |
 | `Task … stage … show: "change" works in Python lessons only; it is ignored here` (warning) | `show: change` on a Turtle or Arcade Kit stage. | Remove it. |
 | `Task … copyAfter must be the text of one line of code` | `copyAfter` / `copyBefore` is not a string (an empty one counts as not set). | Write the line as it is in the code, or remove the field. |
 | `Task … has both copyAfter and copyBefore; use one` | Both place lines are set. | Keep one. |

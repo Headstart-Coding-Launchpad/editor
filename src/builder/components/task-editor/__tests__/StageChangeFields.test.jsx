@@ -38,10 +38,28 @@ describe('StageMetadataEditor change view option', () => {
     expect(onChange).toHaveBeenCalledWith({ label: 'Complete', role: 'complete', code: 'x' })
   })
 
-  it('is not offered on other roles or modules', () => {
-    const { rerender } = render(
+  it('offers it on a Support stage too', () => {
+    const onChange = vi.fn()
+    render(
       <StageMetadataEditor
         stage={{ label: 'Hint', role: 'support', code: 'x' }}
+        onChange={onChange}
+        showChangeOption
+      />
+    )
+    fireEvent.click(screen.getByLabelText('Show only the changes'))
+    expect(onChange).toHaveBeenCalledWith({
+      label: 'Hint',
+      role: 'support',
+      code: 'x',
+      show: 'change',
+    })
+  })
+
+  it('is not offered on a Starter stage or in other modules', () => {
+    const { rerender } = render(
+      <StageMetadataEditor
+        stage={{ label: 'Starter', role: 'starter', code: 'x' }}
         onChange={() => {}}
         showChangeOption
       />

@@ -306,8 +306,8 @@ const STAGE_ROLE_HINTS = {
   complete: 'The read-only solution, which students can choose to apply',
 }
 
-// `showChangeOption`: the module shows a Complete stage's change view (Python), so a Complete
-// stage offers `show: 'change'` (platform request 134). Off is stored as no field.
+// `showChangeOption`: the module shows a Complete or Support stage's change view (Python), so
+// those stages offer `show: 'change'` (platform request 134). Off is stored as no field.
 function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
   function update(updates) {
     onChange({
@@ -334,7 +334,7 @@ function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
           ))}
         </select>
       </label>
-      {showChangeOption && getStageRole(stage) === 'complete' && (
+      {showChangeOption && ['complete', 'support'].includes(getStageRole(stage)) && (
         <label
           style={stageMetadataStyles.revealToggle}
           title="Students see only what to add, remove or indent, anchored by a line of their own code"

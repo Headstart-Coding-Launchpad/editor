@@ -87,8 +87,8 @@ export const OPTIONAL_CAPABILITY_BOOLEANS = Object.freeze([
   // `typing` measures (useStudentTypingStats; python, turtle, html)
   'previewInspector', // a task's `inspector` field adds the HTML Inspector to the preview
   // (src/modules/html/inspector; html)
-  'stageChangeView', // a Complete code stage with `show: 'change'` shows only what changes against
-  // the student's code (src/shared/stageChange.js, SupportStagePanel; python)
+  'stageChangeView', // a Complete or Support code stage with `show: 'change'` shows only what
+  // changes against the student's code (src/shared/stageChange.js, SupportStagePanel; python)
   'calmScratch', // the calm Scratch screen: a Blocks button opens/closes the palette (open at the
   // start unless the lesson sets scratchPaletteClosed), the explainer card (hint inside) stays
   // beside the blocks at every size (never a tab), a small stage under a big Run with Enlarge for
