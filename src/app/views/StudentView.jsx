@@ -406,10 +406,10 @@ export default function StudentView({
       recordExampleOpen,
     },
   })
-  // A render error caught on the student's screen tells the tutor once (students/{id}/health,
-  // R3); Try again sets it back.
-  const reportScreenError = () => cs.reportHealth?.('screen_error')
-  const reportScreenOk = () => cs.reportHealth?.('ok')
+  // A render error caught on the student's screen tells the tutor while it shows
+  // (students/{id}/health, R3); the inner code-pane boundary reports under its own name.
+  const reportScreenError = () => cs.setScreenError?.('task', true)
+  const reportScreenOk = () => cs.setScreenError?.('task', false)
   // Live badge reporters for the shared editor, Blockly and Topic Library components below
   // (they read BadgeSignalsContext). The reporters are stable, so this value is too.
   const badgeSignalsContextValue = useMemo(

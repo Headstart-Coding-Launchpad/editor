@@ -124,4 +124,44 @@ describe('RenderErrorBoundary', () => {
     expect(onRecover).toHaveBeenCalledTimes(1)
     expect(screen.getByText('pane ok')).toBeInTheDocument()
   })
+
+  it('tells onRecover when a resetKey change clears the error by itself (R3 health)', () => {
+    mocks.crashing = true
+    const onError = vi.fn()
+    const onRecover = vi.fn()
+    const { rerender } = render(
+      <RenderErrorBoundary resetKey="t1" onError={onError} onRecover={onRecover}>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    expect(onError).toHaveBeenCalledTimes(1)
+    mocks.crashing = false
+    rerender(
+      <RenderErrorBoundary resetKey="t2" onError={onError} onRecover={onRecover}>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    expect(screen.getByText('pane ok')).toBeInTheDocument()
+    expect(onRecover).toHaveBeenCalledTimes(1)
+  })
+
+  it('tells onRecover when it goes away while showing the fallback, never otherwise', () => {
+    mocks.crashing = true
+    const onRecover = vi.fn()
+    const broken = render(
+      <RenderErrorBoundary onRecover={onRecover}>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    broken.unmount()
+    expect(onRecover).toHaveBeenCalledTimes(1)
+    mocks.crashing = false
+    const fine = render(
+      <RenderErrorBoundary onRecover={onRecover}>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    fine.unmount()
+    expect(onRecover).toHaveBeenCalledTimes(1)
+  })
 })

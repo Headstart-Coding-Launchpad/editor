@@ -101,7 +101,11 @@ import {
   crossLessonFallbackReason,
   crossLessonFallbackRecord,
 } from '../../shared/roster/crossLessonCarry'
-import { isPythonStuck, onPythonStuckChange } from '../../modules/python/pythonHealth'
+import {
+  isPythonAsleepError,
+  isPythonStuck,
+  onPythonStuckChange,
+} from '../../modules/python/pythonHealth'
 import { isReloadResume, markReloadResume, reloadPage } from '../pythonReload'
 
 // The generic work slot before any module has loaded work into it.
@@ -214,7 +218,7 @@ export function useStudentCodeState({
   writeStudentPersonalSandbox,
   writeStudentPresence,
   // students/{id}/health ('ok' | 'python_stuck' | 'screen_error'), written once on a change
-  // (useSession.writeStudentHealth); reached through reportHealth.
+  // (useSession.writeStudentHealth); reached through syncHealth.
   writeStudentHealth,
   registerPresence,
   removeStudent,
@@ -615,13 +619,20 @@ export function useStudentCodeState({
       .catch(() => setPyodideStatus('error'))
   }, [lesson])
 
-  // Python stuck (the worker died, or never got ready: src/modules/python/pythonHealth.js, R3)
-  // is 'error' too: the code pane shows "Python fell asleep" with one Reload button.
+  // Python stuck (the worker died, or has not got ready in time: src/modules/python/
+  // pythonHealth.js, R3) is 'error' too: the code pane shows "Python fell asleep" with one
+  // Reload button. A slow load that finishes after all clears it again.
   useEffect(() => {
-    if (isPythonStuck()) setPyodideStatus('error')
+    const usesPython = () => !!getLessonModule(lessonRef.current?.type)?.runtime?.init
+    if (isPythonStuck() && usesPython()) setPyodideStatus('error')
     return onPythonStuckChange((stuck) => {
+      if (!usesPython()) return
       if (stuck) setPyodideStatus('error')
+      else if (getLessonModule(lessonRef.current?.type)?.runtime?.isReady?.()) {
+        setPyodideStatus('ready')
+      }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function initRuntimeIfNeeded() {
@@ -637,43 +648,85 @@ export function useStudentCodeState({
     setPyodideStatus('ready')
   }
 
-  // The tutor's chip (students/{id}/health): one write when Python gets stuck, and 'ok' once it
-  // is ready again (after the Reload). useSession.writeStudentHealth skips a value already there,
-  // so a ready Python on a healthy student writes nothing. Own screen in a live class only.
-  const reportHealth = useCallback(
-    (health) => {
-      const anonymousId = identityRef.current?.anonymousId
-      if (!anonymousId || !writeStudentHealth || teacherPresentation || previewMode) return
-      if (phaseRef.current !== 'lesson' && phaseRef.current !== 'sandbox') return
-      Promise.resolve(writeStudentHealth(anonymousId, health)).catch(() => {})
-    },
+  // The tutor's chip (students/{id}/health, R3): one value derived from every source, so no
+  // source can clear another's problem. Sources: Python stuck (pyodideStatus 'error') and each
+  // RenderErrorBoundary showing its fallback (setScreenError, by boundary name). A screen error
+  // shows over Python stuck (its fallback hides the Python prompt). Sent when a source changes,
+  // when Python's status changes and when the phase or student changes (a fresh page clears
+  // what an earlier page left); useSession.writeStudentHealth skips a value already on the
+  // node, so a healthy student writes nothing. Own screen in a live class only.
+  const pythonStuckRef = useRef(false)
+  const screenErrorsRef = useRef(new Set())
+  const healthWriterRef = useLatestRef({ writeStudentHealth, teacherPresentation, previewMode })
+  const syncHealth = useCallback(() => {
+    const {
+      writeStudentHealth: write,
+      teacherPresentation: tp,
+      previewMode: pm,
+    } = healthWriterRef.current
+    const anonymousId = identityRef.current?.anonymousId
+    if (!anonymousId || !write || tp || pm) return
+    if (phaseRef.current !== 'lesson' && phaseRef.current !== 'sandbox') return
+    const health =
+      screenErrorsRef.current.size > 0
+        ? 'screen_error'
+        : pythonStuckRef.current
+          ? 'python_stuck'
+          : 'ok'
+    Promise.resolve(write(anonymousId, health)).catch(() => {})
+    // Refs only: stable for the component's life.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [writeStudentHealth, teacherPresentation, previewMode]
+  }, [])
+  // A boundary's fallback showed (active) or went (Try again, or a task change resetting it).
+  const setScreenError = useCallback(
+    (source, active) => {
+      const errors = screenErrorsRef.current
+      const before = errors.size > 0
+      if (active) errors.add(source)
+      else errors.delete(source)
+      if (errors.size > 0 !== before) syncHealth()
+    },
+    [syncHealth]
   )
   useEffect(() => {
-    if (pyodideStatus === 'error') reportHealth('python_stuck')
-    else if (pyodideStatus === 'ready') reportHealth('ok')
-  }, [pyodideStatus, phase, reportHealth])
-  // A fresh page in the lesson clears what an earlier page left (any lesson type, once).
-  const healthClearedRef = useRef(false)
+    const stuck = pyodideStatus === 'error'
+    if (stuck === pythonStuckRef.current) return
+    pythonStuckRef.current = stuck
+    syncHealth()
+  }, [pyodideStatus, syncHealth])
   useEffect(() => {
-    if (healthClearedRef.current || phase !== 'lesson' || isPythonStuck()) return
-    healthClearedRef.current = true
-    reportHealth('ok')
-  }, [phase, reportHealth])
+    syncHealth()
+  }, [phase, identity?.anonymousId, syncHealth])
 
   // The "Python fell asleep" Reload: save the code (the usual per-task save, or the personal
   // sandbox's), note that this task was reloaded from the prompt so a live lesson brings the own
   // save back (src/app/pythonReload.js), then load the page again: only a fresh page knows the
   // current worker file after a deploy.
+  // A save that throws (storage full or blocked) never stops the reload.
   function reloadAfterPythonStuck() {
-    if (inPersonalSandboxRef.current) savePersonalSandboxSnapshot()
-    else saveCurrentWorkSnapshot()
+    try {
+      if (inPersonalSandboxRef.current) savePersonalSandboxSnapshot()
+      else saveCurrentWorkSnapshot()
+    } catch (err) {
+      console.warn('[python reload] could not save before reloading', err)
+    }
     if (phaseRef.current === 'lesson') {
       markReloadResume(lessonRef.current?.id ?? lessonId, currentTaskIdRef.current)
     }
     reloadPage()
   }
+  // Whether that Reload brings this task's code back, so the prompt may say "Your code is safe":
+  // a single-file code task (Python, Turtle) in a live lesson (the resume note above) or in solo
+  // (the own save always wins). Not Code Arrange tiles, multi-file tasks or a sandbox.
+  const pythonReloadRestoresCode = (() => {
+    if (inPersonalSandbox || (phase !== 'lesson' && phase !== 'solo')) return false
+    const definition = workSlotDefinition(lesson?.type)
+    const slot = definition?.workSlot
+    if (slot?.kind !== 'code' || slot.workspaceOwned) return false
+    if (definition.storage?.layout === 'perFile') return false
+    const task = findTaskById(lesson?.tasks, currentTaskId)
+    return !!task && !isModuleHostedActivityTask(task)
+  })()
 
   // ─── Sub-hooks ────────────────────────────────────────────────────────────
 
@@ -2590,8 +2643,9 @@ export function useStudentCodeState({
           error: erroredTest ? runErrorFor('error', erroredTest.output) : false,
         })
       }
-    } catch {
-      getLessonModule(lesson?.type)?.runtime?.stop()
+    } catch (err) {
+      // A slow Python load still under way is left to finish (R3).
+      if (!isPythonAsleepError(err)) getLessonModule(lesson?.type)?.runtime?.stop()
       setRunStatus('error')
       updateSupportStageForAttempt(false)
     } finally {
@@ -3753,10 +3807,12 @@ export function useStudentCodeState({
     runningTests,
     testResults,
     pyodideStatus,
-    // "Python fell asleep" (R3): Reload saves the code and reloads; reportHealth('screen_error')
-    // is how the code pane's RenderErrorBoundary tells the tutor.
+    // "Python fell asleep" (R3): Reload saves the code and reloads; pythonReloadRestoresCode says
+    // whether that brings this task's code back (the prompt says "Your code is safe" only then);
+    // setScreenError(boundary, active) is how a RenderErrorBoundary tells the tutor.
     reloadAfterPythonStuck,
-    reportHealth,
+    pythonReloadRestoresCode,
+    setScreenError,
     iframeSrc,
     teacherLiveIframeSrc,
     handleEditorCopy,

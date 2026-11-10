@@ -1211,9 +1211,9 @@ export default function LessonTaskContent({
         label="The code pane"
         resetKey={transitionKey}
         codeSafe={codePaneIsSafe}
-        // Tells the tutor's card "Screen error" once (students/{id}/health, R3).
-        onError={() => cs.reportHealth?.('screen_error')}
-        onRecover={() => cs.reportHealth?.('ok')}
+        // Tells the tutor's card "Screen error" while it shows (students/{id}/health, R3).
+        onError={() => cs.setScreenError?.('codePane', true)}
+        onRecover={() => cs.setScreenError?.('codePane', false)}
       >
         {workspaceContent}
       </RenderErrorBoundary>
