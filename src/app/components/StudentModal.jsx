@@ -70,6 +70,7 @@ import { describeActivityDevice } from '../../activities/device.js'
 import { readStudentHint } from '../studentHints.js'
 import ModalStrip from './student-modal/ModalStrip'
 import StudentModalLeftColumn from './student-modal/StudentModalLeftColumn'
+import RenderErrorBoundary from './RenderErrorBoundary'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
 const AUTO_REVEAL_OPTIONS = [
@@ -1906,104 +1907,113 @@ export default function StudentModal({
                 />
               )}
               <div style={contentStyle}>
-                {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
-                  <ScratchWorkspace
-                    key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
-                    task={task}
-                    readOnly={false}
-                    assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
-                    initialState={parseScratchState(student.currentCode)}
-                    onStateChange={handleScratchStateChange}
-                  />
-                ) : teacherEditState === 'editing' &&
-                  teacherEditor?.surface === 'files' &&
-                  ModuleTeacherLiveView ? (
-                  <ModuleTeacherLiveView
-                    lesson={taskLesson}
-                    displayState={{ files: teacherFiles }}
-                    readOnly={false}
-                    onChange={handleTeacherFileChange}
-                    onTabChange={handleTeacherHtmlTabChange}
-                  />
-                ) : teacherEditState === 'editing' &&
-                  teacherEditor?.surface === 'view' &&
-                  ModuleTeacherLiveView ? (
-                  // The module's own view over the code string. Arcade reads the design and its
-                  // workspace tab (activeWorkspace / onWorkspaceChange); Electronics reports its
-                  // Breadboard/MicroPython tab through onTabChange.
-                  <ModuleTeacherLiveView
-                    task={task}
-                    student={student}
-                    displayState={teacherCode}
-                    design={teacherArcadeDesign}
-                    activeWorkspace={teacherWorkspace}
-                    readOnly={false}
-                    onChange={handleTeacherCodeChange}
-                    onDesignChange={handleTeacherArcadeDesignChange}
-                    onWorkspaceChange={handleTeacherWorkspaceChange}
-                    onTabChange={handleTeacherWorkspaceChange}
-                  />
-                ) : teacherEditState === 'editing' ? (
-                  <div style={s.editorWrap}>
-                    <CodeEditor
-                      value={teacherCode}
-                      language="python"
+                {/* A render error stays in this body (R2): the modal's header and controls stay. */}
+                <RenderErrorBoundary
+                  variant="tutor"
+                  label="This student's view"
+                  resetKey={`${student.anonymousId}:${task?.id}:${teacherEditState}`}
+                >
+                  {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
+                    <ScratchWorkspace
+                      key={`teacher-edit-scratch-${student.anonymousId}-${session?.currentTaskId}`}
+                      task={task}
+                      readOnly={false}
+                      assetsPath={resolveAssetsPath(lesson?.assetsPath) || undefined}
+                      initialState={parseScratchState(student.currentCode)}
+                      onStateChange={handleScratchStateChange}
+                    />
+                  ) : teacherEditState === 'editing' &&
+                    teacherEditor?.surface === 'files' &&
+                    ModuleTeacherLiveView ? (
+                    <ModuleTeacherLiveView
+                      lesson={taskLesson}
+                      displayState={{ files: teacherFiles }}
+                      readOnly={false}
+                      onChange={handleTeacherFileChange}
+                      onTabChange={handleTeacherHtmlTabChange}
+                    />
+                  ) : teacherEditState === 'editing' &&
+                    teacherEditor?.surface === 'view' &&
+                    ModuleTeacherLiveView ? (
+                    // The module's own view over the code string. Arcade reads the design and its
+                    // workspace tab (activeWorkspace / onWorkspaceChange); Electronics reports its
+                    // Breadboard/MicroPython tab through onTabChange.
+                    <ModuleTeacherLiveView
+                      task={task}
+                      student={student}
+                      displayState={teacherCode}
+                      design={teacherArcadeDesign}
+                      activeWorkspace={teacherWorkspace}
                       readOnly={false}
                       onChange={handleTeacherCodeChange}
-                      style={{ height: '100%' }}
+                      onDesignChange={handleTeacherArcadeDesignChange}
+                      onWorkspaceChange={handleTeacherWorkspaceChange}
+                      onTabChange={handleTeacherWorkspaceChange}
                     />
-                  </div>
-                ) : (
-                  <StudentWorkspaceBody
-                    lesson={taskLesson}
-                    task={task}
-                    student={student}
-                    session={session}
-                    isInformation={isInformation}
-                    isQuiz={isQuiz}
-                    isActivity={isActivity}
-                    activityState={activityState}
-                    isSessionSandbox={isSessionSandbox}
-                    mirror={mirror}
-                    isCodeArrangeTask={isCodeArrangeTask}
-                    ModuleTeacherLiveView={ModuleTeacherLiveView}
-                    moduleDisplayState={moduleDisplayState}
-                    files={files}
-                    activeFile={activeFile}
-                    setActiveFile={setActiveFile}
-                    activeFileObj={activeFileObj}
-                    remoteSelection={remoteSelection}
-                    scratchState={scratchState}
-                    spriteState={spriteState}
-                    cursorState={cursorState}
-                    blockDragState={blockDragState}
-                    iframeSrc={iframeSrc}
-                    iframeRef={iframeRef}
-                    canHighlight={canHighlight}
-                    pendingHighlight={pendingHighlight}
-                    highlights={highlightsForActiveFile}
-                    onMirrorSelectionChange={handleMirrorSelectionChange}
-                    onDismissHighlight={handleDismissHighlight}
-                    highlightEmoji={highlightEmoji}
-                    onHighlightEmojiChange={setHighlightEmoji}
-                    highlightNote={highlightNote}
-                    onHighlightNoteChange={setHighlightNote}
-                    onSendHighlight={() => handleSendHighlight(activeFile)}
-                    onCancelHighlight={handleCancelHighlight}
-                    answerEditing={supportsAnswerEdit && answerEditing}
-                    onEditAnswer={(payload) => onTeacherAnswerEdit?.(student.anonymousId, payload)}
-                    tileHighlights={shownTileHighlights}
-                    typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
-                    typingEntries={typingEntries}
-                    onTileTargetTap={
-                      supportsTileHighlight && tileHighlightMode && !answerEditing
-                        ? handleTileHighlightTap
-                        : null
-                    }
-                    outputColumn={showLeftColumn}
-                    wideScratch={showLeftColumn}
-                  />
-                )}
+                  ) : teacherEditState === 'editing' ? (
+                    <div style={s.editorWrap}>
+                      <CodeEditor
+                        value={teacherCode}
+                        language="python"
+                        readOnly={false}
+                        onChange={handleTeacherCodeChange}
+                        style={{ height: '100%' }}
+                      />
+                    </div>
+                  ) : (
+                    <StudentWorkspaceBody
+                      lesson={taskLesson}
+                      task={task}
+                      student={student}
+                      session={session}
+                      isInformation={isInformation}
+                      isQuiz={isQuiz}
+                      isActivity={isActivity}
+                      activityState={activityState}
+                      isSessionSandbox={isSessionSandbox}
+                      mirror={mirror}
+                      isCodeArrangeTask={isCodeArrangeTask}
+                      ModuleTeacherLiveView={ModuleTeacherLiveView}
+                      moduleDisplayState={moduleDisplayState}
+                      files={files}
+                      activeFile={activeFile}
+                      setActiveFile={setActiveFile}
+                      activeFileObj={activeFileObj}
+                      remoteSelection={remoteSelection}
+                      scratchState={scratchState}
+                      spriteState={spriteState}
+                      cursorState={cursorState}
+                      blockDragState={blockDragState}
+                      iframeSrc={iframeSrc}
+                      iframeRef={iframeRef}
+                      canHighlight={canHighlight}
+                      pendingHighlight={pendingHighlight}
+                      highlights={highlightsForActiveFile}
+                      onMirrorSelectionChange={handleMirrorSelectionChange}
+                      onDismissHighlight={handleDismissHighlight}
+                      highlightEmoji={highlightEmoji}
+                      onHighlightEmojiChange={setHighlightEmoji}
+                      highlightNote={highlightNote}
+                      onHighlightNoteChange={setHighlightNote}
+                      onSendHighlight={() => handleSendHighlight(activeFile)}
+                      onCancelHighlight={handleCancelHighlight}
+                      answerEditing={supportsAnswerEdit && answerEditing}
+                      onEditAnswer={(payload) =>
+                        onTeacherAnswerEdit?.(student.anonymousId, payload)
+                      }
+                      tileHighlights={shownTileHighlights}
+                      typingHistory={session?.typingHistory?.[student.anonymousId] ?? null}
+                      typingEntries={typingEntries}
+                      onTileTargetTap={
+                        supportsTileHighlight && tileHighlightMode && !answerEditing
+                          ? handleTileHighlightTap
+                          : null
+                      }
+                      outputColumn={showLeftColumn}
+                      wideScratch={showLeftColumn}
+                    />
+                  )}
+                </RenderErrorBoundary>
               </div>
             </div>
           </>

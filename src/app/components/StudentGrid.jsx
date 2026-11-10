@@ -36,6 +36,7 @@ import {
   sameOutputSummary,
   summariseRowStates,
 } from '../studentList.js'
+import RenderErrorBoundary from './RenderErrorBoundary'
 
 export default function StudentGrid({
   students = [],
@@ -640,60 +641,71 @@ export default function StudentGrid({
   function renderRow(student) {
     const id = student.anonymousId
     const state = rowStates[id]
+    // One row's render error stays in that row (R2); the rest of the class list keeps working.
     return (
-      <StudentListRow
+      <RenderErrorBoundary
         key={id}
-        student={student}
-        state={state}
-        lesson={lesson}
-        session={session}
-        since={state.status === 'help' ? helpSince(id) : (seenAtRef.current[`${id}:away`] ?? null)}
-        activityAt={activityRef.current[id]?.at ?? null}
-        helpAcked={isAcked(id)}
-        onAckHelp={(studentId) =>
-          setAckedHelp((prev) => new Set(prev).add(`${studentId}:${helpSince(studentId)}`))
-        }
-        open={openId === id}
-        onToggleOpen={(studentId) =>
-          setOpenRowId((prev) => (prev === studentId ? null : studentId))
-        }
-        onOpenStudent={handleExpand}
-        onThumbsUp={onThumbsUpStudent}
-        onNudge={onNudgeStudent}
-        onRename={onRename}
-        onRemove={onRemove}
-        onAwardBadge={onDecideBadge ? setAwardFor : null}
-        onSendHint={onSendHint ? (st) => setCompose({ kind: 'hint', student: st }) : null}
-        onSendMessage={onSendMessage ? (st) => setCompose({ kind: 'message', student: st }) : null}
-        onRequestFullscreen={onRequestFullscreenStudent}
-        onOpenSideQuest={handleOpenSideQuest}
-        onOpenRoster={onOpenRoster}
-        selectMode={selectMode}
-        selected={selectedIds.has(id)}
-        onToggleSelect={toggleSelected}
-        highlighted={highlightedIds.has(id)}
-        live={session?.activeStudentView === id}
-        activities={activities[id] ?? []}
-        rosterUnmatched={unmatchedIds.has(id)}
-        carryWaiting={carryWaitingIds.has(id)}
-        badgePendingCount={badgeSuggestions?.pendingCountByStudent?.[id] ?? 0}
-        isCodeTask={isCodeTask}
-        isInformation={!!taskContext?.isInformation}
-        cardProps={{
-          lessonId,
-          onNudge: onNudgeStudent,
-          onThumbsUp: onThumbsUpStudent,
-          badgeSuggestionList: badgeSuggestions?.suggestions ?? [],
-          catalogueBadges,
-          onDecideBadge,
-          onRevokeBadge,
-          onShowResponse,
-          onHideResponse,
-          onSetShownResponseName,
-          badgeAwardedCount: badgeSuggestions?.awardedCountByStudent?.[id] ?? 0,
-          rosterName: rosterStatus?.namesByStudent?.[id] ?? null,
-        }}
-      />
+        variant="tutor"
+        compact
+        label={`${student.displayName ?? 'This student'}'s card`}
+      >
+        <StudentListRow
+          student={student}
+          state={state}
+          lesson={lesson}
+          session={session}
+          since={
+            state.status === 'help' ? helpSince(id) : (seenAtRef.current[`${id}:away`] ?? null)
+          }
+          activityAt={activityRef.current[id]?.at ?? null}
+          helpAcked={isAcked(id)}
+          onAckHelp={(studentId) =>
+            setAckedHelp((prev) => new Set(prev).add(`${studentId}:${helpSince(studentId)}`))
+          }
+          open={openId === id}
+          onToggleOpen={(studentId) =>
+            setOpenRowId((prev) => (prev === studentId ? null : studentId))
+          }
+          onOpenStudent={handleExpand}
+          onThumbsUp={onThumbsUpStudent}
+          onNudge={onNudgeStudent}
+          onRename={onRename}
+          onRemove={onRemove}
+          onAwardBadge={onDecideBadge ? setAwardFor : null}
+          onSendHint={onSendHint ? (st) => setCompose({ kind: 'hint', student: st }) : null}
+          onSendMessage={
+            onSendMessage ? (st) => setCompose({ kind: 'message', student: st }) : null
+          }
+          onRequestFullscreen={onRequestFullscreenStudent}
+          onOpenSideQuest={handleOpenSideQuest}
+          onOpenRoster={onOpenRoster}
+          selectMode={selectMode}
+          selected={selectedIds.has(id)}
+          onToggleSelect={toggleSelected}
+          highlighted={highlightedIds.has(id)}
+          live={session?.activeStudentView === id}
+          activities={activities[id] ?? []}
+          rosterUnmatched={unmatchedIds.has(id)}
+          carryWaiting={carryWaitingIds.has(id)}
+          badgePendingCount={badgeSuggestions?.pendingCountByStudent?.[id] ?? 0}
+          isCodeTask={isCodeTask}
+          isInformation={!!taskContext?.isInformation}
+          cardProps={{
+            lessonId,
+            onNudge: onNudgeStudent,
+            onThumbsUp: onThumbsUpStudent,
+            badgeSuggestionList: badgeSuggestions?.suggestions ?? [],
+            catalogueBadges,
+            onDecideBadge,
+            onRevokeBadge,
+            onShowResponse,
+            onHideResponse,
+            onSetShownResponseName,
+            badgeAwardedCount: badgeSuggestions?.awardedCountByStudent?.[id] ?? 0,
+            rosterName: rosterStatus?.namesByStudent?.[id] ?? null,
+          }}
+        />
+      </RenderErrorBoundary>
     )
   }
 

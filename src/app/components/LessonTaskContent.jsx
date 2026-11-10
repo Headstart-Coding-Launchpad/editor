@@ -17,6 +17,7 @@ import TaskSlideTransition from './TaskSlideTransition'
 import ReviewNotesControl from './ReviewNotesControl'
 import { CollapsedPanelRail, CollapseTabButton } from './CollapsiblePanelControls'
 import SupportStagePanel from './SupportStagePanel'
+import RenderErrorBoundary from './RenderErrorBoundary'
 import TaskHintBox from './TaskHintBox'
 import { CalmAsideSlot, useCalmAside } from './calmAside'
 import {
@@ -1200,7 +1201,10 @@ export default function LessonTaskContent({
       onCut={isLiveCopyBlocked ? undefined : handleOwnCopy}
       onPaste={isLiveCopyBlocked ? undefined : handleWorkspacePaste}
     >
-      {workspaceContent}
+      {/* One render error replaces only this pane (R2); the task card beside it stays. */}
+      <RenderErrorBoundary label="The code pane" resetKey={transitionKey}>
+        {workspaceContent}
+      </RenderErrorBoundary>
     </div>
   )
 

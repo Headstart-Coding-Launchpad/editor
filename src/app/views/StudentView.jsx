@@ -34,6 +34,8 @@ import {
   isModuleHostedActivityTask,
 } from '../../activities/registry.pure.js'
 import TopBar from '../components/TopBar'
+import OfflineBanner from '../components/OfflineBanner'
+import RenderErrorBoundary from '../components/RenderErrorBoundary'
 import NameEntry from '../components/NameEntry'
 import WaitingRoom from '../components/WaitingRoom'
 import ChoiceScreen from '../components/ChoiceScreen'
@@ -1759,6 +1761,8 @@ export default function StudentView({
           task={flatTasks.find((t) => t.id === currentTaskId)}
         />
       )}
+      {/* null with no live session (solo), so a solo child never sees it. */}
+      {!teacherPresentation && <OfflineBanner connected={connected} />}
       {!teacherPresentation && (
         <TutorLiveBanner
           active={showTutorLiveBanner}
@@ -2159,87 +2163,91 @@ export default function StudentView({
               onAsk={handleHelpTap}
               requested={myNeedsHelp}
             >
-              <LessonTaskContent
-                lesson={displayedLesson}
-                task={task}
-                cs={taskCs}
-                lessonId={lessonId}
-                identityId={effectiveIdentity?.anonymousId}
-                sandboxExplainer={session?.sandboxExplainer}
-                activeStudentView={session?.activeStudentView}
-                viewingTaskId={viewingTaskId}
-                currentTaskId={currentTaskId}
-                transitionKey={transitionKey}
-                transitionOrder={transitionOrder}
-                previewMode={previewMode}
-                showPreviewBanner={showPreviewBanner}
-                showReviewNotes={previewMode && !lessonProp}
-                isSandbox={isSandbox}
-                isViewingPrev={isViewingPrev}
-                isForcedTeacherLive={isForcedTeacherLive}
-                isMobile={isMobile}
-                isQuizTask={isQuizTask}
-                isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
-                isInformationTask={isInformationTask}
-                badgeWall={badgeWall}
-                isActivityTask={isActivityTask}
-                displayAnswer={displayAnswer}
-                isViewingCompletionScreen={viewingCompletionScreen}
-                onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
-                soloCompanion={soloCompanion}
-                onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
-                onReplayLesson={handleReplayLesson}
-                isCodeArrangeTask={isCodeArrangeTask}
-                displayCode={displayCode}
-                displayArcadeDesign={displayArcadeDesign}
-                displayTurtleResult={displayTurtleResult}
-                displayVariablesPanel={displayVariablesPanel}
-                displayStage={displayStage}
-                displayPythonSlowMo={displayPythonSlowMo}
-                displaySpriteState={displaySpriteState}
-                displayCursor={displayCursor}
-                displayBlockDrag={displayBlockDrag}
-                displayCodeArrangeSlots={displayCodeArrangeSlots}
-                displayCodeArrangeCursor={displayCodeArrangeCursor}
-                displayFiles={displayFiles}
-                displayActiveFile={displayActiveFile}
-                displayOutput={displayOutput}
-                displayRunStatus={displayRunStatus}
-                displayCheckPassed={displayCheckPassed}
-                displayCheckAttempted={displayCheckAttempted}
-                displayCheckSuggestion={displayCheckSuggestion}
-                displaySelection={displaySelection}
-                displayOutputCollapsed={displayOutputCollapsed}
-                isLiveCopyBlocked={isLiveCopyBlocked}
-                displayFs={displayFs}
-                displayDesktop={displayDesktop}
-                isTeacherEditing={isTeacherEditing}
-                teacherLiveCode={teacherLiveCode}
-                teacherLiveFiles={teacherLiveFiles}
-                teacherLiveActiveFile={teacherLiveActiveFile}
-                teacherLiveWorkspace={teacherLiveWorkspace}
-                teacherLiveArcadeDesign={teacherLiveArcadeDesign}
-                teacherLiveReferencePayload={session?.teacherLiveReference}
-                canOfferNextStage={canOfferNextStage}
-                canOfferCompletePreview={canOfferCompletePreview}
-                canOfferCompleteSolution={canOfferCompleteSolution}
-                canOfferPersonalSandbox={canOfferPersonalSandbox}
-                explainerShowsComplete={explainerShowsComplete}
-                presenterLayout={teacherPresentation ? PRESENTER_LAYOUT : displayLayout}
-                teacherPresentation={teacherPresentation}
-                onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
-                onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
-                openTopicId={phase === 'lesson' ? openTopicId : null}
-                onVisiblePanesChange={handleVisiblePanesChange}
-                highlightedPanes={mergeHighlightedPanes(
-                  highlightedPanes,
-                  // An activity has no panes to point at.
-                  highlightOnActivity ? null : controlHighlight.revealPanes
-                )}
-                forcedPaneCommand={forcedPaneCommand}
-                closePassBanner={sideQuestOfferUp}
-                onPassBannerChange={setPassBannerUp}
-              />
+              {/* A render error in the task content stays inside it (R2); the inner boundary round
+                  the code pane keeps the task card on screen. */}
+              <RenderErrorBoundary label="The task" resetKey={transitionKey}>
+                <LessonTaskContent
+                  lesson={displayedLesson}
+                  task={task}
+                  cs={taskCs}
+                  lessonId={lessonId}
+                  identityId={effectiveIdentity?.anonymousId}
+                  sandboxExplainer={session?.sandboxExplainer}
+                  activeStudentView={session?.activeStudentView}
+                  viewingTaskId={viewingTaskId}
+                  currentTaskId={currentTaskId}
+                  transitionKey={transitionKey}
+                  transitionOrder={transitionOrder}
+                  previewMode={previewMode}
+                  showPreviewBanner={showPreviewBanner}
+                  showReviewNotes={previewMode && !lessonProp}
+                  isSandbox={isSandbox}
+                  isViewingPrev={isViewingPrev}
+                  isForcedTeacherLive={isForcedTeacherLive}
+                  isMobile={isMobile}
+                  isQuizTask={isQuizTask}
+                  isAutoEvaluatedQuiz={isAutoEvaluatedQuiz}
+                  isInformationTask={isInformationTask}
+                  badgeWall={badgeWall}
+                  isActivityTask={isActivityTask}
+                  displayAnswer={displayAnswer}
+                  isViewingCompletionScreen={viewingCompletionScreen}
+                  onOpenPlayground={canOpenPlayground ? handleOpenPlayground : undefined}
+                  soloCompanion={soloCompanion}
+                  onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
+                  onReplayLesson={handleReplayLesson}
+                  isCodeArrangeTask={isCodeArrangeTask}
+                  displayCode={displayCode}
+                  displayArcadeDesign={displayArcadeDesign}
+                  displayTurtleResult={displayTurtleResult}
+                  displayVariablesPanel={displayVariablesPanel}
+                  displayStage={displayStage}
+                  displayPythonSlowMo={displayPythonSlowMo}
+                  displaySpriteState={displaySpriteState}
+                  displayCursor={displayCursor}
+                  displayBlockDrag={displayBlockDrag}
+                  displayCodeArrangeSlots={displayCodeArrangeSlots}
+                  displayCodeArrangeCursor={displayCodeArrangeCursor}
+                  displayFiles={displayFiles}
+                  displayActiveFile={displayActiveFile}
+                  displayOutput={displayOutput}
+                  displayRunStatus={displayRunStatus}
+                  displayCheckPassed={displayCheckPassed}
+                  displayCheckAttempted={displayCheckAttempted}
+                  displayCheckSuggestion={displayCheckSuggestion}
+                  displaySelection={displaySelection}
+                  displayOutputCollapsed={displayOutputCollapsed}
+                  isLiveCopyBlocked={isLiveCopyBlocked}
+                  displayFs={displayFs}
+                  displayDesktop={displayDesktop}
+                  isTeacherEditing={isTeacherEditing}
+                  teacherLiveCode={teacherLiveCode}
+                  teacherLiveFiles={teacherLiveFiles}
+                  teacherLiveActiveFile={teacherLiveActiveFile}
+                  teacherLiveWorkspace={teacherLiveWorkspace}
+                  teacherLiveArcadeDesign={teacherLiveArcadeDesign}
+                  teacherLiveReferencePayload={session?.teacherLiveReference}
+                  canOfferNextStage={canOfferNextStage}
+                  canOfferCompletePreview={canOfferCompletePreview}
+                  canOfferCompleteSolution={canOfferCompleteSolution}
+                  canOfferPersonalSandbox={canOfferPersonalSandbox}
+                  explainerShowsComplete={explainerShowsComplete}
+                  presenterLayout={teacherPresentation ? PRESENTER_LAYOUT : displayLayout}
+                  teacherPresentation={teacherPresentation}
+                  onTopicOpen={phase === 'lesson' ? handleTopicOpen : undefined}
+                  onTopicClose={phase === 'lesson' ? handleTopicClose : undefined}
+                  openTopicId={phase === 'lesson' ? openTopicId : null}
+                  onVisiblePanesChange={handleVisiblePanesChange}
+                  highlightedPanes={mergeHighlightedPanes(
+                    highlightedPanes,
+                    // An activity has no panes to point at.
+                    highlightOnActivity ? null : controlHighlight.revealPanes
+                  )}
+                  forcedPaneCommand={forcedPaneCommand}
+                  closePassBanner={sideQuestOfferUp}
+                  onPassBannerChange={setPassBannerUp}
+                />
+              </RenderErrorBoundary>
             </HelpRequestProvider>
             <ControlHighlightRing
               ring={controlHighlight.ring}

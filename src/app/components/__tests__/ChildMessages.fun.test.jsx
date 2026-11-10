@@ -22,13 +22,10 @@ import OfflineBanner from '../OfflineBanner'
 // R7: the class connection drops. A slim banner says the work is saved on this device; when
 // the connection comes back it says Back online, then goes away by itself.
 
-const mocks = vi.hoisted(() => ({ crashesLeft: 0 }))
+const mocks = vi.hoisted(() => ({ crashing: false }))
 
 function CrashyWorkspace({ cs }) {
-  if (mocks.crashesLeft > 0) {
-    mocks.crashesLeft -= 1
-    throw new Error('workspace blew up')
-  }
+  if (mocks.crashing) throw new Error('workspace blew up')
   return <pre data-testid="child-code">{cs.code}</pre>
 }
 
@@ -48,13 +45,16 @@ describe('R2 crash fallback (Fun moment)', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('keeps the task card, shows one Try again in the broken pane, and Try again brings the code back', async () => {
-    // React renders twice after a throw before giving up, so the pane crashes on both tries.
-    mocks.crashesLeft = 2
+    mocks.crashing = true
     const user = userEvent.setup()
     render(
       <LessonTaskContent
         lesson={{ type: 'python' }}
-        task={{ id: 3, title: 'Repeat with a loop', explainer: 'Make the robot say hello 3 times.' }}
+        task={{
+          id: 3,
+          title: 'Repeat with a loop',
+          explainer: 'Make the robot say hello 3 times.',
+        }}
         cs={{ inPersonalSandbox: false, code: 'for i in range(3):\n    print("Hello!")' }}
         currentTaskId={3}
         isSandbox={false}
@@ -78,6 +78,8 @@ describe('R2 crash fallback (Fun moment)', () => {
     expect(screen.getByTestId('task-workspace')).toContainElement(fallback)
     expect(screen.queryByTestId('child-code')).toBeNull()
 
+    // Whatever broke has passed (a bad frame, a stale value); the child taps Try again.
+    mocks.crashing = false
     await user.click(screen.getByRole('button', { name: 'Try again 🔄' }))
 
     expect(screen.queryByTestId('render-error-fallback')).toBeNull()

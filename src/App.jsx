@@ -1,8 +1,9 @@
 import React, { Suspense, lazy } from 'react'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import ProtectedRoute from './auth/ProtectedRoute'
 import LoadingScreen from './app/components/LoadingScreen'
+import RenderErrorBoundary from './app/components/RenderErrorBoundary'
 
 const LessonRoute = lazy(() => import('./app/views/LessonRoute'))
 const LandingPage = lazy(() => import('./app/views/LandingPage'))
@@ -20,36 +21,56 @@ export default function App() {
   return (
     <AuthProvider>
       <HashRouter>
-        <Suspense fallback={<LoadingScreen message="Loading..." />}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/account"
-              element={
-                <ProtectedRoute requiredRole="teacher">
-                  <AccountSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/lesson/:lessonId" element={<LessonRoute />} />
-            <Route path="/room/:handle" element={<RoomRoute />} />
-            <Route path="/code" element={<CodeFileWorkspace />} />
-            <Route path="/playground/:type" element={<PlaygroundView />} />
-            <Route path="/share/:id" element={<SharedWorkView />} />
-            <Route
-              path="/admin/:tab?/:subtab?"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminPortal />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/builder" element={<BuilderApp />} />
-            <Route path="/shot" element={<ShotView />} />
-            <Route path="*" element={<LandingPage />} />
-          </Routes>
-        </Suspense>
+        <RouteErrorBoundary>
+          <Suspense fallback={<LoadingScreen message="Loading..." />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/account"
+                element={
+                  <ProtectedRoute requiredRole="teacher">
+                    <AccountSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/lesson/:lessonId" element={<LessonRoute />} />
+              <Route path="/room/:handle" element={<RoomRoute />} />
+              <Route path="/code" element={<CodeFileWorkspace />} />
+              <Route path="/playground/:type" element={<PlaygroundView />} />
+              <Route path="/share/:id" element={<SharedWorkView />} />
+              <Route
+                path="/admin/:tab?/:subtab?"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminPortal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/builder" element={<BuilderApp />} />
+              <Route path="/shot" element={<ShotView />} />
+              <Route path="*" element={<LandingPage />} />
+            </Routes>
+          </Suspense>
+        </RouteErrorBoundary>
       </HashRouter>
     </AuthProvider>
+  )
+}
+
+// The last catch for a render error (R2): the page shows a Try again card instead of going blank,
+// and moving to another page clears it. Staff pages get the plain tutor card; every other page
+// can be a child's, so it gets the child card.
+const STAFF_PATHS = /^\/(admin|builder|account|login)(\/|$)/
+
+function RouteErrorBoundary({ children }) {
+  const { pathname } = useLocation()
+  return (
+    <RenderErrorBoundary
+      label="This page"
+      variant={STAFF_PATHS.test(pathname) ? 'tutor' : 'child'}
+      resetKey={pathname}
+    >
+      {children}
+    </RenderErrorBoundary>
   )
 }
