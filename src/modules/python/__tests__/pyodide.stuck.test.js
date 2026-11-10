@@ -123,14 +123,43 @@ describe('a dead Python worker (R3)', () => {
     await expect(
       py.runPython('print(1)', { onOutput: (text) => out.push(text) })
     ).resolves.toMatchObject({ status: 'stopped', pythonAsleep: true })
-    expect(out.join('')).toContain(health.PYTHON_ASLEEP_MESSAGE)
-    await expect(py.initPyodide()).rejects.toThrow(health.PYTHON_ASLEEP_MESSAGE)
+    // Slow, not asleep (third review): the calmer line, never "fell asleep".
+    expect(out.join('')).toContain(health.PYTHON_SLOW_MESSAGE)
+    expect(out.join('')).not.toContain(health.PYTHON_ASLEEP_MESSAGE)
+    await expect(py.initPyodide()).rejects.toThrow(health.PYTHON_SLOW_MESSAGE)
     // The download finishes after all: the first load resolves and the prompt goes.
     FakeWorker.all[0].say({ type: 'ready' })
     await expect(loading).resolves.toBeUndefined()
     expect(health.isPythonStuck()).toBe(false)
     expect(py.isPyodideReady()).toBe(true)
     expect(FakeWorker.all).toHaveLength(1)
+  })
+
+  // Third review (10 Nov): a slow first download is not a death. At 90 s the student sees the
+  // calmer "taking a while" prompt; the tutor hears nothing until the worker errors or 180 s pass.
+  it('a slow load is "slow" at 90 s and only "stuck" (for the tutor) at 180 s', async () => {
+    vi.useFakeTimers()
+    py.initPyodide().catch(() => {})
+    vi.advanceTimersByTime(py.PYTHON_READY_TIMEOUT_MS)
+    expect(health.isPythonStuck()).toBe(true)
+    expect(health.getPythonHealthLevel()).toBe('slow')
+    FakeWorker.all[0].say({ type: 'progress', msg: 'Downloading…' })
+    vi.advanceTimersByTime(py.PYTHON_STUCK_TIMEOUT_MS - py.PYTHON_READY_TIMEOUT_MS - 1000)
+    expect(health.getPythonHealthLevel()).toBe('slow')
+    vi.advanceTimersByTime(1000)
+    expect(health.getPythonHealthLevel()).toBe('stuck')
+    expect(FakeWorker.all[0].terminated).toBe(false)
+    FakeWorker.all[0].say({ type: 'ready' })
+    expect(health.getPythonHealthLevel()).toBe('ok')
+  })
+
+  it('a slow worker that then errors is stuck at once', async () => {
+    vi.useFakeTimers()
+    py.initPyodide().catch(() => {})
+    vi.advanceTimersByTime(py.PYTHON_READY_TIMEOUT_MS)
+    expect(health.getPythonHealthLevel()).toBe('slow')
+    FakeWorker.all[0].die()
+    expect(health.getPythonHealthLevel()).toBe('stuck')
   })
 
   it('a worker that gets ready in time is never marked stuck', async () => {
@@ -141,5 +170,19 @@ describe('a dead Python worker (R3)', () => {
     vi.advanceTimersByTime(py.PYTHON_READY_TIMEOUT_MS * 2)
     expect(health.isPythonStuck()).toBe(false)
     expect(py.isPyodideReady()).toBe(true)
+  })
+})
+
+// Third review (10 Nov): one helper for the line a caught Run or load error adds to an output.
+describe('asleepNote', () => {
+  it('is the stuck or slow message and a newline, or nothing for any other error', () => {
+    expect(health.asleepNote(new Error(health.PYTHON_ASLEEP_MESSAGE))).toBe(
+      `${health.PYTHON_ASLEEP_MESSAGE}\n`
+    )
+    expect(health.asleepNote(new Error(health.PYTHON_SLOW_MESSAGE))).toBe(
+      `${health.PYTHON_SLOW_MESSAGE}\n`
+    )
+    expect(health.asleepNote(new Error('SyntaxError'))).toBe('')
+    expect(health.asleepNote(undefined)).toBe('')
   })
 })

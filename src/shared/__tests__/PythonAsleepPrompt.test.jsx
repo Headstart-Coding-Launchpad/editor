@@ -4,6 +4,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PythonAsleepPrompt from '../PythonAsleepPrompt'
+import { setPythonSlow, setPythonStuck } from '../../modules/python/pythonHealth'
 
 describe('PythonAsleepPrompt', () => {
   it('promises the code is safe only with codeSafe', () => {
@@ -15,6 +16,18 @@ describe('PythonAsleepPrompt', () => {
     const prompt = screen.getByTestId('python-asleep')
     expect(prompt).toHaveTextContent('😴 Python fell asleep. Tap Reload to start Python again')
     expect(prompt.textContent).not.toMatch(/safe/)
+  })
+
+  // Third review (10 Nov): a slow download is not "asleep": the calmer line, nothing wrong yet.
+  it('says Python is taking a while (not asleep) while the load is only slow', () => {
+    act(() => setPythonSlow())
+    render(<PythonAsleepPrompt codeSafe onReload={vi.fn()} />)
+    const prompt = screen.getByTestId('python-asleep')
+    expect(prompt).toHaveTextContent('Python is taking a while… Reload 🔄 if it stays stuck')
+    expect(prompt.textContent).not.toMatch(/asleep/)
+    act(() => setPythonStuck(true))
+    expect(prompt).toHaveTextContent('😴 Python fell asleep. Your code is safe 💾')
+    act(() => setPythonStuck(false))
   })
 
   it('turns the button back on when the reload throws', () => {

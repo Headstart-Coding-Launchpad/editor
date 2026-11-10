@@ -1,4 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
+import {
+  getPythonHealthLevel,
+  onPythonStuckChange,
+  PYTHON_SLOW_MESSAGE,
+} from '../modules/python/pythonHealth'
 
 /**
  * "😴 Python fell asleep." with one Reload button (deep review 2026-11-10, R3; sketch OK'd by Ryan
@@ -9,6 +14,8 @@ import React, { useEffect, useRef, useState } from 'react'
  * (useStudentCodeState.pythonReloadRestoresCode); otherwise "Tap Reload to start Python again".
  * If the page has not gone after RETRY_AFTER_MS (the browser blocked the reload, or a "leave
  * site?" box was cancelled), the button comes back with a small "Still there? Tap again".
+ * While the load is only slow (pythonHealth level 'slow', third review), the calmer
+ * PYTHON_SLOW_MESSAGE instead: nothing is wrong yet.
  */
 const RETRY_AFTER_MS = 5000
 
@@ -17,12 +24,19 @@ export default function PythonAsleepPrompt({ onReload, codeSafe = false, style }
   const [again, setAgain] = useState(false)
   const timerRef = useRef(null)
   useEffect(() => () => clearTimeout(timerRef.current), [])
+  const [slow, setSlow] = useState(() => getPythonHealthLevel() === 'slow')
+  useEffect(() => {
+    setSlow(getPythonHealthLevel() === 'slow')
+    return onPythonStuckChange((_shown, level) => setSlow(level === 'slow'))
+  }, [])
   return (
     <div role="alert" data-testid="python-asleep" style={{ ...s.bar, ...style }}>
       <span style={s.text}>
-        {codeSafe
-          ? '😴 Python fell asleep. Your code is safe 💾'
-          : '😴 Python fell asleep. Tap Reload to start Python again'}
+        {slow
+          ? PYTHON_SLOW_MESSAGE
+          : codeSafe
+            ? '😴 Python fell asleep. Your code is safe 💾'
+            : '😴 Python fell asleep. Tap Reload to start Python again'}
         {again && <span style={s.again}> Still there? Tap again</span>}
       </span>
       <button

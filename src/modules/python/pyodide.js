@@ -20,26 +20,42 @@
  *   old hashed worker file, so the replacement stopPython builds cannot load) is dropped and
  *   pending loads and runs settle. Only the next explicit Run (runPython, initPyodide) or Stop
  *   builds another, as before. An error after "ready" kills nothing.
- * - a worker with no "ready" after PYTHON_READY_TIMEOUT_MS only shows the prompt: it keeps
- *   loading, and a "ready" that comes after all clears the prompt again.
+ * - a worker with no "ready" after PYTHON_READY_TIMEOUT_MS is only slow: the prompt says "Python is
+ *   taking a while" and it keeps loading; a "ready" that comes after all clears the prompt again.
+ *   Only an error before "ready", or no "ready" by PYTHON_STUCK_TIMEOUT_MS, is stuck (the tutor's
+ *   chip too). Third review, 10 Nov: a slow first download is not a death.
  * While stuck, a Run or load that would otherwise wait in silence says PYTHON_ASLEEP_MESSAGE.
  */
 
 import { setChartsLoading } from '../../shared/stage/chartsStatus.js'
-import { isPythonStuck, PYTHON_ASLEEP_MESSAGE, setPythonStuck } from './pythonHealth.js'
+import {
+  getPythonHealthLevel,
+  isPythonStuck,
+  PYTHON_ASLEEP_MESSAGE,
+  PYTHON_SLOW_MESSAGE,
+  setPythonSlow,
+  setPythonStuck,
+} from './pythonHealth.js'
 
 // Generous: the first load downloads Pyodide (several MB) on school Wi-Fi, with no progress
 // messages while it does. A dead worker file is caught at once by onerror instead.
 export const PYTHON_READY_TIMEOUT_MS = 90 * 1000
+// Still no "ready" by now (the download long since finished or never will): stuck, for the tutor.
+export const PYTHON_STUCK_TIMEOUT_MS = 180 * 1000
+
+// What the student is told: only "taking a while" while the load is merely slow.
+function asleepMessage() {
+  return getPythonHealthLevel() === 'slow' ? PYTHON_SLOW_MESSAGE : PYTHON_ASLEEP_MESSAGE
+}
 
 function asleepError() {
-  return new Error(PYTHON_ASLEEP_MESSAGE)
+  return new Error(asleepMessage())
 }
 
 // A Run while Python is stuck: the message on its output (as stderr), never a silent no-op.
 function asleepRun(onOutput) {
   try {
-    onOutput?.(`${PYTHON_ASLEEP_MESSAGE}\n`, 'stderr')
+    onOutput?.(`${asleepMessage()}\n`, 'stderr')
   } catch {
     // the caller's output handler must not turn this into a throw
   }
@@ -69,6 +85,7 @@ let _stageRenderChain = Promise.resolve()
 // download is not the program taking too long. { pause, resume } or null.
 let _stageRenderWatch = null
 let _readyTimer = null
+let _stuckTimer = null
 // The worker that has said "ready": a later error in it is not a dead worker file.
 let _readyWorker = null
 
@@ -102,27 +119,39 @@ function createAndInitWorker() {
   w.onerror = () => {
     if (_worker === w && _readyWorker !== w) dropDeadWorker(w)
   }
-  clearTimeout(_readyTimer)
-  // Slow, not dead: show the prompt and keep loading ('ready' clears it again).
+  clearReadyTimers()
+  // Slow, not dead: show the calm prompt and keep loading ('ready' clears it again). Stuck (the
+  // tutor's chip) only if it is still not ready much later, or the worker errors (onerror).
   _readyTimer = setTimeout(() => {
     _readyTimer = null
-    if (_worker === w && _readyWorker !== w) setPythonStuck(true)
+    if (_worker === w && _readyWorker !== w) setPythonSlow()
   }, PYTHON_READY_TIMEOUT_MS)
+  _stuckTimer = setTimeout(() => {
+    _stuckTimer = null
+    if (_worker === w && _readyWorker !== w) setPythonStuck(true)
+  }, PYTHON_STUCK_TIMEOUT_MS)
   w.postMessage({ type: 'init' })
   return w
+}
+
+function clearReadyTimers() {
+  clearTimeout(_readyTimer)
+  clearTimeout(_stuckTimer)
+  _readyTimer = null
+  _stuckTimer = null
 }
 
 // A worker died before it got ready: drop it, settle whatever waits on it, and tell the screens.
 // Only the next explicit Run or Stop builds another (the Reload loads the page and current files).
 function dropDeadWorker(w) {
-  clearTimeout(_readyTimer)
-  _readyTimer = null
+  clearReadyTimers()
   try {
     w?.terminate()
   } catch {
     // already gone
   }
   _worker = null
+  setPythonStuck(true)
   _loadReject?.(asleepError())
   _loadResolve = null
   _loadReject = null
@@ -131,7 +160,6 @@ function dropDeadWorker(w) {
   _stopped = true
   _runResolve?.({ status: 'stopped' })
   _runResolve = null
-  setPythonStuck(true)
 }
 
 function handleWorkerMessage({ data }) {
@@ -148,8 +176,7 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'ready':
-      clearTimeout(_readyTimer)
-      _readyTimer = null
+      clearReadyTimers()
       _readyWorker = _worker
       _loadResolve?.()
       _loadResolve = null
@@ -160,8 +187,7 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'load_error':
-      clearTimeout(_readyTimer)
-      _readyTimer = null
+      clearReadyTimers()
       _loadReject?.(new Error(data.msg))
       _loadResolve = null
       _loadReject = null

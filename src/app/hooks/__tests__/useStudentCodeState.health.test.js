@@ -4,8 +4,8 @@
 // screen error that is still showing.
 import { act } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ANON, renderStudentCodeState } from '../../../test/studentCodeStateHarness'
-import { setPythonStuck } from '../../../modules/python/pythonHealth'
+import { ANON, makeSession, renderStudentCodeState } from '../../../test/studentCodeStateHarness'
+import { setPythonSlow, setPythonStuck } from '../../../modules/python/pythonHealth'
 
 vi.mock('../../../modules/python/pyodide', async () =>
   (await import('../../../test/studentCodeStateMocks')).pyodideMock()
@@ -115,6 +115,41 @@ describe('student health (R3)', () => {
     act(() => setPythonStuck(true))
     expect(h.result.current.pythonStuck).toBe(false)
     expect(healthCalls(h)).not.toContain('python_stuck')
+  })
+
+  // Third review (10 Nov): a slow load shows the student the prompt but tells the tutor nothing
+  // until it is really stuck (the worker errored, or 180 s).
+  it('a slow load blocks Run but is not python_stuck until it is really stuck', () => {
+    const h = renderStudentCodeState({ lesson: lesson() })
+    act(() => setPythonSlow())
+    expect(h.result.current.pythonStuck).toBe(true)
+    expect(healthCalls(h)).not.toContain('python_stuck')
+    act(() => setPythonStuck(true))
+    expect(lastHealth(h)).toBe('python_stuck')
+  })
+
+  // Third review (10 Nov): a stale problem left on the node by an earlier page is cleared by the
+  // next page load in any phase where the node exists; no node, no write (never created).
+  it.each(['waiting', 'solo', 'lesson-complete', 'sandbox'])(
+    "a fresh page in phase '%s' clears a stale problem on an existing node",
+    (phase) => {
+      const h = renderStudentCodeState({
+        lesson: lesson(),
+        phase,
+        session: makeSession({ student: { health: 'python_stuck' } }),
+      })
+      expect(healthCalls(h)).toContain('ok')
+    }
+  )
+
+  it('outside a live lesson, writes nothing while the student has no node', () => {
+    const h = renderStudentCodeState({
+      lesson: lesson(),
+      phase: 'solo',
+      session: { status: 'active', activeStudentView: null, students: {} },
+    })
+    act(() => setPythonStuck(true))
+    expect(healthCalls(h)).toEqual([])
   })
 
   it('writes nothing from a teacher presentation or a preview', () => {

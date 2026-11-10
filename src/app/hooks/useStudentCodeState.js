@@ -102,7 +102,8 @@ import {
   crossLessonFallbackRecord,
 } from '../../shared/roster/crossLessonCarry'
 import {
-  isPythonAsleepError,
+  asleepNote,
+  getPythonHealthLevel,
   isPythonStuck,
   onPythonStuckChange,
 } from '../../modules/python/pythonHealth'
@@ -632,15 +633,20 @@ export function useStudentCodeState({
   // Reload button. A slow load that finishes after all clears it again.
   // `pythonStuck` is that flag alone, for a Python workspace only: a plain load error ('error'
   // without it) keeps Run on so a Run retries the load (initRuntimeIfNeeded), and it never
-  // reaches the tutor as Python stuck.
+  // reaches the tutor as Python stuck. Only a really stuck worker (level 'stuck': it errored, or
+  // 180 s) reaches the tutor; a merely slow load (level 'slow') shows the student the prompt only.
   const [pythonWorkerStuck, setPythonWorkerStuck] = useState(isPythonStuck)
+  const [pythonLevel, setPythonLevel] = useState(getPythonHealthLevel)
   const pythonStuck = pythonWorkerStuck && usesPythonRuntime(lesson?.type)
+  const pythonStuckForTutor = pythonStuck && pythonLevel === 'stuck'
   useEffect(() => {
     const usesPython = () => usesPythonRuntime(lessonRef.current?.type)
     setPythonWorkerStuck(isPythonStuck())
+    setPythonLevel(getPythonHealthLevel())
     if (isPythonStuck() && usesPython()) setPyodideStatus('error')
-    return onPythonStuckChange((stuck) => {
+    return onPythonStuckChange((stuck, level) => {
       setPythonWorkerStuck(stuck)
+      setPythonLevel(level)
       if (!usesPython()) return
       if (stuck) setPyodideStatus('error')
       else if (getLessonModule(lessonRef.current?.type)?.runtime?.isReady?.()) {
@@ -664,24 +670,34 @@ export function useStudentCodeState({
   }
 
   // The tutor's chip (students/{id}/health, R3): one value derived from every source, so no
-  // source can clear another's problem. Sources: Python stuck (pythonStuck above) and each
+  // source can clear another's problem. Sources: Python stuck (pythonStuckForTutor) and each
   // RenderErrorBoundary showing its fallback (setScreenError, by boundary name). A screen error
   // shows over Python stuck (its fallback hides the Python prompt). Sent when a source changes,
   // when Python's status changes and when the phase or student changes (a fresh page clears
   // what an earlier page left); useSession.writeStudentHealth skips a value already on the
-  // node, so a healthy student writes nothing. Own screen in a live class only.
+  // node, so a healthy student writes nothing. Own screen only. Outside a live lesson (waiting,
+  // solo, lesson complete) only while the student's node exists: a fresh page there still clears a
+  // stale problem an earlier page left, but never makes a node (third review, 10 Nov).
   const pythonStuckRef = useRef(false)
   const screenErrorsRef = useRef(new Set())
-  const healthWriterRef = useLatestRef({ writeStudentHealth, teacherPresentation, previewMode })
+  const hasStudentNode = !!session?.students?.[identity?.anonymousId]
+  const healthWriterRef = useLatestRef({
+    writeStudentHealth,
+    teacherPresentation,
+    previewMode,
+    hasStudentNode,
+  })
   const syncHealth = useCallback(() => {
     const {
       writeStudentHealth: write,
       teacherPresentation: tp,
       previewMode: pm,
+      hasStudentNode: hasNode,
     } = healthWriterRef.current
     const anonymousId = identityRef.current?.anonymousId
     if (!anonymousId || !write || tp || pm) return
-    if (phaseRef.current !== 'lesson' && phaseRef.current !== 'sandbox') return
+    const inLesson = phaseRef.current === 'lesson' || phaseRef.current === 'sandbox'
+    if (!inLesson && !hasNode) return
     const health =
       screenErrorsRef.current.size > 0
         ? 'screen_error'
@@ -704,13 +720,13 @@ export function useStudentCodeState({
     [syncHealth]
   )
   useEffect(() => {
-    if (pythonStuck === pythonStuckRef.current) return
-    pythonStuckRef.current = pythonStuck
+    if (pythonStuckForTutor === pythonStuckRef.current) return
+    pythonStuckRef.current = pythonStuckForTutor
     syncHealth()
-  }, [pythonStuck, syncHealth])
+  }, [pythonStuckForTutor, syncHealth])
   useEffect(() => {
     syncHealth()
-  }, [phase, identity?.anonymousId, syncHealth])
+  }, [phase, identity?.anonymousId, hasStudentNode, syncHealth])
 
   // The "Python fell asleep" Reload: save the code (the usual per-task save, or the personal
   // sandbox's), note that this task was reloaded from the prompt so a live lesson brings the own
@@ -2659,7 +2675,7 @@ export function useStudentCodeState({
       }
     } catch (err) {
       // A slow Python load still under way is left to finish (R3).
-      if (!isPythonAsleepError(err)) getLessonModule(lesson?.type)?.runtime?.stop()
+      if (!asleepNote(err)) getLessonModule(lesson?.type)?.runtime?.stop()
       setRunStatus('error')
       updateSupportStageForAttempt(false)
     } finally {
