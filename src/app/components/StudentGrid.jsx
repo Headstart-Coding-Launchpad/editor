@@ -351,8 +351,11 @@ export default function StudentGrid({
   const studentsById = Object.fromEntries(students.map((st) => [st.anonymousId, st]))
   const ordered = order.ids.map((id) => studentsById[id]).filter(Boolean)
   const counts = summariseRowStates(Object.values(rowStates))
-  // Python stuck / screen error (students/{id}/health, R3), beside the offline count.
-  const healthProblems = students.map(studentHealthProblem)
+  // Python stuck / screen error (students/{id}/health, R3), beside the offline count: over the
+  // same rows as the counts next to it (one per student row), offline rows excluded as there.
+  const healthProblems = ordered.map((st) =>
+    rowStates[st.anonymousId]?.presence === 'offline' ? null : studentHealthProblem(st)
+  )
   const pythonStuckCount = healthProblems.filter((p) => p === 'python_stuck').length
   const screenErrorCount = healthProblems.filter((p) => p === 'screen_error').length
   // The Finished filter only applies while someone is finished: when the count drops to 0 its

@@ -738,4 +738,13 @@ describe('StudentGrid: screen health (R3)', () => {
       ])
     )
   })
+
+  it('counts over the class rows, leaving offline students out like the offline count', () => {
+    const students = [
+      { ...STUDENTS[0], health: 'python_stuck' },
+      { ...STUDENTS[1], anonymousId: 's2', online: false, health: 'python_stuck' },
+    ]
+    render(<StudentGrid {...mkProps({ students })} />)
+    expect(screen.getByText('1 Python stuck')).toBeInTheDocument()
+  })
 })
