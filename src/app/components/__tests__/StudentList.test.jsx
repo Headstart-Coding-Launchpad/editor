@@ -345,3 +345,45 @@ describe('compact student list: nothing a tutor could do is lost', () => {
     expect(screen.getByTestId('modal-name')).toHaveTextContent('Ann')
   })
 })
+
+// Second review (10 Nov): the health line and chip are extra, never pushing out the hint, the
+// Sharing chip or the other second-line notes.
+describe('compact student list: screen health keeps the other notes and chips', () => {
+  it('shows Python stuck beside the hint note, and as a chip beyond the two', () => {
+    const students = [
+      st('a', 'Ann', {
+        health: 'python_stuck',
+        shareRequestedAt: 5,
+        studentHint: hint(1),
+        lastRunStatus: 'success',
+        checkPassed: false,
+      }),
+    ]
+    render(<StudentGrid {...mkProps({ students })} />)
+    const row = rowOf('Ann')
+    expect(within(row).getByTestId('row-health')).toHaveTextContent(
+      'Python stuck: they see Reload'
+    )
+    expect(within(row).getByTestId('row-note')).toHaveTextContent('Hint showing')
+    fireEvent.click(within(row).getByTestId('row-main'))
+    const open = within(rowOf('Ann')).getByTestId('row-open')
+    expect(open).toHaveTextContent('🐍 Python stuck')
+    expect(open).toHaveTextContent('📤 Sharing')
+    expect(open).toHaveTextContent('💬 Hint shown')
+  })
+
+  it('keeps the pasted note in the opened row alongside the health chip', () => {
+    const students = [
+      st('a', 'Ann', {
+        health: 'screen_error',
+        pasteLog: { 1: { count: 1, chars: 40, lastAt: Date.now() } },
+      }),
+    ]
+    render(<StudentGrid {...mkProps({ students })} />)
+    expect(within(rowOf('Ann')).getByTestId('row-note')).toHaveTextContent('Pasted')
+    fireEvent.click(within(rowOf('Ann')).getByTestId('row-main'))
+    const open = within(rowOf('Ann')).getByTestId('row-open')
+    expect(open).toHaveTextContent('🛠️ Screen error')
+    expect(open).toHaveTextContent('Pasted')
+  })
+})

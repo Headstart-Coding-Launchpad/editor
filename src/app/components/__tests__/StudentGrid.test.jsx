@@ -730,7 +730,7 @@ describe('StudentGrid: screen health (R3)', () => {
     render(<StudentGrid {...mkProps({ students })} />)
     expect(screen.getByText('1 Python stuck')).toBeInTheDocument()
     expect(screen.getByText('1 screen error')).toBeInTheDocument()
-    const notes = screen.getAllByTestId('row-note').map((note) => note.textContent)
+    const notes = screen.getAllByTestId('row-health').map((note) => note.textContent)
     expect(notes).toEqual(
       expect.arrayContaining([
         expect.stringContaining('Python stuck: they see Reload'),

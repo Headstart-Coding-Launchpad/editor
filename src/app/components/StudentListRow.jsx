@@ -329,39 +329,40 @@ export default function StudentListRow({
     badgePendingCount > 0 ? { key: 'badge', icon: '🏅', label: 'Badge suggestion waiting' } : null,
   ].filter(Boolean)
 
-  // Python stuck / screen error on their screen (students/{id}/health, R3): first on the second
-  // line and the opened row's chips.
+  // Python stuck / screen error on their screen (students/{id}/health, R3): its own line above
+  // the second line, and an extra chip in the opened row, so it never pushes the hint, paste or
+  // side-quest note, or the two usual chips, out of sight.
   const healthProblem = studentHealthProblem(student)
   const healthChip = studentHealthChip(healthProblem)
-
-  // The one second line, most useful first.
-  const note = healthChip
+  const healthNote = healthChip
     ? {
         icon: healthChip.icon,
         text:
           healthProblem === 'python_stuck'
             ? 'Python stuck: they see Reload'
             : 'Screen error: they see Try again',
-        health: healthProblem,
       }
-    : shownHint
+    : null
+
+  // The one second line, most useful first.
+  const note = shownHint
+    ? {
+        icon: '💬',
+        text: `${shownHint.source === 'override' ? 'Your hint' : 'Hint showing'}: “${hintPlainText(shownHint.text)}”`,
+      }
+    : paste?.count > 0
       ? {
-          icon: '💬',
-          text: `${shownHint.source === 'override' ? 'Your hint' : 'Hint showing'}: “${hintPlainText(shownHint.text)}”`,
+          icon: '📋',
+          text: `Pasted${paste.count > 1 ? ` ×${paste.count}` : ''}, ${paste.chars ?? 0} characters${paste.lastAt ? ` · ${ageWords(paste.lastAt, now)} ago` : ''}`.replace(
+            ' · now ago',
+            ' · just now'
+          ),
         }
-      : paste?.count > 0
-        ? {
-            icon: '📋',
-            text: `Pasted${paste.count > 1 ? ` ×${paste.count}` : ''}, ${paste.chars ?? 0} characters${paste.lastAt ? ` · ${ageWords(paste.lastAt, now)} ago` : ''}`.replace(
-              ' · now ago',
-              ' · just now'
-            ),
-          }
-        : codePaneHidden(student, { isCodeTask })
-          ? { icon: '🙈', text: 'Code pane not on their screen' }
-          : sideQuest
-            ? { icon: sideQuest.icon, text: sideQuest.text }
-            : null
+      : codePaneHidden(student, { isCodeTask })
+        ? { icon: '🙈', text: 'Code pane not on their screen' }
+        : sideQuest
+          ? { icon: sideQuest.icon, text: sideQuest.text }
+          : null
 
   function startRename() {
     setNameValue(name)
@@ -516,16 +517,17 @@ export default function StudentListRow({
     },
   ]
 
-  // At most two chips in the opened row: Sharing, the hint, a fail streak, an override.
+  // At most two chips in the opened row: Sharing, the hint, a fail streak, an override; a health
+  // problem's chip comes first, on top of those two.
   const failStreak = Number(shownHint?.failStreak) || 0
-  const chips = [
-    healthChip
-      ? {
-          text: `${healthChip.icon} ${healthChip.label}`,
-          title: healthChip.title,
-          style: healthProblem === 'python_stuck' ? s.chipPythonStuck : s.chipScreenError,
-        }
-      : null,
+  const healthChipItem = healthChip
+    ? {
+        text: `${healthChip.icon} ${healthChip.label}`,
+        title: healthChip.title,
+        style: healthProblem === 'python_stuck' ? s.chipPythonStuck : s.chipScreenError,
+      }
+    : null
+  const usualChips = [
     student.shareRequestedAt != null ? { text: '📤 Sharing', style: s.chipShare } : null,
     shownHint || shownOffer
       ? {
@@ -553,6 +555,7 @@ export default function StudentListRow({
   ]
     .filter(Boolean)
     .slice(0, 2)
+  const chips = healthChipItem ? [healthChipItem, ...usualChips] : usualChips
   const moreHasFlag = paste?.count > 0 || supportCount > 0 || examplesOpened > 0
 
   const where = [
@@ -711,12 +714,17 @@ export default function StudentListRow({
         )}
         <RowMenu name={name} groups={menuGroups} onOpenChange={setMenuOpen} />
       </div>
-      {note && !open && (
+      {healthNote && !open && (
         <div
-          style={{ ...s.note, ...(note.health ? s.noteHealth : null) }}
-          data-testid="row-note"
-          title={note.text}
+          style={{ ...s.note, ...s.noteHealth }}
+          data-testid="row-health"
+          title={healthNote.text}
         >
+          <span aria-hidden="true">{healthNote.icon}</span> {healthNote.text}
+        </div>
+      )}
+      {note && !open && (
+        <div style={s.note} data-testid="row-note" title={note.text}>
           <span aria-hidden="true">{note.icon}</span> {note.text}
         </div>
       )}
@@ -737,8 +745,8 @@ export default function StudentListRow({
               {output}
             </div>
           )}
-          {/* A hint, or a health problem, already has its chip below. */}
-          {note && note.icon !== '💬' && !note.health && (
+          {/* A hint (and a health problem) already has its chip below. */}
+          {note && note.icon !== '💬' && (
             <div style={s.openNote}>
               <span aria-hidden="true">{note.icon}</span> {note.text}
             </div>
