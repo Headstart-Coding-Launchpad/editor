@@ -107,6 +107,7 @@ import {
   onPythonStuckChange,
 } from '../../modules/python/pythonHealth'
 import { isReloadResume, markReloadResume, reloadPage } from '../pythonReload'
+import { initPyodide } from '../../modules/python/pyodide'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -122,9 +123,8 @@ const EMPTY_TILE_HIGHLIGHTS = Object.freeze([])
 // A workspace that runs on the shared Pyodide (Python, Turtle, Electronics): the only ones that
 // can be "Python stuck" (R3).
 function usesPythonRuntime(type) {
-  return (
-    getModuleDefinition(type)?.meta?.language === 'python' && !!getLessonModule(type)?.runtime?.init
-  )
+  const init = getLessonModule(type)?.runtime?.init
+  return !!init && init === initPyodide
 }
 
 function workSlotDefinition(type) {

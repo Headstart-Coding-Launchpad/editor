@@ -103,7 +103,13 @@ describe('student health (R3)', () => {
         id: 'lesson-h',
         type: 'html',
         title: 'Web',
-        tasks: [{ id: 't1', title: 'Task 1', starterFiles: [{ name: 'index.html', content: '<p>hi</p>' }] }],
+        tasks: [
+          {
+            id: 't1',
+            title: 'Task 1',
+            starterFiles: [{ name: 'index.html', content: '<p>hi</p>' }],
+          },
+        ],
       },
     })
     act(() => setPythonStuck(true))

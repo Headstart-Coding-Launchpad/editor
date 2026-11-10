@@ -361,9 +361,7 @@ describe('compact student list: screen health keeps the other notes and chips', 
     ]
     render(<StudentGrid {...mkProps({ students })} />)
     const row = rowOf('Ann')
-    expect(within(row).getByTestId('row-health')).toHaveTextContent(
-      'Python stuck: they see Reload'
-    )
+    expect(within(row).getByTestId('row-health')).toHaveTextContent('Python stuck: they see Reload')
     expect(within(row).getByTestId('row-note')).toHaveTextContent('Hint showing')
     fireEvent.click(within(row).getByTestId('row-main'))
     const open = within(rowOf('Ann')).getByTestId('row-open')

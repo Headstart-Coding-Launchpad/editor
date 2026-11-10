@@ -206,7 +206,12 @@ describe('writeStudentHealth', () => {
           await vi.advanceTimersByTimeAsync(5000)
         })
       }
-      expect(healthWrites()).toEqual(['python_stuck', 'python_stuck', 'python_stuck', 'python_stuck'])
+      expect(healthWrites()).toEqual([
+        'python_stuck',
+        'python_stuck',
+        'python_stuck',
+        'python_stuck',
+      ])
     } finally {
       vi.useRealTimers()
     }
