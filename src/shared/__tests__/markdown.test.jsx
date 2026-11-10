@@ -220,6 +220,18 @@ describe('MarkdownRenderer', () => {
     expectOpenMouth(container.querySelector(`[data-scratch-opcode="${opcode}"]`), mouths)
   })
 
+  it('lays a fenced C out like Scratch: inner blocks flush under the header, foot snug on the last block', () => {
+    const { container } = render(
+      <MarkdownRenderer content={'```scratch\nforever\n  next costume\nend\n```'} />
+    )
+    const block = container.querySelector('[data-scratch-opcode="control_forever"]')
+    const stack = block.querySelector('[data-scratch-mouth-stack="children"]')
+    expect(stack.style.top).toBe('38px')
+    expect(stack.style.left).toBe('15px')
+    // header 38 + inner block body 38 (its 7px bottom tab hangs into the foot) + foot 13
+    expect(block.style.height).toBe('89px')
+  })
+
   it.each([
     ['repeat (10)', 'control_repeat', 1],
     ['forever', 'control_forever', 1],
@@ -469,7 +481,7 @@ describe('MarkdownRenderer', () => {
     const cSvg = Array.from(repeat.children).find((child) => child.tagName.toLowerCase() === 'svg')
 
     expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(143)
-    expect(Number.parseFloat(mouthStack.style.left)).toBe(14)
+    expect(Number.parseFloat(mouthStack.style.left)).toBe(15)
     expect(
       Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(
         (path) => path.dataset.scratchCPath

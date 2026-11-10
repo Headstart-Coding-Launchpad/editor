@@ -8,6 +8,9 @@ const ACTIVITY_WRITE_INTERVAL_MS = 2000
 const PRESENCE_HEAL_INTERVAL_MS = 10000
 
 const REPORTING_PHASES = ['lesson', 'sandbox']
+// The waiting room reports too, but only once joinSession has written the student's node, so a
+// visitor who has not entered a name never creates a ghost student.
+const WAITING_PHASE = 'waiting'
 
 /**
  * Reports this student's presence to the teacher: connected, window focused, fullscreen,
@@ -28,7 +31,11 @@ export function useStudentPresenceReporting({
   removeStudent,
 }) {
   const anonymousId = identity?.anonymousId
-  const reporting = !teacherPresentation && !!anonymousId && REPORTING_PHASES.includes(phase)
+  const joined = !!session?.students?.[anonymousId]
+  const reporting =
+    !teacherPresentation &&
+    !!anonymousId &&
+    (REPORTING_PHASES.includes(phase) || (phase === WAITING_PHASE && joined))
 
   // Register Firebase presence so the teacher sees who is connected live. Also
   // re-registers on reconnect (connected flips true) so the online key is restored after
@@ -36,7 +43,7 @@ export function useStudentPresenceReporting({
   const lastRegisteredAt = useRef(0)
   // Only a joined student (node present) whose `online` key is missing needs healing; an
   // absent node means the teacher removed them, and it must stay removed.
-  const needsHeal = !!session?.students?.[anonymousId] && !session.students[anonymousId].online
+  const needsHeal = joined && !session.students[anonymousId].online
   const needsHealRef = useRef(needsHeal)
   useEffect(() => {
     needsHealRef.current = needsHeal
