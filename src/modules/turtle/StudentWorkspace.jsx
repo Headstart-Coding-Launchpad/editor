@@ -72,8 +72,9 @@ export default function StudentWorkspace({
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
-  // Loading, or stuck ("Python fell asleep", R3): Run waits either way.
-  const pythonNotReady = cs.pyodideStatus === 'loading' || cs.pyodideStatus === 'error'
+  // Loading, or really stuck ("Python fell asleep", R3): Run waits either way. A plain load
+  // error keeps Run on: pressing it retries Python, as before.
+  const pythonNotReady = cs.pyodideStatus === 'loading' || !!cs.pythonStuck
   const code = isForcedTeacherLive
     ? displayCode
     : isTeacherEditing

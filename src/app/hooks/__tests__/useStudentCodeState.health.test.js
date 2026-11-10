@@ -81,6 +81,36 @@ describe('student health (R3)', () => {
     expect(lastHealth(h)).toBe('python_stuck')
   })
 
+  // Second review (10 Nov): a plain load error is not "stuck" (Run still retries the load), and
+  // a workspace without Python never reports Python stuck.
+  it("a plain load error ('error' without the stuck flag) is not python_stuck, and Run stays allowed", async () => {
+    const { getLessonModule } = await import('../../../modules/registry')
+    vi.spyOn(getLessonModule('python').runtime, 'isReady').mockReturnValue(false)
+    vi.spyOn(getLessonModule('python').runtime, 'init').mockRejectedValue(new Error('net'))
+    const h = renderStudentCodeState({ lesson: lesson() })
+    await act(async () => {})
+    expect(h.result.current.pyodideStatus).toBe('error')
+    expect(h.result.current.pythonStuck).toBe(false)
+    expect(healthCalls(h)).not.toContain('python_stuck')
+    act(() => setPythonStuck(true))
+    expect(h.result.current.pythonStuck).toBe(true)
+    expect(lastHealth(h)).toBe('python_stuck')
+  })
+
+  it('never reports python_stuck from a workspace without Python', () => {
+    const h = renderStudentCodeState({
+      lesson: {
+        id: 'lesson-h',
+        type: 'html',
+        title: 'Web',
+        tasks: [{ id: 't1', title: 'Task 1', starterFiles: [{ name: 'index.html', content: '<p>hi</p>' }] }],
+      },
+    })
+    act(() => setPythonStuck(true))
+    expect(h.result.current.pythonStuck).toBe(false)
+    expect(healthCalls(h)).not.toContain('python_stuck')
+  })
+
   it('writes nothing from a teacher presentation or a preview', () => {
     const h = renderStudentCodeState({ lesson: lesson(), previewMode: true })
     act(() => setPythonStuck(true))

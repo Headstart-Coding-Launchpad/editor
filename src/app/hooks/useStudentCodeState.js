@@ -119,6 +119,14 @@ const EMPTY_TILE_HIGHLIGHTS = Object.freeze([])
 
 // The module definition when `type` is on the generic work slot (declares `workSlot`), else null.
 // Every module is since plan step 4.5.
+// A workspace that runs on the shared Pyodide (Python, Turtle, Electronics): the only ones that
+// can be "Python stuck" (R3).
+function usesPythonRuntime(type) {
+  return (
+    getModuleDefinition(type)?.meta?.language === 'python' && !!getLessonModule(type)?.runtime?.init
+  )
+}
+
 function workSlotDefinition(type) {
   const definition = getModuleDefinition(type)
   return definition?.workSlot ? definition : null
@@ -622,10 +630,17 @@ export function useStudentCodeState({
   // Python stuck (the worker died, or has not got ready in time: src/modules/python/
   // pythonHealth.js, R3) is 'error' too: the code pane shows "Python fell asleep" with one
   // Reload button. A slow load that finishes after all clears it again.
+  // `pythonStuck` is that flag alone, for a Python workspace only: a plain load error ('error'
+  // without it) keeps Run on so a Run retries the load (initRuntimeIfNeeded), and it never
+  // reaches the tutor as Python stuck.
+  const [pythonWorkerStuck, setPythonWorkerStuck] = useState(isPythonStuck)
+  const pythonStuck = pythonWorkerStuck && usesPythonRuntime(lesson?.type)
   useEffect(() => {
-    const usesPython = () => !!getLessonModule(lessonRef.current?.type)?.runtime?.init
+    const usesPython = () => usesPythonRuntime(lessonRef.current?.type)
+    setPythonWorkerStuck(isPythonStuck())
     if (isPythonStuck() && usesPython()) setPyodideStatus('error')
     return onPythonStuckChange((stuck) => {
+      setPythonWorkerStuck(stuck)
       if (!usesPython()) return
       if (stuck) setPyodideStatus('error')
       else if (getLessonModule(lessonRef.current?.type)?.runtime?.isReady?.()) {
@@ -649,7 +664,7 @@ export function useStudentCodeState({
   }
 
   // The tutor's chip (students/{id}/health, R3): one value derived from every source, so no
-  // source can clear another's problem. Sources: Python stuck (pyodideStatus 'error') and each
+  // source can clear another's problem. Sources: Python stuck (pythonStuck above) and each
   // RenderErrorBoundary showing its fallback (setScreenError, by boundary name). A screen error
   // shows over Python stuck (its fallback hides the Python prompt). Sent when a source changes,
   // when Python's status changes and when the phase or student changes (a fresh page clears
@@ -689,11 +704,10 @@ export function useStudentCodeState({
     [syncHealth]
   )
   useEffect(() => {
-    const stuck = pyodideStatus === 'error'
-    if (stuck === pythonStuckRef.current) return
-    pythonStuckRef.current = stuck
+    if (pythonStuck === pythonStuckRef.current) return
+    pythonStuckRef.current = pythonStuck
     syncHealth()
-  }, [pyodideStatus, syncHealth])
+  }, [pythonStuck, syncHealth])
   useEffect(() => {
     syncHealth()
   }, [phase, identity?.anonymousId, syncHealth])
@@ -3812,6 +3826,8 @@ export function useStudentCodeState({
     // setScreenError(boundary, active) is how a RenderErrorBoundary tells the tutor.
     reloadAfterPythonStuck,
     pythonReloadRestoresCode,
+    // Python really stuck (not a plain load error): only then does Run wait for the Reload.
+    pythonStuck,
     setScreenError,
     iframeSrc,
     teacherLiveIframeSrc,

@@ -217,8 +217,9 @@ export default function StudentWorkspace({
   // The Python Stage (src/shared/stage/): shown once the code draws, or from the start when the
   // task has a stageTarget to draw over. Go Live shows the broadcast drawing.
   const stageTarget = useStageTarget(task, { ready: cs.pyodideStatus === 'ready' })
-  // Loading, or stuck ("Python fell asleep", R3): Run waits either way.
-  const pythonNotReady = cs.pyodideStatus === 'loading' || cs.pyodideStatus === 'error'
+  // Loading, or really stuck ("Python fell asleep", R3): Run waits either way. A plain load
+  // error keeps Run on: pressing it retries Python, as before.
+  const pythonNotReady = cs.pyodideStatus === 'loading' || !!cs.pythonStuck
   const liveStage = useMemo(() => readStageResult(displayStage), [displayStage])
   const stageResult = isForcedTeacherLive
     ? liveStage

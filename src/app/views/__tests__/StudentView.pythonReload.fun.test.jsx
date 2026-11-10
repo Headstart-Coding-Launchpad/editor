@@ -12,12 +12,19 @@ import { setPythonStuck } from '../../../modules/python/pythonHealth'
 // (students/{id}/health = 'python_stuck'). Real StudentView → Python StudentWorkspace; only
 // Firebase hooks, Pyodide and the page reload itself are mocked.
 
-const mocks = vi.hoisted(() => ({ session: null, identity: null, reloadPage: null }))
+const mocks = vi.hoisted(() => ({
+  session: null,
+  identity: null,
+  reloadPage: null,
+  pyReady: true,
+  initPyodide: null,
+  runPython: null,
+}))
 
 vi.mock('../../../modules/python/pyodide', () => ({
-  initPyodide: vi.fn(() => Promise.resolve()),
-  isPyodideReady: () => true,
-  runPython: vi.fn(() => Promise.resolve({ status: 'success' })),
+  initPyodide: (...args) => mocks.initPyodide(...args),
+  isPyodideReady: () => mocks.pyReady,
+  runPython: (...args) => mocks.runPython(...args),
   stopPython: vi.fn(),
   provideInput: vi.fn(),
   updateGpioInputs: vi.fn(),
@@ -130,6 +137,9 @@ describe('Python fell asleep: one Reload button (R3)', { timeout: 20000 }, () =>
   beforeEach(() => {
     localStorage.clear()
     mocks.reloadPage = vi.fn()
+    mocks.pyReady = true
+    mocks.initPyodide = vi.fn(() => Promise.resolve())
+    mocks.runPython = vi.fn(() => Promise.resolve({ status: 'success' }))
   })
   afterEach(() => {
     act(() => setPythonStuck(false))
@@ -186,5 +196,19 @@ describe('Python fell asleep: one Reload button (R3)', { timeout: 20000 }, () =>
     await screen.findByRole('button', { name: 'Run' })
     await waitFor(() => expect(editorText(second.view.container)).toContain('my own loop'))
     expect(screen.queryByTestId('python-asleep')).toBeNull()
+  })
+
+  // Second review (10 Nov): a plain load error is not "stuck". Run stays on, so pressing it
+  // still retries Python as before, and the tutor is not told Python is stuck.
+  it('a plain load error keeps Run on for a retry, and tells the tutor nothing', async () => {
+    mocks.pyReady = false
+    mocks.initPyodide = vi.fn(() => Promise.reject(new Error('network')))
+    const { user, session } = renderLesson()
+    await screen.findByTestId('python-asleep')
+    const run = screen.getByRole('button', { name: 'Run' })
+    expect(run).not.toBeDisabled()
+    await user.click(run)
+    expect(mocks.runPython).toHaveBeenCalled()
+    expect(session.writeStudentHealth).not.toHaveBeenCalledWith('student-1', 'python_stuck')
   })
 })
