@@ -1,17 +1,22 @@
 import React, { useState } from 'react'
 
 /**
- * "😴 Python fell asleep. Your code is safe 💾" with one Reload button (deep review 2026-11-10,
- * R3; sketch OK'd by Ryan 10 Nov). Shown in the code pane in place of "Getting Python ready…"
- * when Python is stuck or failed to load (pyodideStatus 'error'). `onReload` saves the student's
- * code and reloads the page (useStudentCodeState.reloadAfterPythonStuck); without one it just
- * reloads.
+ * "😴 Python fell asleep." with one Reload button (deep review 2026-11-10, R3; sketch OK'd by Ryan
+ * 10 Nov). Shown in the code pane in place of "Getting Python ready…" when Python is stuck or
+ * failed to load (pyodideStatus 'error'). `onReload` saves the student's code and reloads the
+ * page (useStudentCodeState.reloadAfterPythonStuck); without one it just reloads. `codeSafe`
+ * adds "Your code is safe 💾", only where the reload really brings the code back
+ * (useStudentCodeState.pythonReloadRestoresCode); otherwise "Tap Reload to start Python again".
  */
-export default function PythonAsleepPrompt({ onReload, style }) {
+export default function PythonAsleepPrompt({ onReload, codeSafe = false, style }) {
   const [reloading, setReloading] = useState(false)
   return (
     <div role="alert" data-testid="python-asleep" style={{ ...s.bar, ...style }}>
-      <span style={s.text}>😴 Python fell asleep. Your code is safe 💾</span>
+      <span style={s.text}>
+        {codeSafe
+          ? '😴 Python fell asleep. Your code is safe 💾'
+          : '😴 Python fell asleep. Tap Reload to start Python again'}
+      </span>
       <button
         type="button"
         className="btn-primary"
@@ -19,8 +24,14 @@ export default function PythonAsleepPrompt({ onReload, style }) {
         disabled={reloading}
         onClick={() => {
           setReloading(true)
-          if (onReload) onReload()
-          else window.location.reload()
+          try {
+            if (onReload) onReload()
+            else window.location.reload()
+          } catch (err) {
+            // The page did not reload: the button comes back for another go.
+            console.warn('[python reload] reload failed', err)
+            setReloading(false)
+          }
         }}
       >
         Reload 🔄

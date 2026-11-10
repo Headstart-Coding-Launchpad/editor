@@ -34,6 +34,9 @@ export default function PythonEditor({
   // Python stuck or failed to load ('error'): the prompt's Reload saves the code and reloads
   // (useStudentCodeState.reloadAfterPythonStuck). Without one, Reload just reloads the page.
   onPythonReload,
+  // The prompt says "Your code is safe" only when that Reload brings the code back
+  // (useStudentCodeState.pythonReloadRestoresCode).
+  pythonCodeSafe = false,
   editorStyle,
   errorLine = null,
   lineHints = null,
@@ -114,7 +117,9 @@ export default function PythonEditor({
   return (
     <div style={s.wrap} data-testid="editor-panel">
       {pyodideStatus === 'loading' && <div style={s.pyBanner}>⏳ Getting Python ready…</div>}
-      {pyodideStatus === 'error' && <PythonAsleepPrompt onReload={onPythonReload} />}
+      {pyodideStatus === 'error' && (
+        <PythonAsleepPrompt onReload={onPythonReload} codeSafe={pythonCodeSafe} />
+      )}
       {calm
         ? showSymbolButtons && <CalmKeyRow keyCode={keyCode} renderKey={renderKey} />
         : (showSymbolButtons || showEmojiButton || showBlocks) && (

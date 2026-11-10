@@ -3,6 +3,7 @@ import {
   isReloadResume,
   markReloadResume,
   RELOAD_RESUME_KEY,
+  RESUME_CONSUMED_GRACE_MS,
   RESUME_MAX_AGE_MS,
 } from '../pythonReload'
 import { selectPythonTaskCode } from '../studentTaskContent'
@@ -17,11 +18,18 @@ describe('the "Python fell asleep" reload note (R3)', () => {
 
   it('matches only the same lesson and task, for a short while', () => {
     markReloadResume('loops', 3, 1000)
-    expect(isReloadResume('loops', '3', 1000 + 5000)).toBe(true)
     expect(isReloadResume('loops', 4, 1000 + 5000)).toBe(false)
     expect(isReloadResume('other', 3, 1000 + 5000)).toBe(false)
-    // Read twice (a dev StrictMode double load) and it still holds.
-    expect(isReloadResume('loops', 3, 1000 + 6000)).toBe(true)
+    expect(isReloadResume('loops', '3', 1000 + 5000)).toBe(true)
+  })
+
+  it('is used once: a read right after (a dev StrictMode double load) still holds, later ones not', () => {
+    markReloadResume('loops', 3, 1000)
+    expect(isReloadResume('loops', 3, 2000)).toBe(true)
+    expect(isReloadResume('loops', 3, 2000 + 500)).toBe(true)
+    // A later visit to the task (moving away and back) starts as a live lesson normally does.
+    expect(isReloadResume('loops', 3, 2000 + RESUME_CONSUMED_GRACE_MS + 1)).toBe(false)
+    expect(localStorage.getItem(RELOAD_RESUME_KEY)).toBeNull()
   })
 
   it('is ignored and removed once it is stale', () => {

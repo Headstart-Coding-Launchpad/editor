@@ -76,7 +76,8 @@ export default function CodeArrangeTask({
   checkPassed = false,
   checkAttempted = false,
   pyodideStatus = 'ready',
-  // "Python fell asleep" Reload (R3): saves the arrangement's work and reloads the page.
+  // "Python fell asleep" Reload (R3): saves the arrangement's work and reloads the page. The
+  // prompt makes no "code is safe" promise here: a live lesson does not restore the tiles.
   onPythonReload,
   iframeSrc = null,
   iframeRef = null,

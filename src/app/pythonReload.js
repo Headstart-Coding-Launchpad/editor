@@ -5,12 +5,23 @@
  * only). So the Reload button leaves a short-lived note: "this lesson's task <id> was reloaded
  * from the prompt", and the next load of that task restores the student's own save once.
  *
- * localStorage `headstart_reload_resume`: { lessonId, taskId, at }. Read for RESUME_MAX_AGE_MS
- * (the page and lesson load well inside it), then ignored and removed.
+ * localStorage `headstart_reload_resume`: { lessonId, taskId, at, consumedAt? }. Good for
+ * RESUME_MAX_AGE_MS (the page and lesson load well inside it) and used once: the first matching
+ * read marks it consumed, a read within RESUME_CONSUMED_GRACE_MS of that still matches (a dev
+ * StrictMode double load), and after that, or once stale, it is removed.
  */
 
 export const RELOAD_RESUME_KEY = 'headstart_reload_resume'
 export const RESUME_MAX_AGE_MS = 2 * 60 * 1000
+export const RESUME_CONSUMED_GRACE_MS = 1000
+
+function removeNote() {
+  try {
+    localStorage.removeItem(RELOAD_RESUME_KEY)
+  } catch {
+    // ignore
+  }
+}
 
 export function markReloadResume(lessonId, taskId, now = Date.now()) {
   if (lessonId == null || taskId == null) return
@@ -25,8 +36,8 @@ export function markReloadResume(lessonId, taskId, now = Date.now()) {
 }
 
 /**
- * True when this task of this lesson was reloaded from the prompt a moment ago. Not removed on a
- * match (a dev StrictMode double load reads it twice); a stale note is removed.
+ * True when this task of this lesson was reloaded from the prompt a moment ago, once (see above).
+ * A read for another lesson or task leaves the note alone; a stale one is removed.
  */
 export function isReloadResume(lessonId, taskId, now = Date.now()) {
   let note = null
@@ -37,14 +48,21 @@ export function isReloadResume(lessonId, taskId, now = Date.now()) {
   }
   if (!note) return false
   if (!(now - Number(note.at) >= 0 && now - Number(note.at) <= RESUME_MAX_AGE_MS)) {
-    try {
-      localStorage.removeItem(RELOAD_RESUME_KEY)
-    } catch {
-      // ignore
-    }
+    removeNote()
     return false
   }
-  return note.lessonId === String(lessonId) && note.taskId === String(taskId)
+  if (note.lessonId !== String(lessonId) || note.taskId !== String(taskId)) return false
+  if (note.consumedAt == null) {
+    try {
+      localStorage.setItem(RELOAD_RESUME_KEY, JSON.stringify({ ...note, consumedAt: now }))
+    } catch {
+      removeNote()
+    }
+    return true
+  }
+  if (now - Number(note.consumedAt) <= RESUME_CONSUMED_GRACE_MS) return true
+  removeNote()
+  return false
 }
 
 export function reloadPage() {

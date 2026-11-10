@@ -601,6 +601,7 @@ export default function StudentWorkspace({
         }
         pyodideStatus={cs.pyodideStatus}
         onPythonReload={cs.reloadAfterPythonStuck}
+        pythonCodeSafe={cs.pythonReloadRestoresCode}
         errorLine={readOnly ? null : cs.errorLine}
         // Line hints are scaffolding: once the check passes they go, not linger after the code.
         lineHints={readOnly || cs.checkPassed ? null : getTaskLineHintSets(task)}

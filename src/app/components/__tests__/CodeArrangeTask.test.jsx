@@ -501,7 +501,8 @@ describe('CodeArrangeTask — Run gating', () => {
     )
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      '😴 Python fell asleep. Your code is safe 💾'
+      // Tiles are not restored by the reload in a live lesson: no safety promise (R3).
+      '😴 Python fell asleep. Tap Reload to start Python again'
     )
     fireEvent.click(screen.getByRole('button', { name: 'Reload 🔄' }))
     expect(onPythonReload).toHaveBeenCalledTimes(1)
