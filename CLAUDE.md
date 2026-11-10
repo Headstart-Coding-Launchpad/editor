@@ -32,8 +32,9 @@ This repo is LaunchPad Dev, one of several HSC agents. The shared map and brand 
 
 Workflow for new features, activities and modes (Ryan yes 2026-10-28 14:13, #314; full steps and the brief template: `HSC Hub\Research\LaunchPad Dev workflow proposal.md`). Bug fixes, questions and small tweaks skip it.
 
-- Brief first: who it's for (age band), the wow, the one main action, at most 5 visible controls, what's hidden until asked, tutor view, 1366x768 fit.
-- A design subagent returns a sketch (wireframe with a control count) of the whole screen; one design job per screen, not per request. Ryan OKs the sketch before any code.
+- Calm-screen rule: one primary action, visibly the biggest thing on screen; controls in at most 5 labelled groups (a row of symbol keys counts as one group); rarely used controls behind one More. One source of truth: `docs/PRODUCT.md` principle 3.
+- Brief first: who it's for (age band), the wow, the one main action, controls in at most 5 labelled groups, what's hidden until asked, tutor view, 1366x768 fit.
+- A design subagent returns a sketch (wireframe with its control groups counted) of the whole screen; one design job per screen, not per request. Ryan OKs the sketch before any code.
 - The request's Fun moment becomes a behaviour test that fails first; green unit tests alone don't prove the activity works.
 - Build, then a cold review by an agent that hasn't seen the work, then before/after screenshots to Ryan with the merge ask. Two asks per feature: sketch, merge.
 - Subagents return screenshots, not sentences, for anything visible.
