@@ -14,9 +14,20 @@
  *   isPyodideReady()           — true when worker is alive and Pyodide is loaded
  *   renderStage(code)          — run a stageTarget's code silently; resolves its stage commands
  *   isPythonRunning()          — true while a run is in progress
+ *
+ * A worker that dies (its onerror: e.g. a mid-class deploy removed the old hashed worker file,
+ * so the replacement stopPython builds cannot load) or never says "ready" within
+ * PYTHON_READY_TIMEOUT_MS marks Python stuck (./pythonHealth.js, deep review R3): pending loads
+ * and runs settle, no new worker is built, and the student screens offer one Reload button.
  */
 
 import { setChartsLoading } from '../../shared/stage/chartsStatus.js'
+import { isPythonStuck, setPythonStuck } from './pythonHealth.js'
+
+// Generous: the first load downloads Pyodide (several MB) on school Wi-Fi, with no progress
+// messages while it does. A dead worker file is caught at once by onerror instead.
+export const PYTHON_READY_TIMEOUT_MS = 90 * 1000
+const STUCK = '__hs_python_stuck__'
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
@@ -40,6 +51,7 @@ let _stageRenderChain = Promise.resolve()
 // The silent stage render's timeout, paused while the worker loads matplotlib (charts): the
 // download is not the program taking too long. { pause, resume } or null.
 let _stageRenderWatch = null
+let _readyTimer = null
 
 // ─── Worker management ────────────────────────────────────────────────────────
 
@@ -52,14 +64,51 @@ function createAndInitWorker() {
   }
 
   setChartsLoading(false)
-  const w = new Worker(new URL('./pyodide.worker.js', import.meta.url), { type: 'module' })
-  w.onmessage = handleWorkerMessage
   _loadingPromise = new Promise((res, rej) => {
     _loadResolve = res
     _loadReject = rej
   })
+  // A load nobody awaits (the pre-warm after a Stop) must not surface as an unhandled rejection.
+  _loadingPromise.catch(() => {})
+  let w
+  try {
+    w = new Worker(new URL('./pyodide.worker.js', import.meta.url), { type: 'module' })
+  } catch {
+    markPythonStuck()
+    return null
+  }
+  w.onmessage = handleWorkerMessage
+  // Only this worker's death counts (a terminated older one is already replaced).
+  w.onerror = () => {
+    if (_worker === w) markPythonStuck()
+  }
+  clearTimeout(_readyTimer)
+  _readyTimer = setTimeout(markPythonStuck, PYTHON_READY_TIMEOUT_MS)
   w.postMessage({ type: 'init' })
   return w
+}
+
+// Python is stuck: drop the worker, settle whatever waits on it, and tell the screens. Nothing
+// rebuilds a worker after this; the student's Reload loads the page (and the current files).
+function markPythonStuck() {
+  if (isPythonStuck()) return
+  clearTimeout(_readyTimer)
+  _readyTimer = null
+  try {
+    _worker?.terminate()
+  } catch {
+    // already gone
+  }
+  _worker = null
+  _loadReject?.(new Error(STUCK))
+  _loadResolve = null
+  _loadReject = null
+  _loadingPromise = null
+  settleStageRenders()
+  _stopped = true
+  _runResolve?.({ status: 'stopped' })
+  _runResolve = null
+  setPythonStuck(true)
 }
 
 function handleWorkerMessage({ data }) {
@@ -76,6 +125,8 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'ready':
+      clearTimeout(_readyTimer)
+      _readyTimer = null
       _loadResolve?.()
       _loadResolve = null
       _loadReject = null
@@ -83,6 +134,8 @@ function handleWorkerMessage({ data }) {
       break
 
     case 'load_error':
+      clearTimeout(_readyTimer)
+      _readyTimer = null
       _loadReject?.(new Error(data.msg))
       _loadResolve = null
       _loadReject = null
@@ -155,14 +208,17 @@ export function isPyodideReady() {
  */
 export async function initPyodide(onProgress) {
   _progressCallback = onProgress
+  if (isPythonStuck()) throw new Error(STUCK)
   if (!_worker) {
     _worker = createAndInitWorker()
+    if (isPythonStuck()) throw new Error(STUCK)
   }
   if (_loadingPromise) {
     try {
       await _loadingPromise
     } catch (err) {
       if (!String(err).includes('__hs_stopped__')) throw err
+      if (isPythonStuck()) throw new Error(STUCK)
       // Stopped mid-load — not a real error, caller's .catch() should not fire
     }
   }
@@ -205,6 +261,7 @@ async function startRun(
     setup,
   } = {}
 ) {
+  if (isPythonStuck()) return { status: 'stopped' }
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
 
   _stopped = false
@@ -265,6 +322,7 @@ function settleStageRenders() {
  * took longer than `timeoutMs`, which stops Python). Never call it from inside a run.
  */
 export async function renderStage(code, { timeoutMs = 8000 } = {}) {
+  if (isPythonStuck()) return null
   if (!_worker) _worker = createAndInitWorker()
   if (_runsPending > 0) return null
   const job = _stageRenderChain.then(async () => {
@@ -308,7 +366,7 @@ export async function renderStage(code, { timeoutMs = 8000 } = {}) {
 
 /** Terminate the running worker immediately and pre-warm a replacement. */
 export function stopPython() {
-  if (!_worker) return
+  if (!_worker || isPythonStuck()) return
   _stopped = true
   _stopCount += 1
   _worker.terminate()
