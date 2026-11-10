@@ -43,6 +43,28 @@ describe('RenderErrorBoundary', () => {
     expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
+  it('promises the code is safe only when the pane is a code pane', () => {
+    mocks.crashing = true
+    const { unmount } = render(
+      <RenderErrorBoundary>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    expect(screen.getByTestId('render-error-fallback')).toHaveTextContent(
+      'Something went wrong.Tap to try again.'
+    )
+    expect(screen.getByTestId('render-error-fallback')).not.toHaveTextContent('Your code is safe')
+    unmount()
+    render(
+      <RenderErrorBoundary codeSafe>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    expect(screen.getByTestId('render-error-fallback')).toHaveTextContent(
+      'Tap to try again. Your code is safe 💾'
+    )
+  })
+
   it('shows tutors a plain line naming the pane, with the same retry', async () => {
     mocks.crashing = true
     const user = userEvent.setup()

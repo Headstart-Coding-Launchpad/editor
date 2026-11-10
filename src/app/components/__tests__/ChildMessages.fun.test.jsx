@@ -87,6 +87,41 @@ describe('R2 crash fallback (Fun moment)', () => {
   })
 })
 
+describe('R2 crash fallback outside a code pane', () => {
+  beforeEach(() => {
+    useElementSize.mockReturnValue([{ current: null }, { width: 0, height: 0 }])
+    getLessonModule.mockReturnValue({ ...PYTHON_MODULE, type: 'scratch' })
+    localStorage.clear()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('does not promise the code is safe in a Scratch pane', () => {
+    mocks.crashing = true
+    render(
+      <LessonTaskContent
+        lesson={{ type: 'scratch' }}
+        task={{ id: 3, title: 'Move the cat', explainer: 'Make the cat move.' }}
+        cs={{ inPersonalSandbox: false, code: '' }}
+        currentTaskId={3}
+        isSandbox={false}
+        isViewingPrev={false}
+        isForcedTeacherLive={false}
+        isMobile={false}
+        isQuizTask={false}
+        isAutoEvaluatedQuiz={false}
+        isInformationTask={false}
+        isTeacherEditing={false}
+      />
+    )
+    const fallback = screen.getByTestId('render-error-fallback')
+    expect(fallback).toHaveTextContent('Something went wrong.')
+    expect(fallback).toHaveTextContent('Tap to try again.')
+    expect(fallback).not.toHaveTextContent('Your code is safe')
+    mocks.crashing = false
+  })
+})
+
 describe('R7 offline banner (Fun moment)', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
@@ -103,7 +138,7 @@ describe('R7 offline banner (Fun moment)', () => {
       vi.advanceTimersByTime(3000)
     })
     expect(screen.getByTestId('offline-banner')).toHaveTextContent(
-      "📡 You're offline. Keep coding: your work is saved on this device and sends itself when you're back."
+      "📡 You're offline. Keep coding: your work is saved on this device."
     )
     // Nothing to tap.
     expect(screen.queryByRole('button')).toBeNull()
@@ -114,6 +149,31 @@ describe('R7 offline banner (Fun moment)', () => {
       vi.advanceTimersByTime(4000)
     })
     expect(screen.queryByTestId('offline-banner')).toBeNull()
+  })
+
+  it('leaves Back online at once if the connection drops again, and says offline after the grace', () => {
+    const { rerender } = render(<OfflineBanner connected />)
+    rerender(<OfflineBanner connected={false} />)
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+    rerender(<OfflineBanner connected />)
+    expect(screen.getByTestId('offline-banner')).toHaveTextContent('Back online ✅')
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    rerender(<OfflineBanner connected={false} />)
+    // Not still claiming Back online while the connection is down.
+    expect(screen.queryByTestId('offline-banner')).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(screen.getByTestId('offline-banner')).toHaveTextContent("You're offline.")
+    // The old Back online timer must not clear the offline strip.
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(screen.getByTestId('offline-banner')).toHaveTextContent("You're offline.")
   })
 
   it('never shows for a blip shorter than the grace time', () => {
