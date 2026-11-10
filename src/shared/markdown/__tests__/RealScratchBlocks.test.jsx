@@ -12,11 +12,12 @@ vi.mock('../blocklyStack.js', async (importOriginal) => {
     ...real,
     canDrawRealBlocks: () => stack.canDraw,
     peekScratchFenceSvg: (code) => stack.cache.get(code),
-    renderScratchFenceSvg: (code) => stack.render(code),
+    renderScratchFenceSvg: (code, opts) => stack.render(code, opts),
   }
 })
 
 import {
+  EDIT_DEBOUNCE_MS,
   EXPLAINER_BLOCK_SCALE,
   RealScratchBlocks,
   SHOW_FALLBACK_AFTER_MS,
@@ -115,5 +116,62 @@ it('is what a ```scratch fence in Markdown renders, with no switch in the URL', 
   const { container } = render(<MarkdownRenderer content={'```scratch\n' + CODE + '\n```'} />)
   await act(async () => {})
   expect(container.querySelector('[data-real-blocks="blockly"]')).toBeInTheDocument()
-  expect(stack.render).toHaveBeenCalledWith(CODE)
+  expect(stack.render.mock.calls[0][0]).toBe(CODE)
+})
+
+it('never paints the old picture under the new text when the fence changes', async () => {
+  const NEXT = 'when green flag clicked\nmove (10) steps'
+  stack.cache.set(CODE, DRAWN)
+  stack.render.mockReturnValue(new Promise(() => {}))
+  const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
+  // Every aria-label the picture held, including ones replaced within the same tick.
+  const labels = []
+  const observer = new MutationObserver((records) =>
+    records.forEach((r) => labels.push(r.oldValue, r.target.getAttribute?.('aria-label')))
+  )
+  observer.observe(container, {
+    subtree: true,
+    attributes: true,
+    attributeOldValue: true,
+    attributeFilter: ['aria-label'],
+  })
+  rerender(<RealScratchBlocks code={NEXT} />)
+  await act(async () => {})
+  observer.disconnect()
+  expect(labels).not.toContain('when green flag clicked move (10) steps')
+  expect(container.querySelector('[data-real-blocks="blockly"]')).toBeNull()
+})
+
+it('waits for typing to pause before drawing an edited fence', async () => {
+  vi.useFakeTimers()
+  try {
+    stack.render.mockResolvedValue(DRAWN)
+    const { rerender } = render(<RealScratchBlocks code={CODE} />)
+    expect(stack.render).toHaveBeenCalledTimes(1)
+    for (const n of [1, 2, 3]) rerender(<RealScratchBlocks code={`${CODE}\nmove (${n}) steps`} />)
+    expect(stack.render).toHaveBeenCalledTimes(1)
+    await act(async () => vi.advanceTimersByTime(EDIT_DEBOUNCE_MS + 10))
+    expect(stack.render).toHaveBeenCalledTimes(2)
+    expect(stack.render.mock.calls[1][0]).toBe(`${CODE}\nmove (3) steps`)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('tells the renderer when a fence is no longer wanted', async () => {
+  stack.render.mockReturnValue(new Promise(() => {}))
+  const { unmount } = render(<RealScratchBlocks code={CODE} />)
+  const { signal } = stack.render.mock.calls[0][1]
+  expect(signal.aborted).toBe(false)
+  unmount()
+  expect(signal.aborted).toBe(true)
+})
+
+it('shows the Markdown drawing straight away while an edited fence waits to be drawn', () => {
+  stack.render.mockReturnValue(new Promise(() => {}))
+  const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
+  rerender(<RealScratchBlocks code={`${CODE}\nmove (5) steps`} />)
+  const pending = container.querySelector('[data-real-blocks="pending"]')
+  expect(pending.style.visibility).toBe('')
+  expect(pending).not.toHaveAttribute('aria-hidden')
 })

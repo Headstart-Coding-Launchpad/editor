@@ -44,8 +44,10 @@ Entries written before 2026-09-29 are not tagged.
   ones the student drags (same shapes, colours, C-block arms and size); a wide stack shrinks to
   fit its column. The syntax is unchanged. A fence the engine can't draw keeps the old drawing:
   any line that is not a known block (`switch backdrop to (Farm)` with round brackets instead of
-  `[Farm]`, `say [] for (2) seconds` with an empty slot), or a block under `forever` inside
-  another mouth. A block written under a top-level `forever` is now drawn as its own stack,
+  `[Farm]`, `say [] for (2) seconds` with an empty slot), a condition that is not a block
+  (`if <score > 5> then`; write `if <(score) > (5)> then`), or a block under `forever` inside
+  another mouth. In the Builder preview a fence being edited shows the old drawing until typing
+  pauses. A block written under a top-level `forever` is now drawn as its own stack,
   as Scratch shows it (before, it looked attached). Inline `scratch:` pills are unchanged. See
   [markdown-renderer.md](markdown-renderer.md#scratch-blocks-fenced).
 - Affects: scratch, markdown · Existing lessons: no changes needed (write `[Farm]`, not

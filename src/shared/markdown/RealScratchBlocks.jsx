@@ -29,26 +29,44 @@ function sizedSvg(result, scope) {
   return { svg, width }
 }
 
+// A fence edited live (the Builder preview) is drawn once typing pauses for this long; the
+// Markdown drawing shows meanwhile (visible). The first drawing of a fence is not delayed.
+export const EDIT_DEBOUNCE_MS = 250
+
 function BlocklyFence({ code }) {
-  const [result, setResult] = React.useState(() => peekScratchFenceSvg(code))
-  const [slow, setSlow] = React.useState(false)
+  // Stored with the text it belongs to, so a picture never shows under different text.
+  const [drawnFor, setDrawnFor] = React.useState(() => ({
+    code,
+    result: peekScratchFenceSvg(code),
+  }))
+  const [slowFor, setSlowFor] = React.useState(null)
+  const firstCode = React.useRef(code)
   const scope = React.useId()
+  const result = drawnFor.code === code ? drawnFor.result : peekScratchFenceSvg(code)
+  // An edited fence shows the Markdown drawing at once, so the author never types blind.
+  const edited = code !== firstCode.current
+  const slow = slowFor === code || edited
 
   React.useEffect(() => {
     const ready = peekScratchFenceSvg(code)
-    setResult(ready)
-    setSlow(false)
-    if (ready) return undefined
-    let active = true
-    const timer = setTimeout(() => active && setSlow(true), SHOW_FALLBACK_AFTER_MS)
-    renderScratchFenceSvg(code).then((r) => {
-      if (active) setResult(r)
-    })
-    return () => {
-      active = false
-      clearTimeout(timer)
+    if (ready) {
+      setDrawnFor({ code, result: ready })
+      return undefined
     }
-  }, [code])
+    const controller = new AbortController()
+    const start = () =>
+      renderScratchFenceSvg(code, { signal: controller.signal }).then((r) => {
+        if (!controller.signal.aborted) setDrawnFor({ code, result: r })
+      })
+    const startTimer = edited ? setTimeout(start, EDIT_DEBOUNCE_MS) : null
+    if (!edited) start()
+    const slowTimer = setTimeout(() => setSlowFor(code), SHOW_FALLBACK_AFTER_MS)
+    return () => {
+      controller.abort()
+      clearTimeout(startTimer)
+      clearTimeout(slowTimer)
+    }
+  }, [code, edited])
 
   const drawn = React.useMemo(() => (result?.ok ? sizedSvg(result, scope) : null), [result, scope])
 
