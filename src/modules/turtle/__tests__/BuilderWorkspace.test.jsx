@@ -80,4 +80,26 @@ describe('Turtle BuilderWorkspace preview', () => {
     // Run completed, so the button reverts from Stop back to Run.
     expect(screen.getByText('Run')).toBeTruthy()
   })
+
+  it('says Python fell asleep when the load fails, and Run comes back (R3)', async () => {
+    initPyodide.mockRejectedValueOnce(
+      new Error('Python fell asleep. Reload the page to wake it up.')
+    )
+    render(
+      <BuilderWorkspace
+        task={task}
+        onUpdate={vi.fn()}
+        codeTab="stage_0"
+        codeStages={[{ role: 'starter', code: 'turtle.forward(10)' }]}
+        activePythonCode="turtle.forward(10)"
+        handleCodeTabChange={vi.fn()}
+        handleAddStage={vi.fn()}
+        handleRemoveStage={vi.fn()}
+        resetToStarterBtn={null}
+      />
+    )
+    fireEvent.click(screen.getByText('Run'))
+    expect(await screen.findByText(/Python fell asleep/)).toBeTruthy()
+    expect(screen.getByText('Run')).toBeTruthy()
+  })
 })

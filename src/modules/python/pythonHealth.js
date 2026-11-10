@@ -11,6 +11,11 @@
 // (teacher sandbox, Builder preview, code files, a shared link, electronics).
 export const PYTHON_ASLEEP_MESSAGE = 'Python fell asleep. Reload the page to wake it up.'
 
+/** True for the error initPyodide throws while Python is stuck. */
+export function isPythonAsleepError(err) {
+  return String(err?.message ?? err).includes(PYTHON_ASLEEP_MESSAGE)
+}
+
 let stuck = false
 const listeners = new Set()
 

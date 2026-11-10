@@ -8,6 +8,7 @@ import {
 } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { stripLineHints } from '../../shared/lineHints'
+import { isPythonAsleepError, PYTHON_ASLEEP_MESSAGE } from '../../modules/python/pythonHealth'
 
 export function useTaskEditorState({
   task,
@@ -71,7 +72,14 @@ export function useTaskEditorState({
     // No progress callback — nothing displays the raw progress text, and passing
     // one previously clobbered pyodideStatus's enum with progress strings mid-load.
     setPyodideStatus('loading')
-    await pythonMod.runtime.init()
+    try {
+      await pythonMod.runtime.init()
+    } catch (err) {
+      // Python stuck ("Python fell asleep", R3): the output says so, and Run stays available.
+      setPyodideStatus('error')
+      if (isPythonAsleepError(err)) setOutput(PYTHON_ASLEEP_MESSAGE)
+      throw err
+    }
     setPyodideStatus('ready')
   }
 
@@ -136,8 +144,9 @@ export function useTaskEditorState({
             ? 'stopped'
             : 'success'
       )
-    } catch {
-      pythonMod.runtime.stop()
+    } catch (err) {
+      // A slow load still under way is left to finish (R3); anything else stops Python.
+      if (!isPythonAsleepError(err)) pythonMod.runtime.stop()
       setRunStatus('error')
     } finally {
       setRunningTests(false)
@@ -198,8 +207,8 @@ export function useTaskEditorState({
             setIncorrectCheckResults(feedbackResults)
           }
         }
-      } catch {
-        pythonMod.runtime.stop()
+      } catch (err) {
+        if (!isPythonAsleepError(err)) pythonMod.runtime.stop()
         setRunStatus('error')
       } finally {
         setRunning(false)

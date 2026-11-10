@@ -36,4 +36,14 @@ describe('Python share link Run', () => {
     expect(await screen.findByText(/Hi Ava/)).toBeInTheDocument()
     expect(screen.queryByText('saved output')).toBeNull()
   })
+
+  it('says Python fell asleep when Python is stuck, rather than doing nothing (R3)', async () => {
+    const { initPyodide } = await import('../pyodide')
+    const { PYTHON_ASLEEP_MESSAGE } = await import('../pythonHealth.js')
+    initPyodide.mockRejectedValueOnce(new Error(PYTHON_ASLEEP_MESSAGE))
+    render(<PythonShareView payload={{ code: 'print(1)', output: '' }} />)
+    await userEvent.click(screen.getByRole('button', { name: /Run/ }))
+    expect(await screen.findByText(/Python fell asleep/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Run/ })).not.toBeDisabled()
+  })
 })

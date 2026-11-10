@@ -8,6 +8,7 @@ import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import OutputPanel from '../../app/components/OutputPanel'
 import { initPyodide, provideInput, runPython, stopPython } from './pyodide'
+import { isPythonAsleepError, PYTHON_ASLEEP_MESSAGE } from './pythonHealth'
 
 // The share payload's `stageJson` (JSON text of compactStageForSync's shape), or null.
 function readShareStage(payload) {
@@ -55,8 +56,10 @@ export default function PythonShareView({ payload }) {
         prompt: null,
         stage: result?.stage ? readStageResult(result.stage) : r.stage,
       }))
-    } catch {
-      setRun((r) => ({ ...r, status: 'error', prompt: null }))
+    } catch (err) {
+      // Python stuck ("Python fell asleep", R3): say so in the output, not just "Error".
+      const note = isPythonAsleepError(err) ? `${PYTHON_ASLEEP_MESSAGE}\n` : ''
+      setRun((r) => ({ ...r, status: 'error', prompt: null, output: r.output + note }))
     } finally {
       runningRef.current = false
     }

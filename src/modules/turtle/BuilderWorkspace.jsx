@@ -83,7 +83,15 @@ export default function BuilderWorkspace({
     setCommands([])
     setTurtleState(DEFAULT_TURTLE_STATE)
     setCourseRun(null)
-    await initPyodide()
+    try {
+      await initPyodide()
+    } catch (err) {
+      // Python stuck or failed to load ("Python fell asleep", R3): say so; Run comes back.
+      setRunning(false)
+      setStatus('error')
+      setOutput(String(err?.message || 'Python could not load.'))
+      return
+    }
     // A course task runs once per map (./courseRun.js).
     const result = await runTurtleTask(activePythonCode, task, {
       runPython,
