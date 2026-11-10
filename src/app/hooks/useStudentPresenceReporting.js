@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 // How often window/keyboard activity is reported. The teacher grid only needs a
 // WhatsApp-style "typing" indicator, so one write every couple of seconds is plenty.
 const ACTIVITY_WRITE_INTERVAL_MS = 2000
+
+// Minimum gap between self-heal re-registrations while `online` stays missing.
+const PRESENCE_HEAL_INTERVAL_MS = 10000
 
 const REPORTING_PHASES = ['lesson', 'sandbox']
 
@@ -30,11 +33,42 @@ export function useStudentPresenceReporting({
   // Register Firebase presence so the teacher sees who is connected live. Also
   // re-registers on reconnect (connected flips true) so the online key is restored after
   // a temporary network drop without a page refresh.
+  const lastRegisteredAt = useRef(0)
+  // Only a joined student (node present) whose `online` key is missing needs healing; an
+  // absent node means the teacher removed them, and it must stay removed.
+  const needsHeal = !!session?.students?.[anonymousId] && !session.students[anonymousId].online
+  const needsHealRef = useRef(needsHeal)
+  useEffect(() => {
+    needsHealRef.current = needsHeal
+  }, [needsHeal])
   useEffect(() => {
     if (!reporting || !connected) return
+    lastRegisteredAt.current = Date.now()
     registerPresence(anonymousId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reporting, anonymousId, connected])
+
+  // Self-heal: a late server-side onDisconnect from an old tab/connection can remove `online`
+  // after this connection set it, and `connected` never flips, so nothing would restore it.
+  // While connected and our own `online` key is missing, register again, at most once per
+  // PRESENCE_HEAL_INTERVAL_MS. No writes happen while `online` is present.
+  useEffect(() => {
+    if (!reporting || !connected || !needsHeal) return
+    const heal = () => {
+      if (!needsHealRef.current) return
+      if (Date.now() - lastRegisteredAt.current < PRESENCE_HEAL_INTERVAL_MS) return
+      lastRegisteredAt.current = Date.now()
+      try {
+        Promise.resolve(registerPresence(anonymousId)).catch(() => {})
+      } catch {
+        // a failed heal is retried on the next interval
+      }
+    }
+    heal()
+    const timer = setInterval(heal, PRESENCE_HEAL_INTERVAL_MS)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reporting, anonymousId, connected, needsHeal])
 
   // Whether the student's browser window is focused, so the teacher sees "Away" when a
   // student has switched tabs or minimised the window.
