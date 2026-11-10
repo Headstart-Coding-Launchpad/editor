@@ -1076,3 +1076,21 @@ describe('StudentCard live badges (teacher-only)', () => {
     expect(onToggleSelect).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('StudentCard: screen health chips (R3)', () => {
+  it('labels Python stuck and Screen error for an online student, beside presence', () => {
+    const { unmount } = render(<StudentCard {...mkProps({}, { health: 'python_stuck' })} />)
+    expect(screen.getByTestId('health-chip')).toHaveTextContent('Python stuck')
+    unmount()
+    render(<StudentCard {...mkProps({}, { health: 'screen_error' })} />)
+    expect(screen.getByTestId('health-chip')).toHaveTextContent('Screen error')
+  })
+
+  it('shows nothing for ok, or for an offline student (Offline says it)', () => {
+    const { unmount } = render(<StudentCard {...mkProps({}, { health: 'ok' })} />)
+    expect(screen.queryByTestId('health-chip')).toBeNull()
+    unmount()
+    render(<StudentCard {...mkProps({}, { health: 'python_stuck', online: false })} />)
+    expect(screen.queryByTestId('health-chip')).toBeNull()
+  })
+})

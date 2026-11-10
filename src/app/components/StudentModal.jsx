@@ -74,6 +74,7 @@ import RenderErrorBoundary from './RenderErrorBoundary'
 import CanSeeStrip from './student-modal/CanSeeStrip'
 import { studentCanSee } from './student-modal/studentCanSee'
 import { signalKey } from '../../badges/signals.js'
+import { studentHealthBanner, studentHealthProblem } from '../../shared/studentHealth'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
 const AUTO_REVEAL_OPTIONS = [
@@ -1883,6 +1884,7 @@ export default function StudentModal({
         )}
 
         <ModalStrip chips={stripChips} mode={modeRow} />
+        <StudentHealthBanner student={student} />
 
         {peerHelp && (
           <TeacherPeerHelpStudentPanel
@@ -2540,4 +2542,38 @@ const sTo = {
     background: 'var(--colour-primary)',
     color: '#fff',
   },
+}
+
+// Python stuck / screen error on this student's screen (students/{id}/health, R3): one line
+// above their work. The tutor acts with the controls already here (message, edit, run).
+function StudentHealthBanner({ student }) {
+  const problem = studentHealthProblem(student)
+  const text = studentHealthBanner(problem, student?.displayName)
+  if (!text) return null
+  return (
+    <div
+      role="status"
+      data-testid="student-health-banner"
+      style={{
+        ...sHealth.banner,
+        ...(problem === 'screen_error' ? sHealth.screenError : sHealth.pythonStuck),
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
+const sHealth = {
+  banner: {
+    margin: '0 0 8px',
+    padding: '8px 12px',
+    borderRadius: 8,
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.88rem',
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  pythonStuck: { background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d' },
+  screenError: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
 }

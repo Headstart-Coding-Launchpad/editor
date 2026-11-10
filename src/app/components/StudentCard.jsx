@@ -23,6 +23,7 @@ import { puzzleCardNote } from '../../shared/puzzle/puzzle.js'
 import { getModuleDefinition } from '../../modules/definitions'
 import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
+import { studentHealthChip, studentHealthProblem } from '../../shared/studentHealth'
 import { scrubResultOf } from '../scrubResult'
 import OneTapAwardButton from './badges/OneTapAwardButton'
 import TipButton from './TipButton'
@@ -329,6 +330,10 @@ export default function StudentCard({
   // While the session is waiting the dot still shows real presence; the "Waiting" badge
   // below (PresenceBadge) carries the waiting state.
   const presenceState = student.online ? 'online' : 'offline'
+  // Python stuck / screen error on their screen (students/{id}/health, R3): a labelled chip
+  // beside the presence chips, asking the tutor to look.
+  const healthProblem = studentHealthProblem(student)
+  const healthChip = studentHealthChip(healthProblem)
   const statusColour =
     presenceState === 'online' ? 'var(--colour-success)' : 'var(--colour-muted-soft)'
   const presenceTitle =
@@ -593,6 +598,18 @@ export default function StudentCard({
               label="Away"
               title="Away: the student's tab is not focused"
               style={s.checkBadgeAway}
+            />
+          )}
+          {healthChip && (
+            <IconChip
+              icon={healthChip.icon}
+              label={healthChip.label}
+              title={healthChip.title}
+              style={
+                healthProblem === 'python_stuck' ? s.checkBadgePythonStuck : s.checkBadgeScreenError
+              }
+              testId="health-chip"
+              showLabel
             />
           )}
           {onNudge && student.online && student.windowFocused === false && (
@@ -1337,6 +1354,16 @@ const s = {
     border: '1px solid #d1d5db',
     textTransform: 'none',
     letterSpacing: 0,
+  },
+  checkBadgePythonStuck: {
+    background: '#fffbeb',
+    color: '#92400e',
+    border: '1px solid #fcd34d',
+  },
+  checkBadgeScreenError: {
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fecaca',
   },
   checkBadgeAway: {
     background: '#f3f4f6',

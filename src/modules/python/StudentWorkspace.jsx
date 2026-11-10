@@ -513,9 +513,7 @@ export default function StudentWorkspace({
                   style={s.primaryBtn}
                   data-highlight-target="run stop"
                   onClick={handleRunClick}
-                  disabled={
-                    !cs.running && !cs.runningTests && (pythonNotReady || !!runLock)
-                  }
+                  disabled={!cs.running && !cs.runningTests && (pythonNotReady || !!runLock)}
                   title={
                     !cs.running && runLock
                       ? runLock.message

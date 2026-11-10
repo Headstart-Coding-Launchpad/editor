@@ -37,6 +37,7 @@ import {
   summariseRowStates,
 } from '../studentList.js'
 import RenderErrorBoundary from './RenderErrorBoundary'
+import { studentHealthProblem } from '../../shared/studentHealth'
 
 export default function StudentGrid({
   students = [],
@@ -350,6 +351,10 @@ export default function StudentGrid({
   const studentsById = Object.fromEntries(students.map((st) => [st.anonymousId, st]))
   const ordered = order.ids.map((id) => studentsById[id]).filter(Boolean)
   const counts = summariseRowStates(Object.values(rowStates))
+  // Python stuck / screen error (students/{id}/health, R3), beside the offline count.
+  const healthProblems = students.map(studentHealthProblem)
+  const pythonStuckCount = healthProblems.filter((p) => p === 'python_stuck').length
+  const screenErrorCount = healthProblems.filter((p) => p === 'screen_error').length
   // The Finished filter only applies while someone is finished: when the count drops to 0 its
   // Show all control goes, so the filter goes with it (and is reset for next time).
   const finishedFilterOn = finishedOnly && counts.finished > 0
@@ -617,6 +622,16 @@ export default function StudentGrid({
       title: 'Online, but their tab is not focused',
     },
     counts.offline > 0 && { key: 'offline', text: `${counts.offline} offline`, title: 'Offline' },
+    pythonStuckCount > 0 && {
+      key: 'python_stuck',
+      text: `${pythonStuckCount} Python stuck`,
+      title: 'Python stopped working on their screen: they see a Reload button',
+    },
+    screenErrorCount > 0 && {
+      key: 'screen_error',
+      text: `${screenErrorCount} screen error`,
+      title: 'Part of their screen hit an error: they see a Try again button',
+    },
   ].filter(Boolean)
 
   // The status row under the title: the count line, roster and joining chips, Fullscreen All.

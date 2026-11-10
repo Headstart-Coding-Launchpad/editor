@@ -1511,3 +1511,15 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     expect(screen.getByRole('dialog', { name: /Award badge/ })).toBeInTheDocument()
   })
 })
+
+describe('StudentModal: screen health banner (R3)', () => {
+  it("says why when the student's Python is stuck, and nothing when all is well", () => {
+    const { unmount } = render(<StudentModal {...mkProps({}, { health: 'python_stuck' })} />)
+    expect(screen.getByTestId('student-health-banner')).toHaveTextContent(
+      'Python stopped working. Their code is safe'
+    )
+    unmount()
+    render(<StudentModal {...mkProps({}, { health: 'ok' })} />)
+    expect(screen.queryByTestId('student-health-banner')).toBeNull()
+  })
+})

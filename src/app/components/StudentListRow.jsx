@@ -3,6 +3,7 @@ import StudentCard from './StudentCard'
 import { ageWords, IDLE_AFTER_MS, outputStub, rowOutputText } from '../studentList.js'
 import { hintPlainText, readHintOffer, readStudentHint } from '../studentHints.js'
 import { exampleOpenCount } from '../../shared/exampleOpens'
+import { studentHealthChip, studentHealthProblem } from '../../shared/studentHealth'
 
 // One student in the tutor's compact list (sketch v2, Ryan OK 8 Nov 2026): a 28px row with the
 // presence marker, name, up to 3 glyphs, a grey output stub and one status word or live cue; a
@@ -328,25 +329,39 @@ export default function StudentListRow({
     badgePendingCount > 0 ? { key: 'badge', icon: '🏅', label: 'Badge suggestion waiting' } : null,
   ].filter(Boolean)
 
+  // Python stuck / screen error on their screen (students/{id}/health, R3): first on the second
+  // line and the opened row's chips.
+  const healthProblem = studentHealthProblem(student)
+  const healthChip = studentHealthChip(healthProblem)
+
   // The one second line, most useful first.
-  const note = shownHint
+  const note = healthChip
     ? {
-        icon: '💬',
-        text: `${shownHint.source === 'override' ? 'Your hint' : 'Hint showing'}: “${hintPlainText(shownHint.text)}”`,
+        icon: healthChip.icon,
+        text:
+          healthProblem === 'python_stuck'
+            ? 'Python stuck: their code is safe, they see Reload'
+            : 'Screen error: they see Try again',
+        health: healthProblem,
       }
-    : paste?.count > 0
+    : shownHint
       ? {
-          icon: '📋',
-          text: `Pasted${paste.count > 1 ? ` ×${paste.count}` : ''}, ${paste.chars ?? 0} characters${paste.lastAt ? ` · ${ageWords(paste.lastAt, now)} ago` : ''}`.replace(
-            ' · now ago',
-            ' · just now'
-          ),
+          icon: '💬',
+          text: `${shownHint.source === 'override' ? 'Your hint' : 'Hint showing'}: “${hintPlainText(shownHint.text)}”`,
         }
-      : codePaneHidden(student, { isCodeTask })
-        ? { icon: '🙈', text: 'Code pane not on their screen' }
-        : sideQuest
-          ? { icon: sideQuest.icon, text: sideQuest.text }
-          : null
+      : paste?.count > 0
+        ? {
+            icon: '📋',
+            text: `Pasted${paste.count > 1 ? ` ×${paste.count}` : ''}, ${paste.chars ?? 0} characters${paste.lastAt ? ` · ${ageWords(paste.lastAt, now)} ago` : ''}`.replace(
+              ' · now ago',
+              ' · just now'
+            ),
+          }
+        : codePaneHidden(student, { isCodeTask })
+          ? { icon: '🙈', text: 'Code pane not on their screen' }
+          : sideQuest
+            ? { icon: sideQuest.icon, text: sideQuest.text }
+            : null
 
   function startRename() {
     setNameValue(name)
@@ -504,6 +519,13 @@ export default function StudentListRow({
   // At most two chips in the opened row: Sharing, the hint, a fail streak, an override.
   const failStreak = Number(shownHint?.failStreak) || 0
   const chips = [
+    healthChip
+      ? {
+          text: `${healthChip.icon} ${healthChip.label}`,
+          title: healthChip.title,
+          style: healthProblem === 'python_stuck' ? s.chipPythonStuck : s.chipScreenError,
+        }
+      : null,
     student.shareRequestedAt != null ? { text: '📤 Sharing', style: s.chipShare } : null,
     shownHint || shownOffer
       ? {
@@ -690,7 +712,11 @@ export default function StudentListRow({
         <RowMenu name={name} groups={menuGroups} onOpenChange={setMenuOpen} />
       </div>
       {note && !open && (
-        <div style={s.note} data-testid="row-note" title={note.text}>
+        <div
+          style={{ ...s.note, ...(note.health ? s.noteHealth : null) }}
+          data-testid="row-note"
+          title={note.text}
+        >
           <span aria-hidden="true">{note.icon}</span> {note.text}
         </div>
       )}
@@ -968,6 +994,8 @@ const s = {
     marginTop: -3,
     marginBottom: 2,
   },
+  // A Python stuck / screen error line reads as a problem, not a passing note.
+  noteHealth: { color: '#b45309', fontWeight: 700 },
   open: {
     display: 'flex',
     flexDirection: 'column',
@@ -999,6 +1027,8 @@ const s = {
   },
   chipShare: { background: '#0d9488', color: '#fff' },
   chipHint: { background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' },
+  chipPythonStuck: { background: '#fffbeb', color: '#92400e', border: '1px solid #fcd34d' },
+  chipScreenError: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
   chipGrey: { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' },
   actions: { display: 'flex', alignItems: 'center', gap: 5 },
   actionBtn: {

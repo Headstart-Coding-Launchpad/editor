@@ -714,3 +714,28 @@ describe('StudentGrid help rows (was the needs-you strip)', () => {
     expect(screen.getByTestId('student-grid').textContent).not.toMatch(/Stuck/)
   })
 })
+
+describe('StudentGrid: screen health (R3)', () => {
+  it('counts Python stuck and screen errors in the header, and leads the row note', () => {
+    const students = [
+      { ...STUDENTS[0], health: 'python_stuck' },
+      {
+        ...STUDENTS[1],
+        anonymousId: 's2',
+        displayName: 'Bob',
+        online: true,
+        health: 'screen_error',
+      },
+    ]
+    render(<StudentGrid {...mkProps({ students })} />)
+    expect(screen.getByText('1 Python stuck')).toBeInTheDocument()
+    expect(screen.getByText('1 screen error')).toBeInTheDocument()
+    const notes = screen.getAllByTestId('row-note').map((note) => note.textContent)
+    expect(notes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Python stuck: their code is safe'),
+        expect.stringContaining('Screen error: they see Try again'),
+      ])
+    )
+  })
+})
