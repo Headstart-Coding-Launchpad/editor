@@ -171,6 +171,14 @@ describe('ActivityHost', () => {
     expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Tap the star')
   })
 
+  it('collapsed header text has no line breaks; open keeps them', () => {
+    const task = { ...BINARY, description: 'Find the dot `.`\nkey, the one we use.\nIt sits low.' }
+    render(<ActivityView task={task} state={binary.initialState(task)} />)
+    expect(screen.getByTestId('activity-markdown').textContent).not.toMatch(/\n/)
+    fireEvent.click(screen.getByRole('button', { name: 'more' }))
+    expect(screen.getByTestId('activity-markdown').textContent).toMatch(/\n/)
+  })
+
   it('shows no device notices on read-only views', () => {
     useTouchOnlyDevice()
     render(

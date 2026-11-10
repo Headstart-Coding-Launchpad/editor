@@ -45,6 +45,7 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
   const [open, setOpen] = useState(false)
   if (!task?.title && !text) return null
   // Long instructions are clamped to one line (Layout briefs, owner decision 7); "more" opens them.
+  // Collapsed: newlines become spaces; remark-breaks' <br> would force extra lines past nowrap.
   const long = text.length > 90 || /\n/.test(text)
   return (
     <section className={`act-header act-header--clamp${open ? ' act-header--open' : ''}`}>
@@ -53,7 +54,7 @@ function ActivityHeader({ task, lessonType, topicLibrary = null }) {
         <div className="act-header__body">
           <div className="act-header__text">
             <MarkdownRenderer
-              content={text}
+              content={open ? text : text.replace(/\s*\n+\s*/g, ' ')}
               topicType={lessonType ?? null}
               disableCopy
               showLibrary={!!topicLibrary}

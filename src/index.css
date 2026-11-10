@@ -4718,10 +4718,12 @@ label.te-backdrop-tag,
   line-height: 1.6;
 }
 
-.act-header--clamp:not(.act-header--open) .act-header__text > * {
-  display: inline;
-  margin: 0;
-  line-height: inherit;
+.act-header--clamp:not(.act-header--open) .act-header__text * {
+  display: inline !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  /* Markdown wraps text in nested divs/p and styles code inline (pre-wrap): force one line. */
+  white-space: nowrap !important;
 }
 
 .act-header--open {
