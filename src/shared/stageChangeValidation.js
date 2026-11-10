@@ -9,7 +9,7 @@ export const STAGE_SHOW_VALUES = ['full', 'change']
 const COPY_ANCHOR_FIELDS = ['copyAfter', 'copyBefore']
 
 /**
- * `changeView`: whether this module shows a Complete stage's change view (Python). Elsewhere
+ * `changeView`: whether this module shows a Complete or Support stage's change view (Python). Elsewhere
  * `show: 'change'` is ignored, with a warning.
  */
 export function validateStageChange(task, n, errors, warnings, { changeView = false } = {}) {
@@ -23,9 +23,9 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
     if (stage.show !== 'change') return
     if (!changeView) {
       warnings.push(`${where} show: "change" works in Python lessons only; it is ignored here`)
-    } else if (getStageRole(stage) !== 'complete') {
+    } else if (!['complete', 'support'].includes(getStageRole(stage))) {
       warnings.push(
-        `${where} show: "change" works on a Complete stage only; this stage shows in full`
+        `${where} show: "change" works on a Complete or Support stage only; this stage shows in full`
       )
     }
   })

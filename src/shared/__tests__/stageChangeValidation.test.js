@@ -28,11 +28,17 @@ describe('validateStageChange', () => {
     ])
   })
 
-  it('warns that show: change on a Support stage is ignored', () => {
-    expect(
-      run({ codeStages: [{ label: 'Hint', role: 'support', code: 'x', show: 'change' }] }).warnings
-    ).toEqual([
-      'Task 1 stage 1 show: "change" works on a Complete stage only; this stage shows in full',
+  it('accepts show: change on a Support stage', () => {
+    const result = run({
+      codeStages: [{ label: 'Hint', role: 'support', code: 'x', show: 'change' }],
+    })
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+  })
+
+  it('warns that show: change on a Starter stage is ignored', () => {
+    expect(run({ codeStages: [{ ...starter, show: 'change' }] }).warnings).toEqual([
+      'Task 1 stage 1 show: "change" works on a Complete or Support stage only; this stage shows in full',
     ])
   })
 
