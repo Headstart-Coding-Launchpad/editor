@@ -70,6 +70,9 @@ import { describeActivityDevice } from '../../activities/device.js'
 import { readStudentHint } from '../studentHints.js'
 import ModalStrip from './student-modal/ModalStrip'
 import StudentModalLeftColumn from './student-modal/StudentModalLeftColumn'
+import CanSeeStrip from './student-modal/CanSeeStrip'
+import { studentCanSee } from './student-modal/studentCanSee'
+import { signalKey } from '../../badges/signals.js'
 
 // Modes match AUTO_REVEAL_MODES (src/shared/taskStages.js); null turns it off.
 const AUTO_REVEAL_OPTIONS = [
@@ -228,6 +231,9 @@ export default function StudentModal({
   const narrowHeader = useNarrowWindow(1280)
   // The left column (instructions, hint, Type this out) folded to a rail.
   const [leftCollapsed, setLeftCollapsed] = useState(false)
+  // The "Student can see" item whose read-only preview is open, for one student and task
+  // ({ at: 'student:task', key }), so it never carries over to the next student or task.
+  const [canSeePreview, setCanSeePreview] = useState(null)
 
   // Teacher highlight: select a range in the mirrored view, tag it, send it
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
@@ -732,17 +738,23 @@ export default function StudentModal({
   const teacherLiveReferenceMatchesTask =
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
 
+  const canSeeAt = `${student.anonymousId}:${task?.id ?? ''}`
+  const canSeeOpenKey = canSeePreview?.at === canSeeAt ? canSeePreview.key : null
+
   // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
   // must see the teacher's latest typed code/files, not the values from when it was bound.
-  // Escape closes the export dialog or badge picker first, then the modal.
+  // Escape closes a Student can see preview, the export dialog or badge picker first, then
+  // the modal.
   const handleCloseRef = useLatestRef(() =>
-    showExportDialog
-      ? setShowExportDialog(false)
-      : showCopyCodeDialog
-        ? setShowCopyCodeDialog(false)
-        : showBadgeDialog
-          ? setShowBadgeDialog(false)
-          : handleClose()
+    canSeeOpenKey
+      ? setCanSeePreview(null)
+      : showExportDialog
+        ? setShowExportDialog(false)
+        : showCopyCodeDialog
+          ? setShowCopyCodeDialog(false)
+          : showBadgeDialog
+            ? setShowBadgeDialog(false)
+            : handleClose()
   )
   useEffect(() => {
     function onKey(e) {
@@ -974,12 +986,6 @@ export default function StudentModal({
       tone: 'info',
       title: 'Your live code is pinned for the class but hidden for this student',
       content: '📌 Live code: hidden for this student',
-    },
-    Object.keys(revealedSupportStages).length > 0 && {
-      key: 'reference',
-      tone: 'info',
-      title: 'Student has opened a stage reference',
-      content: 'Reference opened',
     },
     examplesOpened > 0 && {
       key: 'examples',
@@ -1482,6 +1488,22 @@ export default function StudentModal({
           session?.students?.[student.anonymousId]?.copyCodeOverrides
         )
       : null
+  // "Student can see": what this student has open on the task, from what is already logged.
+  const canSeeItems = isSessionSandbox
+    ? []
+    : studentCanSee({
+        task,
+        copyCode: workspaceCopyCode,
+        supportsCopyCode: lessonModule?.supportsCopyCode === true && !isInformation && !isQuiz,
+        supportsStages: !isInformation && !isQuizLike && !!moduleCaps?.unifiedStages,
+        revealLog: revealedSupportStages,
+        completeShown:
+          task?.id != null
+            ? (session?.studentSignals?.[student.anonymousId]?.completeShown?.[
+                signalKey(task.id)
+              ] ?? null)
+            : null,
+      })
   const showLeftColumn =
     !!task &&
     !!mirror &&
@@ -1825,6 +1847,16 @@ export default function StudentModal({
             ✕
           </button>
         </div>
+        <CanSeeStrip
+          items={canSeeItems}
+          studentName={studentName}
+          task={task}
+          lessonType={taskLesson?.type}
+          studentCode={student.currentCode}
+          copyCode={workspaceCopyCode}
+          openKey={canSeeOpenKey}
+          onOpenChange={(key) => setCanSeePreview(key ? { at: canSeeAt, key } : null)}
+        />
         {markFailOpen && (
           <OverrideFailModal
             onCancel={() => setMarkFailOpen(false)}
