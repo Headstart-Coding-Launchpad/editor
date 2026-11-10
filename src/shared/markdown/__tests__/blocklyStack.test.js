@@ -90,7 +90,7 @@ describe('scratchFenceToState', () => {
   it('makes a bare word in a number slot a variable reporter and offers it in the menus', () => {
     const r = toState(['when green flag clicked', 'move (speed) steps'])
     expect(r.ok).toBe(true)
-    expect(tops(r)[0].next.block.inputs.STEPS.block).toEqual({
+    expect(tops(r)[0].next.block.inputs.STEPS.block).toMatchObject({
       type: 'data_variable',
       fields: { VARIABLE: 'speed' },
     })
@@ -285,6 +285,110 @@ describe('render cache', () => {
       student.dispose()
       studentDiv.remove()
     }
+  })
+
+  it('never leaves a disposed render workspace as Blockly main when there was no main', async () => {
+    // A page with no student workspace (an explainer on its own).
+    rt.Blockly.common.setMainWorkspace(null)
+    const host = rt.svg.createRenderHost(100)
+    const ws = rt.svg.injectRenderWorkspace(rt.Blockly, host)
+    ws.dispose()
+    host.remove()
+    expect(rt.Blockly.getMainWorkspace()).toBeFalsy()
+  })
+
+  it('puts the student workspace back as main after a render workspace is disposed', () => {
+    const studentDiv = document.createElement('div')
+    document.body.appendChild(studentDiv)
+    const student = rt.Blockly.inject(studentDiv, { renderer: 'zelos' })
+    try {
+      const host = rt.svg.createRenderHost(100)
+      const ws = rt.svg.injectRenderWorkspace(rt.Blockly, host)
+      // Something (a click on it, a focus) made the render workspace main meanwhile.
+      rt.Blockly.common.setMainWorkspace(ws)
+      ws.dispose()
+      host.remove()
+      expect(rt.Blockly.getMainWorkspace()).toBe(student)
+    } finally {
+      student.dispose()
+      studentDiv.remove()
+      rt.Blockly.common.setMainWorkspace(null)
+    }
+  })
+
+  const stubDraw = () => ({
+    ...realSvg,
+    workspaceToSvg: async () => ({
+      svg: '<svg width="10" height="10"></svg>',
+      width: 10,
+      height: 10,
+    }),
+  })
+
+  it('falls back when Blockly changes a number shadow value (no other number drawn)', async () => {
+    rt.svg = stubDraw()
+    const r = await renderScratchFenceSvg('when green flag clicked\nmove (1e3) steps')
+    expect(r.ok).toBe(false)
+    expect(r.problems.join(' ')).toMatch(/math_number\.NUM: 1e3/)
+  })
+
+  it('falls back when a variable reporter name is refused by its menu', async () => {
+    rt.svg = stubDraw()
+    const realScratch = rt.scratch
+    // A menu with no variables at all: Blockly would draw some other name.
+    rt.scratch = {
+      ...realScratch,
+      setWorkspaceBlocklyContext: (ws) =>
+        realScratch.setWorkspaceBlocklyContext(ws, () => ({
+          sprites: [],
+          costumes: [],
+          backdrops: [],
+          variables: [{ id: 'other', name: 'other' }],
+          sounds: [],
+        })),
+    }
+    try {
+      const r = await renderScratchFenceSvg('when green flag clicked\nmove (speed) steps')
+      expect(r.ok).toBe(false)
+      expect(r.problems.join(' ')).toMatch(/data_variable\.VARIABLE: speed/)
+    } finally {
+      rt.scratch = realScratch
+    }
+  })
+
+  it('loads the block font for the fence text itself, and does not cache a stand-in', async () => {
+    rt.svg = stubDraw()
+    const asked = []
+    const fonts = {
+      load: async (font, text) => {
+        asked.push(text)
+        return []
+      },
+      // Latin is there; the accented letter's subset is not.
+      check: (font, text) => !(text ?? '').includes('é'),
+    }
+    Object.defineProperty(document, 'fonts', { value: fonts, configurable: true })
+    const CAFE = 'when green flag clicked\nsay [café]'
+    try {
+      const r = await renderScratchFenceSvg(CAFE)
+      expect(r.ok).toBe(true)
+      expect(asked.some((t) => t?.includes('café'))).toBe(true)
+      expect(peekScratchFenceSvg(CAFE)).toBeUndefined()
+      await renderScratchFenceSvg(FENCE)
+      expect(peekScratchFenceSvg(FENCE)).toBeDefined()
+    } finally {
+      delete document.fonts
+    }
+  })
+})
+
+describe('block ids', () => {
+  it('gives variable reporters and shadow blocks ids, so refused values are found', () => {
+    const r = toState(['when green flag clicked', 'move (speed) steps', 'turn right (15) degrees'])
+    const move = tops(r)[0].next.block
+    expect(move.inputs.STEPS.block.id).toBeTruthy()
+    expect(move.inputs.STEPS.shadow.id).toBeTruthy()
+    expect(move.next.block.inputs.DEGREES.shadow.id).toBeTruthy()
   })
 })
 

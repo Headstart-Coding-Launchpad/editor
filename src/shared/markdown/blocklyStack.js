@@ -281,6 +281,7 @@ export function scratchFenceToState(rt, code) {
   for (const group of groups) {
     for (const top of chainsToJson(rt, group, ctx, problems, true)) blocks.push(top)
   }
+  blocks.forEach((b) => giveIds(b, ctx))
   return {
     ok: problems.length === 0 && blocks.length > 0,
     problems,
@@ -294,16 +295,31 @@ function contextFor(values) {
   return { sprites: named, costumes: named, backdrops: named, variables: named, sounds: named }
 }
 
-// Field values Blockly would not take (a menu value it refused) mean the picture would differ
-// from the text. Blocks without an id (variable reporters) are not checked.
+// Every block, shadow blocks and variable reporters included, gets an id, so refusedFields()
+// can find each one after loading.
+function giveIds(json, ctx) {
+  if (!json) return
+  if (!json.id) json.id = `b${ctx.nextId++}`
+  for (const input of Object.values(json.inputs ?? {})) {
+    giveIds(input.shadow, ctx)
+    giveIds(input.block, ctx)
+  }
+  giveIds(json.next?.block, ctx)
+}
+
+// Field values Blockly would not take or changed (a menu value it refused, a number it rewrote)
+// mean the picture would differ from the text. A block that is missing counts as refused.
 function refusedFields(ws, json, out = []) {
   if (!json) return out
-  const block = json.id ? ws.getBlockById(json.id) : null
+  const block = ws.getBlockById(json.id)
+  if (!block) out.push(`${json.type}: not loaded`)
   for (const [name, value] of Object.entries(block ? (json.fields ?? {}) : {})) {
     if (String(block.getFieldValue(name)) !== String(value))
       out.push(`${json.type}.${name}: ${value}`)
   }
-  for (const input of Object.values(json.inputs ?? {})) refusedFields(ws, input.block, out)
+  // A shadow under a block is not drawn (Blockly keeps only its state), so only the block counts.
+  for (const input of Object.values(json.inputs ?? {}))
+    refusedFields(ws, input.block ?? input.shadow, out)
   return refusedFields(ws, json.next?.block, out)
 }
 
@@ -344,16 +360,15 @@ const RENDER_SIZE = 1600
 const STACK_GAP = 12
 const BLOCK_FONT = "600 12px 'Quicksand'"
 
-// Blockly measures text as it renders, so the block font must be there first. True when it is
-// (or when the page cannot say): a picture measured with a stand-in font is not cached.
-async function blockFontLoaded(rt) {
+// Blockly measures text as it renders, so the block font must be there first, for every
+// character of this fence (the font comes in subsets: Latin, accented letters, ...). True when
+// it is (or when the page cannot say): a picture measured with a stand-in font is not cached.
+// Once a subset has loaded, load() and check() answer at once.
+async function blockFontLoaded(text) {
   const fonts = document.fonts
   if (!fonts?.load) return true
-  if (!rt.fontReady) rt.fontReady = Promise.resolve(fonts.load(BLOCK_FONT)).catch(() => {})
-  await rt.fontReady
-  if (!fonts.check || fonts.check(BLOCK_FONT)) return true
-  rt.fontReady = null
-  return false
+  await Promise.resolve(fonts.load(BLOCK_FONT, text)).catch(() => {})
+  return !fonts.check || fonts.check(BLOCK_FONT, text)
 }
 
 // One throwaway workspace per render (in an inert, off-screen host), disposed straight after,
@@ -362,7 +377,7 @@ async function renderOnce(code) {
   const rt = await loadFenceRuntime()
   const parsed = scratchFenceToState(rt, code)
   if (!parsed.ok) return { ok: false, problems: parsed.problems }
-  const fontLoaded = await blockFontLoaded(rt)
+  const fontLoaded = await blockFontLoaded(code)
   const { Blockly, scratch, svg } = rt
   const host = svg.createRenderHost(RENDER_SIZE, RENDER_HOST_ID)
   let ws = null

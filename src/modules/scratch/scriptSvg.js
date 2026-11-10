@@ -62,12 +62,22 @@ export function createRenderHost(size, id) {
 /**
  * A read-only render workspace in `container`. Blockly.inject makes every new workspace the
  * "main" one, which receives copy, paste, delete and undo; the student's own workspace is put
- * back as main straight away. Dispose the workspace when done.
+ * back as main straight away. Dispose the workspace when done: disposing puts back the main
+ * workspace there was before (none if there was none), so Blockly's global handlers never reach
+ * a disposed workspace.
  */
 export function injectRenderWorkspace(Blockly, container) {
-  const main = Blockly.getMainWorkspace?.()
+  const before = Blockly.getMainWorkspace?.()
+  const previous = before && !before.isDisposed?.() ? before : null
   const ws = Blockly.inject(container, SCRIPT_RENDER_OPTIONS)
-  if (main && main !== ws && !main.isDisposed?.()) Blockly.common.setMainWorkspace(main)
+  if (previous && previous !== ws) Blockly.common.setMainWorkspace(previous)
+  const dispose = ws.dispose.bind(ws)
+  ws.dispose = () => {
+    dispose()
+    const main = Blockly.getMainWorkspace?.()
+    if (main === ws || main?.isDisposed?.())
+      Blockly.common.setMainWorkspace(previous && !previous.isDisposed?.() ? previous : null)
+  }
   return ws
 }
 
