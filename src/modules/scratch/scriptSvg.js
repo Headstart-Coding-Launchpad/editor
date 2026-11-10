@@ -36,6 +36,41 @@ export const SCRIPT_RENDER_OPTIONS = Object.freeze({
   move: { scrollbars: false, drag: false, wheel: false },
 })
 
+/**
+ * An off-screen host for render-only workspaces: hidden from screen readers, inert (nothing in
+ * it can take focus, so Tab and the keyboard never reach it) and click-through. The caller
+ * removes it when done.
+ */
+export function createRenderHost(size, id) {
+  const host = document.createElement('div')
+  if (id) host.id = id
+  host.className = 'scratch-workspace'
+  host.setAttribute('aria-hidden', 'true')
+  host.setAttribute('inert', '')
+  Object.assign(host.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: `${size}px`,
+    height: `${size}px`,
+    pointerEvents: 'none',
+  })
+  document.body.appendChild(host)
+  return host
+}
+
+/**
+ * A read-only render workspace in `container`. Blockly.inject makes every new workspace the
+ * "main" one, which receives copy, paste, delete and undo; the student's own workspace is put
+ * back as main straight away. Dispose the workspace when done.
+ */
+export function injectRenderWorkspace(Blockly, container) {
+  const main = Blockly.getMainWorkspace?.()
+  const ws = Blockly.inject(container, SCRIPT_RENDER_OPTIONS)
+  if (main && main !== ws && !main.isDisposed?.()) Blockly.common.setMainWorkspace(main)
+  return ws
+}
+
 export function copyStyles(source, target) {
   const computed = getComputedStyle(source)
   const style = STYLE_PROPS.map((prop) => [prop, computed.getPropertyValue(prop)])

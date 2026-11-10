@@ -9,8 +9,9 @@
 //    to them in order. Anything that does not map cleanly makes the whole fence fall back to the
 //    Markdown renderer (`ok: false` with the reasons): an unknown line, more slots than the
 //    block has, a menu value the block does not offer.
-// 3. One hidden, read-only workspace (reused; renders queued one at a time) draws the stack;
-//    scriptSvg.js turns it into one standalone SVG string. Results are cached by fence text.
+// 3. A throwaway, read-only workspace in an inert off-screen host (renders queued one at a time,
+//    disposed after each) draws the stack; scriptSvg.js turns it into one standalone SVG
+//    string. Results are cached by fence text, except ones that may differ next time.
 //
 // Blockly is loaded only through a dynamic import, so a page with no Scratch fence never
 // downloads it.
@@ -171,11 +172,11 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
     // A value input.
     const def = defaults[target.name]
     const content = slot ? slot.content.trim() : ''
+    const conditionOnly = target.check?.includes?.('Boolean') && !target.check.includes('Number')
     const nested = content && depth < 4 ? findScratchBlock(content) : null
     const shadowFor = (value) => {
       if (def) return { type: def.type, fields: { [def.field]: String(value ?? def.value) } }
-      const isBool = target.check?.includes?.('Boolean') && !target.check.includes('Number')
-      if (isBool) return null
+      if (conditionOnly) return null
       return isNumeric(String(value ?? '0'))
         ? { type: 'math_number', fields: { NUM: String(value ?? 0) } }
         : { type: 'text', fields: { TEXT: String(value ?? '') } }
@@ -190,6 +191,12 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
     if (!content) {
       const shadow = slot ? shadowFor('') : shadowFor()
       if (shadow) json.inputs[target.name] = { shadow }
+      return
+    }
+    // A condition slot takes only a block (`<touching [edge]?>`): anything else would draw as
+    // an empty hexagon, a different block from the one written.
+    if (conditionOnly) {
+      problems.push(`"${text}": condition <${content}> is not a block`)
       return
     }
     // `(score)`: a bare word in a number slot is a variable reporter in real Scratch.
@@ -305,19 +312,23 @@ function refusedFields(ws, json, out = []) {
  * in the picture points at it. Ids that stay are renamed to `hsc-sb-<n>`, ready for
  * scopeSvgIds() to make them unique per picture on the page.
  */
+// What comes before an id where something points at it: url(#x), url("#x") (written
+// url(&quot;#x&quot;) inside an attribute, as computed styles give it), url('#x'), href="#x".
+const ID_REF_PREFIX = String.raw`url\(\s*(?:&quot;|["'])?#|href="#`
+
 export function tidySvgIds(svg) {
   let out = svg.replace(/\sdata-id="[^"]*"/g, '')
   const ids = [...out.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
   ids.forEach((id, n) => {
     const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const refRe = new RegExp(`(url\\(#|href="#)${esc}(\\)|")`, 'g')
+    const refRe = new RegExp(String.raw`(${ID_REF_PREFIX})${esc}(?![\w-])`, 'g')
     const referenced = refRe.test(out)
     const idRe = new RegExp(`\\sid="${esc}"`, 'g')
     if (!referenced) {
       out = out.replace(idRe, '')
       return
     }
-    out = out.replace(idRe, ` id="hsc-sb-${n}"`).replace(refRe, `$1hsc-sb-${n}$2`)
+    out = out.replace(idRe, ` id="hsc-sb-${n}"`).replace(refRe, `$1hsc-sb-${n}`)
   })
   return out
 }
@@ -325,48 +336,40 @@ export function tidySvgIds(svg) {
 /** Gives the `hsc-sb-` ids (and the references to them) a prefix unique to one picture. */
 export function scopeSvgIds(svg, scope) {
   const safe = String(scope).replace(/[^\w-]/g, '')
-  return svg.replace(/(id="|url\(#|href="#)hsc-sb-/g, `$1hsc-sb-${safe}-`)
+  return svg.replace(new RegExp(`(id="|${ID_REF_PREFIX})hsc-sb-`, 'g'), `$1hsc-sb-${safe}-`)
 }
 
 const RENDER_HOST_ID = 'hsc-explainer-blockly-host'
+const RENDER_SIZE = 1600
 const STACK_GAP = 12
+const BLOCK_FONT = "600 12px 'Quicksand'"
 
-function renderHost() {
-  let host = document.getElementById(RENDER_HOST_ID)
-  if (!host) {
-    host = document.createElement('div')
-    host.id = RENDER_HOST_ID
-    host.className = 'scratch-workspace'
-    host.setAttribute('aria-hidden', 'true')
-    Object.assign(host.style, {
-      position: 'fixed',
-      left: '-10000px',
-      top: '0',
-      width: '1600px',
-      height: '1600px',
-      pointerEvents: 'none',
-    })
-    document.body.appendChild(host)
-  }
-  return host
+// Blockly measures text as it renders, so the block font must be there first. True when it is
+// (or when the page cannot say): a picture measured with a stand-in font is not cached.
+async function blockFontLoaded(rt) {
+  const fonts = document.fonts
+  if (!fonts?.load) return true
+  if (!rt.fontReady) rt.fontReady = Promise.resolve(fonts.load(BLOCK_FONT)).catch(() => {})
+  await rt.fontReady
+  if (!fonts.check || fonts.check(BLOCK_FONT)) return true
+  rt.fontReady = null
+  return false
 }
 
+// One throwaway workspace per render (in an inert, off-screen host), disposed straight after,
+// so nothing of it stays on the page beside the student's own workspace.
 async function renderOnce(code) {
   const rt = await loadFenceRuntime()
   const parsed = scratchFenceToState(rt, code)
   if (!parsed.ok) return { ok: false, problems: parsed.problems }
-  if (!rt.fontReady) {
-    // Blockly measures text as it renders: the block font must be there first.
-    rt.fontReady = Promise.resolve(document.fonts?.load("600 12px 'Quicksand'")).catch(() => {})
-  }
-  await rt.fontReady
+  const fontLoaded = await blockFontLoaded(rt)
   const { Blockly, scratch, svg } = rt
-  if (!rt.ws) rt.ws = Blockly.inject(renderHost(), { ...svg.SCRIPT_RENDER_OPTIONS })
-  const ws = rt.ws
-  const context = contextFor(parsed.values)
-  scratch.setWorkspaceBlocklyContext(ws, () => context)
+  const host = svg.createRenderHost(RENDER_SIZE, RENDER_HOST_ID)
+  let ws = null
   try {
-    ws.clear()
+    ws = svg.injectRenderWorkspace(Blockly, host)
+    const context = contextFor(parsed.values)
+    scratch.setWorkspaceBlocklyContext(ws, () => context)
     Blockly.serialization.workspaces.load(parsed.state, ws, { recordUndo: false })
     // Stacks one under another, as the Markdown renderer lays them out.
     let y = 0
@@ -378,17 +381,12 @@ async function renderOnce(code) {
     if (refused.length) return { ok: false, problems: refused.map((r) => `refused ${r}`) }
     const out = await svg.workspaceToSvg(ws, { padding: 2, embedFont: false })
     if (!out.width || !out.height) return { ok: false, problems: ['nothing drawn'] }
-    return { ok: true, svg: tidySvgIds(out.svg), width: out.width, height: out.height }
+    const result = { ok: true, svg: tidySvgIds(out.svg), width: out.width, height: out.height }
+    return fontLoaded ? result : { ...result, retry: true }
   } finally {
-    ws.clear()
+    ws?.dispose()
+    host.remove()
   }
-}
-
-function remember(key, result) {
-  pending.delete(key)
-  done.delete(key)
-  done.set(key, result)
-  while (done.size > FENCE_CACHE_LIMIT) done.delete(done.keys().next().value)
 }
 
 /** The finished render for this fence text, if it is cached; otherwise undefined. */
@@ -396,24 +394,51 @@ export function peekScratchFenceSvg(code) {
   return done.get(String(code ?? ''))
 }
 
+function remember(key, result) {
+  done.delete(key)
+  done.set(key, result)
+  while (done.size > FENCE_CACHE_LIMIT) done.delete(done.keys().next().value)
+}
+
 /**
- * Renders the fence to `{ ok: true, svg, width, height }` or `{ ok: false, problems }`.
- * Cached by text; renders run one at a time.
+ * Renders the fence to `{ ok: true, svg, width, height }` or `{ ok: false, problems }`. Renders
+ * run one at a time. Results that will not change are cached by text; a result marked
+ * `retry: true` (the render threw, the block font was missing, or nobody wanted it any more) is
+ * not, so the next request draws it again.
+ *
+ * `signal` (an AbortSignal) says the caller no longer needs the picture: a render still queued
+ * that every caller has given up on is skipped, so a fence edited key by key draws only the
+ * text it ends on.
  */
-export function renderScratchFenceSvg(code) {
+export function renderScratchFenceSvg(code, { signal } = {}) {
   const key = String(code ?? '')
   if (done.has(key)) return Promise.resolve(done.get(key))
-  if (pending.has(key)) return pending.get(key)
-  const job = queue
-    .then(() => renderOnce(key))
-    .catch((e) => ({ ok: false, problems: [e?.message ?? String(e)] }))
-    .then((result) => {
-      remember(key, result)
-      return result
-    })
-  queue = job.then(() => undefined)
-  pending.set(key, job)
-  return job
+  let entry = pending.get(key)
+  if (!entry) {
+    const job = { wanted: 0 }
+    job.promise = queue
+      .then(() =>
+        job.wanted > 0
+          ? renderOnce(key)
+          : { ok: false, problems: ['no longer needed'], retry: true }
+      )
+      .catch((e) => ({ ok: false, problems: [e?.message ?? String(e)], retry: true }))
+      .then((result) => {
+        if (pending.get(key) === job) pending.delete(key)
+        if (!result.retry) remember(key, result)
+        return result
+      })
+    queue = job.promise.then(() => undefined)
+    pending.set(key, job)
+    entry = job
+  }
+  if (!signal) {
+    entry.wanted = Infinity
+  } else if (!signal.aborted) {
+    entry.wanted += 1
+    signal.addEventListener('abort', () => (entry.wanted -= 1), { once: true })
+  }
+  return entry.promise
 }
 
 export function clearScratchFenceCache() {

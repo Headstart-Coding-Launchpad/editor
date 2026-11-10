@@ -1,6 +1,9 @@
 import {
   canDrawRealBlocks,
+  clearScratchFenceCache,
   loadFenceRuntime,
+  peekScratchFenceSvg,
+  renderScratchFenceSvg,
   scopeSvgIds,
   scratchFenceToState,
   tidySvgIds,
@@ -105,6 +108,25 @@ describe('scratchFenceToState', () => {
     expect(tops(r)).toHaveLength(2)
   })
 
+  it('falls back when a condition slot holds text that is not a block', () => {
+    // An empty hexagon would draw a different block from the one written.
+    for (const line of ['if <score > 5> then', 'if <score is big> then']) {
+      const r = toState([line, '  move (10) steps', 'end'])
+      expect(r.ok, line).toBe(false)
+      expect(r.problems.join(' '), line).toMatch(/condition/)
+    }
+  })
+
+  it('still draws an empty condition and a real boolean block in a condition slot', () => {
+    expect(toState(['if <> then', '  move (10) steps', 'end']).ok).toBe(true)
+    const r = toState(['if <touching [edge]?> then', '  move (10) steps', 'end'])
+    expect(r.ok).toBe(true)
+    expect(tops(r)[0].inputs.CONDITION.block.type).toBe('sensing_touchingobject')
+    const gt = toState(['if <(score) > (5)> then', '  move (10) steps', 'end'])
+    expect(gt.ok).toBe(true)
+    expect(tops(gt)[0].inputs.CONDITION.block.type).toBe('operator_gt')
+  })
+
   it('gives every block its own id', () => {
     const r = toState([
       'when green flag clicked',
@@ -139,6 +161,20 @@ describe('svg ids', () => {
     expect(out).toMatch(/href="#hsc-sb-0"/)
   })
 
+  it('keeps ids referenced with quoted url() forms, as computed styles write them', () => {
+    const quoted =
+      '<svg><defs><filter id="a1"/><filter id="b2"/></defs>' +
+      '<path style="filter:url(&quot;#a1&quot;)"/><path style="filter: url(\'#b2\')"/></svg>'
+    const out = tidySvgIds(quoted)
+    expect(out).toMatch(/id="hsc-sb-0"/)
+    expect(out).toMatch(/url\(&quot;#hsc-sb-0&quot;\)/)
+    expect(out).toMatch(/id="hsc-sb-1"/)
+    expect(out).toMatch(/url\('#hsc-sb-1'\)/)
+    const scoped = scopeSvgIds(out, 'p')
+    expect(scoped).toMatch(/url\(&quot;#hsc-sb-p-0&quot;\)/)
+    expect(scoped).toMatch(/url\('#hsc-sb-p-1'\)/)
+  })
+
   it('scopes ids per picture so two copies on a page never clash', () => {
     const tidy = tidySvgIds(svg)
     const a = scopeSvgIds(tidy, ':r1:')
@@ -146,6 +182,109 @@ describe('svg ids', () => {
     expect(a).toMatch(/id="hsc-sb-r1-0"/)
     expect(a).toMatch(/url\(#hsc-sb-r1-0\)/)
     expect(b).toMatch(/id="hsc-sb-r2-0"/)
+  })
+})
+
+describe('render cache', () => {
+  const FENCE = ['when green flag clicked', 'move (10) steps'].join('\n')
+  let realSvg
+  beforeEach(() => {
+    clearScratchFenceCache()
+    realSvg = rt.svg
+  })
+  afterEach(() => {
+    rt.svg = realSvg
+    clearScratchFenceCache()
+  })
+
+  it('caches a fence Blockly cannot draw', async () => {
+    const r = await renderScratchFenceSvg('wiggle [a lot]')
+    expect(r.ok).toBe(false)
+    expect(peekScratchFenceSvg('wiggle [a lot]')).toBe(r)
+  })
+
+  it('does not cache a render that threw, so the next request tries again', async () => {
+    rt.svg = {
+      ...realSvg,
+      workspaceToSvg: async () => {
+        throw new Error('chunk failed')
+      },
+    }
+    const first = await renderScratchFenceSvg(FENCE)
+    expect(first.ok).toBe(false)
+    expect(peekScratchFenceSvg(FENCE)).toBeUndefined()
+    const second = await renderScratchFenceSvg(FENCE)
+    expect(second).not.toBe(first)
+  })
+
+  it('drops a queued render nobody wants any more', async () => {
+    const drawn = []
+    rt.svg = {
+      ...realSvg,
+      workspaceToSvg: async (ws) => {
+        drawn.push(ws.getTopBlocks(false).length)
+        return { svg: '<svg width="10" height="10"></svg>', width: 10, height: 10 }
+      },
+    }
+    const typed = ['move (1) steps', 'move (12) steps'].map((l) => `when green flag clicked\n${l}`)
+    const controllers = typed.map(() => new AbortController())
+    const jobs = typed.map((code, i) =>
+      renderScratchFenceSvg(code, { signal: controllers[i].signal })
+    )
+    controllers[0].abort()
+    const [dropped, kept] = await Promise.all(jobs)
+    expect(drawn).toHaveLength(1)
+    expect(dropped.ok).toBe(false)
+    expect(peekScratchFenceSvg(typed[0])).toBeUndefined()
+    expect(kept.ok).toBe(true)
+    expect(peekScratchFenceSvg(typed[1])).toBe(kept)
+  })
+
+  it('does not cache a picture measured before the block font loaded', async () => {
+    rt.svg = {
+      ...realSvg,
+      workspaceToSvg: async () => ({
+        svg: '<svg width="10" height="10"></svg>',
+        width: 10,
+        height: 10,
+      }),
+    }
+    const fonts = { load: async () => [], check: () => false }
+    Object.defineProperty(document, 'fonts', { value: fonts, configurable: true })
+    try {
+      const r = await renderScratchFenceSvg(FENCE)
+      expect(r.ok).toBe(true)
+      expect(peekScratchFenceSvg(FENCE)).toBeUndefined()
+      fonts.check = () => true
+      const again = await renderScratchFenceSvg(FENCE)
+      expect(peekScratchFenceSvg(FENCE)).toBe(again)
+    } finally {
+      delete document.fonts
+    }
+  })
+
+  it('leaves no render workspace or host on the page between renders', async () => {
+    rt.svg = {
+      ...realSvg,
+      workspaceToSvg: async () => ({
+        svg: '<svg width="10" height="10"></svg>',
+        width: 10,
+        height: 10,
+      }),
+    }
+    // The student's own workspace keeps the keyboard shortcuts (copy, paste, delete, undo).
+    const studentDiv = document.createElement('div')
+    document.body.appendChild(studentDiv)
+    const student = rt.Blockly.inject(studentDiv, { renderer: 'zelos' })
+    try {
+      await renderScratchFenceSvg(FENCE)
+      expect(rt.Blockly.getMainWorkspace()).toBe(student)
+      expect(document.querySelectorAll('.injectionDiv')).toHaveLength(1)
+      expect(document.getElementById('hsc-explainer-blockly-host')).toBeNull()
+    } finally {
+      student.dispose()
+      studentDiv.remove()
+    }
   })
 })
 

@@ -5,7 +5,7 @@ import { svgToPngBytes } from '../../../shared/exportWork/pictures.js'
 import { loadBlocklyModules, setWorkspaceBlocklyContext } from '../scratch.js'
 import { loadWorkspace } from '../scratchPersistence.js'
 import { resolveSpriteSounds } from '../scratchSounds.js'
-import { SCRIPT_RENDER_OPTIONS, workspaceToSvg } from '../scriptSvg.js'
+import { createRenderHost, injectRenderWorkspace, workspaceToSvg } from '../scriptSvg.js'
 import { hasBlocks } from './projectModel.js'
 
 // Dropdown lists for one sprite's workspace, as ScratchWorkspace gives it (names only: no
@@ -31,18 +31,7 @@ export async function renderScriptPictures(model, { notes = [] } = {}) {
   } catch {
     // Falls back to the default font.
   }
-  const host = document.createElement('div')
-  host.className = 'scratch-workspace'
-  host.setAttribute('aria-hidden', 'true')
-  Object.assign(host.style, {
-    position: 'fixed',
-    left: '-10000px',
-    top: '0',
-    width: '2400px',
-    height: '2400px',
-    pointerEvents: 'none',
-  })
-  document.body.appendChild(host)
+  const host = createRenderHost(2400)
 
   const jobs = model.sprites.map((sprite) => ({
     label: sprite.name,
@@ -59,7 +48,7 @@ export async function renderScriptPictures(model, { notes = [] } = {}) {
       const div = document.createElement('div')
       Object.assign(div.style, { width: '2400px', height: '2400px' })
       host.appendChild(div)
-      const ws = Blockly.inject(div, SCRIPT_RENDER_OPTIONS)
+      const ws = injectRenderWorkspace(Blockly, div)
       try {
         const context = contextFor(model, job.sprite)
         setWorkspaceBlocklyContext(ws, () => context)
