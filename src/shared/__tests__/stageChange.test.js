@@ -5,6 +5,7 @@ import {
   cleanCodeLines,
   computeStageChange,
   copyAnchorRows,
+  pairInlineRows,
   stageChangeIsExcerpt,
   stageShowsChange,
 } from '../stageChange.js'
@@ -482,6 +483,58 @@ describe('computeStageChange on an excerpt (Support stage)', () => {
       )
     )
     expect(big.reason).toBe('big-add')
+  })
+
+  // An excerpt is often lifted out of a block, so its indent need not match the student's.
+  const IN_DRAW = lines(
+    'def draw():',
+    '    background("skyblue")',
+    '    circle(50, "gold", x=200, y=150)',
+    '    print("done")'
+  )
+
+  it('an excerpt indented less than the student code is not a re-indent', () => {
+    const change = excerpt(
+      lines('circle(50, "gold", x=200, y=150)', 'text("Hi!", x=200, y=240)'),
+      IN_DRAW
+    )
+    expect(change.kind).toBe('changes')
+    expect(change.hunks).toHaveLength(1)
+    expect(change.hunks[0].indent).toBeNull()
+    expect(change.fullRows.map((row) => row.type)).toEqual(['same', 'add'])
+  })
+
+  it('a small swap in a dedented excerpt still pairs into one ± row', () => {
+    const change = excerpt(lines('background("navy")', 'circle(50, "gold", x=200, y=150)'), IN_DRAW)
+    expect(change.kind).toBe('changes')
+    const rows = pairInlineRows(change.hunks[0].rows)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ type: 'change', text: 'background("navy")' })
+  })
+
+  it('a line the hint moves into a new block is still a re-indent', () => {
+    const change = excerpt(
+      lines('x = 1', 'for i in range(3):', '    circle(50)'),
+      lines('x = 1', 'circle(50)', 'print(x)')
+    )
+    expect(change.hunks[0].indent).toMatchObject({ lines: ['    circle(50)'], direction: 'in' })
+  })
+
+  it('in a long run of skipped lines, the line nearest the next shared line can pair', () => {
+    const filler = Array.from(
+      { length: CHANGE_LIMITS.inlineMaxRunLines + 2 },
+      (_, i) => `n${i} = ${i}`
+    )
+    const base = lines('from stage import *', ...filler, 'background("skyblue")', 'print("done")')
+    const change = excerpt(
+      lines('from stage import *', 'background("navy")', 'print("done")'),
+      base
+    )
+    expect(change.kind).toBe('changes')
+    expect(change.hunks[0].rows).toEqual([
+      { type: 'remove', text: 'background("skyblue")' },
+      { type: 'add', text: 'background("navy")' },
+    ])
   })
 })
 

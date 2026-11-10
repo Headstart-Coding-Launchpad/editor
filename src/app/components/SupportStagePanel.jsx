@@ -102,9 +102,10 @@ export default function SupportStagePanel({
   lockSets = null,
   // The student's code to compare with (chooseChangeBase): with it, a Complete or Support code
   // stage that has `show: 'change'` shows only what changes (modules with
-  // capabilities.stageChangeView, Python); a Support stage is an excerpt (stageChangeIsExcerpt). Read once, when the stage is first revealed, so the view holds still while the
-  // student types; callers key the panel per task and stage, and remount it after "Replace my
-  // code with this" so it compares with the replaced code.
+  // capabilities.stageChangeView, Python); a Support stage is an excerpt (stageChangeIsExcerpt).
+  // Read once, when the stage is first revealed, so the view holds still while the student
+  // types; callers key the panel per task and stage, and remount it after "Replace my code with
+  // this" so it compares with the replaced code.
   changeBase = null,
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
