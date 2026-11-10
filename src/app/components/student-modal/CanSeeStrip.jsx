@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CopyCodePanel from '../CopyCodePanel'
 import SupportStagePanel from '../SupportStagePanel'
 import { chooseChangeBase } from '../../../shared/stageChange'
@@ -9,21 +9,26 @@ import { formatCanSeeTime } from './studentCanSee'
 
 // The StudentModal's "Student can see" strip (sketch OK'd 10 Nov 2026): one line under the action
 // buttons with up to three fixed items (studentCanSee): Copy code, the Support stage on the
-// student's screen and Complete. Green = the student can see it, dashed grey = not. A green item
+// student's screen and Complete. Green = the student has opened it (the logs are append-only, so
+// they may have closed it since), dashed grey = not. A green item
 // opens a read-only preview of exactly what the student sees: the Type this out box, or the stage
 // reference (with a Support change view against the student's own code). Tutor-only; it reads
 // logged data and never writes. The modal owns `openKey` so Escape closes the preview first.
 
 function itemText(item) {
   const time = formatCanSeeTime(item.at)
-  const who = item.by === 'tutor' ? 'revealed by you' : 'opened by student'
+  const who = item.by === 'tutor' ? 'opened by you' : 'opened by student'
   const detail = time ? `${who} ${time}` : who
-  if (item.key === 'copy') return { main: `Copy code: ${item.on ? 'on' : 'off'}` }
+  // Copy code is the task's configured Type this out code, not proof it reached the screen.
+  if (item.key === 'copy') return { main: `Copy code: ${item.on ? 'set' : 'off'}` }
   if (item.key === 'support') {
     return item.on ? { main: `Support ${item.number}`, detail } : { main: 'Support: none' }
   }
   return item.on ? { main: 'Complete', detail } : { main: 'Complete: closed' }
 }
+
+const POPOVER_WIDTH = 440
+const OPENED_EARLIER = 'Opened earlier; may be closed now.'
 
 const OFF_TITLES = {
   copy: 'The student has no Type this out code on this task',
@@ -42,24 +47,40 @@ export default function CanSeeStrip({
   onOpenChange,
 }) {
   const rootRef = useRef(null)
+  // Set by a pointerdown inside the strip in React's tree, which includes content a panel
+  // portals elsewhere (React events bubble through portals), so the document listener skips it.
+  const insideRef = useRef(false)
+  const [anchorLeft, setAnchorLeft] = useState(140)
   const onOpenChangeRef = useLatestRef(onOpenChange)
 
-  // A click anywhere else closes the preview.
+  // A press anywhere else (mouse, touch or pen) closes the preview.
   useEffect(() => {
     if (!openKey) return undefined
+    insideRef.current = false
     const close = (event) => {
-      if (!rootRef.current?.contains(event.target)) onOpenChangeRef.current(null)
+      const inside = insideRef.current || rootRef.current?.contains(event.target)
+      insideRef.current = false
+      if (!inside) onOpenChangeRef.current(null)
     }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
   }, [openKey, onOpenChangeRef])
 
   if (!items.length) return null
   const open = items.find((item) => item.key === openKey && item.on) ?? null
 
   return (
-    <div ref={rootRef} style={s.strip} data-testid="student-can-see-strip">
-      <span style={s.label}>Student can see</span>
+    <div
+      ref={rootRef}
+      style={s.strip}
+      data-testid="student-can-see-strip"
+      onPointerDownCapture={() => {
+        insideRef.current = true
+      }}
+    >
+      <span style={s.label} title={`What the student has opened on this task. ${OPENED_EARLIER}`}>
+        Student can see
+      </span>
       {items.map((item) => {
         const { main, detail } = itemText(item)
         const isOpen = open?.key === item.key
@@ -72,7 +93,12 @@ export default function CanSeeStrip({
             aria-expanded={item.on ? isOpen : undefined}
             title={item.on ? 'Preview what the student sees (read-only)' : OFF_TITLES[item.key]}
             data-testid={`can-see-${item.key}`}
-            onClick={() => onOpenChange(isOpen ? null : item.key)}
+            onClick={(event) => {
+              // Anchor the preview under the clicked item.
+              const room = (rootRef.current?.clientWidth ?? 0) - POPOVER_WIDTH - 12
+              setAnchorLeft(Math.max(12, Math.min(event.currentTarget.offsetLeft, room)))
+              onOpenChange(isOpen ? null : item.key)
+            }}
           >
             {main}
             {detail && <span style={s.detail}>{detail}</span>}
@@ -83,7 +109,7 @@ export default function CanSeeStrip({
       {items.some((item) => item.on) && <span style={s.note}>click an item to preview</span>}
       {open && (
         <div
-          style={s.popover}
+          style={{ ...s.popover, left: anchorLeft }}
           className="ui-popover"
           role="dialog"
           aria-label="What the student sees"
@@ -123,7 +149,7 @@ export default function CanSeeStrip({
               />
             )}
           </div>
-          <div style={s.popoverFoot}>Same view the student has. Esc closes.</div>
+          <div style={s.popoverFoot}>Same view the student has. {OPENED_EARLIER} Esc closes.</div>
         </div>
       )}
     </div>
@@ -193,10 +219,9 @@ const s = {
   popover: {
     position: 'absolute',
     top: 'calc(100% + 4px)',
-    left: 140,
     zIndex: 210,
-    width: 440,
-    maxWidth: 'calc(100% - 160px)',
+    width: POPOVER_WIDTH,
+    maxWidth: 'calc(100% - 24px)',
     display: 'flex',
     flexDirection: 'column',
     background: '#fff',

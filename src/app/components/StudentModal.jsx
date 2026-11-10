@@ -704,6 +704,30 @@ export default function StudentModal({
   const completeStage =
     !isInformation && !isQuizLike && supportsStageReveal ? getCompleteStage(task) : null
   const revealedSupportStages = session?.supportRevealLog?.[student.anonymousId]?.[task?.id] ?? {}
+  const workspaceCopyCode =
+    lessonModule?.supportsCopyCode === true
+      ? effectiveCopyCode(
+          task,
+          session?.copyCodeOverrides,
+          session?.students?.[student.anonymousId]?.copyCodeOverrides
+        )
+      : null
+  // "Student can see": what this student has open on the task, from what is already logged.
+  const canSeeItems = isSessionSandbox
+    ? []
+    : studentCanSee({
+        task,
+        copyCode: workspaceCopyCode,
+        supportsCopyCode: lessonModule?.supportsCopyCode === true && !isInformation && !isQuiz,
+        supportsStages: !isInformation && !isQuizLike && !!moduleCaps?.unifiedStages,
+        revealLog: revealedSupportStages,
+        completeShown:
+          task?.id != null
+            ? (session?.studentSignals?.[student.anonymousId]?.completeShown?.[
+                signalKey(task.id)
+              ] ?? null)
+            : null,
+      })
   // "See example" fences opened in this task's explainer (src/shared/exampleOpens.js).
   const examplesOpened = exampleOpenCount(session, student.anonymousId, task?.id)
   // "Every task" reference: re-applied by the student's client on each task.
@@ -739,7 +763,13 @@ export default function StudentModal({
     !!session?.teacherLiveReference?.active && session?.teacherLiveReference?.taskId === task?.id
 
   const canSeeAt = `${student.anonymousId}:${task?.id ?? ''}`
-  const canSeeOpenKey = canSeePreview?.at === canSeeAt ? canSeePreview.key : null
+  // Only an item that is still on keeps its preview open (a reset can turn it off mid-preview),
+  // so a stale key never swallows the Escape that should close the modal.
+  const canSeeOpenKey =
+    canSeePreview?.at === canSeeAt &&
+    canSeeItems.some((item) => item.key === canSeePreview.key && item.on)
+      ? canSeePreview.key
+      : null
 
   // Read through a ref: the listener is bound once, and handleClose → handleCommitEdit
   // must see the teacher's latest typed code/files, not the values from when it was bound.
@@ -987,6 +1017,14 @@ export default function StudentModal({
       title: 'Your live code is pinned for the class but hidden for this student',
       content: '📌 Live code: hidden for this student',
     },
+    // Where the Student can see strip shows, it says which stage instead.
+    canSeeItems.length === 0 &&
+      Object.keys(revealedSupportStages).length > 0 && {
+        key: 'reference',
+        tone: 'info',
+        title: 'Student has opened a stage reference',
+        content: 'Reference opened',
+      },
     examplesOpened > 0 && {
       key: 'examples',
       tone: 'info',
@@ -1480,30 +1518,6 @@ export default function StudentModal({
   const hasAnyTool = toolColumns(() => {}).length > 0 || !!onDecideBadge
 
   // ─── Body: instructions on the left, the workspace, Output on the right ───────
-  const workspaceCopyCode =
-    lessonModule?.supportsCopyCode === true
-      ? effectiveCopyCode(
-          task,
-          session?.copyCodeOverrides,
-          session?.students?.[student.anonymousId]?.copyCodeOverrides
-        )
-      : null
-  // "Student can see": what this student has open on the task, from what is already logged.
-  const canSeeItems = isSessionSandbox
-    ? []
-    : studentCanSee({
-        task,
-        copyCode: workspaceCopyCode,
-        supportsCopyCode: lessonModule?.supportsCopyCode === true && !isInformation && !isQuiz,
-        supportsStages: !isInformation && !isQuizLike && !!moduleCaps?.unifiedStages,
-        revealLog: revealedSupportStages,
-        completeShown:
-          task?.id != null
-            ? (session?.studentSignals?.[student.anonymousId]?.completeShown?.[
-                signalKey(task.id)
-              ] ?? null)
-            : null,
-      })
   const showLeftColumn =
     !!task &&
     !!mirror &&

@@ -9,7 +9,10 @@ import { getCompleteStage, getRevealableStages } from '../../../shared/taskStage
 //   not stages and are skipped.
 // - completeShown: session.studentSignals[studentId].completeShown[signalKey(taskId)]
 //   ({ at, via: 'show' | 'preview' | 'teacherReset' }), written by the student's own device when
-//   they open the Complete code. A tutor's Reveal solution is in revealLog instead.
+//   they open the Complete code. A tutor's Reveal solution is in revealLog instead. 'teacherReset'
+//   means a tutor reset hid it again, so it never turns the item on.
+//
+// Both logs are append-only: an item that is on means "has opened", not "has it open now".
 //
 // Returns the items in a fixed order (copy, support, complete), each only when the task has it.
 
@@ -66,9 +69,9 @@ export function studentCanSee({
     const opens = []
     const tutorEntry = log[complete.index]
     if (tutorEntry) opens.push({ by: whoFrom(tutorEntry.source), at: timeOf(tutorEntry) })
-    if (completeShown) {
+    if (completeShown && completeShown.via !== 'teacherReset') {
       opens.push({
-        by: completeShown.via === 'teacherReset' ? 'tutor' : 'student',
+        by: 'student',
         at: typeof completeShown.at === 'number' ? completeShown.at : null,
       })
     }
