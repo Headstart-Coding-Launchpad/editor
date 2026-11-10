@@ -19,6 +19,9 @@ vi.mock('../blocklyStack.js', async (importOriginal) => {
 import {
   EDIT_DEBOUNCE_MS,
   EXPLAINER_BLOCK_SCALE,
+  LIVE_EDIT_WINDOW_MS,
+  RETRY_DELAY_MS,
+  RETRY_LIMIT,
   RealScratchBlocks,
   SHOW_FALLBACK_AFTER_MS,
 } from '../RealScratchBlocks'
@@ -165,6 +168,65 @@ it('tells the renderer when a fence is no longer wanted', async () => {
   expect(signal.aborted).toBe(false)
   unmount()
   expect(signal.aborted).toBe(true)
+})
+
+it('tries again (a bounded number of times) after a render that may differ next time', async () => {
+  vi.useFakeTimers()
+  try {
+    stack.render
+      .mockResolvedValueOnce({ ok: false, problems: ['chunk failed'], retry: true })
+      .mockResolvedValueOnce(DRAWN)
+    const { container } = render(<RealScratchBlocks code={CODE} />)
+    await act(async () => {})
+    // The Markdown drawing shows meanwhile.
+    expect(container.querySelector('[data-real-blocks="fallback"]')).toBeVisible()
+    await act(async () => vi.advanceTimersByTime(RETRY_DELAY_MS + 10))
+    expect(stack.render).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('[data-real-blocks="blockly"]')).toBeInTheDocument()
+
+    stack.render.mockReset()
+    stack.render.mockResolvedValue({ ok: false, problems: ['chunk failed'], retry: true })
+    render(<RealScratchBlocks code={`${CODE}\nnext costume`} />)
+    for (let i = 0; i < 6; i++) await act(async () => vi.advanceTimersByTime(RETRY_DELAY_MS + 10))
+    expect(stack.render).toHaveBeenCalledTimes(1 + RETRY_LIMIT)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('sizes the picture whatever order the root attributes come in, keeping its own style', () => {
+  stack.cache.set(CODE, {
+    ...DRAWN,
+    svg: '<svg style="background:red" height="200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400"><path/></svg>',
+  })
+  const { container } = render(<RealScratchBlocks code={CODE} />)
+  const svg = container.querySelector('[data-real-blocks="blockly"] svg')
+  expect(svg.getAttribute('width')).toBe(String(Math.round(400 * EXPLAINER_BLOCK_SCALE)))
+  expect(svg.getAttribute('height')).toBe(String(Math.round(200 * EXPLAINER_BLOCK_SCALE)))
+  expect(svg.getAttribute('style')).toMatch(/max-width:\s*100%/)
+  expect(svg.getAttribute('aria-hidden')).toBe('true')
+})
+
+it('falls back to the Markdown drawing when the SVG cannot be sized', () => {
+  stack.cache.set(CODE, { ...DRAWN, svg: '<svg width="400" height="200"><path></svg>' })
+  const { container } = render(<RealScratchBlocks code={CODE} />)
+  expect(container.querySelector('[data-real-blocks="blockly"]')).toBeNull()
+  expect(container.querySelector('[data-real-blocks="fallback"]')).toBeVisible()
+})
+
+it('draws a reused fence at once when its text changes long after the last change', async () => {
+  vi.useFakeTimers()
+  try {
+    stack.render.mockReturnValue(new Promise(() => {}))
+    const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
+    act(() => vi.advanceTimersByTime(LIVE_EDIT_WINDOW_MS + 500))
+    rerender(<RealScratchBlocks code={`${CODE}\nmove (5) steps`} />)
+    // Not a live edit (the same component shown for another task): no debounce, no flicker.
+    expect(stack.render).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('[data-real-blocks="pending"]').style.visibility).toBe('hidden')
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('shows the Markdown drawing straight away while an edited fence waits to be drawn', () => {
