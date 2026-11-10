@@ -30,8 +30,13 @@ function handleOf(data) {
   return handle
 }
 
-function requireAdmin(auth) {
+// The token claim can be up to 1h stale, so also check the live account (not disabled, still admin).
+async function requireAdmin(auth) {
   if (!auth || auth.token.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Admin access required.')
+  }
+  const user = await getAuth().getUser(auth.uid)
+  if (user.disabled || user.customClaims?.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Admin access required.')
   }
 }
@@ -42,10 +47,20 @@ const SA = 'firebase-adminsdk-fbsvc@headstartcoding-repl.iam.gserviceaccount.com
 exports.createAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
+    if (!data) throw new HttpsError('invalid-argument', 'Missing request data.')
     const { email, password, role, displayName } = data
     const handle = handleOf(data)
-    if (!email || !password || password.length < 8 || !['teacher', 'admin'].includes(role)) {
+    const nameOk =
+      displayName == null || (typeof displayName === 'string' && displayName.length <= 100)
+    if (
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !email ||
+      password.length < 8 ||
+      !nameOk ||
+      !['teacher', 'admin'].includes(role)
+    ) {
       throw new HttpsError(
         'invalid-argument',
         'email, password (min 8 chars), and a valid role are required.'
@@ -53,8 +68,8 @@ exports.createAccount = onCall(
     }
     if (handle) await assertHandleFree(handle, null)
     const user = await getAuth().createUser({ email, password, displayName: displayName ?? '' })
-    await getAuth().setCustomUserClaims(user.uid, { role, ...(handle ? { handle } : {}) })
     try {
+      await getAuth().setCustomUserClaims(user.uid, { role, ...(handle ? { handle } : {}) })
       await db()
         .collection('users')
         .doc(user.uid)
@@ -73,7 +88,7 @@ exports.createAccount = onCall(
         .catch(() => {})
       throw new HttpsError(
         'internal',
-        'Failed to write user record to Firestore; Auth account has been rolled back.'
+        'Failed to set up the account; Auth account has been rolled back.'
       )
     }
     return { uid: user.uid }
@@ -84,10 +99,13 @@ exports.createAccount = onCall(
 exports.setUserRole = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid, role } = data
     if (!uid || !['teacher', 'admin'].includes(role)) {
       throw new HttpsError('invalid-argument', 'uid and a valid role are required.')
+    }
+    if (uid === auth.uid) {
+      throw new HttpsError('invalid-argument', 'Cannot change your own role.')
     }
     // Keep the tutor's handle: setCustomUserClaims replaces every claim.
     const existing = (await getAuth().getUser(uid)).customClaims ?? {}
@@ -106,7 +124,7 @@ exports.setUserRole = onCall(
 exports.setUserHandle = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid } = data
     if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
     const handle = handleOf(data)
@@ -127,7 +145,7 @@ exports.setUserHandle = onCall(
 exports.disableAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid } = data
     if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
     if (uid === auth.uid) {
@@ -143,7 +161,7 @@ exports.disableAccount = onCall(
 exports.enableAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid } = data
     if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
     await getAuth().updateUser(uid, { disabled: false })
@@ -155,7 +173,7 @@ exports.enableAccount = onCall(
 exports.deleteAccount = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid } = data
     if (!uid) throw new HttpsError('invalid-argument', 'uid is required.')
     if (uid === auth.uid) {
@@ -172,7 +190,7 @@ exports.deleteAccount = onCall(
 exports.updateAccountPassword = onCall(
   { region: 'europe-west1', invoker: 'public', serviceAccount: SA },
   async ({ data, auth }) => {
-    requireAdmin(auth)
+    await requireAdmin(auth)
     const { uid, password } = data
     if (!uid || !password || password.length < 8) {
       throw new HttpsError('invalid-argument', 'uid and password (min 8 chars) are required.')
@@ -181,6 +199,7 @@ exports.updateAccountPassword = onCall(
       throw new HttpsError('invalid-argument', 'Use account settings to change your own password.')
     }
     await getAuth().updateUser(uid, { password })
+    await getAuth().revokeRefreshTokens(uid)
   }
 )
 
