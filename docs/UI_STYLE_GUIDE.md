@@ -6,7 +6,7 @@ Use this guide before adding or changing UI elements. It documents the design la
 
 Headstart Coding should feel friendly, clear, and work-focused. The visual system is intentionally bright enough for students, but structured enough for teachers and admins working quickly during a live class.
 
-- Keep primary workflows dense and scannable. Avoid marketing-page layouts inside app surfaces.
+- On tutor, Admin and Builder screens, keep primary workflows dense and scannable. Student screens are calm and follow [PRODUCT.md](PRODUCT.md). Avoid marketing-page layouts inside app surfaces.
 - Prefer existing shared components and global classes before adding new styling.
 - Use the brand purple for structure and navigation, and the brand amber for primary forward actions.
 - Make code, lesson content, and live status the visual priority. Decoration should not compete with the workspace.
