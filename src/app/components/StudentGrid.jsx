@@ -351,16 +351,22 @@ export default function StudentGrid({
   const studentsById = Object.fromEntries(students.map((st) => [st.anonymousId, st]))
   const ordered = order.ids.map((id) => studentsById[id]).filter(Boolean)
   const counts = summariseRowStates(Object.values(rowStates))
-  // Python stuck / screen error (students/{id}/health, R3), beside the offline count: over the
-  // same rows as the counts next to it (one per student row), offline rows excluded as there.
-  const healthProblems = ordered.map((st) =>
-    rowStates[st.anonymousId]?.presence === 'offline' ? null : studentHealthProblem(st)
-  )
-  const pythonStuckCount = healthProblems.filter((p) => p === 'python_stuck').length
-  const screenErrorCount = healthProblems.filter((p) => p === 'screen_error').length
   // The Finished filter only applies while someone is finished: when the count drops to 0 its
   // Show all control goes, so the filter goes with it (and is reset for next time).
   const finishedFilterOn = finishedOnly && counts.finished > 0
+  // Help rows always show: the Finished filter narrows only the rows under it.
+  const helpRows = ordered.filter((st) => order.groups[st.anonymousId] === 0)
+  const otherRows = ordered.filter(
+    (st) =>
+      order.groups[st.anonymousId] !== 0 &&
+      (!finishedFilterOn || rowStates[st.anonymousId]?.status === 'finished')
+  )
+  // Python stuck / screen error (students/{id}/health, R3), beside the offline count: over
+  // exactly the rows on screen, with the rows' own chip test (studentHealthProblem, online only),
+  // so the header and the chips always agree (third review, 10 Nov).
+  const healthProblems = [...helpRows, ...otherRows].map(studentHealthProblem)
+  const pythonStuckCount = healthProblems.filter((p) => p === 'python_stuck').length
+  const screenErrorCount = healthProblems.filter((p) => p === 'screen_error').length
   useEffect(() => {
     if (finishedOnly && counts.finished === 0) setFinishedOnly(false)
   }, [finishedOnly, counts.finished])
@@ -647,13 +653,6 @@ export default function StudentGrid({
     nudgedAway ||
     fullscreenRequested
 
-  // Help rows always show: the Finished filter narrows only the rows under it.
-  const helpRows = ordered.filter((st) => order.groups[st.anonymousId] === 0)
-  const otherRows = ordered.filter(
-    (st) =>
-      order.groups[st.anonymousId] !== 0 &&
-      (!finishedFilterOn || rowStates[st.anonymousId]?.status === 'finished')
-  )
   const openId = openRowId && studentsById[openRowId] ? openRowId : null
 
   function renderRow(student) {

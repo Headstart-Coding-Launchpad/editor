@@ -747,4 +747,18 @@ describe('StudentGrid: screen health (R3)', () => {
     render(<StudentGrid {...mkProps({ students })} />)
     expect(screen.getByText('1 Python stuck')).toBeInTheDocument()
   })
+
+  // Third review (10 Nov): the header counts exactly the rows that show a chip, so the Finished
+  // filter hiding a stuck row takes it out of the count too.
+  it('counts only the rows on screen: the header always matches the chips', () => {
+    const students = [STUDENTS[0], { ...STUDENTS[2], health: 'python_stuck' }]
+    render(
+      <StudentGrid {...mkProps({ students, lesson: LESSON_WITH_CHECK, session: ACTIVE_SESSION })} />
+    )
+    expect(screen.getByText('1 Python stuck')).toBeInTheDocument()
+    expect(screen.getAllByTestId('row-health')).toHaveLength(1)
+    fireEvent.click(within(screen.getByTestId('finished-filter')).getByRole('button'))
+    expect(screen.queryAllByTestId('row-health')).toHaveLength(0)
+    expect(screen.queryByText(/Python stuck$/)).not.toBeInTheDocument()
+  })
 })
