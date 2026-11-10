@@ -113,6 +113,10 @@ function countAttemptRuns(entries) {
   return entries.reduce((sum, entry) => sum + 1 + (entry.retries ?? 0), 0)
 }
 
+// writeStudentHealth: a rejected write is tried again up to this many times, this far apart.
+const HEALTH_RETRY_LIMIT = 3
+const HEALTH_RETRY_MS = 2000
+
 /**
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
@@ -137,6 +141,9 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   const healthInFlightRef = useRef({})
   const healthSentRef = useRef({})
   const healthPendingRef = useRef({})
+  // A rejected write's retries, per student: { health, tries, timer } (at most
+  // HEALTH_RETRY_LIMIT, HEALTH_RETRY_MS apart).
+  const healthRetryRef = useRef({})
   // The latest snapshot, for the stable writeStudentHealth.
   const sessionValueRef = useRef(null)
   sessionValueRef.current = session
@@ -2297,8 +2304,17 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
         return
       }
       delete healthPendingRef.current[anonymousId]
-      if (healthInFlightRef.current[anonymousId] === health) return
-      const known = healthSentRef.current[anonymousId] ?? student.health ?? STUDENT_HEALTH.ok
+      const retry = healthRetryRef.current[anonymousId]
+      if (retry && retry.health !== health) {
+        clearTimeout(retry.timer)
+        delete healthRetryRef.current[anonymousId]
+      }
+      // A write still in flight is the known value: an 'ok' after a problem write that has not
+      // landed yet is sent (behind it), not skipped.
+      const inFlight = healthInFlightRef.current[anonymousId]
+      if (inFlight === health) return
+      const known =
+        inFlight ?? healthSentRef.current[anonymousId] ?? student.health ?? STUDENT_HEALTH.ok
       if (known === health) return
       healthInFlightRef.current[anonymousId] = health
       try {
@@ -2306,7 +2322,32 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
         // Only once it is written, and only if no newer value went out meanwhile.
         if (healthInFlightRef.current[anonymousId] === health) {
           healthSentRef.current[anonymousId] = health
+          const done = healthRetryRef.current[anonymousId]
+          if (done) clearTimeout(done.timer)
+          delete healthRetryRef.current[anonymousId]
         }
+      } catch (err) {
+        // Rejected (offline, a rules blip): tried again by itself a little later, unless a newer
+        // value went out meanwhile; never silently dropped.
+        if (healthInFlightRef.current[anonymousId] === health) {
+          const prev = healthRetryRef.current[anonymousId]
+          const tries = prev?.health === health ? prev.tries : 0
+          if (prev) clearTimeout(prev.timer)
+          if (tries < HEALTH_RETRY_LIMIT) {
+            healthRetryRef.current[anonymousId] = {
+              health,
+              tries: tries + 1,
+              timer: setTimeout(() => {
+                const entry = healthRetryRef.current[anonymousId]
+                if (!entry || entry.health !== health) return
+                writeStudentHealthRef.current?.(anonymousId, health).catch(() => {})
+              }, HEALTH_RETRY_MS),
+            }
+          } else {
+            delete healthRetryRef.current[anonymousId]
+          }
+        }
+        throw err
       } finally {
         if (healthInFlightRef.current[anonymousId] === health) {
           delete healthInFlightRef.current[anonymousId]
@@ -2315,6 +2356,14 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     },
     [lessonId]
   )
+  const writeStudentHealthRef = useRef(writeStudentHealth)
+  writeStudentHealthRef.current = writeStudentHealth
+  useEffect(() => {
+    const retries = healthRetryRef.current
+    return () => {
+      for (const entry of Object.values(retries)) clearTimeout(entry.timer)
+    }
+  }, [])
   const sessionStudents = session?.students
   useEffect(() => {
     const students = sessionStudents ?? {}

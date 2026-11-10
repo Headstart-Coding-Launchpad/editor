@@ -177,4 +177,82 @@ describe('writeStudentHealth', () => {
     })
     expect(healthWrites()).toEqual(['screen_error'])
   })
+
+  // Second review (10 Nov).
+  it("an 'ok' sent while a problem write is still in flight is not skipped", async () => {
+    const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    let release
+    firebaseMocks.set.mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
+    await act(async () => {
+      const stuck = result.current.writeStudentHealth(STUDENT, 'python_stuck')
+      const ok = result.current.writeStudentHealth(STUDENT, 'ok')
+      release()
+      await Promise.all([stuck, ok])
+    })
+    expect(healthWrites()).toEqual(['python_stuck', 'ok'])
+  })
+
+  it('a rejected write is retried by itself, at most 3 more times', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+      firebaseMocks.set.mockRejectedValue(new Error('offline'))
+      await act(async () => {
+        await result.current.writeStudentHealth(STUDENT, 'python_stuck').catch(() => {})
+      })
+      expect(healthWrites()).toEqual(['python_stuck'])
+      for (let i = 0; i < 6; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      }
+      expect(healthWrites()).toEqual(['python_stuck', 'python_stuck', 'python_stuck', 'python_stuck'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a retry that then succeeds stops retrying', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+      firebaseMocks.set.mockRejectedValueOnce(new Error('offline'))
+      await act(async () => {
+        await result.current.writeStudentHealth(STUDENT, 'python_stuck').catch(() => {})
+      })
+      for (let i = 0; i < 4; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      }
+      expect(healthWrites()).toEqual(['python_stuck', 'python_stuck'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a failed problem write is not retried once a newer value went out', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+      let fail
+      firebaseMocks.set.mockImplementationOnce(
+        () => new Promise((_resolve, reject) => (fail = reject))
+      )
+      await act(async () => {
+        const stuck = result.current.writeStudentHealth(STUDENT, 'python_stuck').catch(() => {})
+        const ok = result.current.writeStudentHealth(STUDENT, 'ok')
+        fail(new Error('offline'))
+        await Promise.all([stuck, ok])
+      })
+      for (let i = 0; i < 4; i += 1) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+      }
+      expect(healthWrites()).toEqual(['python_stuck', 'ok'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
