@@ -141,6 +141,26 @@ describe('student node size caps', () => {
   })
 })
 
+describe('student screen health (R3)', () => {
+  const own = `sessions/${LESSON}/students/${STUDENT_ID}/health`
+  const other = `sessions/${LESSON}/students/${OTHER_STUDENT_ID}/health`
+
+  it('lets a student set their own health to one of the three values, or clear it', async () => {
+    for (const value of ['python_stuck', 'screen_error', 'ok']) {
+      await assertSucceeds(ref(as.student, own).set(value))
+    }
+    await assertSucceeds(ref(as.student, own).remove())
+  })
+
+  it('refuses any other value, and anyone else writing it', async () => {
+    await assertFails(ref(as.student, own).set('broken'))
+    await assertFails(ref(as.student, own).set(1))
+    await assertFails(ref(as.student, own).set({ health: 'ok' }))
+    await assertFails(ref(as.student, other).set('python_stuck'))
+    await assertFails(ref(as.anonymous, own).set('python_stuck'))
+  })
+})
+
 describe('student nodes', () => {
   it('lets a student write only their own node', async () => {
     const own = `sessions/${LESSON}/students/${STUDENT_ID}/currentCode`

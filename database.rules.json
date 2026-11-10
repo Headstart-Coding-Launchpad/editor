@@ -121,6 +121,12 @@
               ".validate": "newData.isBoolean() && newData.val() === true"
             },
 
+            // The student's screen health for the tutor (src/shared/studentHealth.js, R3):
+            // 'ok' | 'python_stuck' | 'screen_error', written once on a change, or absent.
+            "health": {
+              ".validate": "newData.isString() && (newData.val() === 'ok' || newData.val() === 'python_stuck' || newData.val() === 'screen_error')"
+            },
+
             // The side-quest open on the student's screen (its index 0-2), or absent
             // (src/shared/sideQuests.js).
             "sideQuestOpen": {

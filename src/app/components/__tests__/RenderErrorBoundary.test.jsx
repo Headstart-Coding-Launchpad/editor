@@ -109,4 +109,19 @@ describe('RenderErrorBoundary', () => {
     await user.click(screen.getByRole('button', { name: 'Try again 🔄' }))
     expect(screen.getByTestId('render-error-fallback')).toBeInTheDocument()
   })
+  it('tells onError when the fallback shows and onRecover on Try again (R3 health)', async () => {
+    mocks.crashing = true
+    const onError = vi.fn()
+    const onRecover = vi.fn()
+    render(
+      <RenderErrorBoundary onError={onError} onRecover={onRecover}>
+        <Pane />
+      </RenderErrorBoundary>
+    )
+    expect(onError).toHaveBeenCalledTimes(1)
+    mocks.crashing = false
+    await userEvent.setup().click(screen.getByRole('button', { name: /Try again/ }))
+    expect(onRecover).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('pane ok')).toBeInTheDocument()
+  })
 })
