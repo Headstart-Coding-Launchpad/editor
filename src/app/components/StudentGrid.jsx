@@ -642,11 +642,14 @@ export default function StudentGrid({
     const id = student.anonymousId
     const state = rowStates[id]
     // One row's render error stays in that row (R2); the rest of the class list keeps working.
+    // resetKey: the student's raw session snapshot (a new object only when their data changes),
+    // so a broken row recovers by itself when good data arrives; the status without a session.
     return (
       <RenderErrorBoundary
         key={id}
         variant="tutor"
         compact
+        resetKey={session?.students?.[id] ?? state.status}
         label={`${student.displayName ?? 'This student'}'s card`}
       >
         <StudentListRow

@@ -281,6 +281,11 @@ export default function LessonTaskContent({
   const taskPanelMeasured = taskPanelSize.width > 0
   // The calm Scratch screen (capabilities.calmScratch) never tabs the explainer away.
   const isCalmScratchModule = !!moduleCaps?.calmScratch
+  // After a crash the child is told "Your code is safe" only where it is true: a text-code module
+  // (capabilities.sandboxState 'code' / 'files') whose code lives in useStudentCodeState and
+  // localStorage, above the pane's error boundary. Not Scratch, quizzes or activities.
+  const codePaneIsSafe =
+    (moduleCaps?.sandboxState === 'code' || moduleCaps?.sandboxState === 'files') && !isQuizLike
   const showsCompleteCode = !!explainerShowsComplete && !!task?.completeCode
   // A teacher-started sandbox's pushed instructions take the task explainer's place, so
   // they get the same side-by-side/collapsible layout rather than stacking above the code.
@@ -1202,7 +1207,7 @@ export default function LessonTaskContent({
       onPaste={isLiveCopyBlocked ? undefined : handleWorkspacePaste}
     >
       {/* One render error replaces only this pane (R2); the task card beside it stays. */}
-      <RenderErrorBoundary label="The code pane" resetKey={transitionKey}>
+      <RenderErrorBoundary label="The code pane" resetKey={transitionKey} codeSafe={codePaneIsSafe}>
         {workspaceContent}
       </RenderErrorBoundary>
     </div>

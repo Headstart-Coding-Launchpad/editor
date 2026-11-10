@@ -1957,7 +1957,7 @@ export default function StudentModal({
                 <RenderErrorBoundary
                   variant="tutor"
                   label="This student's view"
-                  resetKey={`${student.anonymousId}:${task?.id}:${teacherEditState}`}
+                  resetKey={`${student.anonymousId}:${task?.id}`}
                 >
                   {teacherEditState === 'editing' && teacherEditor?.surface === 'blocks' ? (
                     <ScratchWorkspace

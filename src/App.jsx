@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthContext'
 import ProtectedRoute from './auth/ProtectedRoute'
 import LoadingScreen from './app/components/LoadingScreen'
 import RenderErrorBoundary from './app/components/RenderErrorBoundary'
+import { isStaffRoute } from './shared/staffRoute'
 
 const LessonRoute = lazy(() => import('./app/views/LessonRoute'))
 const LandingPage = lazy(() => import('./app/views/LandingPage'))
@@ -58,16 +59,15 @@ export default function App() {
 }
 
 // The last catch for a render error (R2): the page shows a Try again card instead of going blank,
-// and moving to another page clears it. Staff pages get the plain tutor card; every other page
-// can be a child's, so it gets the child card.
-const STAFF_PATHS = /^\/(admin|builder|account|login)(\/|$)/
-
+// and moving to another page clears it. Staff pages (isStaffRoute: admin, builder, the tutor
+// lesson window, presentation, preview) get the plain tutor card; every other page can be a
+// child's, so it gets the child card.
 function RouteErrorBoundary({ children }) {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   return (
     <RenderErrorBoundary
       label="This page"
-      variant={STAFF_PATHS.test(pathname) ? 'tutor' : 'child'}
+      variant={isStaffRoute(pathname, search) ? 'tutor' : 'child'}
       resetKey={pathname}
     >
       {children}

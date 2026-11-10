@@ -6,7 +6,9 @@ import React, { Component, Fragment } from 'react'
  * that mounts the pane again; the pane's state lives above it (useStudentCodeState, the session),
  * so the child's code comes back with it. Nothing is written anywhere.
  *
- * variant 'child' (student screens): emoji, "Something went wrong.", "Your code is safe".
+ * variant 'child' (student screens): emoji, "Something went wrong.", "Tap to try again.".
+ * `codeSafe`: add "Your code is safe", only round a code pane whose code lives above it
+ * (useStudentCodeState, localStorage). Scratch, quizzes and activities never say it.
  * variant 'tutor' (dashboard card, Student View Modal, admin routes): a plain line naming the pane.
  * `resetKey`: a change (another task, another student) clears the error by itself.
  * `compact`: a one-line strip, for small slots such as a student row.
@@ -40,7 +42,7 @@ export default class RenderErrorBoundary extends Component {
   render() {
     const { error, attempt } = this.state
     if (!error) return <Fragment key={attempt}>{this.props.children}</Fragment>
-    const { variant = 'child', label = 'This pane', compact = false } = this.props
+    const { variant = 'child', label = 'This pane', compact = false, codeSafe = false } = this.props
     if (variant === 'tutor') {
       return (
         <div
@@ -66,7 +68,9 @@ export default class RenderErrorBoundary extends Component {
           😵‍💫
         </span>
         <p style={s.title}>Something went wrong.</p>
-        <p style={s.body}>Tap to try again. Your code is safe 💾</p>
+        <p style={s.body}>
+          {codeSafe ? 'Tap to try again. Your code is safe 💾' : 'Tap to try again.'}
+        </p>
         <button type="button" className="btn-secondary" style={s.childButton} onClick={this.retry}>
           Try again 🔄
         </button>
