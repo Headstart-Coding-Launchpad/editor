@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { withoutPresenter } from '../../shared/presenter.js'
 import {
   ref,
@@ -130,8 +130,16 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   const serverTimeOffsetRef = useRef(0)
   const sessionRef = useRef(null)
   const attemptCacheRef = useRef({})
-  // writeStudentHealth: the health last sent per student, so a repeat waits for no snapshot.
+  // writeStudentHealth's bookkeeping, per student (R3): the value being written (a repeat while
+  // it is in flight is not sent twice), the value a write confirmed that the snapshot does not
+  // show yet (forgotten once the snapshot shows it, or the node goes), and a value waiting for
+  // a node the snapshot does not have yet (written when it arrives).
+  const healthInFlightRef = useRef({})
   const healthSentRef = useRef({})
+  const healthPendingRef = useRef({})
+  // The latest snapshot, for the stable writeStudentHealth.
+  const sessionValueRef = useRef(null)
+  sessionValueRef.current = session
   // This tab's first-occurrence guards (badge signals, pasteLog.firstAt), backing up the
   // session snapshot, which lags a write by a round trip.
   const signalSeenRef = useRef(new Set())
@@ -2276,20 +2284,50 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   // The student's own screen health for the tutor (src/shared/studentHealth.js, R3): one write
   // when it changes, never per keystroke or on a timer. Skips a value already on the node (no
-  // 'ok' for a healthy student) or already sent, and never recreates a removed student's node.
-  async function writeStudentHealth(anonymousId, health) {
-    if (!anonymousId || !isStudentHealth(health)) return
-    const student = session?.students?.[anonymousId]
-    if (!student) return
-    const current = student.health ?? STUDENT_HEALTH.ok
-    if (current === health) {
-      healthSentRef.current[anonymousId] = health
-      return
+  // 'ok' for a healthy student), already confirmed, or in flight. A student missing from the
+  // snapshot (not joined yet, or removed) is never recreated: the value waits for the node and
+  // is written when it comes back. Stable across renders (it reads the snapshot from a ref), so
+  // effects that depend on it run on their own changes only.
+  const writeStudentHealth = useCallback(
+    async (anonymousId, health) => {
+      if (!anonymousId || !isStudentHealth(health)) return
+      const student = sessionValueRef.current?.students?.[anonymousId]
+      if (!student) {
+        healthPendingRef.current[anonymousId] = health
+        return
+      }
+      delete healthPendingRef.current[anonymousId]
+      if (healthInFlightRef.current[anonymousId] === health) return
+      const known = healthSentRef.current[anonymousId] ?? student.health ?? STUDENT_HEALTH.ok
+      if (known === health) return
+      healthInFlightRef.current[anonymousId] = health
+      try {
+        await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/health`), health)
+        // Only once it is written, and only if no newer value went out meanwhile.
+        if (healthInFlightRef.current[anonymousId] === health) {
+          healthSentRef.current[anonymousId] = health
+        }
+      } finally {
+        if (healthInFlightRef.current[anonymousId] === health) {
+          delete healthInFlightRef.current[anonymousId]
+        }
+      }
+    },
+    [lessonId]
+  )
+  const sessionStudents = session?.students
+  useEffect(() => {
+    const students = sessionStudents ?? {}
+    for (const id of Object.keys(healthSentRef.current)) {
+      const node = students[id]
+      const shown = node ? (node.health ?? STUDENT_HEALTH.ok) : null
+      // Removed (a rejoin starts from its node again), or the snapshot now shows the write.
+      if (!node || shown === healthSentRef.current[id]) delete healthSentRef.current[id]
     }
-    if (healthSentRef.current[anonymousId] === health) return
-    healthSentRef.current[anonymousId] = health
-    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/health`), health)
-  }
+    for (const [id, health] of Object.entries(healthPendingRef.current)) {
+      if (students[id]) writeStudentHealth(id, health).catch(() => {})
+    }
+  }, [sessionStudents, writeStudentHealth])
 
   async function writeStudentPersonalSandbox(anonymousId, inPersonalSandbox) {
     await set(

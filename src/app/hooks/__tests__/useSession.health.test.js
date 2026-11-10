@@ -100,11 +100,81 @@ describe('writeStudentHealth', () => {
     expect(healthWrites()).toEqual(['ok'])
   })
 
-  it("never recreates a removed student's node", async () => {
+  it("never recreates a missing student's node, and writes once they are back", async () => {
     const { result } = renderSession({ students: {} })
     await act(async () => {
       await result.current.writeStudentHealth(STUDENT, 'python_stuck')
     })
     expect(healthWrites()).toEqual([])
+    // The student's node arrives (joined late, or rejoined): the waiting value is written.
+    await act(async () => {
+      sessionCallback({
+        exists: () => true,
+        val: () => ({ students: { [STUDENT]: { displayName: 'Mia' } } }),
+      })
+    })
+    expect(healthWrites()).toEqual(['python_stuck'])
+  })
+
+  it('is the same function on every render (R3: no effect re-runs from it)', () => {
+    const { result, rerender } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    const first = result.current.writeStudentHealth
+    rerender()
+    act(() => {
+      sessionCallback({
+        exists: () => true,
+        val: () => ({ students: { [STUDENT]: { displayName: 'Mia', online: true } } }),
+      })
+    })
+    expect(result.current.writeStudentHealth).toBe(first)
+  })
+
+  it('a failed write is tried again on the next call', async () => {
+    const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    firebaseMocks.set.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => {
+      await result.current.writeStudentHealth(STUDENT, 'python_stuck').catch(() => {})
+      await result.current.writeStudentHealth(STUDENT, 'python_stuck')
+    })
+    expect(healthWrites()).toEqual(['python_stuck', 'python_stuck'])
+  })
+
+  it('writes again after the student node was removed and rejoined', async () => {
+    const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    await act(async () => {
+      await result.current.writeStudentHealth(STUDENT, 'python_stuck')
+    })
+    // Confirmed, then removed, then rejoined without the field.
+    act(() => {
+      sessionCallback({
+        exists: () => true,
+        val: () => ({ students: { [STUDENT]: { displayName: 'Mia', health: 'python_stuck' } } }),
+      })
+    })
+    act(() => {
+      sessionCallback({ exists: () => true, val: () => ({ students: {} }) })
+    })
+    act(() => {
+      sessionCallback({
+        exists: () => true,
+        val: () => ({ students: { [STUDENT]: { displayName: 'Mia' } } }),
+      })
+    })
+    await act(async () => {
+      await result.current.writeStudentHealth(STUDENT, 'python_stuck')
+    })
+    expect(healthWrites()).toEqual(['python_stuck', 'python_stuck'])
+  })
+
+  it('a repeat while the snapshot still lags the write is not written twice', async () => {
+    const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    await act(async () => {
+      await Promise.all([
+        result.current.writeStudentHealth(STUDENT, 'screen_error'),
+        result.current.writeStudentHealth(STUDENT, 'screen_error'),
+      ])
+      await result.current.writeStudentHealth(STUDENT, 'screen_error')
+    })
+    expect(healthWrites()).toEqual(['screen_error'])
   })
 })
