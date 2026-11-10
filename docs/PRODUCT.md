@@ -10,7 +10,7 @@ LaunchPad is the classroom Headstart Coding tutors teach in: a calm place for a 
 
 1. **The tutor sees everything and can act.** Live, before submit, with at least one action (nudge, highlight, hint, edit, award). Questions to answer for every feature: [project-rules.md](agents/project-rules.md#tutor-visibility-tutors-see-everything-and-can-always-help).
 2. **Fun first.** A child should want to keep going. The result on screen should work and be worth showing.
-3. **Calm student screens.** One main action and at most five visible controls, counted with the top bar.
+3. **Calm student screens.** One primary action, visibly the biggest thing on screen (Run, on a code task). Controls sit in at most five labelled groups (for example navigation, code tools, symbols, output, help); a row of symbol keys counts as one group; rarely used controls go behind one "More".
 4. **It must work in class.** Live lessons in small groups on the classroom's own devices; a slow or flaky connection must not stop a child.
 5. **Mistakes are safe.** Nothing a child does can lose their work or break the lesson for others.
 6. **Lessons are cheap to make.** Authoring should be quick, so tutors and the lesson pipeline can keep the library growing.
@@ -25,7 +25,7 @@ LaunchPad is the classroom Headstart Coding tutors teach in: a calm place for a 
 
 ## Student screens vs tutor screens
 
-- **Student screens** (Classroom `/lesson/:lessonId` and anything a child sees) are calm: one main action, at most five visible controls counted with the top bar, the work as the visual priority. Must fit 1366x768 and tablets (1024x768).
+- **Student screens** (Classroom `/lesson/:lessonId` and anything a child sees) are calm: one primary action, at most five control groups (see principle 3), the work as the visual priority. Must fit 1366x768 and tablets (1024x768).
 - **Tutor, Admin and Builder screens** may be dense and scannable, and need to work at PC sizes only.
 
 [UI_STYLE_GUIDE.md](UI_STYLE_GUIDE.md) covers visual patterns; its "dense and scannable" rule applies to tutor, Admin and Builder screens only.
