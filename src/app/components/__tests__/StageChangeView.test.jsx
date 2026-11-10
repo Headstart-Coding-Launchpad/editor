@@ -127,8 +127,8 @@ describe('Complete stage change view', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('a Support stage never shows the change view', () => {
-    renderPanel({ stage: completeStage({ role: 'support' }) })
+  it('a Starter stage never shows the change view', () => {
+    renderPanel({ stage: completeStage({ role: 'starter' }) })
     expect(screen.queryByText('after this line')).not.toBeInTheDocument()
   })
 
@@ -215,6 +215,95 @@ describe('Complete stage change view', () => {
     expect(screen.getByRole('button', { name: 'Show all the code' })).toHaveStyle({
       minHeight: '44px',
     })
+  })
+})
+
+// Fun moment (Support stages): a student stuck on a step opens the hint and, instead of a loose
+// snippet with no place, sees the one new line in green right under a line of their own code.
+describe('Support stage change view', () => {
+  const PROGRAM =
+    'import stage\n\ndef draw():\n    background("navy")\n    circle(200, 150, 50)\n    rect(10, 10, 20, 20)\n\nstage.run(draw)'
+  // An excerpt: it skips background(), rect() and the lines around draw().
+  const HINT = 'def draw():\n    circle(200, 150, 50)\n    text("Hi!", 200, 250)'
+  const supportStage = (extra = {}) => ({
+    label: 'Hint 1',
+    role: 'support',
+    show: 'change',
+    code: HINT,
+    ...extra,
+  })
+  const renderSupport = (props = {}) =>
+    renderPanel({ stage: supportStage(), changeBase: PROGRAM, ...props })
+
+  it('shows the new line and the line of their code it goes after', () => {
+    renderSupport()
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    expect(
+      within(panel).getByLabelText('unchanged anchor: circle(200, 150, 50)')
+    ).toBeInTheDocument()
+    expect(within(panel).getByText('after this line')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: text("Hi!", 200, 250)')).toBeInTheDocument()
+    expect(within(panel).getByText('Add')).toBeInTheDocument()
+    expect(panel).not.toHaveTextContent('def draw():')
+  })
+
+  it('never marks the lines the hint leaves out as lines to remove', () => {
+    renderSupport()
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    expect(within(panel).queryByText('Remove')).not.toBeInTheDocument()
+    expect(within(panel).queryByLabelText(/^removed:/)).not.toBeInTheDocument()
+    expect(panel).not.toHaveTextContent('background')
+    expect(panel).not.toHaveTextContent('rect(')
+    expect(panel).not.toHaveTextContent('import stage')
+  })
+
+  it('a small swap in a line of their code shows as one ± row, as on a Complete stage', () => {
+    renderSupport({
+      changeBase: 'for i in range(5):\n    circle(i * 20, 100, 10)\nprint("done")',
+      stage: supportStage({ code: 'for i in range(3):\n    circle(i * 20, 100, 10)' }),
+    })
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    const row = within(panel).getByLabelText(
+      'changed: removed “5”, added “3”, in the line for i in range(3):'
+    )
+    expect(within(row).getByText('±')).toBeInTheDocument()
+    expect(panel).not.toHaveTextContent('print("done")')
+  })
+
+  it('"Show all the code" shows the whole hint with the new line marked', async () => {
+    const user = userEvent.setup()
+    renderSupport()
+    await user.click(screen.getByRole('button', { name: 'Show all the code' }))
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    expect(panel).toHaveTextContent('def draw():')
+    expect(within(panel).getByLabelText('added: text("Hi!", 200, 250)')).toBeInTheDocument()
+    expect(within(panel).queryByLabelText(/^removed:/)).not.toBeInTheDocument()
+  })
+
+  it('a hint of new lines only (nothing to place them by) shows them all in green', () => {
+    renderSupport({ stage: supportStage({ code: 'text("Hi!", 200, 250)' }) })
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    expect(panel).toHaveTextContent('Green lines are new')
+    expect(panel).not.toHaveTextContent('A lot changed')
+    expect(within(panel).getByLabelText('added: text("Hi!", 200, 250)')).toBeInTheDocument()
+  })
+
+  it('says so when their code already has every line of the hint', () => {
+    renderSupport({ stage: supportStage({ code: 'def draw():\n    circle(200, 150, 50)' }) })
+    expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
+  })
+
+  it('shows in the calm "What to change" box like a Complete stage', () => {
+    renderSupport({ calm: true })
+    const view = screen.getByTestId('stage-change-view')
+    expect(within(view).getByLabelText('added: text("Hi!", 200, 250)')).toBeInTheDocument()
+    expect(within(view).getByText('after this line')).toBeInTheDocument()
+  })
+
+  it('without show: change the hint looks exactly as today', () => {
+    renderSupport({ stage: supportStage({ show: undefined }) })
+    const panel = screen.getByLabelText('Hint 1 stage reference')
+    expect(panel.querySelector('code').textContent).toBe(HINT)
   })
 })
 
