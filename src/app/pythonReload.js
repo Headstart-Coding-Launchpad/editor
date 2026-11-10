@@ -3,17 +3,18 @@
  * mid-class deploy (only the new page knows the new worker file), but in a live lesson a reload
  * normally starts the task from its starter (selectPythonTaskCode restores the own save in solo
  * only). So the Reload button leaves a short-lived note: "this lesson's task <id> was reloaded
- * from the prompt", and the next load of that task restores the student's own save once.
+ * from the prompt", and loading that task again restores the student's own save.
  *
- * localStorage `headstart_reload_resume`: { lessonId, taskId, at, consumedAt? }. Good for
- * RESUME_MAX_AGE_MS (the page and lesson load well inside it) and used once: the first matching
- * read marks it consumed, a read within RESUME_CONSUMED_GRACE_MS of that still matches (a dev
- * StrictMode double load), and after that, or once stale, it is removed.
+ * localStorage `headstart_reload_resume`: { lessonId, taskId, at, usedAt? }. Good for
+ * RESUME_MAX_AGE_MS (the page and lesson load well inside it), for every load of that task in
+ * that time (a slow lesson fetch, a dev StrictMode double load or a later re-load all still get
+ * the own code). It is used up when it expires or once the student, having had it, loads another
+ * task (moving on, then back, starts as a live lesson normally does). A load of another task
+ * before it was used (the page's first task, then the class's) leaves it alone.
  */
 
 export const RELOAD_RESUME_KEY = 'headstart_reload_resume'
 export const RESUME_MAX_AGE_MS = 2 * 60 * 1000
-export const RESUME_CONSUMED_GRACE_MS = 1000
 
 function removeNote() {
   try {
@@ -35,10 +36,7 @@ export function markReloadResume(lessonId, taskId, now = Date.now()) {
   }
 }
 
-/**
- * True when this task of this lesson was reloaded from the prompt a moment ago, once (see above).
- * A read for another lesson or task leaves the note alone; a stale one is removed.
- */
+/** True when this task of this lesson was reloaded from the prompt a moment ago (see above). */
 export function isReloadResume(lessonId, taskId, now = Date.now()) {
   let note = null
   try {
@@ -51,18 +49,19 @@ export function isReloadResume(lessonId, taskId, now = Date.now()) {
     removeNote()
     return false
   }
-  if (note.lessonId !== String(lessonId) || note.taskId !== String(taskId)) return false
-  if (note.consumedAt == null) {
-    try {
-      localStorage.setItem(RELOAD_RESUME_KEY, JSON.stringify({ ...note, consumedAt: now }))
-    } catch {
-      removeNote()
-    }
-    return true
+  if (note.lessonId !== String(lessonId) || note.taskId !== String(taskId)) {
+    // Had it, and moved on: used up.
+    if (note.usedAt != null) removeNote()
+    return false
   }
-  if (now - Number(note.consumedAt) <= RESUME_CONSUMED_GRACE_MS) return true
-  removeNote()
-  return false
+  if (note.usedAt == null) {
+    try {
+      localStorage.setItem(RELOAD_RESUME_KEY, JSON.stringify({ ...note, usedAt: now }))
+    } catch {
+      // Not marked: it still expires on time.
+    }
+  }
+  return true
 }
 
 export function reloadPage() {

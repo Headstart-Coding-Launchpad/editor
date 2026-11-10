@@ -3,7 +3,6 @@ import {
   isReloadResume,
   markReloadResume,
   RELOAD_RESUME_KEY,
-  RESUME_CONSUMED_GRACE_MS,
   RESUME_MAX_AGE_MS,
 } from '../pythonReload'
 import { selectPythonTaskCode } from '../studentTaskContent'
@@ -23,13 +22,26 @@ describe('the "Python fell asleep" reload note (R3)', () => {
     expect(isReloadResume('loops', '3', 1000 + 5000)).toBe(true)
   })
 
-  it('is used once: a read right after (a dev StrictMode double load) still holds, later ones not', () => {
+  // Second review (10 Nov): a late second load of the same task (a slow lesson fetch, a
+  // StrictMode double load, a re-render reload) must still bring the own code back.
+  it('holds for every load of the same task until it expires', () => {
     markReloadResume('loops', 3, 1000)
     expect(isReloadResume('loops', 3, 2000)).toBe(true)
-    expect(isReloadResume('loops', 3, 2000 + 500)).toBe(true)
-    // A later visit to the task (moving away and back) starts as a live lesson normally does.
-    expect(isReloadResume('loops', 3, 2000 + RESUME_CONSUMED_GRACE_MS + 1)).toBe(false)
+    expect(isReloadResume('loops', 3, 2000 + 5000)).toBe(true)
+    expect(isReloadResume('loops', 3, 1000 + RESUME_MAX_AGE_MS - 1)).toBe(true)
+    expect(isReloadResume('loops', 3, 1000 + RESUME_MAX_AGE_MS + 1)).toBe(false)
     expect(localStorage.getItem(RELOAD_RESUME_KEY)).toBeNull()
+  })
+
+  it('is used up once the student moves to another task after it was used', () => {
+    markReloadResume('loops', 3, 1000)
+    // A load of another task before this one (the page's first task, then the class's) leaves it.
+    expect(isReloadResume('loops', 1, 1500)).toBe(false)
+    expect(isReloadResume('loops', 3, 2000)).toBe(true)
+    // Moving on, then back, starts as a live lesson normally does.
+    expect(isReloadResume('loops', 4, 3000)).toBe(false)
+    expect(localStorage.getItem(RELOAD_RESUME_KEY)).toBeNull()
+    expect(isReloadResume('loops', 3, 4000)).toBe(false)
   })
 
   it('is ignored and removed once it is stale', () => {
