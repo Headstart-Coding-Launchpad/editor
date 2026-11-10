@@ -46,4 +46,50 @@ describe('useStudentPresenceReporting self-heal', () => {
     hook.rerender({ ...props, session: { students: { stu1: { a: 3 } } } })
     expect(registerPresence).toHaveBeenCalledTimes(3)
   })
+
+  it('does not recreate a removed student node', () => {
+    const { registerPresence, props, hook } = setup({ online: true })
+    vi.advanceTimersByTime(11000)
+    hook.rerender({ ...props, session: { students: {} } })
+    vi.advanceTimersByTime(30000)
+    expect(registerPresence).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not heal with a null session, when disconnected, or in teacher presentation', () => {
+    const { registerPresence, props, hook } = setup({ online: true })
+    vi.advanceTimersByTime(11000)
+    hook.rerender({ ...props, session: null })
+    vi.advanceTimersByTime(30000)
+    hook.rerender({ ...props, connected: false, session: { students: { stu1: { a: 1 } } } })
+    vi.advanceTimersByTime(30000)
+    hook.rerender({
+      ...props,
+      teacherPresentation: true,
+      session: { students: { stu1: { a: 1 } } },
+    })
+    vi.advanceTimersByTime(30000)
+    expect(registerPresence).toHaveBeenCalledTimes(1)
+  })
+
+  it('heals from the interval without a rerender, and stops once online returns', () => {
+    const { registerPresence, props, hook } = setup({ online: true })
+    hook.rerender({ ...props, session: { students: { stu1: { a: 1 } } } })
+    expect(registerPresence).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(10000)
+    expect(registerPresence).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(10000)
+    expect(registerPresence).toHaveBeenCalledTimes(3)
+    hook.rerender({ ...props, session: { students: { stu1: { online: true } } } })
+    vi.advanceTimersByTime(30000)
+    expect(registerPresence).toHaveBeenCalledTimes(3)
+  })
+
+  it('swallows a rejected registerPresence', async () => {
+    const { registerPresence, props, hook } = setup({ online: true })
+    registerPresence.mockRejectedValue(new Error('offline'))
+    vi.advanceTimersByTime(11000)
+    hook.rerender({ ...props, session: { students: { stu1: { a: 1 } } } })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(registerPresence).toHaveBeenCalledTimes(2)
+  })
 })
