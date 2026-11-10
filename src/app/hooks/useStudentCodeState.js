@@ -101,6 +101,8 @@ import {
   crossLessonFallbackReason,
   crossLessonFallbackRecord,
 } from '../../shared/roster/crossLessonCarry'
+import { isPythonStuck, onPythonStuckChange } from '../../modules/python/pythonHealth'
+import { isReloadResume, markReloadResume, reloadPage } from '../pythonReload'
 
 // The generic work slot before any module has loaded work into it.
 const EMPTY_WORK = Object.freeze({ moduleType: null, taskId: null, value: null })
@@ -211,6 +213,9 @@ export function useStudentCodeState({
   recordVariablePredictions,
   writeStudentPersonalSandbox,
   writeStudentPresence,
+  // students/{id}/health ('ok' | 'python_stuck' | 'screen_error'), written once on a change
+  // (useSession.writeStudentHealth); reached through reportHealth.
+  writeStudentHealth,
   registerPresence,
   removeStudent,
   updateTeacherLive,
@@ -610,12 +615,64 @@ export function useStudentCodeState({
       .catch(() => setPyodideStatus('error'))
   }, [lesson])
 
+  // Python stuck (the worker died, or never got ready: src/modules/python/pythonHealth.js, R3)
+  // is 'error' too: the code pane shows "Python fell asleep" with one Reload button.
+  useEffect(() => {
+    if (isPythonStuck()) setPyodideStatus('error')
+    return onPythonStuckChange((stuck) => {
+      if (stuck) setPyodideStatus('error')
+    })
+  }, [])
+
   async function initRuntimeIfNeeded() {
     const mod = getLessonModule(lesson?.type)
     if (!mod?.runtime?.isReady || mod.runtime.isReady()) return
     setPyodideStatus('loading')
-    await mod.runtime.init()
+    try {
+      await mod.runtime.init()
+    } catch (err) {
+      setPyodideStatus('error')
+      throw err
+    }
     setPyodideStatus('ready')
+  }
+
+  // The tutor's chip (students/{id}/health): one write when Python gets stuck, and 'ok' once it
+  // is ready again (after the Reload). useSession.writeStudentHealth skips a value already there,
+  // so a ready Python on a healthy student writes nothing. Own screen in a live class only.
+  const reportHealth = useCallback(
+    (health) => {
+      const anonymousId = identityRef.current?.anonymousId
+      if (!anonymousId || !writeStudentHealth || teacherPresentation || previewMode) return
+      if (phaseRef.current !== 'lesson' && phaseRef.current !== 'sandbox') return
+      Promise.resolve(writeStudentHealth(anonymousId, health)).catch(() => {})
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [writeStudentHealth, teacherPresentation, previewMode]
+  )
+  useEffect(() => {
+    if (pyodideStatus === 'error') reportHealth('python_stuck')
+    else if (pyodideStatus === 'ready') reportHealth('ok')
+  }, [pyodideStatus, phase, reportHealth])
+  // A fresh page in the lesson clears what an earlier page left (any lesson type, once).
+  const healthClearedRef = useRef(false)
+  useEffect(() => {
+    if (healthClearedRef.current || phase !== 'lesson' || isPythonStuck()) return
+    healthClearedRef.current = true
+    reportHealth('ok')
+  }, [phase, reportHealth])
+
+  // The "Python fell asleep" Reload: save the code (the usual per-task save, or the personal
+  // sandbox's), note that this task was reloaded from the prompt so a live lesson brings the own
+  // save back (src/app/pythonReload.js), then load the page again: only a fresh page knows the
+  // current worker file after a deploy.
+  function reloadAfterPythonStuck() {
+    if (inPersonalSandboxRef.current) savePersonalSandboxSnapshot()
+    else saveCurrentWorkSnapshot()
+    if (phaseRef.current === 'lesson') {
+      markReloadResume(lessonRef.current?.id ?? lessonId, currentTaskIdRef.current)
+    }
+    reloadPage()
   }
 
   // ─── Sub-hooks ────────────────────────────────────────────────────────────
@@ -1318,6 +1375,8 @@ export function useStudentCodeState({
               persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
             onCarryFallback: recordCarryFallback,
             crossLesson: crossLessonCarryFor(taskId),
+            // Reloaded from "Python fell asleep" a moment ago: the own save comes back (R3).
+            restoreOwn: phase === 'lesson' && isReloadResume(lesson.id ?? lessonId, taskId),
           })
       const own = perFile ? null : readStored(taskId)
       restoreWork(
@@ -3694,6 +3753,10 @@ export function useStudentCodeState({
     runningTests,
     testResults,
     pyodideStatus,
+    // "Python fell asleep" (R3): Reload saves the code and reloads; reportHealth('screen_error')
+    // is how the code pane's RenderErrorBoundary tells the tutor.
+    reloadAfterPythonStuck,
+    reportHealth,
     iframeSrc,
     teacherLiveIframeSrc,
     handleEditorCopy,

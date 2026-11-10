@@ -62,6 +62,7 @@ export const NOOP_SESSION_WRITES = {
   recordVariablePredictions: NOOP_ASYNC,
   writeStudentPersonalSandbox: NOOP_ASYNC,
   writeStudentPresence: NOOP_ASYNC,
+  writeStudentHealth: NOOP_ASYNC,
   registerPresence: NOOP,
   removeStudent: NOOP_ASYNC,
   updateTeacherLive: NOOP_ASYNC,

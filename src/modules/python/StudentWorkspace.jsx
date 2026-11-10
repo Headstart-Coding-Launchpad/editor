@@ -217,6 +217,8 @@ export default function StudentWorkspace({
   // The Python Stage (src/shared/stage/): shown once the code draws, or from the start when the
   // task has a stageTarget to draw over. Go Live shows the broadcast drawing.
   const stageTarget = useStageTarget(task, { ready: cs.pyodideStatus === 'ready' })
+  // Loading, or stuck ("Python fell asleep", R3): Run waits either way.
+  const pythonNotReady = cs.pyodideStatus === 'loading' || cs.pyodideStatus === 'error'
   const liveStage = useMemo(() => readStageResult(displayStage), [displayStage])
   const stageResult = isForcedTeacherLive
     ? liveStage
@@ -411,7 +413,7 @@ export default function StudentWorkspace({
       {slowMoShown && (showEditableHeader || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
+          runDisabled={cs.running || pythonNotReady || !arrangeReady || !!runLock}
         />
       )}
       {arrangeBoard({
@@ -501,7 +503,7 @@ export default function StudentWorkspace({
                     className="btn-primary"
                     style={s.primaryBtn}
                     onClick={handleRunTestsClick}
-                    disabled={cs.running || cs.pyodideStatus === 'loading' || cs.runningTests}
+                    disabled={cs.running || pythonNotReady || cs.runningTests}
                   >
                     {cs.runningTests ? 'Running tests...' : 'Run Tests'}
                   </button>
@@ -512,7 +514,7 @@ export default function StudentWorkspace({
                   data-highlight-target="run stop"
                   onClick={handleRunClick}
                   disabled={
-                    !cs.running && !cs.runningTests && (cs.pyodideStatus === 'loading' || !!runLock)
+                    !cs.running && !cs.runningTests && (pythonNotReady || !!runLock)
                   }
                   title={
                     !cs.running && runLock
@@ -548,7 +550,7 @@ export default function StudentWorkspace({
       {slowMoShown && (showEditableHeader || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.runningTests || cs.pyodideStatus === 'loading' || !!runLock}
+          runDisabled={cs.running || cs.runningTests || pythonNotReady || !!runLock}
         />
       )}
       {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
@@ -600,6 +602,7 @@ export default function StudentWorkspace({
           isViewingPrev || isForcedTeacherLive || isTeacherEditing ? undefined : cs.dismissHighlight
         }
         pyodideStatus={cs.pyodideStatus}
+        onPythonReload={cs.reloadAfterPythonStuck}
         errorLine={readOnly ? null : cs.errorLine}
         // Line hints are scaffolding: once the check passes they go, not linger after the code.
         lineHints={readOnly || cs.checkPassed ? null : getTaskLineHintSets(task)}

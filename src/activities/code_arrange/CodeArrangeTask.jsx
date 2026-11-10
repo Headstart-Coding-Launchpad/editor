@@ -21,6 +21,7 @@ import { isIndentArrangeTask } from '../../shared/codeArrangeIndent'
 import CodeArrangeIndentBoard from './CodeArrangeIndentBoard.jsx'
 import TutorTileHighlightNote from '../../app/components/quiz/TutorTileHighlightNote.jsx'
 import { getModuleDefinition } from '../../modules/definitions.js'
+import PythonAsleepPrompt from '../../shared/PythonAsleepPrompt'
 
 // Matches ScratchWorkspace's live-cursor mirror (see CURSOR_THROTTLE_MS /
 // CURSOR_STALE_MS there) so both task types feel the same during Go Live.
@@ -75,6 +76,8 @@ export default function CodeArrangeTask({
   checkPassed = false,
   checkAttempted = false,
   pyodideStatus = 'ready',
+  // "Python fell asleep" Reload (R3): saves the arrangement's work and reloads the page.
+  onPythonReload,
   iframeSrc = null,
   iframeRef = null,
   onRun,
@@ -385,9 +388,7 @@ export default function CodeArrangeTask({
               {runLabel}
             </button>
             {pythonFailed && !running ? (
-              <span style={ca.runError} role="alert">
-                Python failed to load. Please refresh the page.
-              </span>
+              <PythonAsleepPrompt onReload={onPythonReload} style={{ flex: 1 }} />
             ) : (
               !complete && (
                 <span style={ca.runHint}>
@@ -761,11 +762,6 @@ const ca = {
     fontSize: '0.9rem',
     fontWeight: 600,
     color: 'var(--colour-ink-strong)',
-  },
-  runError: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.82rem',
-    color: '#b91c1c',
   },
   previewShell: {
     minHeight: 220,

@@ -12,6 +12,8 @@ import React, { Component, Fragment } from 'react'
  * variant 'tutor' (dashboard card, Student View Modal, admin routes): a plain line naming the pane.
  * `resetKey`: a change (another task, another student) clears the error by itself.
  * `compact`: a one-line strip, for small slots such as a student row.
+ * `onError` / `onRecover`: told when the fallback shows and when Try again is tapped. A student
+ * screen passes useStudentCodeState.reportHealth so the tutor's card says "Screen error" (R3).
  */
 export default class RenderErrorBoundary extends Component {
   constructor(props) {
@@ -33,10 +35,20 @@ export default class RenderErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     console.error(`[RenderErrorBoundary] ${this.props.label ?? 'pane'} hit an error`, error, info)
+    try {
+      this.props.onError?.(error)
+    } catch {
+      // Telling the tutor must never break the fallback.
+    }
   }
 
   retry() {
     this.setState((state) => ({ error: null, attempt: state.attempt + 1 }))
+    try {
+      this.props.onRecover?.()
+    } catch {
+      // as above
+    }
   }
 
   render() {

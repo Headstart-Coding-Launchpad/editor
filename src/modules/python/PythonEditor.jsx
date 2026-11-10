@@ -8,6 +8,7 @@ import { describeRunCount } from '../../shared/runCounts.js'
 import { PYTHON_KEY_ROW, pythonKeyRows } from './keyRow.js'
 import { useElementSize } from '../../shared/useElementSize'
 import { CONTROL_HIGHLIGHT_REVEAL_EVENT } from '../../shared/controlHighlight.js'
+import PythonAsleepPrompt from '../../shared/PythonAsleepPrompt'
 
 // The tap-to-insert symbol row on touch/iPad (and the keys a tutor's `key:(` highlight can make
 // glow) is one shared list in ./keyRow.js.
@@ -30,6 +31,9 @@ export default function PythonEditor({
   onHighlightDismiss,
   readOnly = false,
   pyodideStatus,
+  // Python stuck or failed to load ('error'): the prompt's Reload saves the code and reloads
+  // (useStudentCodeState.reloadAfterPythonStuck). Without one, Reload just reloads the page.
+  onPythonReload,
   editorStyle,
   errorLine = null,
   lineHints = null,
@@ -110,11 +114,7 @@ export default function PythonEditor({
   return (
     <div style={s.wrap} data-testid="editor-panel">
       {pyodideStatus === 'loading' && <div style={s.pyBanner}>⏳ Getting Python ready…</div>}
-      {pyodideStatus === 'error' && (
-        <div style={{ ...s.pyBanner, background: '#fef2f2', color: '#b91c1c' }}>
-          ⚠️ Python failed to load. Please refresh the page.
-        </div>
-      )}
+      {pyodideStatus === 'error' && <PythonAsleepPrompt onReload={onPythonReload} />}
       {calm
         ? showSymbolButtons && <CalmKeyRow keyCode={keyCode} renderKey={renderKey} />
         : (showSymbolButtons || showEmojiButton || showBlocks) && (

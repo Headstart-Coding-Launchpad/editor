@@ -118,9 +118,12 @@ export function selectPythonTaskCode({
   readSavedCode,
   onCarryFallback,
   crossLesson = null,
+  // The student's own save wins in any phase (a reload from "Python fell asleep",
+  // src/app/pythonReload.js).
+  restoreOwn = false,
 }) {
   const crossState = crossLessonState(crossLesson)
-  if (phase === 'solo' || crossState === 'own') {
+  if (phase === 'solo' || crossState === 'own' || restoreOwn) {
     const ownSaved = readSavedCode(taskId)
     if (ownSaved != null) return ownSaved.code ?? ''
   }

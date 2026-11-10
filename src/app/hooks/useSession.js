@@ -21,6 +21,7 @@ import { encodeFileKey, decodeFileKey } from '../../shared/fileKeys'
 import { sealTasks } from '../../shared/lessonSeal'
 import { compactTurtleResultForSync } from '../../modules/turtle/sync.js'
 import { compactStageForSync } from '../../shared/stage/sync.js'
+import { isStudentHealth, STUDENT_HEALTH } from '../../shared/studentHealth.js'
 import { AUTO_REVEAL_MODES, SUPPORT_REVEAL_SOURCES } from '../../shared/taskStages.js'
 import {
   buildShareIndexEntry,
@@ -129,6 +130,8 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   const serverTimeOffsetRef = useRef(0)
   const sessionRef = useRef(null)
   const attemptCacheRef = useRef({})
+  // writeStudentHealth: the health last sent per student, so a repeat waits for no snapshot.
+  const healthSentRef = useRef({})
   // This tab's first-occurrence guards (badge signals, pasteLog.firstAt), backing up the
   // session snapshot, which lags a write by a round trip.
   const signalSeenRef = useRef(new Set())
@@ -2271,6 +2274,23 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     }
   }
 
+  // The student's own screen health for the tutor (src/shared/studentHealth.js, R3): one write
+  // when it changes, never per keystroke or on a timer. Skips a value already on the node (no
+  // 'ok' for a healthy student) or already sent, and never recreates a removed student's node.
+  async function writeStudentHealth(anonymousId, health) {
+    if (!anonymousId || !isStudentHealth(health)) return
+    const student = session?.students?.[anonymousId]
+    if (!student) return
+    const current = student.health ?? STUDENT_HEALTH.ok
+    if (current === health) {
+      healthSentRef.current[anonymousId] = health
+      return
+    }
+    if (healthSentRef.current[anonymousId] === health) return
+    healthSentRef.current[anonymousId] = health
+    await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/health`), health)
+  }
+
   async function writeStudentPersonalSandbox(anonymousId, inPersonalSandbox) {
     await set(
       ref(db, `sessions/${lessonId}/students/${anonymousId}/inPersonalSandbox`),
@@ -2615,6 +2635,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     setTeacherLiveReferenceForStudent,
     setTeacherLiveReferenceForClass,
     writeStudentPresence,
+    writeStudentHealth,
     requestHelp,
     setStudentTopic,
     acceptTeacherEdit,

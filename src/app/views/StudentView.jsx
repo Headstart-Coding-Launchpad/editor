@@ -212,6 +212,7 @@ export default function StudentView({
     setSideQuestDone,
     writeSideQuestCode,
     writeStudentPresence,
+    writeStudentHealth,
     setTaskId,
     setTeacherLive,
     updateTeacherLive,
@@ -380,6 +381,7 @@ export default function StudentView({
     recordVariablePredictions,
     writeStudentPersonalSandbox,
     writeStudentPresence,
+    writeStudentHealth,
     registerPresence,
     removeStudent,
     updateTeacherLive,
@@ -404,6 +406,10 @@ export default function StudentView({
       recordExampleOpen,
     },
   })
+  // A render error caught on the student's screen tells the tutor once (students/{id}/health,
+  // R3); Try again sets it back.
+  const reportScreenError = () => cs.reportHealth?.('screen_error')
+  const reportScreenOk = () => cs.reportHealth?.('ok')
   // Live badge reporters for the shared editor, Blockly and Topic Library components below
   // (they read BadgeSignalsContext). The reporters are stable, so this value is too.
   const badgeSignalsContextValue = useMemo(
@@ -2165,7 +2171,12 @@ export default function StudentView({
             >
               {/* A render error in the task content stays inside it (R2); the inner boundary round
                   the code pane keeps the task card on screen. */}
-              <RenderErrorBoundary label="The task" resetKey={transitionKey}>
+              <RenderErrorBoundary
+                label="The task"
+                resetKey={transitionKey}
+                onError={reportScreenError}
+                onRecover={reportScreenOk}
+              >
                 <LessonTaskContent
                   lesson={displayedLesson}
                   task={task}

@@ -487,7 +487,8 @@ describe('CodeArrangeTask — lines with inline blanks', () => {
 })
 
 describe('CodeArrangeTask — Run gating', () => {
-  it('keeps Run disabled with a message when Python failed to load', () => {
+  it('keeps Run disabled with the Reload prompt when Python failed to load or is stuck', () => {
+    const onPythonReload = vi.fn()
     render(
       <CodeArrangeTask
         task={PYTHON_TASK}
@@ -495,12 +496,15 @@ describe('CodeArrangeTask — Run gating', () => {
         selectedAnswer={{ L1: 'L1', L2: 'L2' }}
         pyodideStatus="error"
         onRun={vi.fn()}
+        onPythonReload={onPythonReload}
       />
     )
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Python failed to load. Please refresh the page.'
+      '😴 Python fell asleep. Your code is safe 💾'
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Reload 🔄' }))
+    expect(onPythonReload).toHaveBeenCalledTimes(1)
   })
 
   it('treats a blank holding an unknown tile as empty', () => {

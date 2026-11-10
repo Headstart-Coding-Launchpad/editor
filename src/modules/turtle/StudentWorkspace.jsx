@@ -72,6 +72,8 @@ export default function StudentWorkspace({
 
   const savedCode = isViewingPrev ? cs.readSavedTaskCode(viewingTaskId) : null
   const readOnly = isViewingPrev || isForcedTeacherLive || isTeacherEditing
+  // Loading, or stuck ("Python fell asleep", R3): Run waits either way.
+  const pythonNotReady = cs.pyodideStatus === 'loading' || cs.pyodideStatus === 'error'
   const code = isForcedTeacherLive
     ? displayCode
     : isTeacherEditing
@@ -241,7 +243,7 @@ export default function StudentWorkspace({
       {slowMoShown && (!readOnly || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !arrangeReady || !!runLock}
+          runDisabled={cs.running || pythonNotReady || !arrangeReady || !!runLock}
         />
       )}
       {arrangeBoard({
@@ -271,7 +273,7 @@ export default function StudentWorkspace({
               style={s.primaryBtn}
               data-highlight-target="run stop"
               onClick={handleRunClick}
-              disabled={!cs.running && (cs.pyodideStatus === 'loading' || !!runLock)}
+              disabled={!cs.running && (pythonNotReady || !!runLock)}
               title={
                 !cs.running && runLock
                   ? runLock.message
@@ -327,7 +329,7 @@ export default function StudentWorkspace({
       {slowMoShown && (!readOnly || slowMoView) && (
         <SlowMoBar
           slowMo={slowMoControls}
-          runDisabled={cs.running || cs.pyodideStatus === 'loading' || !!runLock}
+          runDisabled={cs.running || pythonNotReady || !!runLock}
         />
       )}
       {/* setupNote, the puzzle's line counter and, after a pass, its par (src/shared/puzzle/). */}
@@ -350,6 +352,7 @@ export default function StudentWorkspace({
         // A finished scrub: counted for the report, and checked once as a Run (checkOnRelease).
         onScrubCommit={cs.handleScrubCommit}
         pyodideStatus={cs.pyodideStatus}
+        onPythonReload={cs.reloadAfterPythonStuck}
         errorLine={readOnly ? null : cs.errorLine}
         // Line hints are scaffolding: once the check passes they go, not linger after the code.
         lineHints={

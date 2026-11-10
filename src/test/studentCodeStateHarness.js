@@ -101,6 +101,7 @@ export const WRITER_NAMES = [
   'recordVariablePredictions',
   'writeStudentPersonalSandbox',
   'writeStudentPresence',
+  'writeStudentHealth',
   'registerPresence',
   'removeStudent',
   'updateTeacherLive',

@@ -1207,7 +1207,14 @@ export default function LessonTaskContent({
       onPaste={isLiveCopyBlocked ? undefined : handleWorkspacePaste}
     >
       {/* One render error replaces only this pane (R2); the task card beside it stays. */}
-      <RenderErrorBoundary label="The code pane" resetKey={transitionKey} codeSafe={codePaneIsSafe}>
+      <RenderErrorBoundary
+        label="The code pane"
+        resetKey={transitionKey}
+        codeSafe={codePaneIsSafe}
+        // Tells the tutor's card "Screen error" once (students/{id}/health, R3).
+        onError={() => cs.reportHealth?.('screen_error')}
+        onRecover={() => cs.reportHealth?.('ok')}
+      >
         {workspaceContent}
       </RenderErrorBoundary>
     </div>

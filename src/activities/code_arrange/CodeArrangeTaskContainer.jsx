@@ -326,6 +326,7 @@ export default function CodeArrangeTaskContainer({
             onSelectAnswer={detached ? undefined : handleSlotStateChange}
             running={readOnly ? false : cs.running}
             pyodideStatus={cs.pyodideStatus}
+            onPythonReload={cs.reloadAfterPythonStuck}
             onRun={detached ? undefined : onRun}
             runLabel={runLabel}
             onStop={detached ? undefined : cs.handleStop}
@@ -355,6 +356,7 @@ export default function CodeArrangeTaskContainer({
       checkPassed={checkPassed}
       checkAttempted={checkAttempted}
       pyodideStatus={cs.pyodideStatus}
+      onPythonReload={cs.reloadAfterPythonStuck}
       iframeSrc={iframeSrc}
       iframeRef={cs.iframeRef}
       onRun={detached ? undefined : cs.handleRun}
