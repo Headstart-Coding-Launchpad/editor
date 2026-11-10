@@ -6,6 +6,11 @@ What every file in this directory covers and when to reach for it. Use this to f
 
 ## Root docs (`docs/`)
 
+### [PRODUCT.md](PRODUCT.md)
+What LaunchPad is: mission, principles, what it is not, student vs tutor screen rules, and the key engineering rules in one place, linking to CLAUDE.md and project-rules.md.
+
+**Load when:** designing a feature or screen, or deciding whether something belongs in LaunchPad at all.
+
 ### [CODEBASE_MAP.md](CODEBASE_MAP.md)
 One-line role for every source file in the repo — entry points, all React components, hooks, shared modules, Cloud Functions, scripts, CLI, and config files. Use this as a navigation index: search for a heading or file name to find what you need without loading the whole map.
 
