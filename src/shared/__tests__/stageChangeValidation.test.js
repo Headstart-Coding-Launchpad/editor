@@ -38,8 +38,49 @@ describe('validateStageChange', () => {
 
   it('warns that show: change on a Starter stage is ignored', () => {
     expect(run({ codeStages: [{ ...starter, show: 'change' }] }).warnings).toEqual([
-      'Task 1 stage 1 show: "change" works on a Complete or Support stage only; this stage shows in full',
+      'Task 1 stage 1 show: "change" works on a Complete or Support stage only; it is ignored here',
     ])
+  })
+
+  describe('a Support stage with show: change (read as an excerpt)', () => {
+    const support = (code) => ({ label: 'Hint', role: 'support', code, show: 'change' })
+
+    it('a few lines sharing a line with the starter are fine', () => {
+      expect(run({ codeStages: [starter, support('size -= step\nturn += 10')] })).toEqual({
+        errors: [],
+        warnings: [],
+      })
+    })
+
+    it('warns (never errors) when it holds the whole starter program', () => {
+      const result = run({
+        codeStages: [starter, support('size = 100\nsize -= step\nturn += 10')],
+      })
+      expect(result.errors).toEqual([])
+      expect(result.warnings).toEqual([
+        'Task 1 stage 2 show: "change" reads a Support stage as a few lines of the program, ' +
+          'but this one holds the whole starter code: lines it leaves out never show as lines ' +
+          'to remove, so use a Complete stage for a whole program',
+      ])
+    })
+
+    it('warns (never errors) when no line of it is in the starter code', () => {
+      const result = run({ codeStages: [starter, support('turn += 10\nprint(turn)')] })
+      expect(result.errors).toEqual([])
+      expect(result.warnings).toEqual([
+        'Task 1 stage 2 show: "change" places a Support stage\'s new lines by lines of the ' +
+          "student's code, but none of its lines is in the starter code, so all of it shows " +
+          'in green and nothing shows as removed',
+      ])
+    })
+
+    it('is not checked against the starter when the task carries code', () => {
+      const task = {
+        carryCodeFrom: 'task-1',
+        codeStages: [starter, support('turn += 10')],
+      }
+      expect(run(task).warnings).toEqual([])
+    })
   })
 
   it('warns outside Python', () => {

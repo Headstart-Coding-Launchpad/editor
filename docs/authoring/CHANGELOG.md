@@ -47,9 +47,13 @@ Entries written before 2026-09-29 are not tagged.
   the student's code when the hint is revealed: the lines it leaves out are never shown as lines
   to remove; a line of theirs shows as changed only when a new line only extends it or swaps a
   small piece of it. Include one line the student already has next to each new line so it can be
-  placed. The Builder offers "Show only the changes" on Support stages, and the validator no
-  longer warns there (a Starter stage still warns). There is no `diffFrom` field: the base is the
-  student's editor code, else the starter. See [python-tasks.md](python-tasks.md#change-view).
+  placed. The excerpt may sit at any indent (lifted out of a `def` or loop): only a line it moves
+  deeper or shallower than its neighbours shows as a re-indent. On the calm screen the Copy code
+  lines stay beside a Support stage's change view (only a Complete stage's takes their place).
+  The Builder offers "Show only the changes" on Support stages. The validator warns (never
+  errors) when such a Support stage holds the whole starter code or shares no line with it; a
+  Starter stage still warns. There is no `diffFrom` field: the base is the student's editor code,
+  else the starter. See [python-tasks.md](python-tasks.md#change-view).
 - Affects: python, cli · Existing lessons: no changes needed (add `show: change` to a Support
   stage to opt in) · Resolves: none (Ryan, 10 Nov 2026: Python 2B L10, 3B L10, Python 1 L10)
 
