@@ -100,7 +100,7 @@ describe('Student can see strip: the fun moment', () => {
     expect(strip).toHaveTextContent('Student can see')
     const items = within(strip).getAllByRole('button')
     expect(items.map((b) => b.textContent)).toEqual([
-      'Copy code: on',
+      'Copy code: set',
       'Support 2opened by student 14:32',
       'Complete: closed',
     ])
@@ -133,7 +133,7 @@ describe('Student can see strip: the fun moment', () => {
       studentSignals: { sam: { completeShown: { 3: { at: AT_1441, via: 'preview' } } } },
     })
     const strip = screen.getByTestId('student-can-see-strip')
-    expect(strip).toHaveTextContent('Support 1revealed by you 14:32')
+    expect(strip).toHaveTextContent('Support 1opened by you 14:32')
     expect(strip).toHaveTextContent('Completeopened by student 14:41')
 
     fireEvent.click(within(strip).getByRole('button', { name: /^Complete/ }))
@@ -148,6 +148,66 @@ describe('Student can see strip: the fun moment', () => {
     expect(within(strip).getByRole('button', { name: 'Copy code: off' })).toBeDisabled()
     expect(within(strip).getByRole('button', { name: 'Support: none' })).toBeDisabled()
     expect(within(strip).getByRole('button', { name: 'Complete: closed' })).toBeDisabled()
+  })
+
+  it('says the log means "opened earlier", not "open right now"', () => {
+    renderModal({
+      supportRevealLog: { sam: { 3: { 2: { source: 'student', revealedAt: AT_1432 } } } },
+    })
+    const strip = screen.getByTestId('student-can-see-strip')
+    expect(within(strip).getByText('Student can see')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/opened earlier; may be closed now/i)
+    )
+    fireEvent.click(within(strip).getByRole('button', { name: /Support 2/ }))
+    expect(screen.getByTestId('can-see-preview')).toHaveTextContent(
+      /opened earlier; may be closed now/i
+    )
+  })
+
+  it('keeps the Reference opened chip where the strip does not show (sandbox)', () => {
+    renderModal({
+      state: 'sandbox',
+      supportRevealLog: { sam: { 3: { 1: { source: 'student', revealedAt: AT_1432 } } } },
+    })
+    expect(screen.queryByTestId('student-can-see-strip')).not.toBeInTheDocument()
+    expect(screen.getByText('Reference opened')).toBeInTheDocument()
+  })
+
+  it('closes the preview on a pointerdown outside it, but not on one inside', () => {
+    renderModal({
+      supportRevealLog: { sam: { 3: { 2: { source: 'student', revealedAt: AT_1432 } } } },
+    })
+    const strip = screen.getByTestId('student-can-see-strip')
+    fireEvent.click(within(strip).getByRole('button', { name: /Support 2/ }))
+    fireEvent.pointerDown(screen.getByTestId('can-see-preview'))
+    expect(screen.getByTestId('can-see-preview')).toBeInTheDocument()
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByTestId('can-see-preview')).not.toBeInTheDocument()
+  })
+
+  it('a preview whose item turned off does not swallow the first Escape', () => {
+    const session = {
+      state: 'active',
+      currentTaskId: 3,
+      supportRevealLog: { sam: { 3: { 2: { source: 'student', revealedAt: AT_1432 } } } },
+    }
+    const props = {
+      student: STUDENT,
+      lesson: LESSON,
+      session,
+      isLive: true,
+      onClose: vi.fn(),
+      onRevealSupportStage: vi.fn(),
+    }
+    const { rerender } = render(<StudentModal {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: /Support 2/ }))
+    expect(screen.getByTestId('can-see-preview')).toBeInTheDocument()
+    // The tutor resets the student's task: the log entry goes, the item is no longer on.
+    rerender(<StudentModal {...props} session={{ ...session, supportRevealLog: {} }} />)
+    expect(screen.queryByTestId('can-see-preview')).not.toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(props.onClose).toHaveBeenCalled()
   })
 })
 
@@ -181,10 +241,11 @@ describe('studentCanSee', () => {
       completeShown: { at: 12, via: 'show' },
     }).find((i) => i.key === 'complete')
     expect(studentFirst).toMatchObject({ on: true, by: 'student', at: 12 })
+    // A tutor reset hides the Complete code again: it never turns the item on.
     const reset = studentCanSee({ ...base, completeShown: { at: 5, via: 'teacherReset' } }).find(
       (i) => i.key === 'complete'
     )
-    expect(reset).toMatchObject({ on: true, by: 'tutor' })
+    expect(reset).toEqual({ key: 'complete', on: false })
   })
 
   it('lists only the items the task has', () => {
