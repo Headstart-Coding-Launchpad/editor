@@ -1,3 +1,4 @@
+import React from 'react'
 import { act, render } from '@testing-library/react'
 
 const stack = vi.hoisted(() => ({
@@ -236,4 +237,48 @@ it('shows the Markdown drawing straight away while an edited fence waits to be d
   const pending = container.querySelector('[data-real-blocks="pending"]')
   expect(pending.style.visibility).toBe('')
   expect(pending).not.toHaveAttribute('aria-hidden')
+})
+
+it('strips anything active from the SVG before it is put on the page', async () => {
+  stack.render.mockResolvedValue({
+    ...DRAWN,
+    svg:
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="400" height="200" onload="alert(1)">' +
+      '<script>alert(2)</script><foreignObject><div>x</div></foreignObject>' +
+      '<a href="javascript:alert(3)"><path onclick="alert(4)" class="blocklyPath"/></a>' +
+      '<image xlink:href="javascript:alert(5)"/><image href="data:image/svg+xml;base64,AA=="/>' +
+      '<use href="#hsc-sb-0"/></svg>',
+  })
+  const { container } = render(<RealScratchBlocks code={CODE} />)
+  await act(async () => {})
+  const real = container.querySelector('[data-real-blocks="blockly"]')
+  const html = real.innerHTML
+  expect(html).not.toMatch(/<script|foreignObject|javascript:|\son\w+=/i)
+  expect(real.querySelector('path.blocklyPath')).not.toBeNull()
+  expect(html).toContain('data:image/svg+xml;base64,AA==')
+  expect(html).toMatch(/href="#hsc-sb-/)
+})
+
+it('works out a live edit without writing to a ref during render (StrictMode)', async () => {
+  vi.useFakeTimers()
+  try {
+    stack.render.mockReturnValue(new Promise(() => {}))
+    const { rerender } = render(
+      <React.StrictMode>
+        <RealScratchBlocks code={CODE} />
+      </React.StrictMode>
+    )
+    const first = stack.render.mock.calls.length
+    rerender(
+      <React.StrictMode>
+        <RealScratchBlocks code={`${CODE}\nmove (5) steps`} />
+      </React.StrictMode>
+    )
+    // Typed straight after: debounced, not drawn at once, even with renders run twice.
+    expect(stack.render.mock.calls.length).toBe(first)
+    await act(async () => vi.advanceTimersByTime(EDIT_DEBOUNCE_MS + 10))
+    expect(stack.render.mock.calls.length).toBeGreaterThan(first)
+  } finally {
+    vi.useRealTimers()
+  }
 })

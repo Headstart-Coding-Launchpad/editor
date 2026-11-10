@@ -19,6 +19,26 @@ export const EXPLAINER_BLOCK_SCALE = 0.65
 // never sees one drawing swap for another. If the load is slow it shows after this long.
 export const SHOW_FALLBACK_AFTER_MS = 1500
 
+// The SVG goes on the page as HTML, so anything active is taken out first, whatever made it:
+// scripts, embedded HTML, event handlers, and links that are not to the picture's own ids or
+// to an embedded image.
+function stripActive(root) {
+  for (const el of [...root.querySelectorAll('script, foreignObject')]) el.remove()
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase()
+      const value = attr.value.trim().toLowerCase()
+      if (name.startsWith('on')) el.removeAttribute(attr.name)
+      else if (
+        /(^|:)href$/.test(name) &&
+        !value.startsWith('#') &&
+        !value.startsWith('data:image/')
+      )
+        el.removeAttribute(attr.name)
+    }
+  }
+}
+
 // The picture at the calm block size, scaled down to fit its column. Null when the SVG cannot
 // be read or has no size: the caller then shows the Markdown drawing rather than a picture at
 // the wrong size.
@@ -27,6 +47,7 @@ function sizedSvg(result, scope) {
   const doc = new DOMParser().parseFromString(scopeSvgIds(result.svg, scope), 'image/svg+xml')
   const root = doc.documentElement
   if (root?.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) return null
+  stripActive(root)
   if (!(Number(root.getAttribute('width')) > 0) || !(Number(root.getAttribute('height')) > 0))
     return null
   const width = Math.round(result.width * EXPLAINER_BLOCK_SCALE)
@@ -59,17 +80,23 @@ function BlocklyFence({ code }) {
     result: peekScratchFenceSvg(code),
   }))
   const [slowFor, setSlowFor] = React.useState(null)
-  const lastChange = React.useRef(null)
-  if (!lastChange.current) lastChange.current = { code, at: Date.now(), edited: false }
-  if (lastChange.current.code !== code) {
+  // When the text last changed, kept in state and updated during render the way React allows
+  // (setState for the props just seen), not by writing to a ref.
+  const [lastChange, setLastChange] = React.useState(() => ({
+    code,
+    at: Date.now(),
+    edited: false,
+  }))
+  let change = lastChange
+  if (change.code !== code) {
     const now = Date.now()
-    const edited = now - lastChange.current.at < LIVE_EDIT_WINDOW_MS
-    lastChange.current = { code, at: now, edited }
+    change = { code, at: now, edited: now - lastChange.at < LIVE_EDIT_WINDOW_MS }
+    setLastChange(change)
   }
   const scope = React.useId()
   const result = drawnFor.code === code ? drawnFor.result : peekScratchFenceSvg(code)
   // A fence being typed shows the Markdown drawing at once, so the author never types blind.
-  const edited = lastChange.current.edited
+  const edited = change.edited
   const slow = slowFor === code || edited
 
   React.useEffect(() => {
