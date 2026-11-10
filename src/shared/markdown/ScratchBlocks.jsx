@@ -13,14 +13,14 @@ const CONTENT_TOP_INSET = 4
 const NOTCH_X = 17
 const NOTCH_W = 30
 const MOUTH_X = 15
-const MOUTH_PAD_TOP = 2
+const MOUTH_PAD_TOP = 0
 const MOUTH_PAD_BOTTOM = 0
 const MOUTH_MIN_H = 34
 const ELSE_H = 33
 const FOOTER_H = 13
 const C_MIN_W = 185
 const ROOT_GAP = 9
-const C_CHILD_X = 14
+const C_CHILD_X = MOUTH_X
 const C_ARM_W = 88
 const OPERATOR_COLOR = '#59C059'
 const TEXT_SHADOW_OPERATORS = new Set(['operator_equals', 'operator_join', 'operator_contains'])
@@ -355,15 +355,18 @@ function measureSlot(content, kind, depth, hostInfo, fontSize = 13) {
 function stackedSize(children) {
   if (!children.length) return { width: 0, height: 0 }
   const sizes = children.map(measureNode)
+  // The foot sits snug against the last block, so its bottom tab does not add to the mouth.
+  const lastTab = sizes[sizes.length - 1].bottomTab ? CONNECTOR_H : 0
   return {
     width: Math.max(...sizes.map((size) => size.width)),
     height:
       sizes.reduce((sum, size) => sum + size.height, 0) -
-      CONNECTOR_H * Math.max(0, sizes.length - 1),
+      CONNECTOR_H * Math.max(0, sizes.length - 1) -
+      lastTab,
   }
 }
 
-function measureCBlock(node) {
+function measureCBlock(node, innerWidth = 0) {
   const header = measureSimpleBlock(node.text, { ...node.info, shape: 'stack' }, false)
   const childSize = stackedSize(node.children)
   const elseChildSize = stackedSize(node.elseChildren)
@@ -371,7 +374,7 @@ function measureCBlock(node) {
   const elseMouthH = node.hasElse
     ? Math.max(MOUTH_MIN_H, elseChildSize.height + MOUTH_PAD_TOP + MOUTH_PAD_BOTTOM)
     : 0
-  const mouthW = Math.max(childSize.width, elseChildSize.width) + MOUTH_X + 12
+  const mouthW = (innerWidth || Math.max(childSize.width, elseChildSize.width)) + MOUTH_X + 12
   const width = Math.ceil(Math.max(C_MIN_W, header.width, mouthW))
   const bodyH = BODY_H + mouthH + (node.hasElse ? ELSE_H + elseMouthH : 0) + FOOTER_H
   const bottomTab = node.info.opcode !== 'control_forever'
@@ -836,7 +839,26 @@ function RenderNodeList({ nodes }) {
 }
 
 function ScratchCBlock({ node }) {
-  const size = measureCBlock(node)
+  const mouthRef = React.useRef(null)
+  const elseRef = React.useRef(null)
+  const [innerWidth, setInnerWidth] = React.useState(0)
+  // Inner blocks size themselves from real text, so the top arm follows the widest one actually drawn.
+  React.useLayoutEffect(() => {
+    let active = true
+    const measure = () => {
+      const widest = [mouthRef.current, elseRef.current].flatMap((el) =>
+        el ? [...el.children].map((child) => child.firstElementChild?.offsetWidth ?? 0) : []
+      )
+      const next = Math.max(0, ...widest)
+      if (active && next) setInnerWidth((cur) => (cur === next ? cur : next))
+    }
+    measure()
+    document.fonts?.ready?.then(measure).catch(() => {})
+    return () => {
+      active = false
+    }
+  })
+  const size = measureCBlock(node, innerWidth)
   const color = node.info.color
   const displayText = scratchBlockTextWithoutIcon(node.text, node.info)
   const elseY = BODY_H + size.mouthH
@@ -923,6 +945,7 @@ function ScratchCBlock({ node }) {
           alignItems: 'flex-start',
         }}
         data-scratch-mouth-stack="children"
+        ref={mouthRef}
       >
         <RenderNodeList nodes={node.children} />
       </div>
@@ -956,6 +979,7 @@ function ScratchCBlock({ node }) {
               alignItems: 'flex-start',
             }}
             data-scratch-mouth-stack="else"
+            ref={elseRef}
           >
             <RenderNodeList nodes={node.elseChildren} />
           </div>
