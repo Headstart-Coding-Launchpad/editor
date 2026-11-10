@@ -1,7 +1,7 @@
 // "Python fell asleep" (deep review R3, review fixes 10 Nov): one Reload button that always
 // reloads, says "Your code is safe" only where the reload really brings the code back, and
 // comes back if the reload could not happen.
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PythonAsleepPrompt from '../PythonAsleepPrompt'
 
@@ -28,5 +28,27 @@ describe('PythonAsleepPrompt', () => {
     expect(onReload).toHaveBeenCalledTimes(1)
     expect(button).not.toBeDisabled()
     vi.restoreAllMocks()
+  })
+
+  // Second review (10 Nov): a reload the browser blocked or the child cancelled (a "leave
+  // site?" box) leaves the page here; the button comes back with a tiny nudge.
+  it('comes back after about 5 s if the page did not reload, saying "still there? tap again"', () => {
+    vi.useFakeTimers()
+    try {
+      const onReload = vi.fn()
+      render(<PythonAsleepPrompt codeSafe onReload={onReload} />)
+      const button = screen.getByRole('button', { name: 'Reload 🔄' })
+      fireEvent.click(button)
+      expect(button).toBeDisabled()
+      act(() => vi.advanceTimersByTime(4000))
+      expect(button).toBeDisabled()
+      act(() => vi.advanceTimersByTime(1500))
+      expect(button).not.toBeDisabled()
+      expect(screen.getByTestId('python-asleep')).toHaveTextContent('Still there? Tap again')
+      fireEvent.click(button)
+      expect(onReload).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
