@@ -111,7 +111,7 @@ function squareSlot(content, hostInfo) {
   return { kind: TEXT_INPUT_OPCODES.has(opcode) ? 'value' : 'dropdown', content }
 }
 
-function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
+export function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
   const parts = []
   let buffer = ''
   const hostColor = hostColorOf(hostInfo)
@@ -994,7 +994,7 @@ function ScratchNode({ node }) {
   return <ScratchBlockBody text={node.text} info={node.info} />
 }
 
-function parseScratchStack(code) {
+export function parseScratchStack(code) {
   const roots = []
   const stack = []
   let id = 0

@@ -16,7 +16,17 @@ import {
 import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
-import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
+import {
+  InlineScratchBlock,
+  ScratchBlocks as OwnScratchBlocks,
+  looksLikeScratchBlocks,
+} from './markdown/ScratchBlocks'
+import { RealScratchBlocks, realBlocksEnabled } from './markdown/RealScratchBlocks'
+
+// SPIKE: `?realBlocks=1` draws Scratch fences with the real Blockly engine.
+function ScratchBlocks(props) {
+  return realBlocksEnabled() ? <RealScratchBlocks {...props} /> : <OwnScratchBlocks {...props} />
+}
 import { parseMarkdownBlocks } from './markdown/exampleFence.js'
 import { ExampleFenceButton } from './markdown/ExampleFenceButton.jsx'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
