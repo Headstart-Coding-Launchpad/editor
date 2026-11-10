@@ -35,7 +35,9 @@ const CHIPS = {
   python_stuck: {
     icon: '🐍',
     label: 'Python stuck',
-    title: 'Python stopped working on their screen. Their code is safe: they can tap Reload.',
+    // No "their code is safe" here: the Reload keeps the code on some screens only (the
+    // student's own prompt says so only where it does).
+    title: 'Python stuck: ask them to tap Reload',
   },
   screen_error: {
     icon: '🛠️',
@@ -53,7 +55,7 @@ export function studentHealthChip(problem) {
 export function studentHealthBanner(problem, name) {
   const who = name || 'This student'
   if (problem === STUDENT_HEALTH.pythonStuck) {
-    return `🐍 ${who}'s Python stopped working. Their code is safe: they see a Reload button.`
+    return `🐍 ${who}'s Python stuck: ask them to tap Reload.`
   }
   if (problem === STUDENT_HEALTH.screenError) {
     return `🛠️ Part of ${who}'s screen hit an error. They see a Try again button.`

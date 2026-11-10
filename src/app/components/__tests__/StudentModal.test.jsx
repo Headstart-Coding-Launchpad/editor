@@ -1515,9 +1515,10 @@ describe('StudentModal header: four common actions, the rest in More', () => {
 describe('StudentModal: screen health banner (R3)', () => {
   it("says why when the student's Python is stuck, and nothing when all is well", () => {
     const { unmount } = render(<StudentModal {...mkProps({}, { health: 'python_stuck' })} />)
-    expect(screen.getByTestId('student-health-banner')).toHaveTextContent(
-      'Python stopped working. Their code is safe'
-    )
+    const banner = screen.getByTestId('student-health-banner')
+    expect(banner).toHaveTextContent('Python stuck: ask them to tap Reload')
+    // No promise the tutor cannot check (the reload keeps code on some screens only).
+    expect(banner.textContent).not.toMatch(/safe/)
     unmount()
     render(<StudentModal {...mkProps({}, { health: 'ok' })} />)
     expect(screen.queryByTestId('student-health-banner')).toBeNull()

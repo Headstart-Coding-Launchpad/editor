@@ -65,7 +65,11 @@ describe('student health for the tutor (R3)', () => {
     expect(studentHealthChip('python_stuck')).toMatchObject({ icon: '🐍', label: 'Python stuck' })
     expect(studentHealthChip('screen_error')).toMatchObject({ icon: '🛠️', label: 'Screen error' })
     expect(studentHealthChip(null)).toBeNull()
-    expect(studentHealthBanner('python_stuck', 'Mia')).toContain("Mia's Python stopped working")
+    expect(studentHealthBanner('python_stuck', 'Mia')).toContain(
+      "Mia's Python stuck: ask them to tap Reload"
+    )
+    expect(studentHealthChip('python_stuck').title).toBe('Python stuck: ask them to tap Reload')
+    expect(studentHealthBanner('python_stuck', 'Mia')).not.toMatch(/safe/)
     expect(studentHealthBanner(null, 'Mia')).toBeNull()
   })
 })
