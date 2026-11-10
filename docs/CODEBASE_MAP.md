@@ -976,7 +976,9 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | File | Role |
 |---|---|
 | `editorOptions.js` | Markdown editor option data and helpers: image extensions, code block options, inline code options, Scratch insertion categories, and Scratch fence detection |
-| `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser used by MarkdownRenderer |
+| `ScratchBlocks.jsx` | SVG/path Scratch block renderer and fenced-stack parser: draws inline `scratch:` pills, and fences wherever `RealScratchBlocks` falls back |
+| `RealScratchBlocks.jsx` | What MarkdownRenderer draws a Scratch fence with: the real Blockly picture at the calm block size (0.65, shrunk to fit its column), invisible `ScratchBlocks` placeholder while loading (shown after 1.5 s), `ScratchBlocks` for any fence Blockly can't draw and with no real browser (jsdom) |
+| `blocklyStack.js` | Fence text to Blockly state (`scratchFenceToState`, slots matched to the block's own fields/inputs; a block under `forever` becomes its own stack) and to a static SVG via one hidden read-only zelos workspace and `scriptSvg.js` (`renderScratchFenceSvg`, cached by text, 200 max, one render at a time; `peekScratchFenceSvg`; id tidy/scope helpers). Blockly loads by dynamic import only |
 | `tableParser.js` | Pure Markdown table parser used before handing content to ReactMarkdown |
 | `exampleFence.js` | Pure parser for "See example" fences (` ```example python label="…" `, intro before `---`, then code): `splitExampleFences`, `parseMarkdownBlocks` (example fences + tables, MarkdownRenderer's block list), `findExampleFenceProblems` (lesson validation warnings) |
 | `ExampleFenceButton.jsx` | The "See example" button and its wide, portalled, focus-trapped dialog (a bottom sheet on narrow screens); MarkdownRenderer supplies the highlighted code and intro |
