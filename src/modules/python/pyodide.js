@@ -15,19 +15,36 @@
  *   renderStage(code)          — run a stageTarget's code silently; resolves its stage commands
  *   isPythonRunning()          — true while a run is in progress
  *
- * A worker that dies (its onerror: e.g. a mid-class deploy removed the old hashed worker file,
- * so the replacement stopPython builds cannot load) or never says "ready" within
- * PYTHON_READY_TIMEOUT_MS marks Python stuck (./pythonHealth.js, deep review R3): pending loads
- * and runs settle, no new worker is built, and the student screens offer one Reload button.
+ * Python stuck (./pythonHealth.js, deep review R3), shown on the student screens as one Reload:
+ * - a worker that dies before it says "ready" (its onerror: e.g. a mid-class deploy removed the
+ *   old hashed worker file, so the replacement stopPython builds cannot load) is dropped and
+ *   pending loads and runs settle. Only the next explicit Run (runPython, initPyodide) or Stop
+ *   builds another, as before. An error after "ready" kills nothing.
+ * - a worker with no "ready" after PYTHON_READY_TIMEOUT_MS only shows the prompt: it keeps
+ *   loading, and a "ready" that comes after all clears the prompt again.
+ * While stuck, a Run or load that would otherwise wait in silence says PYTHON_ASLEEP_MESSAGE.
  */
 
 import { setChartsLoading } from '../../shared/stage/chartsStatus.js'
-import { isPythonStuck, setPythonStuck } from './pythonHealth.js'
+import { isPythonStuck, PYTHON_ASLEEP_MESSAGE, setPythonStuck } from './pythonHealth.js'
 
 // Generous: the first load downloads Pyodide (several MB) on school Wi-Fi, with no progress
 // messages while it does. A dead worker file is caught at once by onerror instead.
 export const PYTHON_READY_TIMEOUT_MS = 90 * 1000
-const STUCK = '__hs_python_stuck__'
+
+function asleepError() {
+  return new Error(PYTHON_ASLEEP_MESSAGE)
+}
+
+// A Run while Python is stuck: the message on its output (as stderr), never a silent no-op.
+function asleepRun(onOutput) {
+  try {
+    onOutput?.(`${PYTHON_ASLEEP_MESSAGE}\n`, 'stderr')
+  } catch {
+    // the caller's output handler must not turn this into a throw
+  }
+  return { status: 'stopped', pythonAsleep: true }
+}
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
@@ -52,6 +69,8 @@ let _stageRenderChain = Promise.resolve()
 // download is not the program taking too long. { pause, resume } or null.
 let _stageRenderWatch = null
 let _readyTimer = null
+// The worker that has said "ready": a later error in it is not a dead worker file.
+let _readyWorker = null
 
 // ─── Worker management ────────────────────────────────────────────────────────
 
@@ -74,33 +93,37 @@ function createAndInitWorker() {
   try {
     w = new Worker(new URL('./pyodide.worker.js', import.meta.url), { type: 'module' })
   } catch {
-    markPythonStuck()
+    dropDeadWorker(null)
     return null
   }
   w.onmessage = handleWorkerMessage
-  // Only this worker's death counts (a terminated older one is already replaced).
+  // Only the current worker, and only before it got ready: a terminated older one is already
+  // replaced, and an uncaught error in a loaded worker is not a dead worker file.
   w.onerror = () => {
-    if (_worker === w) markPythonStuck()
+    if (_worker === w && _readyWorker !== w) dropDeadWorker(w)
   }
   clearTimeout(_readyTimer)
-  _readyTimer = setTimeout(markPythonStuck, PYTHON_READY_TIMEOUT_MS)
+  // Slow, not dead: show the prompt and keep loading ('ready' clears it again).
+  _readyTimer = setTimeout(() => {
+    _readyTimer = null
+    if (_worker === w && _readyWorker !== w) setPythonStuck(true)
+  }, PYTHON_READY_TIMEOUT_MS)
   w.postMessage({ type: 'init' })
   return w
 }
 
-// Python is stuck: drop the worker, settle whatever waits on it, and tell the screens. Nothing
-// rebuilds a worker after this; the student's Reload loads the page (and the current files).
-function markPythonStuck() {
-  if (isPythonStuck()) return
+// A worker died before it got ready: drop it, settle whatever waits on it, and tell the screens.
+// Only the next explicit Run or Stop builds another (the Reload loads the page and current files).
+function dropDeadWorker(w) {
   clearTimeout(_readyTimer)
   _readyTimer = null
   try {
-    _worker?.terminate()
+    w?.terminate()
   } catch {
     // already gone
   }
   _worker = null
-  _loadReject?.(new Error(STUCK))
+  _loadReject?.(asleepError())
   _loadResolve = null
   _loadReject = null
   _loadingPromise = null
@@ -127,10 +150,13 @@ function handleWorkerMessage({ data }) {
     case 'ready':
       clearTimeout(_readyTimer)
       _readyTimer = null
+      _readyWorker = _worker
       _loadResolve?.()
       _loadResolve = null
       _loadReject = null
       _loadingPromise = null
+      // A slow load that finished after all: the prompt goes.
+      setPythonStuck(false)
       break
 
     case 'load_error':
@@ -208,17 +234,21 @@ export function isPyodideReady() {
  */
 export async function initPyodide(onProgress) {
   _progressCallback = onProgress
-  if (isPythonStuck()) throw new Error(STUCK)
   if (!_worker) {
+    // The first load, or an explicit retry after a dead worker.
     _worker = createAndInitWorker()
-    if (isPythonStuck()) throw new Error(STUCK)
+    if (!_worker) throw asleepError()
+  } else if (isPythonStuck() && _loadingPromise) {
+    // Still loading past the timer: say so now rather than wait in silence. The load under way
+    // carries on, and clears the prompt if it finishes.
+    throw asleepError()
   }
   if (_loadingPromise) {
     try {
       await _loadingPromise
     } catch (err) {
       if (!String(err).includes('__hs_stopped__')) throw err
-      if (isPythonStuck()) throw new Error(STUCK)
+      if (isPythonStuck()) throw asleepError()
       // Stopped mid-load — not a real error, caller's .catch() should not fire
     }
   }
@@ -261,8 +291,16 @@ async function startRun(
     setup,
   } = {}
 ) {
-  if (isPythonStuck()) return { status: 'stopped' }
+  // Stuck: a dead worker gets one more try from this explicit Run; one still loading past the
+  // timer is not waited on in silence.
+  let retried = false
+  if (!_worker && isPythonStuck()) {
+    _worker = createAndInitWorker()
+    retried = true
+  }
+  if (!_worker && isPythonStuck()) return asleepRun(onOutput)
   if (!_worker) throw new Error('Pyodide not initialised — call initPyodide first')
+  if (isPythonStuck() && !retried) return asleepRun(onOutput)
 
   _stopped = false
   _onOutput = onOutput
@@ -276,7 +314,9 @@ async function startRun(
     try {
       await _loadingPromise
     } catch {
-      // Worker was terminated while we were waiting for the pre-warm to finish
+      // The worker died while loading: say so. Otherwise it was terminated (Stop) while we
+      // waited for the pre-warm to finish.
+      if (isPythonStuck()) return asleepRun(onOutput)
       return { status: 'stopped' }
     }
   }
@@ -366,7 +406,7 @@ export async function renderStage(code, { timeoutMs = 8000 } = {}) {
 
 /** Terminate the running worker immediately and pre-warm a replacement. */
 export function stopPython() {
-  if (!_worker || isPythonStuck()) return
+  if (!_worker) return
   _stopped = true
   _stopCount += 1
   _worker.terminate()
