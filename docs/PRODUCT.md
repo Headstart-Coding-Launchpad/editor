@@ -25,7 +25,7 @@ LaunchPad is the classroom Headstart Coding tutors teach in: a calm place for a 
 
 ## Student screens vs tutor screens
 
-- **Student screens** (Classroom `/lesson/:lessonId` and anything a child sees) are calm: one main action, at most five visible controls counted with the top bar, the work as the visual priority. Must fit 1366x768.
+- **Student screens** (Classroom `/lesson/:lessonId` and anything a child sees) are calm: one main action, at most five visible controls counted with the top bar, the work as the visual priority. Must fit 1366x768 and tablets (1024x768).
 - **Tutor, Admin and Builder screens** may be dense and scannable, and need to work at PC sizes only.
 
 [UI_STYLE_GUIDE.md](UI_STYLE_GUIDE.md) covers visual patterns; its "dense and scannable" rule applies to tutor, Admin and Builder screens only.
