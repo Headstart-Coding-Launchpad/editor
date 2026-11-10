@@ -1,12 +1,15 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CodeFileWorkspace from '../CodeFileWorkspace'
 
 const mocks = vi.hoisted(() => ({
   runPython: vi.fn(),
+  reloadPage: vi.fn(),
 }))
+
+vi.mock('../../pythonReload', () => ({ reloadPage: (...args) => mocks.reloadPage(...args) }))
 
 vi.mock('../../../shared/useIsMobile', () => ({ useIsMobile: () => false }))
 vi.mock('../../components/TopBar', () => ({
@@ -25,8 +28,13 @@ vi.mock('../../components/OutputPanel', () => ({
   ),
 }))
 vi.mock('../../../modules/python/PythonEditor', () => ({
-  default: ({ code, onChange }) => (
-    <textarea aria-label="Python code" value={code} onChange={(e) => onChange(e.target.value)} />
+  default: ({ code, onChange, onPythonReload }) => (
+    <>
+      <textarea aria-label="Python code" value={code} onChange={(e) => onChange(e.target.value)} />
+      <button type="button" onClick={() => onPythonReload?.()}>
+        Reload 🔄
+      </button>
+    </>
   ),
 }))
 vi.mock('../../../modules/python/pyodide', () => ({
@@ -47,11 +55,25 @@ const codeFile = {
   ],
 }
 
+let lastLocation = null
+function LocationProbe() {
+  lastLocation = useLocation()
+  return null
+}
+
 function renderWorkspace() {
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/code', state: { codeFile } }]}>
       <Routes>
-        <Route path="/code" element={<CodeFileWorkspace />} />
+        <Route
+          path="/code"
+          element={
+            <>
+              <CodeFileWorkspace />
+              <LocationProbe />
+            </>
+          }
+        />
       </Routes>
     </MemoryRouter>
   )
@@ -79,5 +101,20 @@ describe('CodeFileWorkspace', () => {
   it('makes the browser-only backup warning visible', () => {
     renderWorkspace()
     expect(screen.getByText(/saved only on this device/i)).toBeInTheDocument()
+  })
+
+  // Second review (10 Nov): "Python fell asleep" Reload on this screen must not drop unsaved
+  // edits: they go into the page's history state (which a reload keeps) before reloading.
+  it('keeps unsaved edits through the Python asleep Reload', () => {
+    mocks.reloadPage.mockReset()
+    renderWorkspace()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Python code' }), {
+      target: { value: 'print("edited")' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Reload 🔄' }))
+    expect(mocks.reloadPage).toHaveBeenCalledTimes(1)
+    expect(lastLocation.pathname).toBe('/code')
+    expect(lastLocation.state.codeFile.tasks[0].code).toBe('print("edited")')
+    expect(lastLocation.state.codeFile.tasks[1].code).toBe('print("loop")')
   })
 })

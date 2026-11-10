@@ -12,6 +12,7 @@ import {
 } from '../../modules/python/pyodide'
 import { createLaunchpadCodeFile, downloadLaunchpadCodeFile } from '../../shared/launchpadCodeFile'
 import { useIsMobile } from '../../shared/useIsMobile'
+import { reloadPage } from '../pythonReload'
 
 export default function CodeFileWorkspace() {
   const location = useLocation()
@@ -84,6 +85,16 @@ export default function CodeFileWorkspace() {
     setOutput((current) => current + value + '\n')
     setInputPrompt(null)
     provideInput(value)
+  }
+
+  // "Python fell asleep" Reload (R3): the edits live only in this page's memory, so they go into
+  // the page's history state first (a reload keeps it, and the file opens from it again).
+  function handlePythonReload() {
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: { ...location.state, codeFile: { ...codeFile, tasks } },
+    })
+    reloadPage()
   }
 
   function handleDownload() {
@@ -163,6 +174,7 @@ export default function CodeFileWorkspace() {
             code={activeTask?.code ?? ''}
             onChange={updateActiveCode}
             pyodideStatus={pythonStatus}
+            onPythonReload={handlePythonReload}
             errorLine={errorLine}
           />
         </section>
