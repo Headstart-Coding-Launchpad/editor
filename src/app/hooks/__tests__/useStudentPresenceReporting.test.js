@@ -93,3 +93,29 @@ describe('useStudentPresenceReporting self-heal', () => {
     expect(registerPresence).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('useStudentPresenceReporting waiting room', () => {
+  const base = (session) => ({
+    phase: 'waiting',
+    identity: { anonymousId: 'stu1' },
+    session,
+    connected: true,
+    teacherPresentation: false,
+    registerPresence: vi.fn(),
+    writeStudentPresence: vi.fn(),
+    removeStudent: vi.fn(),
+  })
+
+  it('registers presence for a joined student waiting for the session to start', () => {
+    const props = base({ state: 'waiting', students: { stu1: { displayName: 'A' } } })
+    renderHook(() => useStudentPresenceReporting(props))
+    expect(props.registerPresence).toHaveBeenCalledWith('stu1')
+  })
+
+  it('does not create a student node for a waiting visitor who has not joined', () => {
+    const props = base({ state: 'waiting', students: {} })
+    renderHook(() => useStudentPresenceReporting(props))
+    expect(props.registerPresence).not.toHaveBeenCalled()
+    expect(props.writeStudentPresence).not.toHaveBeenCalled()
+  })
+})
