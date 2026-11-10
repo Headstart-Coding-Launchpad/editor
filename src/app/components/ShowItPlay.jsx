@@ -15,7 +15,7 @@ import { createTurtlePlayer } from '../../modules/turtle/turtlePlayer.js'
 import { sizeCanvasToDisplay } from '../../modules/turtle/draw.js'
 import { describeTurtleDrawing } from '../../modules/turtle/describe.js'
 import { createTurtleState } from '../../modules/turtle/engine.js'
-import { isPythonAsleepError, PYTHON_ASLEEP_MESSAGE } from '../../modules/python/pythonHealth.js'
+import { asleepNote } from '../../modules/python/pythonHealth.js'
 
 export function PythonPlay({ code: liveCode, task: liveTask, runtime }) {
   // The build as it was when Play was pressed: a later sync of the student's record never
@@ -53,10 +53,7 @@ export function PythonPlay({ code: liveCode, task: liveTask, runtime }) {
         )
       } catch (err) {
         // Python stuck ("Python fell asleep", R3): the tile says so, not just "Error".
-        const note = isPythonAsleepError(err)
-          ? `${PYTHON_ASLEEP_MESSAGE}
-`
-          : ''
+        const note = asleepNote(err)
         live(() =>
           setRun((r) => ({ ...r, status: 'error', prompt: null, output: r.output + note }))
         )

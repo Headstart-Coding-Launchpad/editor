@@ -8,7 +8,7 @@ import {
 } from '../../modules/checks'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { stripLineHints } from '../../shared/lineHints'
-import { isPythonAsleepError, PYTHON_ASLEEP_MESSAGE } from '../../modules/python/pythonHealth'
+import { asleepNote, isPythonAsleepError } from '../../modules/python/pythonHealth'
 
 export function useTaskEditorState({
   task,
@@ -77,7 +77,8 @@ export function useTaskEditorState({
     } catch (err) {
       // Python stuck ("Python fell asleep", R3): the output says so, and Run stays available.
       setPyodideStatus('error')
-      if (isPythonAsleepError(err)) setOutput(PYTHON_ASLEEP_MESSAGE)
+      const note = asleepNote(err)
+      if (note) setOutput(note.trimEnd())
       throw err
     }
     setPyodideStatus('ready')

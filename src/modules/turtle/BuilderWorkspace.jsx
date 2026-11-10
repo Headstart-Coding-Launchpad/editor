@@ -6,6 +6,7 @@ import {
 } from '../../builder/components/task-editor/TaskEditorFields'
 import { getStageRole } from '../../shared/taskUtils'
 import { getStopCount, initPyodide, runPython, stopPython } from '../python/pyodide'
+import { asleepNote } from '../python/pythonHealth'
 import { runTurtleTask } from './courseRun.js'
 import { hasTaskCourse } from './course.js'
 import CoursePicture from './CoursePicture.jsx'
@@ -89,7 +90,7 @@ export default function BuilderWorkspace({
       // Python stuck or failed to load ("Python fell asleep", R3): say so; Run comes back.
       setRunning(false)
       setStatus('error')
-      setOutput(String(err?.message || 'Python could not load.'))
+      setOutput(asleepNote(err).trimEnd() || String(err?.message || 'Python could not load.'))
       return
     }
     // A course task runs once per map (./courseRun.js).

@@ -90,6 +90,7 @@ export default function CodeFileWorkspace() {
   // "Python fell asleep" Reload (R3): the edits live only in this page's memory, so they go into
   // the page's history state first (a reload keeps it, and the file opens from it again).
   function handlePythonReload() {
+    // navigate's history.replaceState must stay synchronous (before reloadPage), or the reload loses the edits.
     navigate(`${location.pathname}${location.search}${location.hash}`, {
       replace: true,
       state: { ...location.state, codeFile: { ...codeFile, tasks } },
