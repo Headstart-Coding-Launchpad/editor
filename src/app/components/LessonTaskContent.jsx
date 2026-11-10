@@ -23,6 +23,7 @@ import {
   getCompleteStage,
   getEffectiveTaskMode,
   getRevealableStages,
+  getStageRole,
   getStarterStage,
 } from '../../shared/taskUtils'
 import { chooseChangeBase, stageShowsChange } from '../../shared/stageChange'
@@ -596,13 +597,16 @@ export default function LessonTaskContent({
       fromTutor: kind === 'live' || openedByTutor,
     }
   })()
-  // A change view (a revealed Complete stage with `show: 'change'`) is on screen: on the calm
-  // screen that one box takes the Type this out's place.
-  const changeViewOnScreen =
+  // A change view (a revealed stage with `show: 'change'`) is on screen.
+  const anyChangeViewOnScreen =
     calmScreen &&
     !!shownReference?.revealed &&
     !!moduleCaps?.stageChangeView &&
     stageShowsChange(shownReference.stage)
+  // Only a Complete stage's change view takes the Type this out's place on the calm screen: a
+  // Support stage's is a hint, part of the program, so the copy box stays beside it.
+  const changeViewOnScreen =
+    anyChangeViewOnScreen && getStageRole(shownReference.stage) === 'complete'
   const targetedOfferStage = cs.targetedStageOffer
     ? (task?.codeStages?.[cs.targetedStageOffer.stageIndex] ?? null)
     : null
@@ -887,7 +891,7 @@ export default function LessonTaskContent({
 
   const hintTone = failSettled ? 'nudge' : hintToneNow
   const hasGreenLine =
-    changeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
+    anyChangeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
   const hintNudge = calmScratch
     ? 'Have a go, then tap the green flag to see what happens.'
     : task?.interactionMode === 'submit'
