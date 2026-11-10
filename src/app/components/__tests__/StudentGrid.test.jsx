@@ -733,7 +733,7 @@ describe('StudentGrid: screen health (R3)', () => {
     const notes = screen.getAllByTestId('row-note').map((note) => note.textContent)
     expect(notes).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('Python stuck: their code is safe'),
+        expect.stringContaining('Python stuck: they see Reload'),
         expect.stringContaining('Screen error: they see Try again'),
       ])
     )

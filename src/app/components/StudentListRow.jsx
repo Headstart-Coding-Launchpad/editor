@@ -340,7 +340,7 @@ export default function StudentListRow({
         icon: healthChip.icon,
         text:
           healthProblem === 'python_stuck'
-            ? 'Python stuck: their code is safe, they see Reload'
+            ? 'Python stuck: they see Reload'
             : 'Screen error: they see Try again',
         health: healthProblem,
       }
@@ -737,7 +737,8 @@ export default function StudentListRow({
               {output}
             </div>
           )}
-          {note && note.icon !== '💬' && (
+          {/* A hint, or a health problem, already has its chip below. */}
+          {note && note.icon !== '💬' && !note.health && (
             <div style={s.openNote}>
               <span aria-hidden="true">{note.icon}</span> {note.text}
             </div>
