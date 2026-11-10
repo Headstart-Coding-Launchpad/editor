@@ -75,14 +75,23 @@ export function chooseChangeBase(editorCode, starterCode) {
   return typeof starterCode === 'string' ? starterCode : ''
 }
 
-/** Whether a stage asks for the change view: a Complete code stage with `show: 'change'`. */
+/**
+ * Whether a stage asks for the change view: a Complete or Support code stage with
+ * `show: 'change'`. A Support stage is an excerpt (stageChangeIsExcerpt).
+ */
 export function stageShowsChange(stage) {
+  const role = getStageRole(stage)
   return (
     !!stage &&
-    getStageRole(stage) === 'complete' &&
+    (role === 'complete' || role === 'support') &&
     stage.show === 'change' &&
     typeof stage.code === 'string'
   )
+}
+
+/** A Support stage's code is an excerpt of the program, not all of it (computeStageChange). */
+export function stageChangeIsExcerpt(stage) {
+  return getStageRole(stage) === 'support'
 }
 
 // Line diff of two key lists: ops in order, each { op: 'same' | 'remove' | 'add', a, b } with the
@@ -191,8 +200,13 @@ function indentNote(lines) {
  * `fullRows` (always): the whole Complete as [{ type: 'same'|'add'|'remove'|'indent', text }],
  * removed lines in place, for the fall-back and "Show all the code". Its rows other than
  * 'remove' are the Complete's cleaned lines in order (cleanCodeLineIndexes gives their places).
+ *
+ * `excerpt` (a Support stage, stageChangeIsExcerpt): `targetCode` is a few lines of the program,
+ * not all of it. The student's lines it leaves out are not removals: a removed line is kept only
+ * when a new line in the same change only extends it or swaps a small piece of it (the pairs
+ * pairInlineRows makes one row). Most of an excerpt is new, so there is no 'most' fall-back.
  */
-export function computeStageChange(baseCode, targetCode) {
+export function computeStageChange(baseCode, targetCode, { excerpt = false } = {}) {
   const toItems = (code) =>
     cleanCodeLines(code)
       .map((text, index) => ({ text, index, key: text.trim(), width: indentWidth(text) }))
@@ -202,11 +216,12 @@ export function computeStageChange(baseCode, targetCode) {
   const targetItems = toItems(targetCode)
   const baseKeys = baseItems.map((item) => item.key)
   const targetKeys = targetItems.map((item) => item.key)
-  const ops = diffKeys(baseKeys, targetKeys).map((op) =>
+  const diffOps = diffKeys(baseKeys, targetKeys).map((op) =>
     op.op === 'same' && baseItems[op.a].width !== targetItems[op.b].width
       ? { ...op, op: 'indent' }
       : op
   )
+  const ops = excerpt ? excerptOps(diffOps, baseItems, targetItems) : diffOps
 
   // The whole Complete, marked, with its own blank lines kept in place (trailing ones dropped).
   const fullRows = []
@@ -282,10 +297,14 @@ export function computeStageChange(baseCode, targetCode) {
 
   // A fall-back shows only the whole program (`fullRows`), so it has no hunks: a hunk there
   // could be a new line with no place.
-  if (targetItems.length && changedTarget / targetItems.length > CHANGE_LIMITS.maxChangedShare) {
+  if (
+    !excerpt &&
+    targetItems.length &&
+    changedTarget / targetItems.length > CHANGE_LIMITS.maxChangedShare
+  ) {
     return result('fallback', [], 'most')
   }
-  if (!targetItems.length && baseItems.length) return result('fallback', [], 'most')
+  if (!excerpt && !targetItems.length && baseItems.length) return result('fallback', [], 'most')
   if (hunks.length > CHANGE_LIMITS.maxHunks) return result('fallback', [], 'many')
   if (hunks.some(({ adds }) => adds > CHANGE_LIMITS.maxAddedBlock)) {
     return result('fallback', [], 'big-add')
@@ -485,26 +504,73 @@ export function pairInlineRows(rows) {
     }
     const merged = new Map()
     const dropped = new Set()
-    let lastRemove = -1
-    run.forEach((row, at) => {
-      if (row.type !== 'add') return
-      let best = null
-      for (let r = lastRemove + 1; r < run.length; r += 1) {
-        if (run[r].type !== 'remove') continue
-        const inline = inlineLineChange(run[r].text, row.text)
-        if (!inline) continue
-        const share = changedShare(inline, run[r].text, row.text)
-        if (!best || share < best.share) best = { r, inline, share }
-      }
-      if (!best) return
+    for (const [at, best] of matchInlinePairs(run)) {
       dropped.add(best.r)
-      lastRemove = best.r
       const type = best.inline.kind === 'insert' ? 'add' : 'change'
-      merged.set(at, { ...row, type, inline: best.inline })
-    })
+      merged.set(at, { ...run[at], type, inline: best.inline })
+    }
     run.forEach((row, at) => {
       if (!dropped.has(at)) out.push(merged.get(at) ?? row)
     })
+  }
+  return out
+}
+
+// In a run of removed and added rows ([{ type, text }]), each new line's removed line: a Map from
+// the new line's place to { r (the removed line's place), inline }. In order, each new line takes
+// the removed line it changes least that comes after the last one taken.
+function matchInlinePairs(run) {
+  const pairs = new Map()
+  let lastRemove = -1
+  run.forEach((row, at) => {
+    if (row.type !== 'add') return
+    let best = null
+    for (let r = lastRemove + 1; r < run.length; r += 1) {
+      if (run[r].type !== 'remove') continue
+      const inline = inlineLineChange(run[r].text, row.text)
+      if (!inline) continue
+      const share = changedShare(inline, run[r].text, row.text)
+      if (!best || share < best.share) best = { r, inline, share }
+    }
+    if (!best) return
+    lastRemove = best.r
+    pairs.set(at, best)
+  })
+  return pairs
+}
+
+// A Support stage's line-diff ops (computeStageChange `excerpt`): each removed line is dropped
+// unless a new line in its run pairs with it (matchInlinePairs). A run's removed lines are the
+// student's lines the excerpt skipped, so only the CHANGE_LIMITS.inlineMaxRunLines nearest the
+// excerpt's own lines are tried: the last ones before its first line, else the first ones.
+function excerptOps(ops, baseItems, targetItems) {
+  const limit = CHANGE_LIMITS.inlineMaxRunLines
+  const out = []
+  let index = 0
+  while (index < ops.length) {
+    if (ops[index].op === 'same') {
+      out.push(ops[index])
+      index += 1
+      continue
+    }
+    const run = []
+    const leading = index === 0
+    while (index < ops.length && ops[index].op !== 'same') {
+      run.push(ops[index])
+      index += 1
+    }
+    const removes = run.filter((op) => op.op === 'remove')
+    const adds = run.filter((op) => op.op === 'add')
+    const tried = leading ? removes.slice(-limit) : removes.slice(0, limit)
+    const kept = new Set()
+    if (tried.length && adds.length <= limit) {
+      const rows = [
+        ...tried.map((op) => ({ type: 'remove', text: baseItems[op.a].text, op })),
+        ...adds.map((op) => ({ type: 'add', text: targetItems[op.b].text, op })),
+      ]
+      for (const { r } of matchInlinePairs(rows).values()) kept.add(rows[r].op)
+    }
+    out.push(...run.filter((op) => op.op !== 'remove' || kept.has(op)))
   }
   return out
 }

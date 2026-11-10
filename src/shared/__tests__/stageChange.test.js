@@ -5,6 +5,7 @@ import {
   cleanCodeLines,
   computeStageChange,
   copyAnchorRows,
+  stageChangeIsExcerpt,
   stageShowsChange,
 } from '../stageChange.js'
 
@@ -363,13 +364,124 @@ describe('chooseChangeBase', () => {
 })
 
 describe('stageShowsChange', () => {
-  it('is true only for a Complete code stage with show: change', () => {
+  it('is true only for a Complete or Support code stage with show: change', () => {
     expect(stageShowsChange({ role: 'complete', show: 'change', code: 'x' })).toBe(true)
+    expect(stageShowsChange({ role: 'support', show: 'change', code: 'x' })).toBe(true)
     expect(stageShowsChange({ role: 'complete', code: 'x' })).toBe(false)
     expect(stageShowsChange({ role: 'complete', show: 'full', code: 'x' })).toBe(false)
-    expect(stageShowsChange({ role: 'support', show: 'change', code: 'x' })).toBe(false)
+    expect(stageShowsChange({ role: 'support', code: 'x' })).toBe(false)
+    expect(stageShowsChange({ role: 'starter', show: 'change', code: 'x' })).toBe(false)
     expect(stageShowsChange({ role: 'complete', show: 'change', files: [] })).toBe(false)
     expect(stageShowsChange(null)).toBe(false)
+  })
+
+  it('a Support stage is an excerpt; a Complete stage is the whole program', () => {
+    expect(stageChangeIsExcerpt({ role: 'support' })).toBe(true)
+    expect(stageChangeIsExcerpt({ role: 'complete' })).toBe(false)
+  })
+})
+
+describe('computeStageChange on an excerpt (Support stage)', () => {
+  const PROGRAM = lines(
+    'from stage import *',
+    'background("skyblue")',
+    'circle(50, "gold", x=200, y=150)',
+    'square(40, "brown", x=80, y=260)',
+    'print("done")'
+  )
+  const excerpt = (target, base = PROGRAM) => computeStageChange(base, target, { excerpt: true })
+
+  it('places a new line by a line of the student code and drops the lines it skips', () => {
+    const change = excerpt(lines('circle(50, "gold", x=200, y=150)', 'text("Hi!", x=200, y=240)'))
+    expect(change.kind).toBe('changes')
+    expect(change.hunks).toEqual([
+      {
+        anchor: { lines: ['circle(50, "gold", x=200, y=150)'], position: 'after' },
+        rows: [{ type: 'add', text: 'text("Hi!", x=200, y=240)' }],
+        indent: null,
+      },
+    ])
+    expect(change.fullRows.map((row) => row.type)).toEqual(['same', 'add'])
+  })
+
+  it('the same excerpt as a whole program would remove the skipped lines', () => {
+    const target = lines('circle(50, "gold", x=200, y=150)', 'text("Hi!", x=200, y=240)')
+    const rows = computeStageChange(PROGRAM, target).fullRows
+    expect(rows.filter((row) => row.type === 'remove')).toHaveLength(4)
+  })
+
+  it('a new line at the top is placed before the line after it', () => {
+    const change = excerpt(lines('stamp("🚀")', 'background("skyblue")'))
+    expect(change.hunks[0].anchor).toEqual({ lines: ['background("skyblue")'], position: 'before' })
+    expect(change.hunks[0].rows).toEqual([{ type: 'add', text: 'stamp("🚀")' }])
+  })
+
+  it('keeps a removed line only when the new line only changes a small piece of it', () => {
+    const change = excerpt(lines('background("navy")', 'circle(50, "gold", x=200, y=150)'))
+    expect(change.kind).toBe('changes')
+    expect(change.hunks[0].rows).toEqual([
+      { type: 'remove', text: 'background("skyblue")' },
+      { type: 'add', text: 'background("navy")' },
+    ])
+  })
+
+  it('a new line unlike the skipped lines around it stays a plain add', () => {
+    const change = excerpt(
+      lines('circle(50, "gold", x=200, y=150)', 'stamp("🚀", x=80, y=320)', 'print("done")')
+    )
+    expect(change.hunks[0].rows).toEqual([{ type: 'add', text: 'stamp("🚀", x=80, y=320)' }])
+  })
+
+  it('re-indented lines still show as the indent note', () => {
+    const change = excerpt(
+      lines('for i in range(3):', '    circle(50)', '    rect(10, 10)'),
+      lines('x = 1', 'for i in range(3):', '    circle(50)', 'rect(10, 10)', 'print(x)')
+    )
+    expect(change.kind).toBe('changes')
+    expect(change.hunks[0].indent).toMatchObject({ lines: ['    rect(10, 10)'], direction: 'in' })
+  })
+
+  it('every line already in the student code is "same"', () => {
+    expect(excerpt(lines('background("skyblue")', 'print("done")')).kind).toBe('same')
+  })
+
+  it('new lines with nothing to place them by fall back to the excerpt, all green', () => {
+    const change = excerpt(lines('text("Hi!")', 'stamp("🚀")'))
+    expect(change).toMatchObject({ kind: 'fallback', reason: 'no-anchor', hunks: [] })
+    expect(change.fullRows).toEqual([
+      { type: 'add', text: 'text("Hi!")' },
+      { type: 'add', text: 'stamp("🚀")' },
+    ])
+  })
+
+  it('a mostly new excerpt is not a "most" fall-back', () => {
+    const change = excerpt(
+      lines('circle(50, "gold", x=200, y=150)', 'text("A")', 'text("B")', 'text("C")')
+    )
+    expect(change.kind).toBe('changes')
+  })
+
+  it('still falls back for more than 3 separate changes or a big new block', () => {
+    const many = excerpt(
+      lines(
+        'from stage import *',
+        'a = 1',
+        'background("skyblue")',
+        'b = 2',
+        'circle(50, "gold", x=200, y=150)',
+        'c = 3',
+        'square(40, "brown", x=80, y=260)',
+        'd = 4'
+      )
+    )
+    expect(many.reason).toBe('many')
+    const big = excerpt(
+      lines(
+        'background("skyblue")',
+        ...Array.from({ length: CHANGE_LIMITS.maxAddedBlock + 1 }, (_, i) => `n${i} = ${i}`)
+      )
+    )
+    expect(big.reason).toBe('big-add')
   })
 })
 

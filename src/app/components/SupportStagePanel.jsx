@@ -5,6 +5,7 @@ import { chooseLockedLines } from '../../shared/lockedLines'
 import {
   cleanCodeLineIndexes,
   computeStageChange,
+  stageChangeIsExcerpt,
   stageShowsChange,
 } from '../../shared/stageChange'
 import { ChangeHunk, FullChangeRows } from './ChangeLines'
@@ -17,6 +18,8 @@ const CHANGE_VIEW_TEXT = {
   showChanges: 'Show only the changes',
   fallback:
     'A lot changed in this step, so here is all of the code. Green lines are new, red lines go.',
+  // A Support stage's fall-back: its own lines, which are only part of the program.
+  excerptFallback: 'Here is all of this hint. Green lines are new, red lines go.',
   same: 'Your code already matches this step',
 }
 
@@ -97,9 +100,9 @@ export default function SupportStagePanel({
   lineHintsFor,
   // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
   lockSets = null,
-  // The student's code to compare with (chooseChangeBase): with it, a Complete code stage that
-  // has `show: 'change'` shows only what changes (modules with capabilities.stageChangeView,
-  // Python). Read once, when the stage is first revealed, so the view holds still while the
+  // The student's code to compare with (chooseChangeBase): with it, a Complete or Support code
+  // stage that has `show: 'change'` shows only what changes (modules with
+  // capabilities.stageChangeView, Python); a Support stage is an excerpt (stageChangeIsExcerpt). Read once, when the stage is first revealed, so the view holds still while the
   // student types; callers key the panel per task and stage, and remount it after "Replace my
   // code with this" so it compares with the replaced code.
   changeBase = null,
@@ -122,9 +125,10 @@ export default function SupportStagePanel({
     typeof base === 'string' &&
     stageShowsChange(stage) &&
     !!getModuleDefinition(lessonType)?.capabilities?.stageChangeView
+  const excerpt = stageChangeIsExcerpt(stage)
   const change = useMemo(
-    () => (showsChange ? computeStageChange(base, stage.code) : null),
-    [showsChange, base, stage?.code]
+    () => (showsChange ? computeStageChange(base, stage.code, { excerpt }) : null),
+    [showsChange, base, stage?.code, excerpt]
   )
   // Only real changes ('changes') can be shown on their own; a fall-back always shows the whole
   // program, and 'same' just says so. `view` is the student's choice from the toggle.
@@ -159,7 +163,11 @@ export default function SupportStagePanel({
       change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
     ) : (
       <>
-        {change.kind === 'fallback' && <p style={s.changeNote}>{CHANGE_VIEW_TEXT.fallback}</p>}
+        {change.kind === 'fallback' && (
+          <p style={s.changeNote}>
+            {excerpt ? CHANGE_VIEW_TEXT.excerptFallback : CHANGE_VIEW_TEXT.fallback}
+          </p>
+        )}
         <FullChangeRows
           rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
         />
