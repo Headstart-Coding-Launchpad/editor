@@ -125,7 +125,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … stage … role must be one of: …` | A `codeStages` entry has an unknown `role`. | Use `starter`, `support` or `complete`. |
 | `Task … stage … is missing a label` | A code stage has no `label`. | Add `label:` to the stage. |
 | `Task … stage … show must be "full" or "change"` | A stage's `show` has another value. | Use `show: change` or remove it. |
-| `Task … stage … show: "change" works on a Complete stage only; this stage shows in full` (warning) | `show: change` on a Starter or Support stage. | Move it to the Complete stage. |
+| `Task … stage … show: "change" works on a Complete or Support stage only; this stage shows in full` (warning) | `show: change` on a Starter stage. | Move it to a Complete or Support stage. |
 | `Task … stage … show: "change" works in Python lessons only; it is ignored here` (warning) | `show: change` on a Turtle or Arcade Kit stage. | Remove it. |
 | `Task … copyAfter must be the text of one line of code` | `copyAfter` / `copyBefore` is not a string (an empty one counts as not set). | Write the line as it is in the code, or remove the field. |
 | `Task … has both copyAfter and copyBefore; use one` | Both place lines are set. | Keep one. |

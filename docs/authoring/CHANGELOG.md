@@ -37,6 +37,22 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-10
+
+- **Support stages can show the change view (`show: change`).** Before, `show: change` worked on
+  a Complete stage only and a Support stage always showed its code as a loose excerpt with no
+  place. Now a Python Support stage with `show: change` shows its new lines in green, each placed
+  by a line of the student's own code ("after this line" / "before this line"), with the same
+  look as a Complete stage (also in the calm "What to change" box). The excerpt is compared with
+  the student's code when the hint is revealed: the lines it leaves out are never shown as lines
+  to remove; a line of theirs shows as changed only when a new line only extends it or swaps a
+  small piece of it. Include one line the student already has next to each new line so it can be
+  placed. The Builder offers "Show only the changes" on Support stages, and the validator no
+  longer warns there (a Starter stage still warns). There is no `diffFrom` field: the base is the
+  student's editor code, else the starter. See [python-tasks.md](python-tasks.md#change-view).
+- Affects: python, cli · Existing lessons: no changes needed (add `show: change` to a Support
+  stage to opt in) · Resolves: none (Ryan, 10 Nov 2026: Python 2B L10, 3B L10, Python 1 L10)
+
 ## 2026-11-09
 
 - **Line hints show in a small note box above their line.** A `#>` / `lineHints` hint used to
