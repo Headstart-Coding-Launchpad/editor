@@ -971,12 +971,12 @@ describe('hint selection rule', () => {
     expect(evaluateCheckWithFeedback(task, 'a').suggestion).toBe('')
   })
 
-  it('a matched feedback check beats every completion hint; lower priority wins', () => {
+  it('a matched blocking check beats every completion hint; lower priority wins', () => {
     const task = {
       check: completion,
       feedbackChecks: [
-        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Nudge X', priority: 2 },
-        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Targeted X', priority: 1 },
+        { type: 'output_contains', value: 'x', hint: 'Blocking X', priority: 2 },
+        { type: 'output_contains', value: 'x', hint: 'Targeted X', priority: 1 },
       ],
     }
     expect(evaluateCheckWithFeedback(task, 'x').suggestion).toBe('Targeted X')

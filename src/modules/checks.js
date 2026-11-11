@@ -477,35 +477,31 @@ function buildCheckFeedbackResult(
   // A Run that ended in an error has no picture to judge: hold back the hints of picture checks
   // (the Python Stage's) so the error help shows instead. See isPictureCheck.
   if (runErrored) feedbackResults = feedbackResults.filter((result) => !isPictureCheck(result))
-  const blockingMatch = getHighestPriorityFeedbackMatch(
-    feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
-  )
+  // Hint order (C5): crash help (ErrorHelp, outside the banner), then the blocking hint or the
+  // first failed completion check's hint, then a nudge, so a nudge never hides the real fault.
+  // Any mode but 'nudge' blocks; each kind is picked by priority, alike on a pass and a fail.
+  const isNudge = (result) => result.mode === 'nudge'
+  const hintOf = (result) => String(result?.hint ?? '').trim()
+  const top = (keep) => getHighestPriorityFeedbackMatch(feedbackResults.filter(keep))
+  const blockingMatch = top((result) => !isNudge(result))
+  const nudgeMatch = top((result) => isNudge(result) && hintOf(result))
   const matchedFeedback = getHighestPriorityFeedbackMatch(feedbackResults)
-  const matchedFeedbackHint =
-    matchedFeedback && String(matchedFeedback.hint ?? '').trim()
-      ? matchedFeedback
-      : feedbackResults.find((result) => result.passed && String(result.hint ?? '').trim())
-  const nudgeMatch = feedbackResults.find(
-    (result) => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim()
-  )
   const passed = completionPassed && !blockingMatch
-  const suggestion = blockingMatch
-    ? String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.'
-    : completionPassed
-      ? nudgeMatch
-        ? String(nudgeMatch.hint).trim()
-        : ''
-      : matchedFeedbackHint
-        ? String(matchedFeedbackHint.hint).trim()
-        : // The error help wins over a completion check's content hint when the Run crashed
-          // with an error it explains (Hub #225, session report review #229: `range 4` got
-          // "is there a for loop?"). Feedback checks, which diagnose a specific mistake,
-          // still show.
-          errorExplained
-          ? ''
-          : isCompletionCheckFailed
-            ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
-            : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
+  let suggestion = hintOf(nudgeMatch)
+  if (!passed) {
+    // An error the error help explains wins over completion hints and nudges (Hub #225: `range 4`
+    // got "is there a for loop?"); a blocking hint, which diagnoses the mistake, still shows.
+    const failedHint =
+      completionPassed || errorExplained
+        ? ''
+        : isCompletionCheckFailed
+          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
+          : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
+    suggestion =
+      hintOf(top((result) => !isNudge(result) && hintOf(result))) ||
+      failedHint ||
+      (blockingMatch ? 'Not quite.' : errorExplained ? '' : suggestion)
+  }
 
   return {
     passed,
