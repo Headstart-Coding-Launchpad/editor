@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../shared/firebase'
 import { useAuth } from '../../auth/useAuth'
 import { safeRedirect } from '../../auth/safeRedirect'
+import EntryScreenCard from '../components/EntryScreenCard'
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams()
@@ -54,92 +55,52 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.card} className="card">
-        <div style={s.brand}>
-          <span style={s.logo}>Headstart Coding - LaunchPad</span>
+    <EntryScreenCard title="Tutor sign in" pageStyle={s.page} cardStyle={s.card}>
+      <form onSubmit={handleSubmit} style={s.form}>
+        <div style={s.field}>
+          <label style={s.label} htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            style={s.input}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+            autoComplete="email"
+          />
         </div>
 
-        <h1 style={s.heading}>Sign in</h1>
+        <div style={s.field}>
+          <label style={s.label} htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            style={s.input}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} style={s.form}>
-          <div style={s.field}>
-            <label style={s.label} htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              style={s.input}
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              autoComplete="email"
-            />
-          </div>
+        {error && <p style={s.error}>{error}</p>}
 
-          <div style={s.field}>
-            <label style={s.label} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              style={s.input}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && <p style={s.error}>{error}</p>}
-
-          <button className="btn-primary" style={s.submitBtn} type="submit" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-      </div>
-    </div>
+        <button className="btn-primary" style={s.submitBtn} type="submit" disabled={loading}>
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+    </EntryScreenCard>
   )
 }
 
 const s = {
-  page: {
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f5f5f5',
-    padding: 16,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    padding: '36px 32px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20,
-  },
-  brand: {
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  logo: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.5rem',
-    color: 'var(--colour-primary)',
-  },
-  heading: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.15rem',
-    color: 'var(--colour-text)',
-    textAlign: 'center',
-    marginTop: -4,
-  },
+  page: { padding: 16 },
+  card: { width: 420 },
   form: {
     display: 'flex',
     flexDirection: 'column',
