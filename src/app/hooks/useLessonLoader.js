@@ -4,23 +4,23 @@ import { flattenTasks } from '../../shared/taskUtils'
 
 /**
  * Loads a lesson via lessonService (or uses lessonProp directly for builder preview).
- * Returns { lesson, lessonLoading, firstTaskId }.
+ * Returns { lesson, lessonLoading, loadFailed (the fetch threw: not a missing lesson), firstTaskId }.
  */
 export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = null) {
   const [lesson, setLesson] = useState(null)
   const [lessonLoading, setLessonLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [firstTaskId, setFirstTaskId] = useState(initialTaskId)
 
   useEffect(() => {
-    let cancelled = false
+    setLoadFailed(false)
     if (lessonProp != null) {
       setLesson(lessonProp)
       setFirstTaskId(initialTaskId ?? flattenTasks(lessonProp.tasks)[0]?.id ?? 1)
       setLessonLoading(false)
-      return () => {
-        cancelled = true
-      }
+      return
     }
+    let cancelled = false
     setLesson(null)
     setLessonLoading(true)
     fetchLessonById(lessonId)
@@ -30,12 +30,14 @@ export function useLessonLoader(lessonId, lessonProp = null, initialTaskId = nul
         setLessonLoading(false)
       })
       .catch(() => {
-        if (!cancelled) setLessonLoading(false)
+        if (cancelled) return
+        setLoadFailed(true)
+        setLessonLoading(false)
       })
     return () => {
       cancelled = true
     }
   }, [lessonId, lessonProp, initialTaskId])
 
-  return { lesson, lessonLoading, firstTaskId }
+  return { lesson, lessonLoading, loadFailed, firstTaskId }
 }

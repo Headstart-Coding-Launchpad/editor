@@ -279,6 +279,32 @@ describe('StudentView', () => {
     expect(screen.queryByText(/not found/)).not.toBeInTheDocument()
   })
 
+  it('a lesson that failed to load says so, with one Try again button and no lesson id', async () => {
+    mocks.fetchLessonById.mockRejectedValue(new Error('offline'))
+    render(<StudentView lessonId="python-1-1" />)
+
+    expect(
+      await screen.findByText(
+        'Something went wrong loading the lesson. Check your internet and try again.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.queryByText(/Lesson: /)).not.toBeInTheDocument()
+  })
+
+  it('a staff preview of a missing lesson shows its id and a tutor way back, not the join screen', async () => {
+    mocks.fetchLessonById.mockResolvedValue(null)
+    render(<StudentView lessonId="zzzz-nope" forceSolo previewMode />)
+
+    expect(await screen.findByText('Lesson: zzzz-nope')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Back to Teacher Dashboard' })).toHaveAttribute(
+      'href',
+      '#/?teacher=true'
+    )
+  })
+
   it('loads solo mode when a waiting live session exists for the lesson', async () => {
     render(<StudentView lessonId="python-1-1" forceSolo />)
 

@@ -460,11 +460,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     getDoc(doc(firestore, 'lessons', lessonId))
       .then((snap) => {
         if (cancelled) return
-        if (snap.exists()) {
-          setBaseLesson(decodeLessonFromFirestore(snap.data()))
-        } else {
-          setLessonError(true)
-        }
+        if (snap.exists()) setBaseLesson(decodeLessonFromFirestore(snap.data()))
         setLessonLoading(false)
       })
       .catch(() => {
@@ -1103,7 +1099,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       </div>
     )
   }
-  if (lessonError || !lesson) return <LessonNotFound />
+  if (lessonError || !lesson)
+    return <LessonNotFound loadFailed={lessonError} staffLessonId={lessonId} />
 
   // Fill-height module workspaces (capabilities.teacherFillHeight) are sized to the centre
   // column, which clips instead of scrolling. Everything else scrolls the column,

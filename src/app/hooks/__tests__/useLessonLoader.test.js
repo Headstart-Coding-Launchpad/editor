@@ -127,4 +127,17 @@ describe('useLessonLoader', () => {
     await waitFor(() => expect(result.current.lesson?.title).toBe('Lesson 2'))
     expect(getDoc).toHaveBeenCalledTimes(2)
   })
+
+  it('flags a failed load apart from a missing lesson', async () => {
+    getDoc.mockRejectedValueOnce(new Error('offline'))
+    const failed = renderHook(() => useLessonLoader('py-1', null, null))
+    await waitFor(() => expect(failed.result.current.lessonLoading).toBe(false))
+    expect(failed.result.current.loadFailed).toBe(true)
+
+    getDoc.mockResolvedValueOnce(makeSnap(false))
+    const missing = renderHook(() => useLessonLoader('nope', null, null))
+    await waitFor(() => expect(missing.result.current.lessonLoading).toBe(false))
+    expect(missing.result.current.loadFailed).toBe(false)
+    expect(missing.result.current.lesson).toBeNull()
+  })
 })

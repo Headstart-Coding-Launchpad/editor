@@ -126,7 +126,6 @@ const s = {
     outline: 'none',
     color: 'var(--colour-text)',
     background: '#fff',
-    transition: 'border-color 0.15s',
   },
   error: {
     fontFamily: 'var(--font-body)',
