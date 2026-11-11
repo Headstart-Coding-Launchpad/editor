@@ -85,6 +85,27 @@ describe('Python share page layout', () => {
     expect(container.firstChild).toHaveClass('share-py--stage')
   })
 
+  it('keeps the saved drawing when the viewer presses Stop', async () => {
+    py.runPython.mockImplementationOnce(async () => ({ status: 'stopped' }))
+    render(<PythonShareView payload={{ code: 'print(1)', output: '', stageJson }} />)
+    await userEvent.click(screen.getByRole('button', { name: /Run/ }))
+    expect(await screen.findByRole('button', { name: /Run/ })).toBeEnabled()
+    expect(screen.getByRole('region', { name: 'Stage' })).toBeInTheDocument()
+  })
+
+  it('drops the saved drawing when a run finishes OK without drawing', async () => {
+    py.runPython.mockImplementationOnce(async () => ({ status: 'success' }))
+    const { container } = render(
+      <PythonShareView payload={{ code: 'x = 1', output: 'saved output', stageJson }} />
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Run/ }))
+    expect(await screen.findByRole('button', { name: /Run/ })).toBeEnabled()
+    expect(screen.queryByRole('region', { name: 'Stage' })).toBeNull()
+    expect(container.firstChild).not.toHaveClass('share-py--stage')
+    // This run drew nothing, so a silent run says so (not hidden by the old drawing).
+    expect(screen.getByText(/didn't print anything/)).toBeInTheDocument()
+  })
+
   it('keeps the saved drawing when Python falls asleep before running', async () => {
     py.initPyodide.mockImplementationOnce(async () => {
       throw new Error('Python fell asleep')
@@ -102,6 +123,17 @@ describe('Python share page layout', () => {
     expect(screen.queryByRole('region', { name: 'Stage' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /Run/ }))
     expect(await screen.findByRole('region', { name: 'Stage' })).toBeInTheDocument()
+  })
+
+  it('titles the Output with an h2, like Code and Stage, named once', () => {
+    render(<PythonShareView payload={{ code: 'print(1)', output: '', stageJson }} />)
+    for (const name of ['Code', 'Stage', 'Output']) {
+      const region = screen.getByRole('region', { name })
+      const heading = within(region).getByRole('heading', { level: 2, name })
+      // The region takes its name from its heading, not a second aria-label.
+      expect(region).not.toHaveAttribute('aria-label')
+      expect(region).toHaveAttribute('aria-labelledby', heading.id)
+    }
   })
 
   it('without a drawing, has no Stage card and still shows the Output panel', () => {

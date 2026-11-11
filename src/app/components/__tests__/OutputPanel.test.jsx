@@ -248,3 +248,23 @@ describe('OutputPanel status and placeholder', () => {
     expect(await screen.findByText(/NameError/)).toBeInTheDocument()
   })
 })
+
+describe('OutputPanel typewriter switch', () => {
+  it('keeps the shown output when typing is turned on later (no blank flash)', () => {
+    const { rerender } = render(
+      <OutputPanel output="saved text" typewriter={false} collapsible={false} />
+    )
+    expect(screen.getByText('saved text')).toBeInTheDocument()
+    rerender(<OutputPanel output="saved text" typewriter collapsible={false} />)
+    expect(screen.getByText('saved text')).toBeInTheDocument()
+  })
+
+  it('types only what arrives after typing is turned on', async () => {
+    const { rerender } = render(
+      <OutputPanel output="saved" typewriter={false} collapsible={false} />
+    )
+    rerender(<OutputPanel output="saved and more" typewriter collapsible={false} />)
+    expect(screen.queryByText('saved and more')).toBeNull()
+    expect(await screen.findByText('saved and more')).toBeInTheDocument()
+  })
+})

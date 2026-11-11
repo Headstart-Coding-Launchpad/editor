@@ -4272,9 +4272,12 @@ label.te-backdrop-tag,
   flex-direction: column;
   min-width: 0;
 }
-.share-py:not(.share-py--stage) .share-py-output {
-  align-self: stretch;
-  min-height: 240px;
+/* PC only: with no Stage the Output fills the right column; a phone's stays compact under Run. */
+@media (min-width: 721px) {
+  .share-py:not(.share-py--stage) .share-py-output {
+    align-self: stretch;
+    min-height: 240px;
+  }
 }
 .share-py-card {
   display: flex;

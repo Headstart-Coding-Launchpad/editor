@@ -112,12 +112,13 @@ export default function OutputPanel({
   drew = false,
   // Off: show the output at once (a share page's saved output), not typed out.
   typewriter = true,
+  // A page that titles its panels (the share page): the title as an h2 with this id.
+  titleId = null,
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [showRaw, setShowRaw] = useState(false)
-  const typedOutput = useTypewriterOutput(typewriter ? output : '')
-  const displayedOutput = typewriter ? typedOutput : output
+  const displayedOutput = useTypewriterOutput(output, { enabled: typewriter })
 
   const preRef = useRef(null)
   const inputRef = useRef(null)
@@ -224,7 +225,13 @@ export default function OutputPanel({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
           {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
-          <span style={s.headerLabel}>{title}</span>
+          {titleId ? (
+            <h2 id={titleId} style={{ ...s.headerLabel, margin: 0 }}>
+              {title}
+            </h2>
+          ) : (
+            <span style={s.headerLabel}>{title}</span>
+          )}
           {collapsible && <span style={s.toggleIcon}>{isCollapsed ? 'Show' : 'Hide'}</span>}
         </div>
         <div
