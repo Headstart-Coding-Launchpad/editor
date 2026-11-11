@@ -198,4 +198,17 @@ describe('generic work slot — workRef freshness', () => {
     expect(h.result.current.work).toEqual({ moduleType: 'filesystem', taskId: 't1', value: next })
     expect(h.result.current.checkPassed).toBe(true)
   })
+
+  it('C5: two edits into the same failing check keep the first hint (no Run, no step)', () => {
+    const check = [
+      { type: 'fs_path', path: '/done.txt', itemType: 'file', hint: 'Create done.txt' },
+      { type: 'fs_path', path: '/more.txt', itemType: 'file', hint: 'Create more.txt' },
+    ]
+    const lesson = filesystemLesson()
+    lesson.tasks[0].check = check
+    const h = renderStudentCodeState({ lesson, currentTaskId: 't1' })
+    actSync(() => h.result.current.handleWorkChange(fsWith('start.txt', 'a.txt')))
+    actSync(() => h.result.current.handleWorkChange(fsWith('start.txt', 'b.txt')))
+    expect(h.result.current.checkSuggestion).toBe('Create done.txt')
+  })
 })

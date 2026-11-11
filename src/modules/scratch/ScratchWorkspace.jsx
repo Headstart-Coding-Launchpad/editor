@@ -2717,8 +2717,9 @@ export default function ScratchWorkspace({
       workspaceStates,
       spriteStates: { ...spriteStatesRef.current },
       suggestion,
-      // A Run's or Check's ladder (C5): a repeat steps down it. Idle feedback sends none.
+      // The hint ladder (C5): only a finished Run's or Check's report (`completed`) steps it.
       hintLadder: meta.hintLadder,
+      completed: meta.completed === true,
     })
   }, [])
 
@@ -2747,8 +2748,6 @@ export default function ScratchWorkspace({
     return !!current && isScratchStillBuilding(current, openedStatesRef.current)
   }
 
-  // Evaluates all after_block_placed checks and updates feedback.
-  // Called on every debounced workspace change when after_block_placed checks are present.
   // The task check's feedback and hint order (checks.js) on these sprite workspaces, judged
   // against `signal` (default: the last run's).
   function evaluateFeedback(sws, completionPassed, feedbackTiming, { signal, ...options } = {}) {
@@ -2763,6 +2762,8 @@ export default function ScratchWorkspace({
     )
   }
 
+  // Evaluates all after_block_placed checks and updates feedback (live: holds the hint rung).
+  // Called on every debounced workspace change when after_block_placed checks are present.
   function evaluateBlockPlacedChecks() {
     if (!BlocklyRef.current) return
     const afterBlockChecks = scratchChecks.filter((c) => c.evaluation === 'after_block_placed')
@@ -2809,7 +2810,7 @@ export default function ScratchWorkspace({
     if (!completionPassed && isStillBuilding(sws)) return
     const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.ON_IDLE)
     if (evaluation.feedbackResults.some((result) => result.passed)) {
-      notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
+      notifyCheck(evaluation.passed, true, evaluation)
     }
   }
   evaluateIdleFeedbackRef.current = evaluateIdleFeedback
@@ -2826,7 +2827,7 @@ export default function ScratchWorkspace({
     const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.AFTER_ATTEMPT, {
       signal,
     })
-    notifyCheck(evaluation.passed, false, evaluation)
+    notifyCheck(evaluation.passed, false, { ...evaluation, completed: true })
   }
 
   function finishRun(signal) {
@@ -3004,7 +3005,7 @@ export default function ScratchWorkspace({
       evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
     )
     const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.AFTER_ATTEMPT)
-    notifyCheck(evaluation.passed, true, evaluation)
+    notifyCheck(evaluation.passed, true, { ...evaluation, completed: true })
   }
 
   // ── Pointer events on canvas ─────────────────────────────────────────────────

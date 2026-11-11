@@ -635,11 +635,28 @@ describe('handleScratchCheck', () => {
 
   it('C5: the same mistake again steps down the hint ladder, as on other modules', () => {
     const h = renderStudentCodeState({ lesson: scratchLesson(), currentTaskId: 't1' })
-    const report = { suggestion: 'Try moving', hintLadder: ['Try moving', 'Use a move block'] }
+    const live = { suggestion: 'Try moving', hintLadder: ['Try moving', 'Use a move block'] }
+    const report = { ...live, completed: true }
     actSync(() => h.result.current.handleScratchCheck(false, report))
     actSync(() => h.result.current.handleScratchCheck(false, report))
     expect(h.result.current.checkSuggestion).toBe('Use a move block')
     expect(h.writers.logAttempt.mock.calls[1][2].suggestion).toBe('Use a move block')
+    // A live re-check (blocks placed, idle) shows the rung held and does not step.
+    actSync(() => h.result.current.handleScratchCheck(false, live))
+    expect(h.result.current.checkSuggestion).toBe('Use a move block')
+  })
+
+  it('C5: live Scratch re-checks never step; the first Run steps from the hint shown', () => {
+    const h = renderStudentCodeState({ lesson: scratchLesson(), currentTaskId: 't1' })
+    const live = {
+      suggestion: 'Try moving',
+      hintLadder: ['Try moving', 'Use a move block', 'Last'],
+    }
+    actSync(() => h.result.current.handleScratchCheck(false, live))
+    actSync(() => h.result.current.handleScratchCheck(false, live))
+    expect(h.result.current.checkSuggestion).toBe('Try moving')
+    actSync(() => h.result.current.handleScratchCheck(false, { ...live, completed: true }))
+    expect(h.result.current.checkSuggestion).toBe('Use a move block')
   })
 })
 

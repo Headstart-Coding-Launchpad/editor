@@ -120,6 +120,7 @@ describe('useCheckFeedback', () => {
         act(() => {
           shown = result.current.applyCheckFeedback(false, ladder[0], {
             evaluation: { hintLadder: ladder },
+            completed: true,
             ...options,
           })
         })
@@ -173,6 +174,27 @@ describe('useCheckFeedback', () => {
         fail(result)
         expect(fail(result, { completed: false })).toBe('First')
         expect(fail(result)).toBe('Second')
+      })
+
+      it('steps only when the caller says the Run or Check finished (opt-in)', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        expect([
+          fail(result, { completed: undefined }),
+          fail(result, { completed: undefined }),
+        ]).toEqual(['First', 'First'])
+      })
+
+      it('a rung shown without stepping is the place the next finished Run steps from', () => {
+        const { result, rerender } = renderHook(
+          ({ id }) => useCheckFeedback({ currentTaskId: id }),
+          { initialProps: { id: 't1' } }
+        )
+        expect(fail(result, { completed: false })).toBe('First')
+        expect(fail(result)).toBe('Second')
+        rerender({ id: 't2' })
+        expect(fail(result, { completed: false })).toBe('First')
+        rerender({ id: 't1' })
+        expect(fail(result)).toBe('First')
       })
 
       it('a tutor check override starts the ladder again', () => {

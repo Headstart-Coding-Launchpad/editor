@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 
+const NO_PLACE = Object.freeze({ top: '', step: 0, task: null })
+
 export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult } = {}) {
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
@@ -20,7 +22,7 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
   onCheckResultRef.current = onCheckResult
   // The place on the hint ladder (C5): the task, its top hint and the rung shown. Kept across Runs
   // (a code module's task change leaves feedback alone, so the task is part of the place).
-  const hintStepRef = useRef({ top: '', step: 0 })
+  const hintStepRef = useRef(NO_PLACE)
 
   function resetRunFeedback() {
     // Clears per-run transient state. Does NOT reset checkFailCount or offeredStageIndex
@@ -40,39 +42,36 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     setOfferedStageIndex(-1)
     setCompletePreviewShown(false)
     setStagePromptAccepted(false)
-    hintStepRef.current = { top: '', step: 0 }
+    hintStepRef.current = NO_PLACE
   }
 
-  // A counted, completed fail with the held top hint shows the hintLadder's next rung (the last
-  // stays). Only a pass, another task or a tutor override restarts it: a crash (no top hint), a
-  // stopped run or idle feedback shows the rung held and leaves the place as is.
+  // A `steps` fail with the held top hint shows the hintLadder's next rung (the last stays); any
+  // other fail shows the rung held. Both record the rung shown as the place. Only a pass, another
+  // task or a tutor override restarts it; a crash (no top hint) leaves the place as is.
   function climbHintLadder(passed, suggestion, ladder, steps) {
-    if (passed) hintStepRef.current = { top: '', step: 0 }
+    if (passed) hintStepRef.current = NO_PLACE
     const top = !passed && suggestion && ladder?.[0] === suggestion ? suggestion : ''
     if (!top) return suggestion
     const { step: at, top: heldTop, task } = hintStepRef.current
     const held = heldTop === top && task === currentTaskId ? at : -1
-    const step = Math.min(held + (steps ? 1 : 0), ladder.length - 1)
-    if (steps) hintStepRef.current = { top, step, task: currentTaskId }
-    return ladder[Math.max(step, 0)]
+    const step = Math.min(Math.max(held + (steps ? 1 : 0), 0), ladder.length - 1)
+    hintStepRef.current = { top, step, task: currentTaskId }
+    return ladder[step]
   }
 
   // `skipLog` keeps a restored or automatic result (idle feedback, Show complete) out of the solo
   // log: only a checked Run the student made reports through `onCheckResult`.
   // `scrub` marks the checks on a live scrub's release: a failed one shows its feedback but is
   // not a failed attempt (no solo-log attempt, no fail-streak step); a passing one counts as usual.
-  // `evaluation` (checks.js): its `hintLadder` gives a repeated mistake the next hint (C5);
-  // `completed: false` (a stopped or crashed Run) never steps it.
+  // `evaluation` (checks.js): its `hintLadder` gives a repeated mistake the next hint (C5), but
+  // only with `completed: true` (a finished counted Run or Check); any other call holds the rung.
   function applyCheckFeedback(passed, suggestion = '', opts = {}) {
-    const { skipLog, scrub, evaluation, completed = true } = opts
+    const { skipLog, scrub, evaluation, completed = false } = opts
     const scrubMiss = scrub && !passed
     if (!skipLog && !scrubMiss) onCheckResultRef.current?.(passed)
-    const nextSuggestion = climbHintLadder(
-      passed,
-      String(suggestion ?? '').trim(),
-      evaluation?.hintLadder,
-      !skipLog && !scrubMiss && completed
-    )
+    const steps = completed && !skipLog && !scrubMiss
+    const shown = String(suggestion ?? '').trim()
+    const nextSuggestion = climbHintLadder(passed, shown, evaluation?.hintLadder, steps)
     setTeacherHint(null)
     // At once, not on the next render: a Run starting in the same moment must see it solved.
     checkPassedRef.current = passed
@@ -93,7 +92,7 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
   // React to teacher overriding this student's check result
   useEffect(() => {
     if (!myStudentData?.checkOverridePushedAt) return
-    hintStepRef.current = { top: '', step: 0 }
+    hintStepRef.current = NO_PLACE
     setCheckPassed(myStudentData.checkOverridePassed)
     setCheckAttempted(true)
     setCheckSuggestion(

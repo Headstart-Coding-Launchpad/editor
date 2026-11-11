@@ -68,6 +68,7 @@ describe('C5 hint order (Fun moment)', () => {
       act(() => {
         result.current.applyCheckFeedback(judged.passed, judged.suggestion, {
           evaluation: judged.evaluation,
+          completed: true,
         })
       })
       shown.push(result.current.checkSuggestion)
