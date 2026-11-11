@@ -17,8 +17,6 @@ export const SOLO_PLACEHOLDER_NAME = 'Solo'
 export const SOLO_NAME_MAX = 30
 
 export const soloLogPath = (lessonId, anonymousId) => `${SOLO_LOG_ROOT}/${lessonId}/${anonymousId}`
-export const soloLogTaskPath = (lessonId, anonymousId, taskId) =>
-  `${soloLogPath(lessonId, anonymousId)}/tasks/${taskId}`
 
 const isTime = (value) => typeof value === 'number' && Number.isFinite(value)
 const count = (value) => (Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : 0)

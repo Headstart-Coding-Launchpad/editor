@@ -846,12 +846,6 @@ export function removeClass(state, index) {
   return stale({ ...state, classes: state.classes.filter((_, i) => i !== index), examples })
 }
 
-// Blank names are dropped and duplicates are made unique, so a half-typed class never reaches
-// the model. Used by the UI.
-export function namedClasses(state) {
-  return cleanClasses(state.classes)
-}
-
 // ── testing ──────────────────────────────────────────────────────────────────
 
 // Which positions in a class's list are kept back for the test (held_out only).

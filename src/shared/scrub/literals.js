@@ -479,11 +479,6 @@ export function valueForDrag(startValue, dx, range, step) {
   return clampScrubValue(Number(startValue) + dx * perPx, range, step)
 }
 
-/** The next value for a keyboard nudge (`direction` +1 / -1) within the range. */
-export function nudgeValue(value, direction, range, step) {
-  return clampScrubValue(Number(value) + direction * step, range, step)
-}
-
 // ── Colours ─────────────────────────────────────────────────────────────────────────────────
 
 // Okabe & Ito's palette, chosen to stay distinct for the common kinds of colour blindness.
