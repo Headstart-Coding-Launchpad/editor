@@ -52,7 +52,7 @@ describe('Stage hints on an errored Run', () => {
     expect(result.passed).toBe(false)
   })
 
-  it('C5: the explained error comes first, so a matched feedback check gives no hint', () => {
+  it('C5: the explained error shows first; the feedback hint stays on the ladder for later', () => {
     const task = {
       check: completion,
       feedbackChecks: [{ type: 'code_contains', value: 'hello', hint: 'Put hello in quotes.' }],
@@ -63,7 +63,7 @@ describe('Stage hints on an errored Run', () => {
       errorExplained: true,
     })
     expect(result.suggestion).toBe('')
-    expect(result.hintLadder).toEqual([])
+    expect(result.hintLadder).toEqual(['Put hello in quotes.', 'Use stage.circle.'])
   })
 
   it('an error the help cannot explain keeps the matched feedback hint', () => {

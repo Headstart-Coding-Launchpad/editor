@@ -975,6 +975,19 @@ describe('hint selection rule', () => {
     expect(result.hintLadder).toEqual(['Hint A', 'Hint C', 'Targeted X', 'Nudge X'])
   })
 
+  it('C5: a pass shows the same nudge a fail would, by priority', () => {
+    const task = {
+      check: [{ type: 'output_contains', value: 'x' }],
+      feedbackChecks: [
+        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Nudge X', priority: 2 },
+        { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Targeted X', priority: 1 },
+      ],
+    }
+    const result = evaluateCheckWithFeedback(task, 'x')
+    expect(result.suggestion).toBe('Targeted X')
+    expect(result.nudgeFeedback.hint).toBe('Targeted X')
+  })
+
   it('C5: a nudge still shows when no failed completion check has a hint', () => {
     const task = {
       check: [{ type: 'output_contains', value: 'a' }],

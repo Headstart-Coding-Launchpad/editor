@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MarkdownRenderer } from '../../shared/markdown'
+import { GENERIC_FAIL_HINT } from '../../modules/checks.js'
 import { AskForHelpButton } from './peerHelp/AskForHelpButton'
 import { useHelpRequest } from './peerHelp/helpRequestContext'
 
@@ -9,7 +10,7 @@ const AUTO_DISMISS_MS = 45000
 
 export default function CheckFeedbackBanner({
   passed,
-  failureMessage = 'Not quite, try again!',
+  failureMessage = GENERIC_FAIL_HINT,
   successMessage = 'Correct!',
   suggestion,
   onShowCodeStage,

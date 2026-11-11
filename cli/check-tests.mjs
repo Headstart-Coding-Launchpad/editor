@@ -3,6 +3,7 @@ import {
   checkNeedsRunResult,
   evaluateCheckWithCustomFeedback,
   evaluateSingleCheck,
+  GENERIC_FAIL_HINT,
   getCheckDefinition,
   normalizeCheckShape,
   normalizeChecks,
@@ -97,15 +98,14 @@ export function combineCompletion(results) {
   return 'pass'
 }
 
-export const GENERIC_FAIL_HINT = 'Not quite, try again!'
-
 /**
- * The hint a student would see after a Run of the case's code, chosen by the same rule as in
- * class (checks.js buildHintLadder: blocking feedback, then failed completion checks in list
- * order, then nudges): `studentHint` (a pass shows only a nudge, or nothing; a fail with no hint
- * shows the generic banner), and `hintLadder` when Running the same mistake again would show
- * further hints. Checks that need a run are left out, as everywhere in this command; a crash's
- * error help (which comes first in class) is not simulated.
+ * The hint a student would see after a Run of the case's code, from the same shared evaluator
+ * as in class (checks.js buildCheckFeedbackResult: blocking feedback, then failed completion
+ * checks in list order, then nudges): `studentHint` (a pass shows only a nudge, or nothing; a
+ * fail with no hint shows the banner's GENERIC_FAIL_HINT), and `hintLadder` when Running the
+ * same mistake again would show further hints. Checks that need a run are left out, as
+ * everywhere in this command. The CLI runs no code, so there is no runErrored / errorExplained:
+ * in class a crash's error help comes first and no check hint shows beside it.
  */
 function studentHintFor(task, actualCompletion, judge) {
   const evaluation = evaluateCheckWithCustomFeedback(

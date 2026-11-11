@@ -457,9 +457,12 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-// Hint order (C5): an explained crash → none (the error help is the help); else matched blocking
-// checks, failed completion checks in list order, matched nudges. First shown; repeats step down
-// (useCheckFeedback). `isCompletionCheckFailed` (Scratch's own evaluator) is true only for a
+// The banner's words for a failed attempt with no hint (CheckFeedbackBanner, the CLI's studentHint).
+export const GENERIC_FAIL_HINT = 'Not quite, try again!'
+
+// Hint order (C5), the `hintLadder`: matched blocking checks, failed completion checks in list
+// order, matched nudges. The first shows, except after an explained crash (the error help shows
+// and the ladder waits for the next fail); repeats step down (useCheckFeedback). `isCompletionCheckFailed` (Scratch's own evaluator) is true only for a
 // check that definitively failed, so one it can't judge yet never supplies a hint.
 function buildCheckFeedbackResult(
   task,
@@ -475,9 +478,7 @@ function buildCheckFeedbackResult(
   if (runErrored) feedbackResults = feedbackResults.filter((result) => !isPictureCheck(result))
   const matched = matchedByPriority(feedbackResults)
   const blockingMatch = matched.find(isBlocking) ?? null
-  const nudgeMatch = feedbackResults.find(
-    (result) => result.passed && isNudge(result) && hintOf(result)
-  )
+  const nudgeMatch = matched.find((result) => isNudge(result) && hintOf(result))
   const passed = completionPassed && !blockingMatch
   const failedHints = () =>
     isCompletionCheckFailed
@@ -485,20 +486,21 @@ function buildCheckFeedbackResult(
           .filter((c) => isCompletionCheckFailed(c))
           .map(hintOf)
       : getFailedCheckHints(task?.check, output, context, { runErrored })
-  const rungs =
-    passed || errorExplained
-      ? []
-      : [
-          ...matched.filter(isBlocking).map(hintOf),
-          ...(completionPassed ? [] : failedHints()),
-          ...matched.filter(isNudge).map(hintOf),
-        ]
+  const rungs = passed
+    ? []
+    : [
+        ...matched.filter(isBlocking).map(hintOf),
+        ...(completionPassed ? [] : failedHints()),
+        ...matched.filter(isNudge).map(hintOf),
+      ]
   const hintLadder = [...new Set(rungs.filter(Boolean))]
   // On a pass only a nudge shows (beside "Correct!"); a blocking match with no hint anywhere
-  // says "Not quite." unless the error help is showing.
+  // says "Not quite."
   const suggestion = passed
     ? hintOf(nudgeMatch)
-    : (hintLadder[0] ?? (blockingMatch && !errorExplained ? 'Not quite.' : ''))
+    : errorExplained
+      ? ''
+      : (hintLadder[0] ?? (blockingMatch ? 'Not quite.' : ''))
 
   return {
     passed,
@@ -516,8 +518,8 @@ function buildCheckFeedbackResult(
 // `options.runErrored`: the Run ended in an error (runWithRuntime), so hints of picture checks
 // are held back; completion and hints of every other check behave as normal.
 // `options.errorExplained`: that error has plain-words help (src/shared/pythonErrors.js), so
-// no check's hint is offered as well, feedback checks included (C5: the error help comes first).
-// The result's `hintLadder` is the hint order for repeats (buildHintLadder).
+// no check's hint shows with it (C5: the error help comes first); `hintLadder` keeps them.
+// The result's `hintLadder` is the hint order for repeats (buildCheckFeedbackResult).
 export function evaluateCheckWithFeedback(task, output, context = {}, options = {}) {
   const completionPassed = options.completionPassed ?? evaluateCheck(task?.check, output, context)
   const feedbackResults = evaluateFeedbackCheckResults(task, output, context, options)

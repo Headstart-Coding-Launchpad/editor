@@ -38,6 +38,7 @@ import { useElementSize } from '../../shared/useElementSize'
 import { firstViewKey } from '../../shared/motion'
 import { useBadgeSignals } from '../../shared/badgeSignalsContext'
 import { resolveAssetsPath } from '../../shared/assetPaths'
+import { GENERIC_FAIL_HINT } from '../../modules/checks.js'
 import {
   SCRATCH_CALM_STACK_BREAKPOINT,
   calmExplainerWidth,
@@ -930,7 +931,7 @@ export default function LessonTaskContent({
     ? ''
     : sentHintText ||
       (shouldShowFeedbackBanner && !bannerPassed
-        ? displayCheckSuggestion || 'Not quite, try again!'
+        ? displayCheckSuggestion || GENERIC_FAIL_HINT
         : '') ||
       (shouldShowFeedbackBanner && bannerPassed ? 'Correct!' : '') ||
       hintNudge
