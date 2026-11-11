@@ -4286,7 +4286,8 @@ label.te-backdrop-tag,
   border-bottom: 1px solid var(--ui-border) !important;
   min-height: 53px;
   margin-bottom: 0 !important;
-  padding-left: 0 !important;
+  padding: 4px 8px 4px 0 !important;
+  align-items: center !important;
 }
 .share-py-bar .btn-ghost-outline {
   min-height: 44px;

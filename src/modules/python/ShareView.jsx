@@ -142,7 +142,7 @@ export default function PythonShareView({ payload }) {
 
 const s = {
   stage: {
-    width: '100%',
+    width: 'calc(100% - 20px)',
     maxWidth: 'min(420px, 42vh)',
     aspectRatio: '1 / 1',
     margin: '10px auto 0',
