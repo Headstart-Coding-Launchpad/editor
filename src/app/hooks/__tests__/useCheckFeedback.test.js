@@ -159,6 +159,46 @@ describe('useCheckFeedback', () => {
         expect(fail(result)).toBe('Second')
       })
 
+      it('a crash between two wrong answers keeps the place on the ladder', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        fail(result)
+        act(() => {
+          result.current.applyCheckFeedback(false, '', { evaluation: { hintLadder: ladder } })
+        })
+        expect(fail(result)).toBe('Second')
+      })
+
+      it('a stopped or crashed run with the same hint holds the rung without stepping', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        fail(result)
+        expect(fail(result, { completed: false })).toBe('First')
+        expect(fail(result)).toBe('Second')
+      })
+
+      it('a tutor check override starts the ladder again', () => {
+        const { result, rerender } = renderHook(
+          ({ data }) => useCheckFeedback({ myStudentData: data }),
+          {
+            initialProps: { data: null },
+          }
+        )
+        fail(result)
+        rerender({ data: { checkOverridePushedAt: 1, checkOverridePassed: false } })
+        expect(fail(result)).toBe('First')
+      })
+
+      it('a new task starts the ladder again, even where feedback is not reset', () => {
+        const { result, rerender } = renderHook(
+          ({ id }) => useCheckFeedback({ currentTaskId: id }),
+          {
+            initialProps: { id: 't1' },
+          }
+        )
+        fail(result)
+        rerender({ id: 't2' })
+        expect(fail(result)).toBe('First')
+      })
+
       it('ignores a ladder that does not start with the suggestion', () => {
         const { result } = renderHook(() => useCheckFeedback())
         let shown
