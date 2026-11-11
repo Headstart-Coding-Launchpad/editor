@@ -130,24 +130,15 @@ describe('Python share page layout', () => {
   })
 
   it("types a run's live output, not the saved output", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    try {
-      render(<PythonShareView payload={{ code: 'print(1)', output: 'saved output' }} />)
-      expect(screen.getByText('saved output')).toBeInTheDocument()
-      await act(async () => {
-        screen.getByRole('button', { name: /Run/ }).click()
-      })
-      await act(async () => {
-        py.runPython.mock.calls.at(-1)[1].onOutput('hello from the run')
-      })
-      // The run's output types in: not all there on the first frame.
-      expect(screen.queryByText('hello from the run')).toBeNull()
-      await act(async () => {
-        vi.advanceTimersByTime(2000)
-      })
-      expect(screen.getByText('hello from the run')).toBeInTheDocument()
-    } finally {
-      vi.useRealTimers()
-    }
+    render(<PythonShareView payload={{ code: 'print(1)', output: 'saved output' }} />)
+    expect(screen.getByText('saved output')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Run/ }))
+    await screen.findByRole('button', { name: 'Stop' })
+    act(() => {
+      py.runPython.mock.calls.at(-1)[1].onOutput('hello from the run')
+    })
+    // The run's output types in: not all there on the first frame.
+    expect(screen.queryByText('hello from the run')).toBeNull()
+    expect(await screen.findByText('hello from the run')).toBeInTheDocument()
   })
 })

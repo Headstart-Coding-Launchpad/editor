@@ -5,7 +5,9 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../modules/scratch/ScratchWorkspace.jsx', () => ({
-  default: ({ readOnly }) => <div data-testid="scratch-workspace" data-readonly={String(readOnly)} />,
+  default: ({ readOnly }) => (
+    <div data-testid="scratch-workspace" data-readonly={String(readOnly)} />
+  ),
 }))
 
 const { default: TurtleShareView } = await import('../../../modules/turtle/ShareView.jsx')

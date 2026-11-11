@@ -110,11 +110,14 @@ export default function OutputPanel({
   code = '',
   // The Stage drew something this run: no "didn't print anything" line under the picture.
   drew = false,
+  // Off: show the output at once (a share page's saved output), not typed out.
+  typewriter = true,
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [showRaw, setShowRaw] = useState(false)
-  const displayedOutput = useTypewriterOutput(output)
+  const typedOutput = useTypewriterOutput(typewriter ? output : '')
+  const displayedOutput = typewriter ? typedOutput : output
 
   const preRef = useRef(null)
   const inputRef = useRef(null)
