@@ -70,6 +70,7 @@ import useCompleteChime from '../hooks/useCompleteChime'
 import { resolveBadge } from '../../badges/badgeDisplay'
 import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
+import LessonNotFound from '../components/LessonNotFound'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import ShowItPanel from '../components/ShowItPanel'
@@ -1023,9 +1024,7 @@ export default function StudentView({
     return <LoadingScreen message="Loading…" />
   }
 
-  if (!lesson) {
-    return <LoadingScreen message={`Lesson "${lessonId}" not found.`} />
-  }
+  if (!lesson) return <LessonNotFound />
 
   // Computed independently of `phase` (unlike the main lastCodeTaskType/canOpenPlayground
   // below, which reflect whichever taskDisplayMode the student is currently in) because the

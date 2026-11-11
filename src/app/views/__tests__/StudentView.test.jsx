@@ -266,9 +266,7 @@ describe('StudentView', () => {
     mocks.fetchLessonById.mockResolvedValue(null)
     const { container } = render(<StudentView lessonId="zzzz-nope" />)
 
-    expect(
-      await screen.findByRole('heading', { name: 'Hmm, no lesson there' })
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Hmm, no lesson there' })).toBeInTheDocument()
     expect(
       screen.getByText("We can't find that lesson. Check the code and try again.")
     ).toBeInTheDocument()
