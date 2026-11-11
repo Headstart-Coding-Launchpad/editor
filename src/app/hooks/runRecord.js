@@ -19,7 +19,8 @@ import { lastErrorLine } from '../studentHints.js'
  * A rejected or throwing writer propagates out of recordRun unchanged (later records skipped).
  * `run` is `{ code, outputRaw, status, result, judgement, shownSuggestion, source }`: the code
  * that ran (after any runtime update), its raw output, status and runtime result, judgeRun's
- * judgement, the hint on screen (C5 ladder; else judgement.suggestion), and the Run's source (`'scrub'`, or `'live'` for a typed redraw's pass, request 131, is logged on the attempt).
+ * judgement, the hint on screen (C5 ladder, logged as shown; else judgement.suggestion), and the
+ * Run's source ('scrub', or 'live' for a typed redraw's pass, request 131; logged on the attempt).
  */
 // The ctx fields recordRun needs, as paths (writeStudentTurtleResult only when runResult.turtle).
 export const RECORD_RUN_CTX_FIELDS = Object.freeze([
@@ -65,7 +66,7 @@ export async function recordRun(ctx, run) {
   } = ctx
   const { runResult } = definition
   const { canPublishTeacherLive, publishTeacherLive } = live
-  const { passed, scrubPassed, hasTests, checkTask, isFreePlay, evaluation } = judgement
+  const { passed, scrubPassed, hasTests, checkTask, isFreePlay } = judgement
   const suggestion = shownSuggestion ?? judgement.suggestion
   // A real console error, named when the output shows it ('NameError'), for the badge data.
   const runError = runErrorFor(status, outputRaw)
@@ -126,8 +127,7 @@ export async function recordRun(ctx, run) {
     writers.logAttempt(actor.anonymousId, currentTaskId, {
       submission: code,
       passed,
-      // After an explained crash no hint shows, but the author's held hint is still recorded.
-      suggestion: suggestion || evaluation?.hintLadder?.[0] || '',
+      suggestion,
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
       ...(source === 'scrub' || source === 'live' ? { source } : {}),

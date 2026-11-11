@@ -274,7 +274,7 @@ describe('runWithRuntime characterization: outcomes', () => {
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"Line 1: NameError: name 'x' is not defined\\n","status":"error","checkPassed":false,"errorText":"Line 1: NameError: name 'x' is not defined"}]
       writeStudentStageResult ["stu-1",null]
       writeStudentTaskRun ["stu-1","t1","print(\\"hi\\")"]
-      logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":false,"suggestion":"Print hi","teacherAssisted":false,"error":"NameError"}]
+      logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":false,"suggestion":"","teacherAssisted":false,"error":"NameError"}]
       setRunning [false]"
     `)
   })
