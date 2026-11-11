@@ -40,18 +40,24 @@ Entries written before 2026-09-29 are not tagged.
 ## 2026-11-11
 
 - **A nudge no longer hides the real fault; repeats step to the next hint (C5).** The hint order
-  is now: the error help on a crash it explains (Python, Turtle: no check hint at all, feedback
-  checks included), then a matched blocking feedback check, then the first failed completion
-  check's hint, then a matched `mode: nudge` hint. Before, any matched feedback check (nudge
-  too) beat the failed completion checks, and matched feedback checks showed over the error
-  help. When a learner fails again with the same first hint, they now see the next hint in that
-  order (the last one stays) instead of the same words; a pass, a new task or Reset Code starts
-  again. `lessons test-checks --cases` prints `studentHint` and `hintLadder` per case. See
+  is now: the error help on a crash it explains (Python, Turtle: no check hint is shown with it,
+  feedback checks included; the hints show on the next Run that does not crash and the attempt
+  log still records the first), then a matched blocking feedback check, then the first failed
+  completion check's hint, then a matched `mode: nudge` hint. Before, any matched feedback check
+  (nudge too) beat the failed completion checks, and matched feedback checks showed over the
+  error help. When a learner fails a finished Run (or a Scratch green-flag Run or Check) again
+  with the same first hint, they now see the next hint in that order (the last one stays)
+  instead of the same words; a crash or a stopped Run keeps the place, and a pass, a new task,
+  a tutor's check override or Reset Code starts again. `lessons test-checks --cases` prints
+  `studentHint` and `hintLadder` per case. See
   [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
-- Affects: checks and feedbackChecks in every module (escalation: all but Scratch), lessons
-  test-checks · Existing lessons: no changes needed; a nudge written to correct a failing task
-  should become `mode: blocking`, and later completion-check hints are now shown on repeats, so
-  write them as the next clue · Resolves: deep review 2026-11-10, C5
+- Affects: checks and feedbackChecks in every module, Scratch included; lessons test-checks ·
+  Existing lessons: no edits needed, but three things change in class: a `mode: nudge` hint now
+  shows only when no failed completion check has a hint (make it `mode: blocking` if it should
+  win); a feedback check's hint no longer shows beside the error help of a Python or Turtle crash
+  (it shows on the next Run that does not crash); and the second and later failed completion
+  checks' hints now show on repeats, so write them as the next clue · Resolves: deep review
+  2026-11-10, C5
 
 ## 2026-11-10
 
