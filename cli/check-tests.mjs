@@ -1,6 +1,7 @@
 import {
   canEvaluateCheckWithoutRun,
   checkNeedsRunResult,
+  evaluateCheckWithCustomFeedback,
   evaluateSingleCheck,
   getCheckDefinition,
   normalizeCheckShape,
@@ -96,6 +97,32 @@ export function combineCompletion(results) {
   return 'pass'
 }
 
+export const GENERIC_FAIL_HINT = 'Not quite, try again!'
+
+/**
+ * The hint a student would see after a Run of the case's code, chosen by the same rule as in
+ * class (checks.js buildHintLadder: blocking feedback, then failed completion checks in list
+ * order, then nudges): `studentHint` (a pass shows only a nudge, or nothing; a fail with no hint
+ * shows the generic banner), and `hintLadder` when Running the same mistake again would show
+ * further hints. Checks that need a run are left out, as everywhere in this command; a crash's
+ * error help (which comes first in class) is not simulated.
+ */
+function studentHintFor(task, actualCompletion, judge) {
+  const evaluation = evaluateCheckWithCustomFeedback(
+    task,
+    actualCompletion === 'pass',
+    (check) => judge(check).result === 'pass',
+    '',
+    {},
+    { isCompletionCheckFailed: (check) => judge(check).result === 'fail' }
+  )
+  // A completion that needs a run can't be judged here: no generic banner is claimed for it.
+  const failed = !evaluation.passed && (actualCompletion === 'fail' || evaluation.blockingFeedback)
+  const out = { studentHint: evaluation.suggestion || (failed ? GENERIC_FAIL_HINT : '') }
+  if (evaluation.hintLadder.length > 1) out.hintLadder = evaluation.hintLadder
+  return out
+}
+
 function evaluateCase(lesson, task, taskId, testCase, caseIndex) {
   if (!testCase || typeof testCase !== 'object' || Array.isArray(testCase)) {
     throw new Error(`Task ${taskId} case ${caseIndex + 1} must be an object`)
@@ -150,6 +177,7 @@ function evaluateCase(lesson, task, taskId, testCase, caseIndex) {
     matchedFeedback,
     mismatches,
   }
+  if (!hasTests) Object.assign(result, studentHintFor(task, actualCompletion, judge))
   if (skippedFeedback.length > 0) result.skippedFeedback = skippedFeedback
   const skippedRuntimeChecks =
     checks.filter((c) => c.result === SKIPPED).length + skippedFeedback.length

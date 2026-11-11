@@ -75,6 +75,49 @@ describe('lesson check cases', () => {
     ])
   })
 
+  it('prints the hint a student would see, and the hints a repeat would step to (C5)', () => {
+    const hintLesson = {
+      id: 'hint-order',
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          check: [
+            { type: 'code', operator: 'contains', value: 'for', hint: 'Use a for loop.' },
+            { type: 'code', operator: 'contains', value: 'print', hint: 'Print each number.' },
+          ],
+          feedbackChecks: [
+            {
+              type: 'code',
+              operator: 'not_contains',
+              value: 'range(5)',
+              mode: 'nudge',
+              hint: 'Try range(5).',
+            },
+            { type: 'code', operator: 'contains', value: 'while', hint: 'Use for, not while.' },
+          ],
+        },
+      ],
+    }
+    const result = testLessonChecks(hintLesson, {
+      cases: [
+        { task: 1, name: 'empty', code: 'x = 1', completion: 'fail' },
+        { task: 1, name: 'while loop', code: 'while True:\n  print(1)', completion: 'fail' },
+        { task: 1, name: 'no hint left', code: 'for i in range(5):\n  x = 1', completion: 'fail' },
+        { task: 1, name: 'pass with nudge', code: 'for i in [1]:\n  print(i)', completion: 'pass' },
+      ],
+    })
+    const [empty, whileLoop, noPrint, nudged] = result.cases
+    // The failed completion checks come before the nudge.
+    expect(empty.studentHint).toBe('Use a for loop.')
+    expect(empty.hintLadder).toEqual(['Use a for loop.', 'Print each number.', 'Try range(5).'])
+    // A matched blocking check comes first.
+    expect(whileLoop.studentHint).toBe('Use for, not while.')
+    expect(noPrint.studentHint).toBe('Print each number.')
+    expect(noPrint.hintLadder).toBeUndefined()
+    expect(nudged.studentHint).toBe('Try range(5).')
+  })
+
   it('accepts the documented YAML cases-file shape', () => {
     const casesFile = parseJsonOrYaml(
       'check-cases.yaml',
