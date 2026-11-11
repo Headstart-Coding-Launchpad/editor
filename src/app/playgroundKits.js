@@ -25,7 +25,17 @@ hat   = "x.x.x.x.x.x.x.x."
 play(kick, snare, hat, tempo=100)
 `
 
-// The four kit cards on the chooser (5 controls with the Blank page button).
+// Stage kit (sketch option A, Ryan OK 2026-11-11): rings, a title and a rocket on the first Run.
+const STAGE_STARTER = `from stage import *
+
+background("midnightblue")
+for i in range(8):
+    circle(160 - i * 20, hue(i * 40))
+text("My Stage", "white", y=24, size=24)
+stamp("🚀", x=340, y=350, size=56)
+`
+
+// The five kit cards on the chooser (6 controls with the Blank page button).
 export const MAIN_KITS = Object.freeze([
   {
     id: 'turtle',
@@ -54,6 +64,13 @@ export const MAIN_KITS = Object.freeze([
     icon: '🥁',
     blurb: 'Make a drum beat',
     starterCode: BEATS_STARTER,
+  },
+  {
+    id: 'stage',
+    label: 'Stage',
+    icon: '🎨',
+    blurb: 'Draw shapes, words and emoji',
+    starterCode: STAGE_STARTER,
   },
 ])
 
