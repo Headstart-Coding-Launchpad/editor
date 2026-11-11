@@ -142,10 +142,6 @@ export function visiblePeerHelpOffers({ session, identityId, ownRequestId }) {
     .sort((a, b) => (a.offeredAt ?? 0) - (b.offeredAt ?? 0))
 }
 
-export function isOfferOpen(offer) {
-  return !!offer && offer.endedAt == null
-}
-
 // ─── Snapshot lines ──────────────────────────────────────────────────────────
 
 /**

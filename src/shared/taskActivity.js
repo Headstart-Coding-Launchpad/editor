@@ -107,10 +107,6 @@ for (const entry of TASK_ACTIVITY_PATTERNS) {
 // "Which of These Is a [Type]" is written with the real type ("Which of These Is an Integer").
 const WHICH_OF_THESE_PREFIX = /^which of these is an? /
 
-export function getTaskActivityPattern(id) {
-  return PATTERN_BY_ID.get(id) ?? null
-}
-
 function findPattern(rest, formatId) {
   const key = normaliseKey(rest)
   const candidates = WHICH_OF_THESE_PREFIX.test(key)
