@@ -226,7 +226,7 @@ export default function OutputPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'stretch' }}>
           {leadingActions && <div style={s.leadingActions}>{leadingActions}</div>}
           {titleId ? (
-            <h2 id={titleId} style={{ ...s.headerLabel, margin: 0 }}>
+            <h2 id={titleId} style={s.headerTitle}>
               {title}
             </h2>
           ) : (
@@ -334,6 +334,13 @@ const s = {
     fontWeight: 700,
     fontSize: '0.85rem',
     letterSpacing: '0.04em',
+  },
+  headerTitle: {
+    fontFamily: 'var(--font-title)',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    letterSpacing: '0.04em',
+    margin: 0,
   },
   leadingActions: {
     display: 'flex',
