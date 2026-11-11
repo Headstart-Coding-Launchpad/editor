@@ -632,6 +632,15 @@ describe('handleScratchCheck', () => {
       suggestion: 'Try moving',
     })
   })
+
+  it('C5: the same mistake again steps down the hint ladder, as on other modules', () => {
+    const h = renderStudentCodeState({ lesson: scratchLesson(), currentTaskId: 't1' })
+    const report = { suggestion: 'Try moving', hintLadder: ['Try moving', 'Use a move block'] }
+    actSync(() => h.result.current.handleScratchCheck(false, report))
+    actSync(() => h.result.current.handleScratchCheck(false, report))
+    expect(h.result.current.checkSuggestion).toBe('Use a move block')
+    expect(h.writers.logAttempt.mock.calls[1][2].suggestion).toBe('Use a move block')
+  })
 })
 
 // ── handleRun on runtime-less modules ──────────────────────────────────────────

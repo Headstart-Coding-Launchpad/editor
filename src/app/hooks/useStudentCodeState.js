@@ -3031,18 +3031,20 @@ export function useStudentCodeState({
 
   /**
    * A 'workspace'-checked module (Scratch) evaluated the task check itself and reports the
-   * outcome: `passed`, the workspace's own `suggestion` (empty → the generic banner), and
-   * the `work` it checked (else the task's saved work). Applies local feedback; then, in a live
-   * lesson, the teacher sandbox or while watched, writes the run (the work as `code` via
-   * wire.toCode) and, in a live lesson while unsolved, the attempt (wire.submission).
+   * outcome: `passed`, the workspace's own `suggestion` (empty → the generic banner) and its
+   * `hintLadder` (a repeat steps down it, C5), and the `work` it checked (else the task's saved
+   * work). Applies local feedback; then, in a live lesson, the teacher sandbox or while watched,
+   * writes the run (the work as `code` via wire.toCode) and, in a live lesson while unsolved,
+   * the attempt (wire.submission).
    */
-  function reportRun({ passed, suggestion: reportedSuggestion, work: reportedWork } = {}) {
+  function reportRun({ passed, suggestion: reported, hintLadder, work: reportedWork } = {}) {
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
     // The workspace applied the hint rule (checks.js); empty: no hint, so the generic banner.
-    const suggestion = effectivePassed ? '' : String(reportedSuggestion ?? '').trim()
-    if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
+    let suggestion = effectivePassed ? '' : String(reported ?? '').trim()
+    if (!alreadySolved && task?.check)
+      suggestion = applyCheckFeedback(passed, suggestion, { evaluation: { hintLadder } })
     const definition = workSlotDefinition(lesson?.type)
     if (!identity || definition?.checking.trigger !== 'workspace') return
     if (
@@ -3074,9 +3076,9 @@ export function useStudentCodeState({
     }
   }
 
-  // The Scratch workspace's check report: onCheckResult(passed, { suggestion, workspaceStates }).
-  function handleScratchCheck(passed, snapshot) {
-    reportRun({ passed, suggestion: snapshot?.suggestion, work: snapshot?.workspaceStates })
+  // The Scratch workspace's check report: onCheckResult(passed, { suggestion, hintLadder, … }).
+  function handleScratchCheck(passed, { workspaceStates, ...hints } = {}) {
+    reportRun({ passed, ...hints, work: workspaceStates })
   }
 
   // ─── Generic work slot handlers ──────────────────────────────────────────────

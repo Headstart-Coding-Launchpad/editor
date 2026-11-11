@@ -2717,6 +2717,8 @@ export default function ScratchWorkspace({
       workspaceStates,
       spriteStates: { ...spriteStatesRef.current },
       suggestion,
+      // A Run's or Check's ladder (C5): a repeat steps down it. Idle feedback sends none.
+      hintLadder: meta.hintLadder,
     })
   }, [])
 
@@ -2747,6 +2749,20 @@ export default function ScratchWorkspace({
 
   // Evaluates all after_block_placed checks and updates feedback.
   // Called on every debounced workspace change when after_block_placed checks are present.
+  // The task check's feedback and hint order (checks.js) on these sprite workspaces, judged
+  // against `signal` (default: the last run's).
+  function evaluateFeedback(sws, completionPassed, feedbackTiming, { signal, ...options } = {}) {
+    return evaluateCheckWithCustomFeedback(
+      task,
+      completionPassed,
+      (check) =>
+        evalSingleCheck(check, sws, signal ?? signalRef.current, preRunSpriteStatesRef.current),
+      '',
+      {},
+      { feedbackTiming, ...options }
+    )
+  }
+
   function evaluateBlockPlacedChecks() {
     if (!BlocklyRef.current) return
     const afterBlockChecks = scratchChecks.filter((c) => c.evaluation === 'after_block_placed')
@@ -2759,16 +2775,8 @@ export default function ScratchWorkspace({
       // that only a real Run can verify — don't declare the check attempted/passed yet.
       clearCheckFeedback()
     } else if (results.every((r) => r === 'pass')) {
-      const evaluation = evaluateCheckWithCustomFeedback(
-        task,
-        completionPassed,
-        (feedbackCheck) =>
-          evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
-        '',
-        {},
-        { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
-      )
-      notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
+      const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.AFTER_ATTEMPT)
+      notifyCheck(evaluation.passed, false, evaluation)
     } else if (results.some((r) => r === 'fail')) {
       // Still building (unchanged since the task opened, or a loose block): no fail, no hint,
       // no attempt logged. Passes above are never held back.
@@ -2776,19 +2784,10 @@ export default function ScratchWorkspace({
         clearCheckFeedback()
         return
       }
-      const evaluation = evaluateCheckWithCustomFeedback(
-        task,
-        false,
-        (feedbackCheck) =>
-          evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
-        '',
-        {},
-        {
-          feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT,
-          isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
-        }
-      )
-      notifyCheck(false, false, { suggestion: evaluation.suggestion })
+      const evaluation = evaluateFeedback(sws, false, FEEDBACK_TIMING.AFTER_ATTEMPT, {
+        isCompletionCheckFailed: (c) => blockPlacedCheckHasFailed(c, sws),
+      })
+      notifyCheck(false, false, evaluation)
     } else {
       clearCheckFeedback()
     }
@@ -2808,15 +2807,7 @@ export default function ScratchWorkspace({
         evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
       )
     if (!completionPassed && isStillBuilding(sws)) return
-    const evaluation = evaluateCheckWithCustomFeedback(
-      task,
-      completionPassed,
-      (feedbackCheck) =>
-        evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
-      '',
-      {},
-      { feedbackTiming: FEEDBACK_TIMING.ON_IDLE }
-    )
+    const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.ON_IDLE)
     if (evaluation.feedbackResults.some((result) => result.passed)) {
       notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
     }
@@ -2832,15 +2823,10 @@ export default function ScratchWorkspace({
     const completionPassed = runJudgedChecks.every((c) =>
       evalSingleCheck(c, sws, signal, preRunSpriteStatesRef.current)
     )
-    const evaluation = evaluateCheckWithCustomFeedback(
-      task,
-      completionPassed,
-      (feedbackCheck) => evalSingleCheck(feedbackCheck, sws, signal, preRunSpriteStatesRef.current),
-      '',
-      {},
-      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
-    )
-    notifyCheck(evaluation.passed, false, { suggestion: evaluation.suggestion })
+    const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.AFTER_ATTEMPT, {
+      signal,
+    })
+    notifyCheck(evaluation.passed, false, evaluation)
   }
 
   function finishRun(signal) {
@@ -3017,16 +3003,8 @@ export default function ScratchWorkspace({
     const completionPassed = scratchChecks.every((c) =>
       evalSingleCheck(c, sws, signalRef.current, preRunSpriteStatesRef.current)
     )
-    const evaluation = evaluateCheckWithCustomFeedback(
-      task,
-      completionPassed,
-      (feedbackCheck) =>
-        evalSingleCheck(feedbackCheck, sws, signalRef.current, preRunSpriteStatesRef.current),
-      '',
-      {},
-      { feedbackTiming: FEEDBACK_TIMING.AFTER_ATTEMPT }
-    )
-    notifyCheck(evaluation.passed, true, { suggestion: evaluation.suggestion })
+    const evaluation = evaluateFeedback(sws, completionPassed, FEEDBACK_TIMING.AFTER_ATTEMPT)
+    notifyCheck(evaluation.passed, true, evaluation)
   }
 
   // ── Pointer events on canvas ─────────────────────────────────────────────────
