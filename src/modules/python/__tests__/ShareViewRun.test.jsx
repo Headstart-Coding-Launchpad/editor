@@ -23,7 +23,8 @@ const { default: PythonShareView } = await import('../ShareView.jsx')
 describe('Python share link Run', () => {
   it('shows the saved output until Run, then runs the code and takes input', async () => {
     render(<PythonShareView payload={{ code: 'name = input("Name? ")', output: 'saved output' }} />)
-    expect(screen.getByText('saved output')).toBeInTheDocument()
+    // The classroom Output panel types the saved output out, as it does a run's.
+    expect(await screen.findByText('saved output')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Run/ }))
     expect(await screen.findByRole('button', { name: 'Stop' })).toBeInTheDocument()
     py.callbacks.onOutput('Name? ')

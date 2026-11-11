@@ -3,7 +3,7 @@
 // viewer's browser (Pyodide, nothing saved or sent), answering any input() in the output panel;
 // the run's output and drawing replace the saved ones (Ryan, 2026-10-22: "it doesn't run it").
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ShareCode, ShareOutput, shareStyles } from '../../shared/exportWork/ShareParts.jsx'
+import { CodeEditor } from '../../shared/CodeEditor'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -72,68 +72,79 @@ export default function PythonShareView({ payload }) {
   }
 
   const busy = run?.status === 'loading' || run?.status === 'running'
-  const stage = run ? run.stage : savedStage
+  // A run's own drawing once it has one; the saved one stays up until then, so nothing jumps.
+  const stage = run && (run.stage || !busy) ? run.stage : savedStage
+  const bar = 'sv-editor-header ui-tabs ui-tabs--editor ui-tabs--code-row share-py-bar'
 
+  // Laid out like the classroom editor (Ryan, 11 Nov 2026); the grid is .share-py in index.css:
+  // Code left, Stage then Output right; on a phone Stage, Code, Output.
   return (
-    <div style={shareStyles.grid}>
-      {stage && (
-        <StagePane
-          commands={stage.commands}
-          ran
-          compact
-          truncated={stage.truncated}
-          title="Stage drawing"
-          style={s.stage}
-        />
-      )}
-      <ShareCode code={payload?.code} language="python" />
-      {/* Run and its output share one grid cell, so the output opens right under the
-          button instead of dropping below the code, off-screen (#301). */}
-      <div style={s.runColumn}>
-        <div style={s.runRow}>
-          <button
-            type="button"
-            className="btn-primary"
-            style={s.runBtn}
-            onClick={handleRun}
-            disabled={busy || typeof payload?.code !== 'string'}
-          >
-            {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
-          </button>
-          {busy && (
+    <div className={stage ? 'share-py share-py--stage' : 'share-py'}>
+      <section className="card share-py-card share-py-code" aria-label="Code">
+        <div className={bar}>
+          <span className="sv-editor-title">Code</span>
+          <div className="sv-editor-actions">
+            {busy && (
+              <button type="button" className="btn-ghost-outline" onClick={() => stopPython()}>
+                Stop
+              </button>
+            )}
             <button
               type="button"
-              className="btn-ghost-outline"
-              style={s.runBtn}
-              onClick={() => stopPython()}
+              className="btn-primary sv-editor-primary-btn"
+              onClick={handleRun}
+              disabled={busy || typeof payload?.code !== 'string'}
             >
-              Stop
+              {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
             </button>
-          )}
-          <span style={s.note}>Runs here, in your browser. Nothing is saved.</span>
+          </div>
         </div>
-        {run ? (
-          <OutputPanel
-            output={run.output}
-            runStatus={busy ? null : run.status}
-            running={busy}
-            inputPrompt={run.prompt}
-            onInputSubmit={handleInput}
-            collapsible={false}
-            defaultCollapsed={false}
+        <p className="share-py-note">Runs here, in your browser. Nothing is saved.</p>
+        <div className="share-py-editor">
+          <CodeEditor value={payload?.code ?? ''} language="python" readOnly />
+        </div>
+      </section>
+      {stage && (
+        <section className="card share-py-card share-py-stage" aria-label="Stage">
+          <div className={bar}>
+            <span className="sv-editor-title">Stage</span>
+          </div>
+          {/* compact, no saveTitle or target: no Save my picture or Target buttons here. */}
+          <StagePane
+            commands={stage.commands}
+            ran
+            compact
+            truncated={stage.truncated}
+            title="Stage drawing"
+            style={s.stage}
           />
-        ) : (
-          <ShareOutput output={payload?.output} />
-        )}
+        </section>
+      )}
+      {/* The classroom panel before and after Run (read-only saved output first), so the
+          page does not jump; it fills the right column when there is no Stage. */}
+      <div className="share-py-output">
+        <OutputPanel
+          output={run ? run.output : (payload?.output ?? '')}
+          runStatus={busy ? null : run?.status}
+          hideStatus={!run}
+          running={busy}
+          inputPrompt={run?.prompt ?? null}
+          onInputSubmit={handleInput}
+          collapsible={false}
+          defaultCollapsed={false}
+          fill={!stage}
+          drew={!!stage}
+        />
       </div>
     </div>
   )
 }
 
 const s = {
-  stage: { width: '100%', maxWidth: 420, aspectRatio: '1 / 1' },
-  runColumn: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
-  runRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  runBtn: { minHeight: 44, padding: '0 18px' },
-  note: { fontSize: '0.85rem', color: 'var(--colour-text-muted, #6b7280)' },
+  stage: {
+    width: '100%',
+    maxWidth: 'min(420px, 42vh)',
+    aspectRatio: '1 / 1',
+    margin: '10px auto 0',
+  },
 }

@@ -12,16 +12,6 @@ export function ShareCode({ code, language = 'python', title = 'Code' }) {
   )
 }
 
-export function ShareOutput({ output, title = 'Output' }) {
-  if (!output) return null
-  return (
-    <section style={s.panel} aria-label={title}>
-      <h2 style={s.heading}>{title}</h2>
-      <pre style={s.output}>{output}</pre>
-    </section>
-  )
-}
-
 export function SharePanel({ title, children }) {
   return (
     <section style={s.panel} aria-label={title}>
@@ -58,17 +48,5 @@ const s = {
     borderRadius: 6,
     overflow: 'auto',
     maxHeight: '70vh',
-  },
-  output: {
-    margin: 0,
-    padding: 10,
-    background: '#111827',
-    color: '#e5e7eb',
-    borderRadius: 6,
-    maxHeight: 320,
-    overflow: 'auto',
-    whiteSpace: 'pre-wrap',
-    fontFamily: 'var(--font-mono, monospace)',
-    fontSize: '0.85rem',
   },
 }

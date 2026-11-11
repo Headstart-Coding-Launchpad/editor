@@ -43,6 +43,8 @@ describe('Python share page layout', () => {
     await userEvent.click(screen.getByRole('button', { name: /Run/ }))
     expect(await screen.findByRole('button', { name: 'Stop' })).toBeInTheDocument()
     expect(screen.getByTestId('output-panel')).toBe(panel)
+    // The saved drawing stays up until the run draws its own, so the layout does not flip.
+    expect(screen.getByRole('region', { name: 'Stage' })).toBeInTheDocument()
   })
 
   it('without a drawing, has no Stage card and still shows the Output panel', () => {
