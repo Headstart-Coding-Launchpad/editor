@@ -17,9 +17,9 @@ import { lastErrorLine } from '../studentHints.js'
  *   confirmsLivePass (optional: the task was ticked by a typed redraw, request 131).
  * RECORD_RUN_CTX_FIELDS lists the required ones; missingRecordRunFields(ctx) names any missing.
  * A rejected or throwing writer propagates out of recordRun unchanged (later records skipped).
- * `run` is `{ code, outputRaw, status, result, judgement, source }`: the code that ran (after any
- * runtime update), its raw output, status and runtime result, judgeRun's judgement, and the Run's
- * source (`'scrub'`, or `'live'` for a typed redraw's pass, request 131, is logged on the attempt).
+ * `run` is `{ code, outputRaw, status, result, judgement, shownSuggestion, source }`: the code
+ * that ran (after any runtime update), its raw output, status and runtime result, judgeRun's
+ * judgement, the hint on screen (C5 ladder; else judgement.suggestion), and the Run's source (`'scrub'`, or `'live'` for a typed redraw's pass, request 131, is logged on the attempt).
  */
 // The ctx fields recordRun needs, as paths (writeStudentTurtleResult only when runResult.turtle).
 export const RECORD_RUN_CTX_FIELDS = Object.freeze([
@@ -48,7 +48,8 @@ export function missingRecordRunFields(ctx) {
   )
 }
 
-export async function recordRun(ctx, { code, outputRaw, status, result, judgement, source }) {
+export async function recordRun(ctx, run) {
+  const { code, outputRaw, status, result, judgement, shownSuggestion, source } = run
   const {
     actor,
     definition,
@@ -64,7 +65,8 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
   } = ctx
   const { runResult } = definition
   const { canPublishTeacherLive, publishTeacherLive } = live
-  const { passed, suggestion, scrubPassed, hasTests, checkTask, isFreePlay } = judgement
+  const { passed, scrubPassed, hasTests, checkTask, isFreePlay, evaluation } = judgement
+  const suggestion = shownSuggestion ?? judgement.suggestion
   // A real console error, named when the output shows it ('NameError'), for the badge data.
   const runError = runErrorFor(status, outputRaw)
 
@@ -124,7 +126,8 @@ export async function recordRun(ctx, { code, outputRaw, status, result, judgemen
     writers.logAttempt(actor.anonymousId, currentTaskId, {
       submission: code,
       passed,
-      suggestion,
+      // After an explained crash no hint shows, but the author's held hint is still recorded.
+      suggestion: suggestion || evaluation?.hintLadder?.[0] || '',
       teacherAssisted: refs.teacherAssistedTaskIdsRef.current.has(currentTaskId),
       error: runError,
       ...(source === 'scrub' || source === 'live' ? { source } : {}),

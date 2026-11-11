@@ -72,6 +72,7 @@ async function run({
   writeStudentRun = () => Promise.resolve(),
   writeStudentStageResult = () => undefined,
   buildContext = undefined,
+  shownHint = undefined,
 } = {}) {
   const log = []
   const spy =
@@ -157,7 +158,7 @@ async function run({
       publishTeacherLive: spy('publishTeacherLive'),
     },
     feedback: {
-      applyCheckFeedback: spy('applyCheckFeedback'),
+      applyCheckFeedback: spy('applyCheckFeedback', () => shownHint),
       updateTargetedStageOffer: spy('updateTargetedStageOffer'),
       updateSupportStageForAttempt: spy('updateSupportStageForAttempt'),
     },
@@ -197,7 +198,7 @@ describe('runWithRuntime characterization: outcomes', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -225,7 +226,7 @@ describe('runWithRuntime characterization: outcomes', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},false]
-      applyCheckFeedback [false,"Print hi",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]}}]
+      applyCheckFeedback [false,"Print hi",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},"completed":true}]
       updateSupportStageForAttempt [false]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"nope\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"nope\\n","status":"success","checkPassed":false,"errorText":"<undefined>"}]
@@ -234,6 +235,19 @@ describe('runWithRuntime characterization: outcomes', () => {
       logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":false,"suggestion":"Print hi","teacherAssisted":false,"error":false}]
       setRunning [false]"
     `)
+  })
+
+  it('C5: the hint on screen (a ladder step) is what the tutor sees and the log records', async () => {
+    const { log } = await run({
+      goLive: true,
+      shownHint: 'Next hint',
+      script: (cb) => {
+        cb.onOutput('nope\n', 'stdout')
+        return { status: 'success' }
+      },
+    })
+    expect(log).toContain('"checkSuggestion":"Next hint"')
+    expect(log).toContain('"passed":false,"suggestion":"Next hint"')
   })
 
   it('error Run: error line, error name, errorText', async () => {
@@ -253,14 +267,14 @@ describe('runWithRuntime characterization: outcomes', () => {
       setStageResult [null]
       variablesPanel.receiveRun [{"task":"<task t1>","status":"error","result":{"status":"error"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"error","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
-      updateTargetedStageOffer ["<task t1>",{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},false]
-      applyCheckFeedback [false,"",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      updateTargetedStageOffer ["<task t1>",{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":["Print hi"]},false]
+      applyCheckFeedback [false,"",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":["Print hi"]},"completed":false}]
       updateSupportStageForAttempt [false]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"Line 1: NameError: name 'x' is not defined\\n","runStatus":"error"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"Line 1: NameError: name 'x' is not defined\\n","status":"error","checkPassed":false,"errorText":"Line 1: NameError: name 'x' is not defined"}]
       writeStudentStageResult ["stu-1",null]
       writeStudentTaskRun ["stu-1","t1","print(\\"hi\\")"]
-      logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":false,"suggestion":"","teacherAssisted":false,"error":"NameError"}]
+      logAttempt ["stu-1","t1",{"submission":"print(\\"hi\\")","passed":false,"suggestion":"Print hi","teacherAssisted":false,"error":"NameError"}]
       setRunning [false]"
     `)
   })
@@ -322,7 +336,7 @@ describe('runWithRuntime characterization: outcomes', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -370,7 +384,7 @@ describe('runWithRuntime characterization: outcomes', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true,"variablePredictions":{"x":1}}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -433,7 +447,7 @@ describe('runWithRuntime characterization: where the Run happens', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       setRunning [false]"
@@ -452,7 +466,7 @@ describe('runWithRuntime characterization: where the Run happens', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       setRunning [false]"
@@ -474,7 +488,7 @@ describe('runWithRuntime characterization: where the Run happens', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -498,7 +512,7 @@ describe('runWithRuntime characterization: where the Run happens', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       publishTeacherLive [{"code":"print(\\"hi\\")","output":"hi\\n","runStatus":"success","checkPassed":true,"checkAttempted":true,"checkSuggestion":""}]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
@@ -525,7 +539,7 @@ describe('runWithRuntime characterization: where the Run happens', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -548,7 +562,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":true,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":true,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"scrubPassed":true,"errorText":"<undefined>"}]
@@ -577,7 +591,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},false]
-      applyCheckFeedback [false,"Print hi",{"scrub":true,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]}}]
+      applyCheckFeedback [false,"Print hi",{"scrub":true,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},"completed":true}]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"nope\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"nope\\n","status":"success","checkPassed":false,"scrubPassed":false,"errorText":"<undefined>"}]
       writeStudentStageResult ["stu-1",null]
@@ -626,7 +640,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -653,7 +667,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success","stage":{"commands":[{"type":"circle","x":200,"y":200,"r":50,"colour":"#ff0000"}]},"stageTarget":{"commands":[]}},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[{"type":"circle","x":200,"y":200,"r":50,"colour":"#ff0000"}],"target":{"commands":[]}},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -682,7 +696,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success","turtle":{"state":{"x":0,"y":0,"heading":0},"commands":[],"course":{"id":"c1"}}},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":{"state":{"x":0,"y":0,"heading":0},"commands":[],"course":{"id":"c1"}},"stage":null,"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -710,7 +724,7 @@ describe('runWithRuntime characterization: run kinds', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success","turtle":{"state":{"x":0,"y":0,"heading":0},"commands":[]}},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":{"state":{"x":0,"y":0,"heading":0},"commands":[]},"stage":null,"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},false]
-      applyCheckFeedback [false,"Print hi",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]}}]
+      applyCheckFeedback [false,"Print hi",{"scrub":false,"evaluation":{"passed":false,"completionPassed":false,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"Print hi","hintLadder":["Print hi"]},"completed":true}]
       updateSupportStageForAttempt [false]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"","status":"success","checkPassed":false,"errorText":"<undefined>"}]
@@ -772,7 +786,7 @@ describe('runWithRuntime characterization: input()', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"Name? Sam\\nhi Sam\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"Name? Sam\\nhi Sam\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -803,7 +817,7 @@ describe('runWithRuntime characterization: input()', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"Name? Sam\\nhi Sam\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"Name? Sam\\nhi Sam\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -836,7 +850,7 @@ describe('runWithRuntime characterization: input()', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":true,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":true,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"Name? Sam\\nhi Sam\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"Name? Sam\\nhi Sam\\n","status":"success","checkPassed":true,"scrubPassed":true,"errorText":"<undefined>"}]
@@ -893,7 +907,7 @@ describe('runWithRuntime characterization: stopped', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"stopped","result":{"status":"stopped"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"stopped","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":false}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"part\\n","runStatus":"stopped"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"part\\n","status":"stopped","checkPassed":true,"errorText":"<undefined>"}]
@@ -937,7 +951,7 @@ describe('runWithRuntime characterization: a rejected writeStudentRun', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]
@@ -964,7 +978,7 @@ describe('runWithRuntime characterization: a throw in the Run tail', () => {
       variablesPanel.receiveRun [{"task":"<task t1>","status":"success","result":{"status":"success"},"code":"print(\\"hi\\")"}]
       checking.buildContext ["print(\\"hi\\")",{"status":"success","variables":{},"turtle":null,"stage":{"commands":[],"target":null},"ran":true}]
       updateTargetedStageOffer ["<task t1>",{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},true]
-      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]}}]
+      applyCheckFeedback [true,"",{"scrub":false,"evaluation":{"passed":true,"completionPassed":true,"feedbackResults":[],"matchedFeedback":null,"stageOffer":null,"blockingFeedback":null,"nudgeFeedback":null,"suggestion":"","hintLadder":[]},"completed":true}]
       updateSupportStageForAttempt [true]
       saveRunRecord ["t1","print(\\"hi\\")",{"output":"hi\\n","runStatus":"success"}]
       writeStudentRun ["stu-1",{"code":"print(\\"hi\\")","output":"hi\\n","status":"success","checkPassed":true,"errorText":"<undefined>"}]

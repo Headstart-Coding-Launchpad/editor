@@ -350,13 +350,17 @@ export async function runWithRuntime(ctx) {
       source,
     })
     const { passed, suggestion, evaluation, isScrubRun, hasTests, checkTask } = judgement
+    // The hint on screen (C5): only a finished Run ('success') steps the hint ladder.
+    let shownSuggestion = suggestion
     if (!alreadySolved && !isFreePlay) {
       if (evaluation) feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
-      // A repeated mistake shows (and records) the next hint of the ladder (C5).
       if (!hasTests && checkTask?.check)
-        judgement.suggestion =
-          feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun, evaluation }) ??
-          suggestion
+        shownSuggestion =
+          feedback.applyCheckFeedback(passed, suggestion, {
+            scrub: isScrubRun,
+            evaluation,
+            completed: status === 'success',
+          }) ?? suggestion
       // A failed scrub release is not a failed attempt, so it does not step the support offers.
       if (!(isScrubRun && !passed)) {
         feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))
@@ -369,6 +373,7 @@ export async function runWithRuntime(ctx) {
       status,
       result,
       judgement,
+      shownSuggestion,
       source,
     })
   } finally {
