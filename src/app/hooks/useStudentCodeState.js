@@ -903,7 +903,6 @@ export function useStudentCodeState({
     setCheckAttempted,
     checkSuggestion,
     setCheckSuggestion,
-    repeatedSuggestionCount,
     checkFailCount,
     testResults,
     setTestResults,
@@ -2201,7 +2200,8 @@ export function useStudentCodeState({
         suggestion = task?.check ? evaluation.suggestion : ''
         if (scrubRun && task?.check) scrubPassed = passed
         updateTargetedStageOffer(task, evaluation, passed)
-        if (task?.check) applyCheckFeedback(passed, suggestion, { scrub: !!scrubRun })
+        if (task?.check)
+          suggestion = applyCheckFeedback(passed, suggestion, { scrub: !!scrubRun, evaluation })
         const supportAttempt = htmlSupportAttemptsRef.current.get(src)
         const supportPassed = !supportAttempt?.hasError && (!task?.check || passed)
         if (supportAttempt) {
@@ -2786,7 +2786,7 @@ export function useStudentCodeState({
         passed = evaluation.passed
         suggestion = evaluation.suggestion
         updateTargetedStageOffer(task, evaluation, passed)
-        applyCheckFeedback(passed, suggestion)
+        suggestion = applyCheckFeedback(passed, suggestion, { evaluation })
       }
       updateSupportStageForAttempt(!hasCheck || passed)
     }
@@ -3040,8 +3040,7 @@ export function useStudentCodeState({
     const task = findTaskById(lesson?.tasks, currentTaskId)
     const alreadySolved = isAlreadySolved()
     const effectivePassed = alreadySolved ? true : passed
-    // The workspace already applied the shared hint rule (checks.js buildCheckFeedbackResult);
-    // an empty suggestion means no failed check had a hint, so the generic banner shows.
+    // The workspace applied the hint rule (checks.js); empty: no hint, so the generic banner.
     const suggestion = effectivePassed ? '' : String(reportedSuggestion ?? '').trim()
     if (!alreadySolved && task?.check) applyCheckFeedback(passed, suggestion)
     const definition = workSlotDefinition(lesson?.type)
@@ -3100,9 +3099,9 @@ export function useStudentCodeState({
       : { passed: false, suggestion: '' }
     const evaluatedPassed = evaluation.passed
     const passed = alreadySolved ? true : evaluatedPassed
-    const suggestion = passed ? '' : evaluation.suggestion
+    let suggestion = passed ? '' : evaluation.suggestion
     if (!alreadySolved && task?.check && (evaluatedPassed || !suppressFailFeedback)) {
-      applyCheckFeedback(evaluatedPassed, suggestion)
+      suggestion = applyCheckFeedback(evaluatedPassed, suggestion, { evaluation })
       updateTargetedStageOffer(task, evaluation, evaluatedPassed)
     }
     if (
@@ -3732,7 +3731,7 @@ export function useStudentCodeState({
       passed = task?.check ? evaluation.passed : false
       suggestion = task?.check ? evaluation.suggestion : ''
       if (task?.check) {
-        applyCheckFeedback(passed, suggestion)
+        suggestion = applyCheckFeedback(passed, suggestion, { evaluation })
         updateTargetedStageOffer(task, evaluation, passed)
       }
       updateSupportStageForAttempt(!task?.check || passed)
@@ -3871,7 +3870,6 @@ export function useStudentCodeState({
     checkPassed,
     checkAttempted,
     checkSuggestion,
-    repeatedSuggestionCount,
     checkFailCount,
     stagePromptAccepted,
     offeredStageIndex,

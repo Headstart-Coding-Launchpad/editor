@@ -430,22 +430,26 @@ export function evaluateFeedbackCheckResults(taskOrChecks, output, context = {},
     }))
 }
 
-// Feedback checks may overlap. Pick one deterministic, author-controlled match
-// for the student-facing hint and optional stage offer. Older lessons without a
-// priority retain their existing array order.
+const hintOf = (result) => String(result?.hint ?? '').trim()
+const isBlocking = (result) => (result.mode ?? 'blocking') === 'blocking'
+const isNudge = (result) => result.mode === 'nudge'
+const priorityOf = (result, index) =>
+  Number.isInteger(Number(result?.priority)) && Number(result.priority) > 0
+    ? Number(result.priority)
+    : index + 1
+
+// Matched feedback results, highest priority first: lowest `priority`, else list position.
+function matchedByPriority(results) {
+  return (Array.isArray(results) ? results : [])
+    .map((result, index) => ({ result, index, priority: priorityOf(result, index) }))
+    .filter(({ result }) => result?.passed)
+    .sort((a, b) => a.priority - b.priority || a.index - b.index)
+    .map(({ result }) => result)
+}
+
+// The one match that gives the stage offer (and the blocking verdict).
 export function getHighestPriorityFeedbackMatch(results = []) {
-  const safeResults = Array.isArray(results) ? results : []
-  return (
-    safeResults.reduce((best, result, index) => {
-      if (!result?.passed) return best
-      const priority =
-        Number.isInteger(Number(result.priority)) && Number(result.priority) > 0
-          ? Number(result.priority)
-          : index + 1
-      if (!best || priority < best.priority) return { result, priority, index }
-      return best
-    }, null)?.result ?? null
-  )
+  return matchedByPriority(results)[0] ?? null
 }
 
 export function getStageOfferMatchThreshold(stageOffer) {
@@ -453,18 +457,10 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-// Like getFirstFailedCheckHint, but evaluates each completion check with the caller's own
-// evaluator instead of the generic core-only evaluateSingleCheck — needed for module check
-// types (e.g. Scratch's block_run/sprite_property_delta) that evaluateSingleCheck can't
-// evaluate itself, and would otherwise unconditionally report as failed.
-// `isCheckFailed` returns true only for a check that has definitively failed; a check it
-// can't judge yet (e.g. a run-time check before any run) must return false so it never
-// supplies the hint.
-function getFirstFailedCheckHintCustom(check, isCheckFailed) {
-  const failed = normalizeChecks(check).find((c) => isCheckFailed(c) && String(c.hint ?? '').trim())
-  return failed ? String(failed.hint).trim() : ''
-}
-
+// Hint order (C5): an explained crash → none (the error help is the help); else matched blocking
+// checks, failed completion checks in list order, matched nudges. First shown; repeats step down
+// (useCheckFeedback). `isCompletionCheckFailed` (Scratch's own evaluator) is true only for a
+// check that definitively failed, so one it can't judge yet never supplies a hint.
 function buildCheckFeedbackResult(
   task,
   completionPassed,
@@ -477,52 +473,51 @@ function buildCheckFeedbackResult(
   // A Run that ended in an error has no picture to judge: hold back the hints of picture checks
   // (the Python Stage's) so the error help shows instead. See isPictureCheck.
   if (runErrored) feedbackResults = feedbackResults.filter((result) => !isPictureCheck(result))
-  const blockingMatch = getHighestPriorityFeedbackMatch(
-    feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
-  )
-  const matchedFeedback = getHighestPriorityFeedbackMatch(feedbackResults)
-  const matchedFeedbackHint =
-    matchedFeedback && String(matchedFeedback.hint ?? '').trim()
-      ? matchedFeedback
-      : feedbackResults.find((result) => result.passed && String(result.hint ?? '').trim())
+  const matched = matchedByPriority(feedbackResults)
+  const blockingMatch = matched.find(isBlocking) ?? null
   const nudgeMatch = feedbackResults.find(
-    (result) => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim()
+    (result) => result.passed && isNudge(result) && hintOf(result)
   )
   const passed = completionPassed && !blockingMatch
-  const suggestion = blockingMatch
-    ? String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.'
-    : completionPassed
-      ? nudgeMatch
-        ? String(nudgeMatch.hint).trim()
-        : ''
-      : matchedFeedbackHint
-        ? String(matchedFeedbackHint.hint).trim()
-        : // The error help wins over a completion check's content hint when the Run crashed
-          // with an error it explains (Hub #225, session report review #229: `range 4` got
-          // "is there a for loop?"). Feedback checks, which diagnose a specific mistake,
-          // still show.
-          errorExplained
-          ? ''
-          : isCompletionCheckFailed
-            ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
-            : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
+  const failedHints = () =>
+    isCompletionCheckFailed
+      ? normalizeChecks(task?.check)
+          .filter((c) => isCompletionCheckFailed(c))
+          .map(hintOf)
+      : getFailedCheckHints(task?.check, output, context, { runErrored })
+  const rungs =
+    passed || errorExplained
+      ? []
+      : [
+          ...matched.filter(isBlocking).map(hintOf),
+          ...(completionPassed ? [] : failedHints()),
+          ...matched.filter(isNudge).map(hintOf),
+        ]
+  const hintLadder = [...new Set(rungs.filter(Boolean))]
+  // On a pass only a nudge shows (beside "Correct!"); a blocking match with no hint anywhere
+  // says "Not quite." unless the error help is showing.
+  const suggestion = passed
+    ? hintOf(nudgeMatch)
+    : (hintLadder[0] ?? (blockingMatch && !errorExplained ? 'Not quite.' : ''))
 
   return {
     passed,
     completionPassed,
     feedbackResults,
-    matchedFeedback,
-    stageOffer: matchedFeedback?.stageOffer ?? null,
-    blockingFeedback: blockingMatch ?? null,
+    matchedFeedback: matched[0] ?? null,
+    stageOffer: matched[0]?.stageOffer ?? null,
+    blockingFeedback: blockingMatch,
     nudgeFeedback: nudgeMatch ?? null,
     suggestion,
+    hintLadder,
   }
 }
 
 // `options.runErrored`: the Run ended in an error (runWithRuntime), so hints of picture checks
 // are held back; completion and hints of every other check behave as normal.
 // `options.errorExplained`: that error has plain-words help (src/shared/pythonErrors.js), so
-// no completion check's hint is offered as well; matched feedback checks still are.
+// no check's hint is offered as well, feedback checks included (C5: the error help comes first).
+// The result's `hintLadder` is the hint order for repeats (buildHintLadder).
 export function evaluateCheckWithFeedback(task, output, context = {}, options = {}) {
   const completionPassed = options.completionPassed ?? evaluateCheck(task?.check, output, context)
   const feedbackResults = evaluateFeedbackCheckResults(task, output, context, options)
@@ -573,22 +568,16 @@ export function isPictureCheck(check) {
   return def?.contextKey === 'stage'
 }
 
-export function getFirstFailedCheckHint(check, output, context = {}, { runErrored = false } = {}) {
-  const failed = evaluateCheckResults(check, output, context).find(
-    (result) =>
-      !result.passed && String(result.hint ?? '').trim() && !(runErrored && isPictureCheck(result))
-  )
-  return failed ? String(failed.hint).trim() : ''
+// The hints of every failed completion check, in list order (no picture checks after an error).
+function getFailedCheckHints(check, output, context = {}, { runErrored = false } = {}) {
+  return evaluateCheckResults(check, output, context)
+    .filter((result) => !result.passed && !(runErrored && isPictureCheck(result)))
+    .map(hintOf)
+    .filter(Boolean)
 }
 
-// Returns the hint from the first incorrect check that passes (i.e. detects a specific mistake).
-// Call this when the completion check has failed to get a targeted hint.
-export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
-  const checks = normalizeFeedbackChecks(incorrectChecks)
-  const matched = checks.find(
-    (c) => evaluateSingleCheck(c, output, context) && String(c.hint ?? '').trim()
-  )
-  return matched ? String(matched.hint).trim() : ''
+export function getFirstFailedCheckHint(check, output, context = {}, options = {}) {
+  return getFailedCheckHints(check, output, context, options)[0] ?? ''
 }
 
 // Evaluates only code-based checks (no run required). Safe to call without executing the code.

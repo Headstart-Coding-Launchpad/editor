@@ -21,7 +21,6 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkPassed).toBe(false)
       expect(result.current.checkAttempted).toBe(false)
       expect(result.current.checkSuggestion).toBe('')
-      expect(result.current.repeatedSuggestionCount).toBe(0)
       expect(result.current.testResults).toBe(null)
     })
   })
@@ -71,7 +70,6 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkPassed).toBe(false)
       expect(result.current.checkAttempted).toBe(false)
       expect(result.current.checkSuggestion).toBe('')
-      expect(result.current.repeatedSuggestionCount).toBe(0)
       expect(result.current.testResults).toBe(null)
     })
   })
@@ -85,7 +83,6 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkPassed).toBe(true)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('')
-      expect(result.current.repeatedSuggestionCount).toBe(0)
     })
 
     it('keeps a passing suggestion for non-blocking nudges', () => {
@@ -96,7 +93,6 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkPassed).toBe(true)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('Nice improvement: try a clearer name.')
-      expect(result.current.repeatedSuggestionCount).toBe(0)
     })
 
     it('sets passed=false with a suggestion', () => {
@@ -107,7 +103,6 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkPassed).toBe(false)
       expect(result.current.checkAttempted).toBe(true)
       expect(result.current.checkSuggestion).toBe('Try again')
-      expect(result.current.repeatedSuggestionCount).toBe(1)
     })
 
     it('trims whitespace from suggestion', () => {
@@ -118,40 +113,62 @@ describe('useCheckFeedback', () => {
       expect(result.current.checkSuggestion).toBe('hint')
     })
 
-    it('increments repeatedSuggestionCount for the same suggestion', () => {
-      const { result } = renderHook(() => useCheckFeedback())
-      act(() => {
-        result.current.applyCheckFeedback(false, 'same hint')
-      })
-      act(() => {
-        result.current.applyCheckFeedback(false, 'same hint')
-      })
-      expect(result.current.repeatedSuggestionCount).toBe(2)
-    })
+    describe('hint ladder (C5): a repeated mistake gets the next hint', () => {
+      const ladder = ['First', 'Second']
+      const fail = (result, options = {}) => {
+        let shown
+        act(() => {
+          shown = result.current.applyCheckFeedback(false, ladder[0], {
+            evaluation: { hintLadder: ladder },
+            ...options,
+          })
+        })
+        return shown
+      }
 
-    it('resets repeatedSuggestionCount when suggestion changes', () => {
-      const { result } = renderHook(() => useCheckFeedback())
-      act(() => {
-        result.current.applyCheckFeedback(false, 'hint A')
+      it('steps down on a repeat and stays on the last rung', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        expect([fail(result), fail(result), fail(result)]).toEqual(['First', 'Second', 'Second'])
       })
-      act(() => {
-        result.current.applyCheckFeedback(false, 'hint A')
-      })
-      act(() => {
-        result.current.applyCheckFeedback(false, 'hint B')
-      })
-      expect(result.current.repeatedSuggestionCount).toBe(1)
-    })
 
-    it('resets repeatedSuggestionCount on pass', () => {
-      const { result } = renderHook(() => useCheckFeedback())
-      act(() => {
-        result.current.applyCheckFeedback(false, 'hint')
+      it('starts again after a pass, a different mistake or a task change', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        fail(result)
+        act(() => {
+          result.current.applyCheckFeedback(true)
+        })
+        expect(fail(result)).toBe('First')
+        act(() => {
+          result.current.applyCheckFeedback(false, 'Other', {
+            evaluation: { hintLadder: ['Other'] },
+          })
+        })
+        expect(fail(result)).toBe('First')
+        fail(result)
+        act(() => {
+          result.current.resetCheckFeedback()
+        })
+        expect(fail(result)).toBe('First')
       })
-      act(() => {
-        result.current.applyCheckFeedback(true)
+
+      it('idle feedback and scrub misses do not step', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        fail(result)
+        expect(fail(result, { skipLog: true })).toBe('First')
+        expect(fail(result, { scrub: true })).toBe('First')
+        expect(fail(result)).toBe('Second')
       })
-      expect(result.current.repeatedSuggestionCount).toBe(0)
+
+      it('ignores a ladder that does not start with the suggestion', () => {
+        const { result } = renderHook(() => useCheckFeedback())
+        let shown
+        act(() => {
+          shown = result.current.applyCheckFeedback(false, 'Tutor words', {
+            evaluation: { hintLadder: ladder },
+          })
+        })
+        expect(shown).toBe('Tutor words')
+      })
     })
 
     it('returns the normalised suggestion string', () => {

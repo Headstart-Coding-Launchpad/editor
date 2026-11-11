@@ -4,7 +4,6 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
   const [checkPassed, setCheckPassed] = useState(false)
   const [checkAttempted, setCheckAttempted] = useState(false)
   const [checkSuggestion, setCheckSuggestion] = useState('')
-  const [repeatedSuggestionCount, setRepeatedSuggestionCount] = useState(0)
   const [checkFailCount, setCheckFailCount] = useState(0)
   const [testResults, setTestResults] = useState(null)
   const [offeredStageIndex, setOfferedStageIndex] = useState(-1)
@@ -17,10 +16,10 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
 
   const checkPassedRef = useRef(false)
   checkPassedRef.current = checkPassed
-  const checkSuggestionRef = useRef('')
-  checkSuggestionRef.current = checkSuggestion
   const onCheckResultRef = useRef(onCheckResult)
   onCheckResultRef.current = onCheckResult
+  // This task's place on the hint ladder (C5): the top hint and the rung shown. Kept across Runs.
+  const hintStepRef = useRef({ top: '', step: 0 })
 
   function resetRunFeedback() {
     // Clears per-run transient state. Does NOT reset checkFailCount or offeredStageIndex
@@ -28,7 +27,6 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     setCheckPassed(false)
     setCheckAttempted(false)
     setCheckSuggestion('')
-    setRepeatedSuggestionCount(0)
     setTestResults(null)
     setStagePromptAccepted(false)
     setTeacherHint(null)
@@ -41,16 +39,33 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     setOfferedStageIndex(-1)
     setCompletePreviewShown(false)
     setStagePromptAccepted(false)
+    hintStepRef.current = { top: '', step: 0 }
+  }
+
+  // A counted fail with the last top hint shows the hintLadder's next rung (the last one stays).
+  function climbHintLadder(passed, suggestion, ladder, counted) {
+    if (!counted && !passed) return suggestion
+    const top = !passed && suggestion && ladder?.[0] === suggestion ? suggestion : ''
+    const { step } = hintStepRef.current
+    const next = top && hintStepRef.current.top === top ? Math.min(step + 1, ladder.length - 1) : 0
+    hintStepRef.current = { top, step: next }
+    return top ? ladder[next] : suggestion
   }
 
   // `skipLog` keeps a restored or automatic result (idle feedback, Show complete) out of the solo
   // log: only a checked Run the student made reports through `onCheckResult`.
   // `scrub` marks the checks on a live scrub's release: a failed one shows its feedback but is
   // not a failed attempt (no solo-log attempt, no fail-streak step); a passing one counts as usual.
-  function applyCheckFeedback(passed, suggestion = '', { skipLog = false, scrub = false } = {}) {
+  // `evaluation` (checks.js): its `hintLadder` gives a repeated mistake the next hint (C5).
+  function applyCheckFeedback(passed, suggestion = '', { skipLog, scrub, evaluation } = {}) {
     const scrubMiss = scrub && !passed
     if (!skipLog && !scrubMiss) onCheckResultRef.current?.(passed)
-    const nextSuggestion = String(suggestion ?? '').trim()
+    const nextSuggestion = climbHintLadder(
+      passed,
+      String(suggestion ?? '').trim(),
+      evaluation?.hintLadder,
+      !skipLog && !scrubMiss
+    )
     setTeacherHint(null)
     // At once, not on the next render: a Run starting in the same moment must see it solved.
     checkPassedRef.current = passed
@@ -61,10 +76,6 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     setCheckFailCount((prev) => (passed ? 0 : scrubMiss ? prev : prev + 1))
     if (passed) setOfferedStageIndex(-1)
     if (passed) setCompletePreviewShown(false)
-    setRepeatedSuggestionCount((prev) => {
-      if (passed || !nextSuggestion) return 0
-      return checkSuggestionRef.current === nextSuggestion ? prev + 1 : 1
-    })
     return nextSuggestion
   }
 
@@ -100,7 +111,6 @@ export function useCheckFeedback({ myStudentData, currentTaskId, onCheckResult }
     setCheckAttempted,
     checkSuggestion,
     setCheckSuggestion,
-    repeatedSuggestionCount,
     checkFailCount,
     testResults,
     setTestResults,

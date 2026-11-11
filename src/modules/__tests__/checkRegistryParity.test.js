@@ -45,7 +45,7 @@ import '../../app/__tests__/codeCheckContext.test.js'
 // ─── Layer 2: mirror every registry dispatch made by the existing corpus ─────────
 // Installed at import time (before any test body runs) by replacing the method on the
 // shared registry object, so calls from inside checks.js (evaluateCheck,
-// evaluateCheckWithFeedback, getIncorrectCheckHint, ...) are observed too.
+// evaluateCheckWithFeedback, ...) are observed too.
 const corpusMismatches = []
 let corpusDispatches = 0
 const originalEvaluate = checkRegistry.evaluate

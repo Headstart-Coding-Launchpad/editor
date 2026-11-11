@@ -352,8 +352,11 @@ export async function runWithRuntime(ctx) {
     const { passed, suggestion, evaluation, isScrubRun, hasTests, checkTask } = judgement
     if (!alreadySolved && !isFreePlay) {
       if (evaluation) feedback.updateTargetedStageOffer(checkTask, evaluation, passed)
+      // A repeated mistake shows (and records) the next hint of the ladder (C5).
       if (!hasTests && checkTask?.check)
-        feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun })
+        judgement.suggestion =
+          feedback.applyCheckFeedback(passed, suggestion, { scrub: isScrubRun, evaluation }) ??
+          suggestion
       // A failed scrub release is not a failed attempt, so it does not step the support offers.
       if (!(isScrubRun && !passed)) {
         feedback.updateSupportStageForAttempt(status !== 'error' && (!checkTask?.check || passed))

@@ -11,7 +11,6 @@ import {
   checkAllowedForSubmit,
   filterChecksForInteraction,
   getFirstFailedCheckHint,
-  getIncorrectCheckHint,
   getHighestPriorityFeedbackMatch,
   getStageOfferMatchThreshold,
   substituteTestInputs,
@@ -554,28 +553,6 @@ describe('getFirstFailedCheckHint', () => {
   })
 })
 
-// ─── getIncorrectCheckHint ────────────────────────────────────────────────────
-
-describe('getIncorrectCheckHint', () => {
-  it('returns hint from the first incorrect check that passes', () => {
-    const checks = [
-      {
-        type: 'output_contains',
-        value: 'hello',
-        hint: 'You used print — good start but wrong output',
-      },
-    ]
-    expect(getIncorrectCheckHint(checks, 'hello')).toBe(
-      'You used print — good start but wrong output'
-    )
-  })
-
-  it('returns empty string when no incorrect check matches', () => {
-    const checks = [{ type: 'output_contains', value: 'missing', hint: 'Hint' }]
-    expect(getIncorrectCheckHint(checks, 'hello')).toBe('')
-  })
-})
-
 describe('evaluateCheckWithFeedback', () => {
   it('uses the highest-priority matching feedback check for a linked stage offer', () => {
     const task = {
@@ -971,15 +948,39 @@ describe('hint selection rule', () => {
     expect(evaluateCheckWithFeedback(task, 'a').suggestion).toBe('')
   })
 
-  it('a matched feedback check beats every completion hint; lower priority wins', () => {
+  it('a matched blocking check beats every completion hint; lower priority wins', () => {
+    const task = {
+      check: completion,
+      feedbackChecks: [
+        { type: 'output_contains', value: 'x', hint: 'Blocking X', priority: 2 },
+        { type: 'output_contains', value: 'x', hint: 'Targeted X', priority: 1 },
+      ],
+    }
+    expect(evaluateCheckWithFeedback(task, 'x').suggestion).toBe('Targeted X')
+  })
+
+  it('C5: a failed completion hint comes before a matched nudge; the ladder lists the rest', () => {
     const task = {
       check: completion,
       feedbackChecks: [
         { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Nudge X', priority: 2 },
         { type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Targeted X', priority: 1 },
+        { type: 'output_contains', value: 'x', hint: 'Hint A' },
       ],
     }
-    expect(evaluateCheckWithFeedback(task, 'x').suggestion).toBe('Targeted X')
+    const result = evaluateCheckWithFeedback(task, 'x')
+    expect(result.suggestion).toBe('Hint A')
+    // Blocking first, then failed completion hints in list order, then nudges by priority;
+    // a text appears once.
+    expect(result.hintLadder).toEqual(['Hint A', 'Hint C', 'Targeted X', 'Nudge X'])
+  })
+
+  it('C5: a nudge still shows when no failed completion check has a hint', () => {
+    const task = {
+      check: [{ type: 'output_contains', value: 'a' }],
+      feedbackChecks: [{ type: 'output_contains', value: 'x', mode: 'nudge', hint: 'Nudge X' }],
+    }
+    expect(evaluateCheckWithFeedback(task, 'x').suggestion).toBe('Nudge X')
   })
 
   it('a matched blocking feedback check fails a passing attempt and supplies the hint', () => {
