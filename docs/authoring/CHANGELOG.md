@@ -37,6 +37,22 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-11
+
+- **A nudge no longer hides the real fault; repeats step to the next hint (C5).** The hint order
+  is now: the error help on a crash it explains (Python, Turtle: no check hint at all, feedback
+  checks included), then a matched blocking feedback check, then the first failed completion
+  check's hint, then a matched `mode: nudge` hint. Before, any matched feedback check (nudge
+  too) beat the failed completion checks, and matched feedback checks showed over the error
+  help. When a learner fails again with the same first hint, they now see the next hint in that
+  order (the last one stays) instead of the same words; a pass, a new task or Reset Code starts
+  again. `lessons test-checks --cases` prints `studentHint` and `hintLadder` per case. See
+  [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
+- Affects: checks and feedbackChecks in every module (escalation: all but Scratch), lessons
+  test-checks · Existing lessons: no changes needed; a nudge written to correct a failing task
+  should become `mode: blocking`, and later completion-check hints are now shown on repeats, so
+  write them as the next clue · Resolves: deep review 2026-11-10, C5
+
 ## 2026-11-10
 
 - **Support stages can show the change view (`show: change`).** Before, `show: change` worked on

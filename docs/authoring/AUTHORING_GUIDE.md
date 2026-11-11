@@ -60,6 +60,8 @@ tasks:
 
 A `skipped` completion is never counted as a mismatch: the case is reported in `summary.skipped`, and `summary.skippedRuntimeChecks` counts the skipped checks. A task's `check` list is AND-ed, which is the only way checks combine — there are no `any`/`not` check shapes — so a skipped check simply drops out of the AND. Verify the skipped checks with a real Run in the Builder preview. The cases format has no field for stdin or expected output.
 
+**The hint a student would see.** Each source-code case also prints `studentHint`: the hint a learner would see after a Run of that code, picked by the [hint order](#which-hint-is-shown) (blocking feedback, then failed completion checks, then nudges; `Not quite, try again!` when a failed case has no hint), and `hintLadder` when Running the same mistake again would step to further hints. Skipped checks are left out of both, and a crash's error help (which comes first in class) is not simulated. Not printed for Scratch cases or tasks with Python `tests`.
+
 ---
 
 ## Lesson Envelope
@@ -294,30 +296,35 @@ feedbackChecks:
 
 ### Which hint is shown
 
-A learner only ever sees **one** hint per attempt. Every module (Python, HTML, Turtle, Arcade, Filesystem, Desktop, Electronics, Scratch) picks it with the same rule, in this order:
+A learner sees **one** hint per attempt. Every module (Python, HTML, Turtle, Arcade, Filesystem, Desktop, Electronics, Scratch) picks it with the same rule, in this order (C5, 11 Nov 2026):
 
-1. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched feedback check is shown. With no hint, the learner sees "Not quite."
-2. **The completion checks failed and any feedback check matched** (blocking or nudge) → the highest-priority matched feedback check's hint. Feedback hints always beat completion-check hints.
-3. **Otherwise** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint, and later failed checks are not shown.
-4. **No failed check has a hint** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks).
+1. **The Run crashed with an error the error help explains** (Python and Turtle) → **no check hint at all**: the plain-words error help under the output is the help. See [When the code can't run](#when-the-code-cant-run-syntaxerror).
+2. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched **blocking** check is shown.
+3. **The completion checks failed** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint.
+4. **A `mode: nudge` feedback check matched** → its hint (highest priority first). A nudge never hides a failed check or an error: it only shows when nothing above has a hint.
+5. **Nothing has a hint** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks; "Not quite." after a blocking match).
 
 When the completion checks pass, only a matched `mode: nudge` feedback check's hint is shown, next to "Correct!".
 
-**Priority:** among matched feedback checks, the lowest `priority` number wins (1 beats 2). A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
+**Priority:** among matched feedback checks of the same kind, the lowest `priority` number wins (1 beats 2). A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
+
+**Repeats step down the list (hint ladder).** The rules above give an ordered list: matched blocking hints, then every failed completion check's hint in list order, then matched nudges (each text once). When a learner Runs or Submits and would get the same first hint as on their last failed attempt at that task, they are shown the **next** hint in that list instead, and the last one stays. A pass, a different first hint, a new task or Reset Code starts from the top again. Idle (`on_idle`) feedback and a scrub's release never step. So the later failed checks' hints are not wasted: write them as the next, stronger clue. The tutor's card and modal show the hint the learner actually sees. Scratch sends a repeated hint only once, so it does not step.
+
+**See it before class:** `lessons test-checks --cases` prints, per case, `studentHint` (the hint a learner would see after a Run of that code) and `hintLadder` (what a repeat would step to). See [Quick Start](#quick-start).
 
 Writing hints that reach learners:
 
 - Order completion checks **most specific first**, or give every completion check its own `hint`. A specific check placed after a general one only shows its hint when the general one passes.
-- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
-- Don't write several hints expecting them to add up: only one is shown.
+- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a blocking `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint. A `mode: nudge` entry comes after the failed completion checks' hints.
+- Only one hint shows at a time; a repeat of the same mistake steps to the next one in the order above.
 
 #### When the code can't run (SyntaxError)
 
-When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, so the learner still gets a targeted hint chosen by the same four rules above:
+When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, and the hint is chosen by the same rules above:
 
-- **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
-- **The error explained in plain words wins over completion-check hints (27 Oct 2026, Hub #225).** On Python and Turtle tasks the output panel explains common errors in plain words with a hint ladder: where to look, the idea, an example, and the fix last (`src/shared/pythonErrors.js`). These include a missing colon, `range 4` without brackets, brackets, quotes, indentation, `NameError` and common `TypeError`s. When it can explain the error, **no completion-check hint is shown**, so a child with `for i in range 4:` is no longer told "is there a for loop?". Matched `feedbackChecks` still show their hint.
-- **If no feedback check matches and the error has no plain-words help**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
+- **The error explained in plain words comes first (27 Oct 2026, Hub #225; feedback checks too since 11 Nov 2026, C5).** On Python and Turtle tasks the output panel explains common errors in plain words with a hint ladder: where to look, the idea, an example, and the fix last (`src/shared/pythonErrors.js`). These include a missing colon, `range 4` without brackets, brackets, quotes, indentation, `NameError` and common `TypeError`s. When it can explain the error, **no check hint is shown at all**, not even a matched feedback check's, so a child with `for i in range 4:` is no longer told "is there a for loop?" or a content nudge.
+- **When the error has no plain-words help** (or on a module without it), `feedbackChecks` are evaluated as normal, against the source as typed and against the error text in the output. A blocking `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
+- **If no blocking feedback check matches and the error has no plain-words help**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
 
 | Completion check type | On an errored run | Can it supply the hint? |
 |---|---|---|
@@ -329,7 +336,7 @@ When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =
 The practical consequences:
 
 - **Order completion checks so the hint you want for broken code comes first.** If `code_no_error` with `hint: "Your code has an error — read the red message."` is first, every broken run shows that hint. If a `code` check that the broken code still satisfies is first, the next failing check supplies the hint instead.
-- **Catch a predictable syntax slip with a `feedbackChecks` regex** on the source. It fires even though the code could not run, and it beats the completion-check hints.
+- **Catch a predictable syntax slip with a blocking `feedbackChecks` regex** on the source, for errors the error help does not explain. It fires even though the code could not run, and it beats the completion-check hints. Where the error help explains the error, the error help shows instead.
 - A task with `tests` skips this check-and-hint path entirely; the per-test results are shown instead.
 
 **Wildcards and option lists:** `*` matches any sequence (including newlines) in `value` for containment/equality checks. `"opt1","opt2"` passes `contains` if any option is present and `not_contains` only if none are. These operators mean the same thing in every module (output, answers, file content, HTML elements, Scratch block inputs), because all of them use one shared implementation (`compareText` in `src/shared/checkHelpers.js`).
