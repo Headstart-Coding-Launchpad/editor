@@ -585,12 +585,6 @@ export function buildCourseWorld(type, map, vehicle = DEFAULT_COURSE_VEHICLE) {
   return { error: `course type must be grid or track` }
 }
 
-/** The worlds of every map in a normalised course (getTaskCourse). */
-export function buildCourseWorlds(course) {
-  if (!course) return []
-  return course.maps.map((map) => buildCourseWorld(course.type, map, course.vehicle))
-}
-
 // ── Geometry (track) ───────────────────────────────────────────────────────────
 
 /** Distance from point (px, py) to segment s, and how far along s (0–1) the nearest point is. */

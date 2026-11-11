@@ -377,11 +377,3 @@ export function freezeValueLocks(lockSets) {
 export function taskHasValueLocks(task) {
   return getTaskLockSets(task).some((locks) => locks.some((lock) => lock?.values === true))
 }
-
-/**
- * The locked line numbers of `code` for a stripped task (what the editor would lock), e.g. for a
- * read-only stage reference. [] without locks.
- */
-export function getTaskLockedLines(task, code) {
-  return chooseLockedLines(code, getTaskLockSets(task))
-}

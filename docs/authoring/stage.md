@@ -9,6 +9,11 @@ The exact contract (every field, check and error) is in
 [python.md → Stage](python.md#stage-drawing-beside-the-console). Where this guide and python.md
 differ, python.md wins.
 
+**Playground:** the Python playground's **Stage** kit (`/playground/python?kit=stage`, card "Draw
+shapes, words and emoji") opens on a starter that draws on the first Run: a midnight-blue
+background, eight rings coloured with `hue()`, a "My Stage" title and a rocket `stamp()`. Like
+every playground it is solo and local; the tutor sees nothing there.
+
 ---
 
 ## 1. The Stage at a glance

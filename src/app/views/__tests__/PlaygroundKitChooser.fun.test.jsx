@@ -1,7 +1,7 @@
 // Fun moment (sketch "LaunchPad playground kit chooser", 2026-11-05, section 5): one tap on a kit
 // and the editor already holds code that does something on the first Run. The Python playground
-// opens on a "Pick a kit" chooser with 5 controls (4 kit cards + a Blank page button); Picture Lab loads the
-// pixel fox; Turtle goes to its own playground; Help topics is in every playground but Scratch.
+// opens on a "Pick a kit" chooser with 6 controls (5 kit cards + a Blank page button); Picture Lab loads the
+// pixel fox; Stage paints a picture; Turtle goes to its own playground; Help topics is in every playground but Scratch.
 import React from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -64,7 +64,7 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
     localStorage.clear()
   })
 
-  it('opens on a chooser with exactly 5 controls: 4 kit cards and a Blank page button', () => {
+  it('opens on a chooser with exactly 6 controls: 5 kit cards and a Blank page button', () => {
     renderAt('/playground/python')
 
     const chooser = screen.getByRole('region', { name: /pick a kit/i })
@@ -74,9 +74,30 @@ describe('Fun moment: pick a kit and the first Run already does something', () =
       'game',
       'picture',
       'beats',
+      'stage',
       'blank',
     ])
     expect(screen.queryByTestId('editor')).not.toBeInTheDocument()
+  })
+
+  // Stage kit (sketch option A, Ryan OK 2026-11-11): one tap and the editor holds a program that
+  // paints rings, a title and a rocket on the first Run.
+  it('tapping Stage opens the editor holding a drawing that uses the Stage, with Switch kit', async () => {
+    const user = userEvent.setup()
+    renderAt('/playground/python')
+
+    const stage = screen.getByRole('button', { name: /stage/i })
+    expect(stage).toHaveTextContent(/draw shapes, words and emoji/i)
+    await user.click(stage)
+
+    expect(screen.getByTestId('where').textContent).toBe('/playground/python?kit=stage')
+    expect(screen.getByTestId('lesson-id').textContent).toBe('__playground__python:stage')
+    const code = screen.getByTestId('editor').textContent
+    expect(code).toContain('from stage import *')
+    expect(code).toContain('stamp("🚀"')
+    expect(
+      within(screen.getByTestId('top-bar')).getByRole('button', { name: /switch kit/i })
+    ).toBeInTheDocument()
   })
 
   it('tapping Picture Lab opens the editor holding the pixel fox, with Help topics', async () => {
