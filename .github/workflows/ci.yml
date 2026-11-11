@@ -127,6 +127,13 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # Temporary (11 Nov 2026): the runners' default apt mirror, azure.archive.ubuntu.com, did not
+      # resolve, so the Chromium install failed. Use the main mirror; safe to remove once it is back.
+      - name: Use the main Ubuntu apt mirror
+        run: |
+          sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+          sudo apt-get update
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
