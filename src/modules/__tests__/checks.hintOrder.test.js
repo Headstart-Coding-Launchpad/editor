@@ -52,13 +52,31 @@ describe('hint order', () => {
     expect(evaluateCheckWithFeedback(failTask, '', context).suggestion).toBe('First')
   })
 
-  it('treats an unknown feedback mode as blocking', () => {
+  it('on idle, before any run, a matched nudge shows, not an unrun check hint', () => {
+    const task = { check, feedbackChecks: [{ ...nudge, show: 'on_idle' }] }
+    const result = evaluateCheckWithFeedback(task, '', context, {
+      completionPassed: false,
+      feedbackTiming: 'on_idle',
+    })
+    expect(result.suggestion).toBe('Nice printing!')
+  })
+
+  it('shows the top blocking match, or Not quite. when it has no hint', () => {
+    const task = {
+      check,
+      feedbackChecks: [
+        { type: 'code_contains', value: 'print', hint: '', priority: 1 },
+        { type: 'code_contains', value: 'print(1', hint: 'Close the bracket.', priority: 2 },
+      ],
+    }
+    expect(evaluateCheckWithFeedback(task, '', context).suggestion).toBe('Not quite.')
+  })
+
+  it('an unknown feedback mode does not block', () => {
     const task = {
       check: { type: 'code_contains', value: 'print' },
       feedbackChecks: [{ ...nudge, mode: 'warn', hint: 'Not like that.' }],
     }
-    const result = evaluateCheckWithFeedback(task, '', context)
-    expect(result.passed).toBe(false)
-    expect(result.suggestion).toBe('Not like that.')
+    expect(evaluateCheckWithFeedback(task, '', context).passed).toBe(true)
   })
 })

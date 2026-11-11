@@ -130,6 +130,24 @@ describe('lesson check cases', () => {
     expect(result.cases[0].studentHint).toMatch(/needs a run/)
   })
 
+  it('prints a blocking hint that matches on source even when completion needs a run', () => {
+    const lesson = {
+      id: 'run-only-blocking',
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          check: { type: 'output_not_empty', hint: 'Print something.' },
+          feedbackChecks: [{ type: 'code_contains', value: 'input', hint: 'No input() here.' }],
+        },
+      ],
+    }
+    const result = testLessonChecks(lesson, {
+      cases: [{ task: 1, name: 'asks', code: 'input()', completion: 'fail' }],
+    })
+    expect(result.cases[0].studentHint).toBe('No input() here.')
+  })
+
   it('accepts the documented YAML cases-file shape', () => {
     const casesFile = parseJsonOrYaml(
       'check-cases.yaml',

@@ -102,9 +102,8 @@ export function combineCompletion(results) {
 // The hint a student would see after a Run of the case's code, from the shared evaluator used in
 // class (blocking hint, then the first failed completion check's, then a nudge; a fail with none
 // shows the banner's GENERIC_FAIL_HINT). Checks that need a run count as unmatched; if completion
-// needs one, it says so. No code runs here, so a crash's error help (shown first) never applies.
+// needs one, it says so unless a blocking hint matched. No crash help: no code runs here.
 function studentHintFor(task, actualCompletion, judge) {
-  if (actualCompletion === SKIPPED) return NEEDS_RUN_HINT
   const evaluation = evaluateCheckWithCustomFeedback(
     task,
     actualCompletion === 'pass',
@@ -113,6 +112,7 @@ function studentHintFor(task, actualCompletion, judge) {
     {},
     { isCompletionCheckFailed: (check) => judge(check).result === 'fail' }
   )
+  if (actualCompletion === SKIPPED && !evaluation.blockingFeedback) return NEEDS_RUN_HINT
   return evaluation.suggestion || (evaluation.passed ? '' : GENERIC_FAIL_HINT)
 }
 
