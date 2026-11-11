@@ -118,6 +118,20 @@ describe('lesson check cases', () => {
     expect(nudged.studentHint).toBe('Try range(5).')
   })
 
+  it('says a case needs a run instead of printing a hint the CLI cannot judge (C5)', () => {
+    const nudge = { type: 'code', operator: 'contains', value: 'x', mode: 'nudge', hint: 'Nudge' }
+    const lesson = {
+      id: 'run-only',
+      type: 'python',
+      tasks: [{ id: 1, check: { type: 'output_not_empty' }, feedbackChecks: [nudge] }],
+    }
+    const result = testLessonChecks(lesson, {
+      cases: [{ task: 1, name: 'prints', code: 'print(x)', completion: 'pass' }],
+    })
+    expect(result.cases[0].studentHint).toMatch(/needs a run/)
+    expect(result.cases[0].hintLadder).toBeUndefined()
+  })
+
   it('accepts the documented YAML cases-file shape', () => {
     const casesFile = parseJsonOrYaml(
       'check-cases.yaml',

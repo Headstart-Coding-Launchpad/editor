@@ -19,6 +19,7 @@ import { resolvePuzzleChecks } from '../src/shared/puzzle/puzzle.js'
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
 const SKIPPED = 'skipped'
+const NEEDS_RUN_HINT = '(needs a run: the hint shown depends on checks the CLI cannot judge)'
 const NEEDS_RUN_REASON = 'needs a run, which test-checks never does'
 const TESTS_REASON = 'the task has Python tests, which decide completion on a run'
 
@@ -104,10 +105,11 @@ export function combineCompletion(results) {
  * checks in list order, then nudges): `studentHint` (a pass shows only a nudge, or nothing; a
  * fail with no hint shows the banner's GENERIC_FAIL_HINT), and `hintLadder` when Running the
  * same mistake again would show further hints. Checks that need a run are left out, as
- * everywhere in this command. The CLI runs no code, so there is no runErrored / errorExplained:
+ * everywhere in this command; when completion needs one, `studentHint` says so instead. The CLI runs no code, so there is no runErrored / errorExplained:
  * in class a crash's error help comes first and no check hint shows beside it.
  */
 function studentHintFor(task, actualCompletion, judge) {
+  if (actualCompletion === SKIPPED) return { studentHint: NEEDS_RUN_HINT }
   const evaluation = evaluateCheckWithCustomFeedback(
     task,
     actualCompletion === 'pass',
@@ -116,9 +118,7 @@ function studentHintFor(task, actualCompletion, judge) {
     {},
     { isCompletionCheckFailed: (check) => judge(check).result === 'fail' }
   )
-  // A completion that needs a run can't be judged here: no generic banner is claimed for it.
-  const failed = !evaluation.passed && (actualCompletion === 'fail' || evaluation.blockingFeedback)
-  const out = { studentHint: evaluation.suggestion || (failed ? GENERIC_FAIL_HINT : '') }
+  const out = { studentHint: evaluation.suggestion || (evaluation.passed ? '' : GENERIC_FAIL_HINT) }
   if (evaluation.hintLadder.length > 1) out.hintLadder = evaluation.hintLadder
   return out
 }

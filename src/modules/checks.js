@@ -457,13 +457,13 @@ export function getStageOfferMatchThreshold(stageOffer) {
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
 
-// The banner's words for a failed attempt with no hint (CheckFeedbackBanner, the CLI's studentHint).
+// The banner's words for a failed attempt with no hint (CheckFeedbackBanner, CLI studentHint).
 export const GENERIC_FAIL_HINT = 'Not quite, try again!'
 
 // Hint order (C5), the `hintLadder`: matched blocking checks, failed completion checks in list
-// order, matched nudges. The first shows, except after an explained crash (the error help shows
-// and the ladder waits for the next fail); repeats step down (useCheckFeedback). `isCompletionCheckFailed` (Scratch's own evaluator) is true only for a
-// check that definitively failed, so one it can't judge yet never supplies a hint.
+// order, matched nudges. The first shows, except after an explained crash (the error help shows,
+// the ladder waits); repeats step down (useCheckFeedback). `isCompletionCheckFailed` (Scratch) is
+// true only for a check that definitively failed, so one it can't judge yet never gives a hint.
 function buildCheckFeedbackResult(
   task,
   completionPassed,
