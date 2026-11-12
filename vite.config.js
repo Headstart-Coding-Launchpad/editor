@@ -11,7 +11,7 @@ const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'))
 
 export default defineConfig({
   plugins: [react()],
-  base: '/editor/',
+  base: '/',
   // Version shown in the Admin Portal footer (src/shared/appVersion.js).
   define: {
     __APP_BUILD_INFO__: JSON.stringify(getBuildInfo({ packageVersion: pkg.version })),

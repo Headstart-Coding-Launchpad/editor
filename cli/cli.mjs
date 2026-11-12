@@ -702,7 +702,7 @@ await yargs(hideBin(process.argv))
           'out-dir': { type: 'string', default: '.', describe: 'Folder for the PNGs' },
           base: {
             type: 'string',
-            describe: 'LaunchPad URL (default: the live site), e.g. http://localhost:5173/editor/',
+            describe: 'LaunchPad URL (default: the live site), e.g. http://localhost:5173/',
           },
         },
         cmd(async (argv) => {

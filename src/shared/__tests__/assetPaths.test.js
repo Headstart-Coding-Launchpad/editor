@@ -9,6 +9,12 @@ describe('resolveAssetsPath', () => {
     )
   })
 
+  it('works when the site is served from the root of a custom domain', () => {
+    expect(
+      resolveAssetsPath('/assets/shared/', { baseUrl: '/', origin: 'https://launchpadcoding.com' })
+    ).toBe('https://launchpadcoding.com/assets/shared/')
+  })
+
   it('preserves separators while URL-encoding path segments', () => {
     expect(
       resolveAssetsPath('/assets/my lesson/icon #1.png/', {

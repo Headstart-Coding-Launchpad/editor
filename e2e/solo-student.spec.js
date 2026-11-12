@@ -10,7 +10,7 @@ test.describe('Landing page', () => {
   })
 
   test('landing page loads with lesson-code input', async ({ page }) => {
-    // baseURL is http://localhost:5173/editor/ so going to '' navigates there
+    // baseURL is http://localhost:5173/ so going to '' navigates there
     await page.goto('', { timeout: 30000 })
 
     // The logo text rendered in the brand span

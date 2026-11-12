@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Lesson builder flows — fully self-contained (no Firebase, no Pyodide).
 // The builder is a separate HTML entry point at /builder/.
-// baseURL is http://localhost:5173/editor/, so 'builder/' resolves correctly.
+// baseURL is http://localhost:5173/, so 'builder/' resolves correctly.
 
 test.describe('Builder — initial load', () => {
   test.beforeEach(async ({ page }) => {
