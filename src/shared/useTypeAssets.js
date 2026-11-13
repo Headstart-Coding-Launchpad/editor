@@ -3,6 +3,34 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { firestore } from './firebase'
 
 const cache = {}
+// One shared Firestore listener per type, ref-counted across mounted workspaces.
+const shared = {}
+
+function subscribe(lessonType, onData, onError) {
+  let entry = shared[lessonType]
+  if (!entry) {
+    entry = { subs: new Set(), unsub: null }
+    shared[lessonType] = entry
+    entry.unsub = onSnapshot(
+      doc(firestore, 'lessonTypeAssets', lessonType),
+      (snap) => {
+        const d = snap.exists() ? snap.data() : {}
+        cache[lessonType] = d
+        entry.subs.forEach((sub) => sub.onData(d))
+      },
+      (err) => entry.subs.forEach((sub) => sub.onError(err))
+    )
+  }
+  const sub = { onData, onError }
+  entry.subs.add(sub)
+  return () => {
+    entry.subs.delete(sub)
+    if (entry.subs.size === 0) {
+      entry.unsub()
+      delete shared[lessonType]
+    }
+  }
+}
 
 export function useTypeAssets(lessonType) {
   const [data, setData] = useState(() => cache[lessonType] ?? null)
@@ -16,11 +44,9 @@ export function useTypeAssets(lessonType) {
     }
     setLoading(!cache[lessonType])
     setError(null)
-    const unsub = onSnapshot(
-      doc(firestore, 'lessonTypeAssets', lessonType),
-      (snap) => {
-        const d = snap.exists() ? snap.data() : {}
-        cache[lessonType] = d
+    return subscribe(
+      lessonType,
+      (d) => {
         setData(d)
         setLoading(false)
       },
@@ -29,7 +55,6 @@ export function useTypeAssets(lessonType) {
         setLoading(false)
       }
     )
-    return unsub
   }, [lessonType])
 
   return {

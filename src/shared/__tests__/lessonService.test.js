@@ -62,6 +62,23 @@ describe('lessonService', () => {
     })
   })
 
+  it('serves a repeat fetch from the short cache and refetches after a publish', async () => {
+    mockGetDoc.mockResolvedValue({
+      id: 'cached-1',
+      exists: () => true,
+      data: () => ({ title: 'Cached', type: 'python', tasks: [] }),
+    })
+    const first = await fetchLessonById('cached-1')
+    first.title = 'mutated by caller'
+    const second = await fetchLessonById('cached-1')
+    expect(mockGetDoc).toHaveBeenCalledTimes(1)
+    expect(second.title).toBe('Cached')
+
+    await publishLessonTasks('cached-1', [])
+    await fetchLessonById('cached-1')
+    expect(mockGetDoc).toHaveBeenCalledTimes(2)
+  })
+
   it('returns null when Firestore has no matching lesson', async () => {
     mockGetDoc.mockResolvedValue({ exists: () => false })
 
