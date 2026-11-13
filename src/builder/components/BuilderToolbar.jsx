@@ -19,7 +19,7 @@ export default function BuilderToolbar({
 }) {
   return (
     <header style={s.topBar}>
-      <span style={s.logo}>Headstart Coding - LaunchPad | Lesson Builder</span>
+      <span style={s.logo}>Head Start Coding - LaunchPad | Lesson Builder</span>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {dirty && <span style={s.dirtyDot} title="Unsaved changes" />}
 

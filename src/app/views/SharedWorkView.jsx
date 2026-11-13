@@ -40,7 +40,7 @@ export default function SharedWorkView() {
   }, [id])
 
   useEffect(() => {
-    if (state.status === 'live') document.title = `${state.share.title} · Headstart Coding`
+    if (state.status === 'live') document.title = `${state.share.title} · Head Start Coding`
   }, [state])
 
   if (state.status === 'loading') return <LoadingScreen message="Loading…" />
@@ -66,7 +66,7 @@ export default function SharedWorkView() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <span style={s.brand}>Headstart Coding</span>
+        <span style={s.brand}>Head Start Coding</span>
         <h1 style={s.heading}>{share.title}</h1>
         <span style={s.badge}>Read-only</span>
       </header>

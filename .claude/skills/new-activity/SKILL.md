@@ -1,6 +1,6 @@
 ---
 name: new-activity
-description: Build a new classroom activity (taskType activity) for the Headstart Coding platform from the scaffold, end to end. Use when asked to "build a new activity", "add an activity", "make a <X> activity", implement an authoring request for an activity or an activity mode (docs/authoring/authoring-requests/*.md), or when a lesson needs a bounded exercise the platform lacks. Not for workspace modules (see the new-module skill).
+description: Build a new classroom activity (taskType activity) for the Head Start Coding platform from the scaffold, end to end. Use when asked to "build a new activity", "add an activity", "make a <X> activity", implement an authoring request for an activity or an activity mode (docs/authoring/authoring-requests/*.md), or when a lesson needs a bounded exercise the platform lacks. Not for workspace modules (see the new-module skill).
 ---
 
 # New activity

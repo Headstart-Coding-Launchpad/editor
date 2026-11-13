@@ -24,9 +24,9 @@ Students import a small classroom API and write update() / draw() functions:
 
     game.run()
 
-The API is deliberately Pygame-inspired but Headstart-specific. It is **not**
+The API is deliberately Pygame-inspired but Head Start-specific. It is **not**
 the pygame, pygame-ce, or Pygame Zero package, and cannot presently be
-installed or used outside Headstart unchanged.
+installed or used outside Head Start unchanged.
 
 ## Implemented
 

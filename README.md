@@ -1,4 +1,4 @@
-# Headstart Coding Classroom REPL Platform
+# Head Start Coding Classroom REPL Platform
 
 Browser-based classroom coding platform for live sessions and solo study. The app is a single React/Vite frontend deployed to GitHub Pages, with Firebase providing auth, durable lesson/admin data, live classroom state, storage, and account-management functions.
 

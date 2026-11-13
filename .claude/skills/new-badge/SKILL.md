@@ -1,6 +1,6 @@
 ---
 name: new-badge
-description: Add a new Live Student Badge to the Headstart Coding platform, end to end. Use when asked to "add a badge", "make a new badge", "new live badge", "a badge for <behaviour>", to add a manual-only badge for tutors, or to make a new classroom behaviour (a signal) available to badge rules. Covers rule-backed and tutor-only registry badges (npm run new:badge), manual Admin-catalogue badges (no code), and new signals. Not for lesson-specific badges (concept, capstone, Level badges), which are a separate system.
+description: Add a new Live Student Badge to the Head Start Coding platform, end to end. Use when asked to "add a badge", "make a new badge", "new live badge", "a badge for <behaviour>", to add a manual-only badge for tutors, or to make a new classroom behaviour (a signal) available to badge rules. Covers rule-backed and tutor-only registry badges (npm run new:badge), manual Admin-catalogue badges (no code), and new signals. Not for lesson-specific badges (concept, capstone, Level badges), which are a separate system.
 ---
 
 # New badge

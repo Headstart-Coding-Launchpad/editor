@@ -41,9 +41,9 @@ describe('WaitingRoom', () => {
     expect(screen.getByText(/Sit tight/)).toBeInTheDocument()
   })
 
-  it('shows the Headstart Coding branding', () => {
+  it('shows the Head Start Coding branding', () => {
     render(<WaitingRoom lessonTitle="Lesson" />)
-    expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
+    expect(screen.getByText('Head Start Coding - LaunchPad')).toBeInTheDocument()
   })
 
   describe('video call link', () => {

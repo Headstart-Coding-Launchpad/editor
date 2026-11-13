@@ -22,7 +22,7 @@ describe('LandingPage', () => {
 
   it('shows the brand logo text', () => {
     render(<LandingPage />)
-    expect(screen.getByText(/Headstart Coding/i)).toBeInTheDocument()
+    expect(screen.getByText(/Head Start Coding/i)).toBeInTheDocument()
   })
 
   it('shows the "Join a lesson" heading for a student (no teacher param)', () => {

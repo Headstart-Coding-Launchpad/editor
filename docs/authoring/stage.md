@@ -297,7 +297,7 @@ slow-mo steps through it, and every list lesson works on it.
 
 Every picture is square, so a backdrop lines up pixel for pixel with the astronaut. The photos are
 public domain or CC0 (sources in [LICENSES.md](../LICENSES.md)); the pixel art and the astronaut
-were drawn for Headstart Coding. Names can be written in any case, with spaces (`"eiffel tower"`).
+were drawn for Head Start Coding. Names can be written in any case, with spaces (`"eiffel tower"`).
 A misspelt name says "there's no picture called 'foxx' — did you mean 'fox'?".
 
 ### Examples

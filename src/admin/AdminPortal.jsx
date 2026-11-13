@@ -58,7 +58,7 @@ export default function AdminPortal() {
   return (
     <div style={s.page}>
       <header style={s.header}>
-        <span style={s.brand}>Headstart Coding — Admin</span>
+        <span style={s.brand}>Head Start Coding — Admin</span>
         <div style={s.headerRight}>
           <span style={s.userEmail}>{user?.email}</span>
           <button

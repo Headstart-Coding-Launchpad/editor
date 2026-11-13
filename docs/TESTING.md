@@ -1,4 +1,4 @@
-# TESTING.md — Headstart Coding Classroom REPL Platform
+# TESTING.md — Head Start Coding Classroom REPL Platform
 
 Testing strategy, tool choices, and conventions. Read this before writing or modifying any tests.
 
