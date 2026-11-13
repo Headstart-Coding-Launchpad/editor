@@ -1,6 +1,6 @@
 ---
 name: new-module
-description: Build a new workspace module (a lesson type such as python, turtle, filesystem, desktop) for the Head Start Coding platform from the scaffold, end to end. Use when asked to "build a new module", "add a lesson type", "new workspace module", "make a <X> workspace", or when an authoring request (docs/authoring/authoring-requests/*.md) has Kind module. For bounded exercises with a defined target use the new-activity skill instead.
+description: Build a new workspace module (a lesson type such as python, turtle, filesystem, desktop) for the Headstart Coding platform from the scaffold, end to end. Use when asked to "build a new module", "add a lesson type", "new workspace module", "make a <X> workspace", or when an authoring request (docs/authoring/authoring-requests/*.md) has Kind module. For bounded exercises with a defined target use the new-activity skill instead.
 ---
 
 # New workspace module

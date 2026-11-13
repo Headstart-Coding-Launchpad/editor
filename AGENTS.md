@@ -1,4 +1,4 @@
-# AGENTS.md - Head Start Coding Classroom REPL Platform
+# AGENTS.md - Headstart Coding Classroom REPL Platform
 
 Shared quick-start instructions for AI coding agents. Keep this file short and tool-neutral; load the referenced docs only when the task needs them.
 
@@ -17,7 +17,7 @@ Before writing code:
 
 ## Project Summary
 
-Head Start Coding is a browser-based classroom coding platform for live sessions and solo study. It is one React/Vite app deployed to GitHub Pages with these route-based areas:
+Headstart Coding is a browser-based classroom coding platform for live sessions and solo study. It is one React/Vite app deployed to GitHub Pages with these route-based areas:
 
 - Classroom at `/lesson/:lessonId`
 - Lesson Builder at `/builder`
