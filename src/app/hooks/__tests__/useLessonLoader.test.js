@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useLessonLoader } from '../useLessonLoader'
+import { clearLessonCache } from '../../../shared/lessonService'
 
 // Mock Firestore
 vi.mock('firebase/firestore', () => ({
@@ -31,6 +32,7 @@ function makeSnap(exists, data = null, id = '') {
 describe('useLessonLoader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearLessonCache()
   })
 
   it('uses lessonProp directly without hitting Firestore', async () => {

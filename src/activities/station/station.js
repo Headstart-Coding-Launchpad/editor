@@ -245,16 +245,6 @@ export function enclosureAt(worldId, point) {
 
 // --- Goals ---
 
-export const METHODS = Object.freeze([
-  'click',
-  'keyboard',
-  'double_click',
-  'drag',
-  'pick_drop',
-  'ctrl_z',
-  'cmd_z',
-])
-
 // target: what `target` may be ('section', 'colour', 'part', 'crate', 'kind' or 'none'); methods:
 // the methods that complete it; lessons: where it can be set; worlds: the worlds it makes sense in
 // (the station by default).

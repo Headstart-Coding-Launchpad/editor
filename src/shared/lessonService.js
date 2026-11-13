@@ -20,17 +20,14 @@ import { LEVEL_COLLECTION, migrateLessonLevel, normalizeLevelRecord } from './le
 import { sortLessons } from './lessonOrder'
 import { encodeSessionReportForFirestore } from './lessonReport'
 
-// Short per-page cache of raw lesson docs (a lesson is up to ~160KB), so the teacher view, cross-lesson
-// carry and remounts do not refetch the same doc. Any write in this file clears it.
-const LESSON_CACHE_MS = 2 * 60 * 1000
+// Raw lesson docs cached for 2 minutes per page; every write below clears it.
 const lessonCache = new Map()
+export const clearLessonCache = () => lessonCache.clear()
 
 export async function fetchLessonById(lessonId) {
   if (!lessonId) return null
   const hit = lessonCache.get(lessonId)
-  if (hit && Date.now() - hit.at < LESSON_CACHE_MS) {
-    return decodeLessonFromFirestore(structuredClone(hit.raw))
-  }
+  if (hit && Date.now() - hit.at < 12e4) return decodeLessonFromFirestore(structuredClone(hit.raw))
   const snap = await getDoc(doc(firestore, 'lessons', lessonId))
   if (!snap.exists()) return null
   const raw = { id: snap.id, ...snap.data() }
@@ -71,7 +68,7 @@ export async function findSoloCompanion(lessonId) {
 // invoking this helper so all direct lesson writes share encoding behaviour.
 export async function publishLesson(lesson) {
   if (!lesson?.id) throw new Error('Lesson id is required')
-  lessonCache.clear()
+  clearLessonCache()
   const migrated = migrateLessonLevel(lesson)
   if (migrated.level) {
     await setDoc(doc(firestore, LEVEL_COLLECTION, migrated.level.id), migrated.level, {
@@ -87,7 +84,7 @@ export async function publishLesson(lesson) {
 // Permanently persists an edited task list to a published lesson (admin-only,
 // enforced by Firestore rules). Only the tasks field is touched.
 export async function publishLessonTasks(lessonId, tasks) {
-  lessonCache.clear()
+  clearLessonCache()
   const { tasks: encodedTasks } = encodeLessonForFirestore({ tasks })
   await setDoc(doc(firestore, 'lessons', lessonId), { tasks: encodedTasks }, { merge: true })
 }
@@ -98,7 +95,7 @@ export async function publishLessonTasks(lessonId, tasks) {
 // run data behind despite the admin UI describing the delete as unrecoverable.
 export async function deletePublishedLesson(lessonId) {
   if (!lessonId) throw new Error('Lesson id is required')
-  lessonCache.clear()
+  clearLessonCache()
   await clearLessonRunData(lessonId)
   await deleteDoc(doc(firestore, 'lessons', lessonId))
 }
