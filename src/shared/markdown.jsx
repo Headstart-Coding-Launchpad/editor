@@ -467,6 +467,7 @@ function MarkdownCode({ node: _node, className, children, ...props }) {
 }
 function MarkdownPre({ children, ...props }) {
   const scale = React.useContext(MarkdownScaleContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
   // Pass through without pre styling when the child is a scratch block
   const child = React.Children.toArray(children)[0]
   if (child?.props?.className?.includes('language-scratch')) {
@@ -484,6 +485,8 @@ function MarkdownPre({ children, ...props }) {
         {...anchorProps(props)}
         style={{
           background: '#fafafa',
+          // On a dark card (inheritColor) the text would be inherited white on this light fence.
+          ...(inheritColor ? { color: '#1f2937' } : {}),
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
           padding: '12px 14px',
