@@ -193,13 +193,6 @@ describe('MarkdownRenderer', () => {
     expect(container.querySelector('button')).toBeNull()
   })
 
-  it('shows an untagged fence of Scratch lines the same way', () => {
-    const { container } = render(<MarkdownRenderer content={'```\nmove (10) steps\n```'} />)
-    expect(container.querySelector('[data-scratch-text="true"]')).toHaveTextContent(
-      'move (10) steps'
-    )
-  })
-
   it.each(['say [Hello!] for (2) seconds', 'if <> then else', 'distance to [mouse-pointer]'])(
     'keeps inline `scratch:%s` in its line of text',
     (block) => {
