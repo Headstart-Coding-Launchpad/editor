@@ -67,16 +67,19 @@ export function createRenderHost(size, id) {
  * a disposed workspace.
  */
 export function injectRenderWorkspace(Blockly, container) {
+  // A workspace has no isDisposed() (only blocks do), and a disposed one stays Blockly main: it
+  // is alive while Blockly still lists it.
+  const live = (w) => Boolean(w) && Blockly.Workspace.getById?.(w.id) === w
   const before = Blockly.getMainWorkspace?.()
-  const previous = before && !before.isDisposed?.() ? before : null
+  const previous = live(before) ? before : null
   const ws = Blockly.inject(container, SCRIPT_RENDER_OPTIONS)
   if (previous && previous !== ws) Blockly.common.setMainWorkspace(previous)
   const dispose = ws.dispose.bind(ws)
   ws.dispose = () => {
     dispose()
     const main = Blockly.getMainWorkspace?.()
-    if (main === ws || main?.isDisposed?.())
-      Blockly.common.setMainWorkspace(previous && !previous.isDisposed?.() ? previous : null)
+    if (main === ws || (main && !live(main)))
+      Blockly.common.setMainWorkspace(live(previous) ? previous : null)
   }
   return ws
 }

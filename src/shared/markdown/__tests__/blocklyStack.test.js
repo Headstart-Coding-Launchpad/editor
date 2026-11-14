@@ -354,6 +354,55 @@ describe('render cache', () => {
     }
   })
 
+  it('keeps main on the live student workspace through overlapping renders and a remount', () => {
+    const { Blockly, svg } = rt
+    const studentAt = () => {
+      const div = document.createElement('div')
+      document.body.appendChild(div)
+      return { div, ws: Blockly.inject(div, { renderer: 'zelos' }) }
+    }
+    const hosts = []
+    const render = () => {
+      const host = svg.createRenderHost(100)
+      hosts.push(host)
+      return svg.injectRenderWorkspace(Blockly, host)
+    }
+    const s1 = studentAt()
+    let s2 = null
+    try {
+      // An export and an explainer render at once, disposed in either order.
+      for (const order of [
+        [0, 1],
+        [1, 0],
+      ]) {
+        const pair = [render(), render()]
+        expect(Blockly.getMainWorkspace()).toBe(s1.ws)
+        order.forEach((i) => pair[i].dispose())
+        expect(Blockly.getMainWorkspace()).toBe(s1.ws)
+      }
+      // The student workspace goes (a task with no workspace) while a render is open: a dead
+      // workspace is never left as main, where Blockly's key handler would still reach it.
+      const gone = render()
+      s1.ws.dispose()
+      gone.dispose()
+      expect(Blockly.getMainWorkspace()).toBeFalsy()
+      // A new student workspace mounts while renders are open.
+      const a = render()
+      const b = render()
+      s2 = studentAt()
+      const c = render()
+      for (const ws of [b, a, c]) ws.dispose()
+      expect(Blockly.getMainWorkspace()).toBe(s2.ws)
+    } finally {
+      hosts.forEach((h) => h.remove())
+      if (Blockly.Workspace.getById(s1.ws.id)) s1.ws.dispose()
+      s1.div.remove()
+      s2?.ws.dispose()
+      s2?.div.remove()
+      Blockly.common.setMainWorkspace(null)
+    }
+  })
+
   const stubDraw = () => ({
     ...realSvg,
     workspaceToSvg: async () => ({
