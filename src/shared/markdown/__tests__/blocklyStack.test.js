@@ -55,6 +55,29 @@ describe('scratchFenceToState', () => {
     expect(r.values).toEqual(expect.arrayContaining(['City Street', 'walk1', 'Balloon']))
   })
 
+  it('keeps a word in square brackets as text, never a reporter block', () => {
+    const say = tops(toState(['say [answer]']))[0]
+    expect(say.inputs.MESSAGE.block).toBeUndefined()
+    expect(say.inputs.MESSAGE.shadow.fields.TEXT).toBe('answer')
+    const secs = tops(toState(['say [timer] for (2) seconds']))[0]
+    expect(secs.inputs.MESSAGE.shadow.fields.TEXT).toBe('timer')
+    // Round brackets still make the reporter.
+    expect(tops(toState(['say (answer)']))[0].inputs.MESSAGE.block.type).toBe('sensing_answer')
+  })
+
+  it('draws an empty number slot as an empty oval Blockly keeps as written', () => {
+    const r = toState(['move () steps'])
+    expect(r.ok).toBe(true)
+    const ws = new rt.Blockly.Workspace()
+    try {
+      rt.Blockly.serialization.workspaces.load(r.state, ws, { recordUndo: false })
+      const shadow = ws.getBlockById(tops(r)[0].inputs.STEPS.shadow.id)
+      expect(shadow.getFieldValue('TEXT')).toBe('')
+    } finally {
+      ws.dispose()
+    }
+  })
+
   it('falls back (ok: false) when a line is not a Scratch block', () => {
     const r = toState(['when green flag clicked', 'wiggle [a lot]'])
     expect(r.ok).toBe(false)

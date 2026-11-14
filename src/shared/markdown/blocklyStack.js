@@ -174,7 +174,8 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
     const def = defaults[target.name]
     const content = slot ? slot.content.trim() : ''
     const conditionOnly = target.check?.includes?.('Boolean') && !target.check.includes('Number')
-    const nested = content && depth < 4 ? findScratchBlock(content) : null
+    // Only (..) and <..> hold blocks: `say [answer]` is the word "answer", as in Scratch.
+    const nested = content && depth < 4 && !slot?.square ? findScratchBlock(content) : null
     const shadowFor = (value) => {
       if (def) return { type: def.type, fields: { [def.field]: String(value ?? def.value) } }
       if (conditionOnly) return null
@@ -190,7 +191,13 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
       return
     }
     if (!content) {
-      const shadow = slot ? shadowFor('') : shadowFor()
+      // `move () steps`: an empty oval, as written. Blockly would turn an empty number into 0
+      // (and the fence would fall back), so an empty number slot is drawn as empty text.
+      const shadow = !slot
+        ? shadowFor()
+        : def?.type === 'math_number' || (!def && !conditionOnly)
+          ? { type: 'text', fields: { TEXT: '' } }
+          : shadowFor('')
       if (shadow) json.inputs[target.name] = { shadow }
       return
     }
@@ -205,6 +212,7 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
       (def?.type === 'math_number' || !def) &&
       !isNumeric(content) &&
       slot.kind === 'value' &&
+      !slot.square &&
       /^[a-z_][\w ]*$/i.test(content)
     ) {
       ctx.values.add(content)

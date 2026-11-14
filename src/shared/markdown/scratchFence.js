@@ -72,9 +72,11 @@ export function blockTextParts(text, depth = 0, hostInfo = fallbackInfo()) {
       if (found) {
         flush()
         const slot = squareSlot(found.content, hostInfo)
+        // `square`: [..] is literal text or a menu value, never a reporter block.
         parts.push({
           type: 'slot',
           kind: slot.kind,
+          square: true,
           content: slot.content,
           depth,
           hostColor,
