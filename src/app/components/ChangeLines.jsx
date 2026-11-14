@@ -73,21 +73,20 @@ function ChangeRow({ type, text, tag, locked = false, hint = null, inline = null
           </span>
         )}
       </span>
-      {tags ? (
-        <span aria-hidden="true" style={s.tags}>
-          {tags.map((tagType) => (
-            <span key={tagType} style={s.tag(tagType)}>
-              {ROW_KINDS[tagType].tag}
-            </span>
-          ))}
-        </span>
-      ) : shownTag ? (
-        <span aria-hidden="true" style={s.tag(type)}>
-          {shownTag}
-        </span>
-      ) : (
-        <span />
-      )}
+      {/* The tag cell stays in view while a long line scrolls under it. */}
+      <span data-testid="change-tag-cell" aria-hidden="true" style={s.tagCell(type)}>
+        {tags ? (
+          <span style={s.tags}>
+            {tags.map((tagType) => (
+              <span key={tagType} style={s.tag(tagType)}>
+                {ROW_KINDS[tagType].tag}
+              </span>
+            ))}
+          </span>
+        ) : shownTag ? (
+          <span style={s.tag(type)}>{shownTag}</span>
+        ) : null}
+      </span>
     </div>
   )
 }
@@ -243,7 +242,17 @@ const s = {
       marginRight: 2,
     },
   },
-  tags: { display: 'flex', gap: 4, alignSelf: 'center' },
+  // Sticky to the box's right edge, with the row's own (opaque) colour so the code slides under it.
+  tagCell: (type) => ({
+    position: 'sticky',
+    right: 0,
+    display: 'flex',
+    alignItems: 'center',
+    margin: '-2px -10px -2px 0',
+    padding: '2px 10px 2px 6px',
+    background: type === 'anchor' || type === 'same' ? '#f8fafc' : ROW_COLOURS[type]?.bg,
+  }),
+  tags: { display: 'flex', gap: 4 },
   tag: (type) => ({
     alignSelf: 'center',
     fontFamily: 'var(--font-body)',

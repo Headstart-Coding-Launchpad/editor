@@ -58,6 +58,15 @@ describe('CopyCodePanel', () => {
     const list = rows[0].parentElement.parentElement
     expect(list.style.width).toBe('max-content')
     expect(list.style.minWidth).toBe('100%')
+    // The Add / "after this line" tags stay in view: sticky, outside the code element, opaque.
+    const cells = [...container.querySelectorAll('[data-testid="change-tag-cell"]')]
+    expect(cells.length).toBe(rows.length)
+    cells.forEach((cell) => {
+      expect(cell.style.position).toBe('sticky')
+      expect(cell.style.right).toBe('0px')
+      expect(cell.style.background).not.toBe('transparent')
+      expect(rows.some((row) => row.children[1].contains(cell))).toBe(false)
+    })
   })
 
   it('the calm What to change plain text also does not wrap', () => {
