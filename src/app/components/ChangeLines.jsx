@@ -1,7 +1,7 @@
 // The rows of a change view (src/shared/stageChange.js): a Complete stage's changes and the Copy
 // the Code panel's anchored lines. Colour is never the only cue: each row has a sign (+, -, ±, →)
 // and a word (Add, Remove, Indent, after this line), and a screen-reader label ("added: …",
-// "removed: …", "unchanged anchor: …"). Long lines wrap, so the sign and word stay in view.
+// "removed: …", "unchanged anchor: …"). Long lines scroll sideways in their box (never wrap).
 // A line that only gains text, or has a small swap (request 135, pairInlineRows), is one row with
 // only the changed part marked: added text green, bold and underlined; removed text red and
 // struck through; the rest of the line dimmed.
@@ -156,7 +156,7 @@ export function FullChangeRows({ rows }) {
   // (inlineLineChange keeps its answers too, for callers that build `rows` afresh each render.)
   const paired = useMemo(() => pairInlineRows(rows), [rows])
   return (
-    <div role="list">
+    <div role="list" style={s.fullList}>
       {paired.map((row, index) => (
         <ChangeRow
           key={index}
@@ -181,7 +181,14 @@ const ROW_COLOURS = {
 }
 
 const s = {
-  hunk: { display: 'flex', flexDirection: 'column', gap: 6 },
+  fullList: { width: 'max-content', minWidth: '100%' },
+  hunk: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    width: 'max-content',
+    minWidth: '100%',
+  },
   row: (type) => ({
     display: 'grid',
     gridTemplateColumns: '1.4em minmax(0, 1fr) auto',
@@ -207,8 +214,8 @@ const s = {
     ...(type === 'change' ? { fontWeight: 800, fontSize: '1.15em', lineHeight: 1.3 } : null),
   }),
   text: (type, inline = false) => ({
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
+    // Never wraps: a long line scrolls sideways in its box, indent kept.
+    whiteSpace: 'pre',
     // The anchor is shown dimmed, as it is: it's already in the student's code (a slate dark
     // enough to read easily, 7:1 on the box). So is the unchanged part of an inline row (its
     // 'same' pieces set their own colour).

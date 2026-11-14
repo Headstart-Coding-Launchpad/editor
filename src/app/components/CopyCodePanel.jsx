@@ -119,8 +119,7 @@ const s = {
   calmPre: {
     margin: 0,
     padding: '4px 12px',
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
+    whiteSpace: 'pre',
     lineHeight: 1.55,
     fontSize: 14,
     color: '#111827',

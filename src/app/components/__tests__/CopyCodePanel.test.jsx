@@ -42,4 +42,26 @@ describe('CopyCodePanel', () => {
 
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('keeps long lines on one line so the box scrolls sideways (no wrapping)', () => {
+    const long = `print("${'word '.repeat(40)}")`
+    const { container } = render(
+      <CopyCodePanel code={`x = 1\n${long}`} after="x = 1" language="python" />
+    )
+    const rows = [...container.querySelectorAll('[role="listitem"]')]
+    expect(rows.length).toBeGreaterThan(1)
+    rows.forEach((row) => {
+      const text = row.children[1]
+      expect(text.style.whiteSpace).toBe('pre')
+      expect(text.style.overflowWrap).not.toBe('anywhere')
+    })
+    const list = rows[0].parentElement.parentElement
+    expect(list.style.width).toBe('max-content')
+    expect(list.style.minWidth).toBe('100%')
+  })
+
+  it('the calm What to change plain text also does not wrap', () => {
+    const { container } = render(<CopyCodePanel code={'a = 1\nb = 2'} calm />)
+    expect(container.querySelector('pre').style.whiteSpace).toBe('pre')
+  })
 })
