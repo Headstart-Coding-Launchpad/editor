@@ -1556,11 +1556,7 @@ export default function StudentModal({
         {/* Header: one 48px line. Who and where on the left; the common actions as grouped
             buttons; everything occasional in Tools. Tutor-only facts live in the strip below. */}
         <div style={s.header} data-testid="student-modal-header">
-          <div style={s.who} data-testid="student-modal-status">
-            <span style={s.name}>{studentName}</span>
-            <PresenceBadge student={student} session={session} />
-          </div>
-          <div style={s.nav}>
+          <div style={s.nav} data-testid="student-modal-nav">
             <TipButton
               style={{ ...s.navBtn, opacity: hasPrev ? 1 : 0.35 }}
               disabled={!hasPrev}
@@ -1582,6 +1578,10 @@ export default function StudentModal({
             >
               ›
             </TipButton>
+          </div>
+          <div style={s.who} data-testid="student-modal-status">
+            <span style={s.name}>{studentName}</span>
+            <PresenceBadge student={student} session={session} />
           </div>
           {taskLabel && (
             <span style={s.taskLabel} title={taskLabel}>
@@ -2256,6 +2256,8 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     flexShrink: 0,
+    width: 104, // fixed (2 x 30 buttons + 44 count) so the arrows never move with the name
+    justifyContent: 'center',
     borderRadius: 8,
     background: 'rgba(255,255,255,0.14)',
     overflow: 'hidden',
@@ -2273,7 +2275,7 @@ const s = {
     justifyContent: 'center',
     padding: 0,
   },
-  navCount: { fontWeight: 600, fontSize: 12.5, padding: '0 4px' },
+  navCount: { fontWeight: 600, fontSize: 12.5, width: 44, textAlign: 'center' },
   taskLabel: {
     flexShrink: 1,
     minWidth: 0,
