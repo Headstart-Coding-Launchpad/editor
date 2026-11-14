@@ -152,7 +152,8 @@ function lineToJson(rt, text, info, ctx, problems, depth = 0) {
     const slot = si < slots.length ? slots[si++] : undefined
     if (target.kind === 'field') {
       if (!slot) return
-      const raw = slot.content.trim()
+      // `(walk1 v)`: a menu value in round brackets, scratchblocks-style ` v` and all.
+      const raw = target.dropdown ? slot.content.trim().replace(/\s+v$/, '') : slot.content.trim()
       if (!target.dropdown) {
         json.fields[target.name] = raw
         return

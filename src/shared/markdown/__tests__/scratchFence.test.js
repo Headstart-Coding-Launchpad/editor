@@ -5,7 +5,7 @@ import {
   looksLikeScratchBlocks,
   parseScratchStack,
 } from '../scratchFence.js'
-import { findScratchBlock } from '../../scratchBlockCatalog'
+import { SCRATCH_BLOCK_CATALOG, findScratchBlock } from '../../scratchBlockCatalog'
 
 const slots = (text) =>
   blockTextParts(text, 0, findScratchBlock(text)).filter((p) => p.type === 'slot')
@@ -88,5 +88,18 @@ describe('scratch fence parser', () => {
   it('draws an inline if/else as the one-mouth text with an else line', () => {
     expect(inlineScratchCode('if <> then else')).toBe('if <> then\nelse')
     expect(inlineScratchCode(' repeat (10) ')).toBe('repeat (10)')
+  })
+
+  it('reads a menu written in round brackets as the same block, with no sample mistaken', () => {
+    expect(findScratchBlock('switch backdrop to (City Street)')?.opcode).toBe(
+      'looks_switchbackdropto'
+    )
+    expect(findScratchBlock('glide (2) secs to (Balloon)')?.opcode).toBe('motion_glideto')
+    expect(findScratchBlock('play sound (pop) until done')?.opcode).toBe('sound_playuntildone')
+    for (const block of SCRATCH_BLOCK_CATALOG) {
+      expect(findScratchBlock(block.sample)?.opcode, block.sample).toBe(block.opcode)
+      const round = block.sample.replace(/\[([^\]]+)\]/g, '($1)')
+      expect(findScratchBlock(round)?.opcode, round).toBe(block.opcode)
+    }
   })
 })

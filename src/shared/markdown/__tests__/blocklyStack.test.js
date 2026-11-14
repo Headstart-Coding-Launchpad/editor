@@ -40,6 +40,21 @@ describe('scratchFenceToState', () => {
     expect(say.inputs.SECS.shadow.fields.NUM).toBe('1')
   })
 
+  it('draws a menu value written in round brackets as that menu value', () => {
+    const r = toState([
+      'when green flag clicked',
+      'switch backdrop to (City Street)',
+      'switch costume to (walk1 v)',
+      'glide (2) secs to (Balloon)',
+    ])
+    expect(r.ok).toBe(true)
+    const backdrop = tops(r)[0].next.block
+    expect(backdrop.fields.BACKDROP).toBe('City Street')
+    expect(backdrop.next.block.fields.COSTUME).toBe('walk1')
+    expect(backdrop.next.block.next.block.fields.TO).toBe('Balloon')
+    expect(r.values).toEqual(expect.arrayContaining(['City Street', 'walk1', 'Balloon']))
+  })
+
   it('falls back (ok: false) when a line is not a Scratch block', () => {
     const r = toState(['when green flag clicked', 'wiggle [a lot]'])
     expect(r.ok).toBe(false)
