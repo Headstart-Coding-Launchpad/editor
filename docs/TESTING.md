@@ -251,6 +251,10 @@ Run with `npm run test:rules`. This needs `firebase-tools` installed globally an
 
 Add a test whenever you change a rules file.
 
+## CSS Syntax Check
+
+`src/shared/__tests__/cssSyntax.test.js` checks every `.css` file under `src/` (including `index.css`) for balanced braces and closed comments, ignoring braces in comments and strings. A failure names the file and line. It needs no CSS tooling; a new `.css` file is picked up automatically.
+
 ## Type-Branch Ratchet
 
 `src/modules/__tests__/typeBranchRatchet.test.js` counts inline lesson-type and task-type
