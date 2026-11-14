@@ -144,7 +144,7 @@ Both suites iterate the module registry (`getLessonModules()`), so registering a
 | `e2e/smoke.spec.js` | 2 | The landing page shows the lesson-code form. The login page shows the sign-in form. |
 | `e2e/lesson-builder.spec.js` | 11 | The Builder loads, shows the type chooser, offers the restore prompt, and opens for Python, Web and Scratch. |
 | `e2e/solo-student.spec.js` | 7 | The landing page loads, a lesson code navigates, the solo Python editor shows, and the task counter moves. |
-| `e2e/explainer-real-blocks.spec.js` | 1 | Scratch fences in an explainer are drawn by Blockly and match the workspace's own forever block (size, C-block indent), a fence with an unknown line keeps the Markdown drawing, no duplicate ids. Uses the no-session `#/shot` page; not run in CI. |
+| `e2e/explainer-real-blocks.spec.js` | 1 | Scratch fences in an explainer are drawn by Blockly and match the workspace's own forever block (size, C-block indent), a fence with an unknown line shows as plain text, no duplicate ids. Uses the no-session `#/shot` page; not run in CI. |
 
 **In CI:** only `e2e/smoke.spec.js` runs. The `smoke` job in `.github/workflows/ci.yml` runs `npx playwright test e2e/smoke.spec.js` in Chromium with a dummy Firebase config. The other specs are not run by any workflow. `lesson-builder` and `solo-student` say they predate the current app, so expect them to need repair before use.
 

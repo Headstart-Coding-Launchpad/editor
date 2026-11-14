@@ -55,7 +55,7 @@ const LESSON = {
     {
       id: 1,
       title: 'Twinkle',
-      explainer: `Make the star twinkle for ever:\n\n\`\`\`scratch\n${FENCE}\n\`\`\`\n\nUnknown lines keep the old picture:\n\n\`\`\`scratch\nwhen green flag clicked\nwiggle [a lot]\n\`\`\``,
+      explainer: `Make the star twinkle for ever:\n\n\`\`\`scratch\n${FENCE}\n\`\`\`\n\nUnknown lines show as plain text:\n\n\`\`\`scratch\nwhen green flag clicked\nwiggle [a lot]\n\`\`\``,
       codeStages: [{ label: 'Starter', role: 'starter', blocks: { sprite1: SCRIPT } }],
       check: [{ type: 'block_used', opcode: 'control_forever', hint: 'Use a forever block.' }],
     },
@@ -89,11 +89,11 @@ test('explainer blocks are drawn by Scratch itself and match the workspace', asy
 
   const real = page.locator('[data-real-blocks="blockly"]').first()
   await expect(real).toBeVisible({ timeout: 30000 })
-  // The picture is Blockly's own SVG, not the Markdown renderer's drawing.
+  // The picture is Blockly's own SVG.
   await expect(real.locator('svg path.blocklyPath').first()).toBeVisible()
   await expect(real).toHaveAttribute('aria-label', /forever/)
 
-  // The line Scratch has no block for keeps the Markdown renderer's picture.
+  // The fence with a line Scratch has no block for shows as plain text.
   await expect(page.locator('[data-real-blocks="fallback"]')).toHaveCount(1)
 
   // The workspace's forever block, drawn by the real editor at the same calm size.
