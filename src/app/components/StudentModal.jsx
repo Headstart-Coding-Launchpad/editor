@@ -33,7 +33,7 @@ import MessageCompose from './student-modal/MessageCompose'
 const ExportWorkDialog = React.lazy(() => import('./student-modal/ExportWorkDialog'))
 import { OverrideItems, OverrideFailModal } from './student-modal/OverrideDropdown'
 import OneTapAwardButton from './badges/OneTapAwardButton'
-import TipButton from './TipButton'
+import ModalTaskNav from './student-modal/ModalTaskNav'
 import { PaneFocusControls } from './student-modal/PaneFocusDropdown'
 import {
   ControlHighlightControls,
@@ -1556,29 +1556,14 @@ export default function StudentModal({
         {/* Header: one 48px line. Who and where on the left; the common actions as grouped
             buttons; everything occasional in Tools. Tutor-only facts live in the strip below. */}
         <div style={s.header} data-testid="student-modal-header">
-          <div style={s.nav} data-testid="student-modal-nav">
-            <TipButton
-              style={{ ...s.navBtn, opacity: hasPrev ? 1 : 0.35 }}
-              disabled={!hasPrev}
-              onClick={onPrev}
-              label="Previous student"
-            >
-              ‹
-            </TipButton>
-            {position != null && total != null && (
-              <span style={s.navCount}>
-                {position}/{total}
-              </span>
-            )}
-            <TipButton
-              style={{ ...s.navBtn, opacity: hasNext ? 1 : 0.35 }}
-              disabled={!hasNext}
-              onClick={onNext}
-              label="Next student"
-            >
-              ›
-            </TipButton>
-          </div>
+          <ModalTaskNav
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+            position={position}
+            total={total}
+          />
           <div style={s.who} data-testid="student-modal-status">
             <span style={s.name}>{studentName}</span>
             <PresenceBadge student={student} session={session} />
@@ -2252,30 +2237,6 @@ const s = {
     fontSize: 15,
     whiteSpace: 'nowrap',
   },
-  nav: {
-    display: 'flex',
-    alignItems: 'center',
-    flexShrink: 0,
-    width: 104, // fixed (2 x 30 buttons + 44 count) so the arrows never move with the name
-    justifyContent: 'center',
-    borderRadius: 8,
-    background: 'rgba(255,255,255,0.14)',
-    overflow: 'hidden',
-  },
-  navBtn: {
-    width: 30,
-    height: 34,
-    border: 'none',
-    background: 'transparent',
-    color: '#fff',
-    fontSize: 18,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 0,
-  },
-  navCount: { fontWeight: 600, fontSize: 12.5, width: 44, textAlign: 'center' },
   taskLabel: {
     flexShrink: 1,
     minWidth: 0,
