@@ -174,15 +174,14 @@ button:disabled {
   opacity: 0.75;
 }
 
-/* The style guide documents a visible focus ring "through the global --ui-focus ring" for
-   the whole app, but until now that ring was only ever wired up for form inputs (below) —
-   buttons, tabs, and links had no focus-visible rule at all, so keyboard/screen-reader
-   navigation lost all visible focus the moment it left a text field. */
-button:focus-visible,
-.ui-tab:focus-visible,
-a:focus-visible {
-  box-shadow: var(--ui-focus);
-  outline: none;
+/* One keyboard focus ring for the whole app (focus-visible only, so mouse clicks show none).
+   A solid brand-purple outline (the --focus-ring colour at full strength; the old 16% glow was
+   nearly invisible) with a 2px offset so it never shifts layout, and a white band either side of the ring so
+   it reads on light, purple and dark backgrounds. Text editors draw their own caret and frame. */
+:focus-visible:not(.cm-content) {
+  outline: 3px solid var(--colour-primary) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px #fff;
 }
 
 .btn-primary {
@@ -286,7 +285,6 @@ textarea:focus,
 select:focus {
   border-color: var(--colour-primary) !important;
   box-shadow: var(--ui-focus) !important;
-  outline: none !important;
 }
 
 select {
@@ -2663,7 +2661,6 @@ select {
 .te-act-pixel:focus-visible,
 .te-act-stage-target:focus-visible,
 .te-activity-card:focus-visible {
-  outline: none;
   box-shadow: var(--ui-focus);
 }
 .te-act-stage-wrap {
@@ -3976,7 +3973,6 @@ select {
 .te-sprite-card:focus-visible {
   border-color: var(--colour-primary);
   background: #f3eeff;
-  outline: none;
 }
 .te-sprite-card__thumb {
   width: 44px;
@@ -5604,7 +5600,6 @@ label.te-backdrop-tag,
 
 .act-practice:focus,
 .act-practice:focus-visible {
-  outline: none;
   border-style: solid;
   border-color: var(--colour-primary);
   box-shadow: var(--ui-focus);
@@ -5744,7 +5739,6 @@ label.te-backdrop-tag,
 
 .act-falling-area:focus,
 .act-falling-area:focus-visible {
-  outline: none;
   border-style: solid;
   border-color: var(--colour-primary);
   box-shadow: var(--ui-focus);
@@ -7274,7 +7268,6 @@ label.te-backdrop-tag,
 }
 
 .class-poll-option:focus-visible {
-  outline: none;
   box-shadow: var(--ui-focus);
 }
 
@@ -7324,7 +7317,6 @@ label.te-backdrop-tag,
 }
 
 .class-poll-pill:focus-visible {
-  outline: none;
   box-shadow: var(--ui-focus);
 }
 
