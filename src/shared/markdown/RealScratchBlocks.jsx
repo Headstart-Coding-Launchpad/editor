@@ -1,9 +1,10 @@
 // A Markdown `scratch` fence drawn by the real Scratch editor's Blockly engine
 // (./blocklyStack.js), so explainer blocks look exactly like the blocks the student drags.
-// The Markdown renderer (./ScratchBlocks.jsx) stays as the fallback: for any fence Blockly cannot
-// draw, while Blockly is still loading, and wherever there is no real browser (jsdom tests).
+// Inline `scratch:` blocks are drawn the same way, one block in a line of text. For any text
+// Blockly cannot draw, while Blockly is still loading, and wherever there is no real browser
+// (jsdom tests), the text itself shows as plain monospace code (ScratchFenceText).
 import React from 'react'
-import { ScratchBlocks } from './ScratchBlocks.jsx'
+import { inlineScratchCode } from './scratchFence.js'
 import {
   canDrawRealBlocks,
   peekScratchFenceSvg,
@@ -15,7 +16,40 @@ import {
 // stack wider than its column is scaled down to fit (max-width), never cropped or scrolled.
 export const EXPLAINER_BLOCK_SCALE = 0.65
 
-// While Blockly loads, the Markdown picture holds the space but stays invisible, so the reader
+const FENCE_TEXT_STYLE = {
+  margin: '6px 0',
+  padding: '6px 10px',
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  fontSize: '0.9em',
+  lineHeight: 1.45,
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'anywhere',
+  color: 'inherit',
+  background: 'rgba(127, 127, 127, 0.12)',
+  borderRadius: 6,
+}
+const INLINE_TEXT_STYLE = { ...FENCE_TEXT_STYLE, margin: 0, padding: '1px 5px', borderRadius: 4 }
+const INLINE_PICTURE_STYLE = { display: 'inline-block', verticalAlign: 'middle', margin: '2px' }
+
+const labelFor = (code) => code.replace(/\s+/g, ' ').trim()
+
+/** The block text as plain monospace code, read out with the same label as the picture. */
+export function ScratchFenceText({ code, inline = false }) {
+  const Tag = inline ? 'code' : 'pre'
+  return (
+    <Tag
+      role="img"
+      aria-label={labelFor(code)}
+      data-scratch-stack={inline ? undefined : 'true'}
+      data-scratch-text="true"
+      style={inline ? INLINE_TEXT_STYLE : FENCE_TEXT_STYLE}
+    >
+      {code}
+    </Tag>
+  )
+}
+
+// While Blockly loads, the fallback text holds the space but stays invisible, so the reader
 // never sees one drawing swap for another. If the load is slow it shows after this long.
 export const SHOW_FALLBACK_AFTER_MS = 1500
 
@@ -40,7 +74,7 @@ function stripActive(root) {
 }
 
 // The picture at the calm block size, scaled down to fit its column. Null when the SVG cannot
-// be read or has no size: the caller then shows the Markdown drawing rather than a picture at
+// be read or has no size: the caller then shows the fence text rather than a picture at
 // the wrong size.
 function sizedSvg(result, scope) {
   if (typeof DOMParser === 'undefined') return null
@@ -62,18 +96,20 @@ function sizedSvg(result, scope) {
 }
 
 // A fence edited live (the Builder preview) is drawn once typing pauses for this long; the
-// Markdown drawing shows meanwhile (visible). The first drawing of a fence is not delayed.
+// fence text shows meanwhile (visible). The first drawing of a fence is not delayed.
 export const EDIT_DEBOUNCE_MS = 250
 // Text that changes this soon after it last changed (or after the fence first showed) is being
 // typed. A change after longer (the same fence reused for another task) draws at once.
 export const LIVE_EDIT_WINDOW_MS = 1000
 
 // A render that may differ next time (it threw, or the block font was not there yet) is tried
-// again this many times, this far apart; the Markdown drawing shows meanwhile.
+// again this many times, this far apart; the fence text shows meanwhile.
 export const RETRY_LIMIT = 2
 export const RETRY_DELAY_MS = 400
 
-function BlocklyFence({ code }) {
+// `text` is what the fallback shows and the label reads (the fence text unless an inline block
+// was rewritten to draw).
+function BlocklyFence({ code, text = code, inline = false }) {
   // Stored with the text it belongs to, so a picture never shows under different text.
   const [drawnFor, setDrawnFor] = React.useState(() => ({
     code,
@@ -95,7 +131,7 @@ function BlocklyFence({ code }) {
   }
   const scope = React.useId()
   const result = drawnFor.code === code ? drawnFor.result : peekScratchFenceSvg(code)
-  // A fence being typed shows the Markdown drawing at once, so the author never types blind.
+  // A fence being typed shows its text at once, so the author never types blind.
   const edited = change.edited
   const slow = slowFor === code || edited
 
@@ -132,20 +168,32 @@ function BlocklyFence({ code }) {
 
   if (!drawn) {
     const hidden = !result && !slow
+    const Wrap = inline ? 'span' : 'div'
     return (
-      <div
+      <Wrap
         data-real-blocks={result ? 'fallback' : 'pending'}
         aria-hidden={hidden || undefined}
         style={hidden ? { visibility: 'hidden' } : undefined}
       >
-        <ScratchBlocks code={code} />
-      </div>
+        <ScratchFenceText code={text} inline={inline} />
+      </Wrap>
+    )
+  }
+  if (inline) {
+    return (
+      <span
+        role="img"
+        aria-label={labelFor(text)}
+        data-real-blocks="blockly"
+        style={INLINE_PICTURE_STYLE}
+        dangerouslySetInnerHTML={{ __html: drawn.svg }}
+      />
     )
   }
   return (
     <div
       role="img"
-      aria-label={code.replace(/\s+/g, ' ').trim()}
+      aria-label={labelFor(code)}
       data-real-blocks="blockly"
       data-scratch-stack="true"
       style={{ margin: '6px 0', width: drawn.width, maxWidth: '100%', lineHeight: 0 }}
@@ -155,6 +203,13 @@ function BlocklyFence({ code }) {
 }
 
 export function RealScratchBlocks({ code }) {
-  if (!canDrawRealBlocks()) return <ScratchBlocks code={code} />
+  if (!canDrawRealBlocks()) return <ScratchFenceText code={code} />
   return <BlocklyFence code={code} />
+}
+
+/** One `scratch:` block in a line of text, drawn by Blockly like a one-line fence. */
+export function InlineScratchBlock({ text }) {
+  const shown = String(text ?? '').trim()
+  if (!canDrawRealBlocks()) return <ScratchFenceText code={shown} inline />
+  return <BlocklyFence code={inlineScratchCode(shown)} text={shown} inline />
 }

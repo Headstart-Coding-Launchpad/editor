@@ -16,9 +16,12 @@ import {
 import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
-import { InlineScratchBlock, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
-// Scratch fences are drawn by the real Blockly engine, with the Markdown renderer as fallback.
-import { RealScratchBlocks as ScratchBlocks } from './markdown/RealScratchBlocks'
+import { looksLikeScratchBlocks } from './markdown/scratchFence'
+// Scratch fences and inline blocks are drawn by the real Blockly engine (text as fallback).
+import {
+  InlineScratchBlock,
+  RealScratchBlocks as ScratchBlocks,
+} from './markdown/RealScratchBlocks'
 import { parseMarkdownBlocks } from './markdown/exampleFence.js'
 import { ExampleFenceButton } from './markdown/ExampleFenceButton.jsx'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'

@@ -54,18 +54,20 @@ Entries written before 2026-09-29 are not tagged.
 ## 2026-11-10
 
 - **Scratch fences are drawn by Scratch itself.** A ` ```scratch ` fence in an explainer, quiz
-  or hint is now drawn by the Scratch editor's own engine, so the blocks look exactly like the
-  ones the student drags (same shapes, colours, C-block arms and size); a wide stack shrinks to
-  fit its column. The syntax is unchanged. A fence the engine can't draw keeps the old drawing:
-  any line that is not a known block (`switch backdrop to (Farm)` with round brackets instead of
-  `[Farm]`, `say [] for (2) seconds` with an empty slot), a condition that is not a block
+  or hint, and an inline `scratch:` block, is now drawn by the Scratch editor's own engine, so the
+  blocks look exactly like the ones the student drags (same shapes, colours, C-block arms and
+  size); a wide stack shrinks to fit its column. The syntax is unchanged. Text the engine can't
+  draw shows as plain monospace text (the old CSS drawing is retired): any line that is not a
+  known block (`switch backdrop to (Farm)` with round brackets instead of `[Farm]`,
+  `say [] for (2) seconds` with an empty slot), a condition that is not a block
   (`if <score > 5> then`; write `if <(score) > (5)> then`), or a block under `forever` inside
-  another mouth. In the Builder preview a fence being edited shows the old drawing until typing
+  another mouth. In the Builder preview a fence being edited shows its text until typing
   pauses. A block written under a top-level `forever` is now drawn as its own stack,
-  as Scratch shows it (before, it looked attached). Inline `scratch:` pills are unchanged. See
+  as Scratch shows it (before, it looked attached). See
   [markdown-renderer.md](markdown-renderer.md#scratch-blocks-fenced).
 - Affects: scratch, markdown · Existing lessons: no changes needed (write `[Farm]`, not
-  `(Farm)`, for menu values to get the new drawing) · Resolves: none (Ryan, 10 Nov 2026)
+  `(Farm)`, for menu values, or the fence shows as plain text) · Resolves: none (Ryan, 10 and
+  14 Nov 2026)
 
 - **Support stages can show the change view (`show: change`).** Before, `show: change` worked on
   a Complete stage only and a Support stage always showed its code as a loose excerpt with no

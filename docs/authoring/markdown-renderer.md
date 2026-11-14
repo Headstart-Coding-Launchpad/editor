@@ -48,7 +48,7 @@ A bare backtick span renders in lavender-tinted monospace.
 | `html:` | `` `html:<h1>Title</h1>` `` | Syntax-highlighted HTML |
 | `css:` | `` `css:color: red;` `` | Syntax-highlighted CSS |
 | `js:` | `` `js:console.log(x)` `` | Syntax-highlighted JavaScript |
-| `scratch:` | `` `scratch:move (10) steps` `` | Coloured Scratch block pill |
+| `scratch:` | `` `scratch:move (10) steps` `` | One real Scratch block in the line of text |
 
 Inline code does not auto-detect Scratch blocks by pattern — use the explicit `scratch:` prefix. Pattern-based auto-detection (no prefix needed) only applies to **fenced** code blocks with no language tag; see below.
 
@@ -118,23 +118,20 @@ end
 | Light blue `#5CB1D6` | Sensing | `ask [What is your name?] and wait`, `answer`, `key [space] pressed?` |
 | Green `#59C059` | Operators | `join [hello] [world]`, expressions with `+`, `-`, `=`, `<`, `>`, `and`, `or` |
 | Amber `#FF8C1A` | Variables | `set [score] to (0)`, `change [score] by (1)` |
-| Grey `#7c7c7c` | Unknown | Any unrecognised block text |
+| *(plain text)* | Unknown | Any unrecognised block text shows as plain monospace text |
 
-Scratch block bodies are drawn with SVG paths for Blockly-like geometry. Hat blocks (`when ...`) have rounded tops. Stack blocks have top notch cut-outs and bottom connector tabs, and connected blocks sit tightly together. Cap blocks have rounded bottoms and no bottom connector. Reporter blocks render as ovals, Boolean blocks render as hexagons, and C-blocks draw a continuous shape with one or two transparent statement mouths.
-
-**Value pills inside block text:**
-- Numbers and quoted strings -> white pill with dark text
-- `(input)` spans -> white rounded input bubble with dark text
-- `[dropdown]` spans -> darker coloured dropdown field with a small arrow
-- `[text]` in `say`, `say … for … seconds`, `think`, `think … for … seconds` and `ask … and wait` -> white typed-text oval with no arrow, as in Scratch (these inputs are typed, not picked from a menu)
-- `[… v]` spans (scratchblocks syntax) -> always a dropdown, drawn without the ` v`
-- `<condition>` spans -> Boolean-shaped slot; recognised Boolean blocks render as nested hexagonal blocks
+**Value slots inside block text** (how the text is read; Blockly draws them as Scratch does):
+- `(input)` spans -> a number or text input (a bare word such as `(score)` is a variable reporter)
+- `[dropdown]` spans -> a menu field, matched to one of the block's own menu options
+- `[text]` in `say`, `say … for … seconds`, `think`, `think … for … seconds` and `ask … and wait` -> a typed-text input, as in Scratch (these inputs are typed, not picked from a menu)
+- `[… v]` spans (scratchblocks syntax) -> always a menu, read without the ` v`
+- `<condition>` spans -> a condition slot; it must hold a known Boolean block
 
 **Scratch block system:**
 
-**Fences are drawn by Scratch itself.** In the app, a `scratch` fence is drawn by the real Scratch editor's engine (Blockly, `src/shared/markdown/RealScratchBlocks.jsx` and `blocklyStack.js`), so it looks exactly like the blocks the student drags, at the same calm size; a stack wider than its column is shrunk to fit. The syntax is unchanged. A fence falls back to the drawing described below when any line is not a known block (for example `switch backdrop to (Farm)` with round brackets, or `say [] for (2) seconds` with an empty slot), when a menu value is not one the block offers, when Scratch would show a number differently from how it is written (`move (1e3) steps`), when a condition slot holds something that is not a block (`if <score > 5> then`; write `if <(score) > (5)> then`), or when a block is written under `forever` inside another mouth. A block written under `forever` at the top level (nothing can attach there in Scratch) is drawn as its own stack below. Inline `scratch:` pills and the Builder's tests (jsdom) keep the drawing below.
+**Blocks are drawn by Scratch itself.** In the app, a `scratch` fence and an inline `scratch:` block are drawn by the real Scratch editor's engine (Blockly, `src/shared/markdown/RealScratchBlocks.jsx` and `blocklyStack.js`), so they look exactly like the blocks the student drags, at the same calm size; a stack wider than its column is shrunk to fit, and an inline block sits in its line of text. The syntax is unchanged. Where the engine cannot draw the text, the text itself shows as plain monospace code (no picture, nothing to click): when any line is not a known block (for example `switch backdrop to (Farm)` with round brackets, or `say [] for (2) seconds` with an empty slot), when a menu value is not one the block offers, when Scratch would show a number differently from how it is written (`move (1e3) steps`), when a condition slot holds something that is not a block (`if <score > 5> then`; write `if <(score) > (5)> then`), or when a block is written under `forever` inside another mouth. The same plain text shows while the engine is still loading (after 1.5 s; hidden before that) and in the Builder's tests (jsdom). A block written under `forever` at the top level (nothing can attach there in Scratch) is drawn as its own stack below.
 
-The renderer is backed by `src/shared/scratchBlockCatalog.js`. The catalog stores each block's opcode, category, colour, author-facing sample text, visual shape, aliases, and mouth metadata. `src/shared/markdown/ScratchBlocks.jsx` uses that catalog to parse inline Scratch blocks and fenced Scratch stacks, then renders SVG/path block bodies with HTML overlays for text and input fields. `src/shared/markdown/editorOptions.js` uses the same catalog for the markdown toolbar insertion menu.
+The renderer is backed by `src/shared/scratchBlockCatalog.js`. The catalog stores each block's opcode, category, colour, author-facing sample text, visual shape, aliases, and mouth metadata. `src/shared/markdown/scratchFence.js` uses that catalog to parse inline Scratch blocks and fenced Scratch stacks (lines, slots, mouths); `blocklyStack.js` turns the result into Blockly blocks. `src/shared/markdown/editorOptions.js` uses the same catalog for the markdown toolbar insertion menu. (The old CSS/SVG drawing was retired on 14 Nov 2026; it is kept on the `archive/old-scratch-blocks-renderer` branch.)
 
 The catalog currently covers every opcode in `SCRATCH_BLOCK_DEFINITIONS` and every block exposed by the Scratch toolbox picker. Tests in `src/shared/__tests__/markdown.test.jsx` enforce that coverage.
 

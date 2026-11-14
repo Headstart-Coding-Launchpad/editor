@@ -2,12 +2,12 @@
 // the app's own block definitions), as a static SVG, so explainer blocks look exactly like the
 // blocks the student drags.
 //
-// 1. The fence text is parsed with the Markdown renderer's own parser (parseScratchStack /
-//    blockTextParts in ScratchBlocks.jsx), so authors keep exactly the syntax they write today.
+// 1. The fence text is parsed with the fence parser (parseScratchStack / blockTextParts in
+//    scratchFence.js), so authors keep exactly the syntax they write today.
 // 2. Each line becomes Blockly JSON: the block's own fields and inputs are read off a headless
 //    block of that type, in display order, and the `[...]` / `(...)` / `<...>` slots are matched
 //    to them in order. Anything that does not map cleanly makes the whole fence fall back to the
-//    Markdown renderer (`ok: false` with the reasons): an unknown line, more slots than the
+//    fence text (`ok: false` with the reasons): an unknown line, more slots than the
 //    block has, a menu value the block does not offer.
 // 3. A throwaway, read-only workspace in an inert off-screen host (renders queued one at a time,
 //    disposed after each) draws the stack; scriptSvg.js turns it into one standalone SVG
@@ -16,7 +16,7 @@
 // Blockly is loaded only through a dynamic import, so a page with no Scratch fence never
 // downloads it.
 
-import { blockTextParts, parseScratchStack } from './ScratchBlocks.jsx'
+import { blockTextParts, parseScratchStack } from './scratchFence.js'
 import { findScratchBlock } from '../scratchBlockCatalog'
 
 // Enough for every fence in a long lesson; the oldest drop out first.
@@ -29,7 +29,7 @@ let queue = Promise.resolve()
 
 /**
  * Whether this page can draw with Blockly: a real browser (jsdom has no SVG layout, so tests,
- * and anything else without one, keep the Markdown renderer).
+ * and anything else without one, show the fence text).
  */
 export function canDrawRealBlocks() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return false
@@ -386,7 +386,7 @@ async function renderOnce(code) {
     const context = contextFor(parsed.values)
     scratch.setWorkspaceBlocklyContext(ws, () => context)
     Blockly.serialization.workspaces.load(parsed.state, ws, { recordUndo: false })
-    // Stacks one under another, as the Markdown renderer lays them out.
+    // Stacks one under another, in the order they are written.
     let y = 0
     for (const top of ws.getTopBlocks(true)) {
       top.moveBy(-top.getRelativeToSurfaceXY().x, y - top.getRelativeToSurfaceXY().y)

@@ -58,16 +58,37 @@ it('draws the Blockly SVG at the calm block size, shrinking to fit its column', 
   expect(real.querySelector('button, a, input')).toBeNull()
 })
 
-it('keeps the Markdown drawing for a fence Blockly cannot draw', async () => {
+it('shows the fence text as plain code, labelled like the picture, when Blockly cannot draw', async () => {
   stack.render.mockResolvedValue({ ok: false, problems: ['unknown block text'] })
   const { container } = render(<RealScratchBlocks code={CODE} />)
   await act(async () => {})
   const fallback = container.querySelector('[data-real-blocks="fallback"]')
   expect(fallback).toBeVisible()
-  expect(fallback.querySelector('[data-scratch-opcode="control_forever"]')).toBeInTheDocument()
+  const text = fallback.querySelector('pre[data-scratch-text="true"]')
+  expect(text.textContent).toBe(CODE)
+  expect(text).toHaveAttribute('aria-label', CODE.replace(/\s+/g, ' ').trim())
+  expect(fallback.querySelector('button, a, input, svg')).toBeNull()
 })
 
-it('holds the space invisibly while Blockly loads, showing the Markdown drawing only if slow', async () => {
+it('draws an inline block in its line of text, or shows its text when it cannot', async () => {
+  stack.render.mockResolvedValueOnce(DRAWN)
+  const { container } = render(<MarkdownRenderer content="Use `scratch:if <> then else` here." />)
+  await act(async () => {})
+  // The two-mouth block is drawn from its one-mouth text with an else line.
+  expect(stack.render.mock.calls[0][0]).toBe('if <> then\nelse')
+  const picture = container.querySelector('span[data-real-blocks="blockly"]')
+  expect(picture).toHaveAttribute('aria-label', 'if <> then else')
+  expect(picture.closest('p')).toHaveTextContent('Use here.')
+
+  stack.render.mockResolvedValueOnce({ ok: false, problems: ['x'] })
+  const other = render(<MarkdownRenderer content="Use `scratch:fly to the moon` here." />)
+  await act(async () => {})
+  expect(other.container.querySelector('code[data-scratch-text="true"]').textContent).toBe(
+    'fly to the moon'
+  )
+})
+
+it('holds the space invisibly while Blockly loads, showing the fence text only if slow', async () => {
   vi.useFakeTimers()
   try {
     stack.render.mockReturnValue(new Promise(() => {}))
@@ -107,11 +128,11 @@ it('gives each copy of the same picture its own ids', () => {
   })
 })
 
-it('uses the Markdown drawing with no Blockly at all where there is no real browser', () => {
+it('shows the fence text with no Blockly at all where there is no real browser', () => {
   stack.canDraw = false
   const { container } = render(<RealScratchBlocks code={CODE} />)
   expect(container.querySelector('[data-real-blocks]')).toBeNull()
-  expect(container.querySelector('[data-scratch-opcode="control_forever"]')).toBeInTheDocument()
+  expect(container.querySelector('[data-scratch-text="true"]').textContent).toBe(CODE)
   expect(stack.render).not.toHaveBeenCalled()
 })
 
@@ -179,7 +200,7 @@ it('tries again (a bounded number of times) after a render that may differ next 
       .mockResolvedValueOnce(DRAWN)
     const { container } = render(<RealScratchBlocks code={CODE} />)
     await act(async () => {})
-    // The Markdown drawing shows meanwhile.
+    // The fence text shows meanwhile.
     expect(container.querySelector('[data-real-blocks="fallback"]')).toBeVisible()
     await act(async () => vi.advanceTimersByTime(RETRY_DELAY_MS + 10))
     expect(stack.render).toHaveBeenCalledTimes(2)
@@ -208,7 +229,7 @@ it('sizes the picture whatever order the root attributes come in, keeping its ow
   expect(svg.getAttribute('aria-hidden')).toBe('true')
 })
 
-it('falls back to the Markdown drawing when the SVG cannot be sized', () => {
+it('falls back to the fence text when the SVG cannot be sized', () => {
   stack.cache.set(CODE, { ...DRAWN, svg: '<svg width="400" height="200"><path></svg>' })
   const { container } = render(<RealScratchBlocks code={CODE} />)
   expect(container.querySelector('[data-real-blocks="blockly"]')).toBeNull()
@@ -230,7 +251,7 @@ it('draws a reused fence at once when its text changes long after the last chang
   }
 })
 
-it('shows the Markdown drawing straight away while an edited fence waits to be drawn', () => {
+it('shows the fence text straight away while an edited fence waits to be drawn', () => {
   stack.render.mockReturnValue(new Promise(() => {}))
   const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
   rerender(<RealScratchBlocks code={`${CODE}\nmove (5) steps`} />)

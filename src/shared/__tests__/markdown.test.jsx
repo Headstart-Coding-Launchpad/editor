@@ -10,7 +10,7 @@ import {
   scratchBlockBadgeIcon,
   scratchBlockDisplaySample,
 } from '../scratchBlockCatalog'
-import { looksLikeScratchBlocks } from '../markdown/ScratchBlocks'
+import { looksLikeScratchBlocks } from '../markdown/scratchFence'
 import { SCRATCH_BLOCK_DEFINITIONS } from '../../modules/scratch/scratch'
 
 const MOCK_TOPICS = [
@@ -177,333 +177,43 @@ describe('MarkdownRenderer', () => {
     )
   })
 
-  it.each([
-    ['scratch:repeat (10)', 'control_repeat', 1, true],
-    ['scratch:forever', 'control_forever', 1, false],
-    ['scratch:if <> then', 'control_if', 1, true],
-    ['scratch:if <> then else', 'control_if_else', 2, true],
-  ])('draws inline `%s` as a C with its mouth and closing bottom arm', (code, opcode, mouths) => {
-    const { container } = render(<MarkdownRenderer content={`Use \`${code}\` here.`} />)
-    const block = container.querySelector(`[data-scratch-opcode="${opcode}"]`)
-    expect(block).toHaveAttribute('data-scratch-shape', 'c')
-    expect(block).toHaveAttribute('data-scratch-mouths', String(mouths))
-    expect(block.querySelectorAll('[data-scratch-mouth-stack]')).toHaveLength(mouths)
-    expect(block.querySelector('[data-scratch-c-path="fill"]')).toBeInTheDocument()
-    expect(block.querySelector('[data-scratch-c-path="outer"]')).toBeInTheDocument()
+  // In jsdom there is no Blockly drawing: a fence and an inline block show their own text as
+  // plain monospace code, labelled with that text (the real-browser picture is in
+  // RealScratchBlocks.test.jsx and the browser checks).
+  it('shows a scratch fence as its own text, read out as one picture', () => {
+    const code = 'when green flag clicked\nforever\n  move (10) steps\nend'
+    const { container } = render(<MarkdownRenderer content={'```scratch\n' + code + '\n```'} />)
+    const pre = container.querySelector('pre[data-scratch-text="true"]')
+    expect(pre).toHaveTextContent('when green flag clicked')
+    expect(pre.textContent).toBe(code)
+    expect(pre).toHaveAttribute('role', 'img')
+    expect(pre).toHaveAttribute('aria-label', 'when green flag clicked forever move (10) steps end')
+    expect(pre).toHaveAttribute('data-scratch-stack', 'true')
+    expect(pre.style.fontFamily).toMatch(/monospace/)
+    expect(container.querySelector('button')).toBeNull()
   })
 
-  // A real Scratch C is open on the right: full-width header, left spine, short arms, nothing
-  // closing or filling the mouth. Below the header no outline point may sit past the arm width.
-  function expectOpenMouth(block, mouths) {
-    const fill = block.querySelector(':scope > svg [data-scratch-c-path="fill"]')
-    const d = fill.getAttribute('d')
-    expect(fill.getAttribute('fill-rule')).toBeNull()
-    expect(d.match(/M/g)).toHaveLength(1)
-    const width = Number.parseFloat(block.style.width)
-    const pts = [...d.matchAll(/Q [\d.]+ [\d.]+ ([\d.]+) ([\d.]+)/g)].map((m) => [+m[1], +m[2]])
-    const below = pts.filter(([, y]) => y > 38)
-    expect(below.length).toBeGreaterThan(0)
-    const armRight = Math.max(...below.map(([x]) => x))
-    expect(armRight).toBeLessThan(width)
-    expect(armRight).toBeLessThanOrEqual(width * 0.6)
-    expect(d.match(/V /g).length).toBeGreaterThanOrEqual(2 + mouths * 2)
-    expect(fill.getAttribute('fill')).not.toMatch(/^(#fff|white)/i)
-  }
-
-  it.each([
-    ['scratch:repeat (10)', 'control_repeat', 1],
-    ['scratch:forever', 'control_forever', 1],
-    ['scratch:if <> then', 'control_if', 1],
-    ['scratch:if <> then else', 'control_if_else', 2],
-  ])('draws inline `%s` open on the right with a short bottom arm', (code, opcode, mouths) => {
-    const { container } = render(<MarkdownRenderer content={`Use \`${code}\` here.`} />)
-    expectOpenMouth(container.querySelector(`[data-scratch-opcode="${opcode}"]`), mouths)
-  })
-
-  it('lays a fenced C out like Scratch: inner blocks flush under the header, foot snug on the last block', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'```scratch\nforever\n  next costume\nend\n```'} />
+  it('shows an untagged fence of Scratch lines the same way', () => {
+    const { container } = render(<MarkdownRenderer content={'```\nmove (10) steps\n```'} />)
+    expect(container.querySelector('[data-scratch-text="true"]')).toHaveTextContent(
+      'move (10) steps'
     )
-    const block = container.querySelector('[data-scratch-opcode="control_forever"]')
-    const stack = block.querySelector('[data-scratch-mouth-stack="children"]')
-    expect(stack.style.top).toBe('38px')
-    expect(stack.style.left).toBe('15px')
-    // header 38 + inner block body 38 (its 7px bottom tab hangs into the foot) + foot 13
-    expect(block.style.height).toBe('89px')
   })
 
-  it.each([
-    ['repeat (10)', 'control_repeat', 1],
-    ['forever', 'control_forever', 1],
-    ['if <> then', 'control_if', 1],
-    ['if <> then else', 'control_if_else', 2],
-  ])('draws fenced `%s` open on the right, including a nested C', (head, opcode, mouths) => {
-    const lines = ['```scratch']
-    if (mouths === 2) {
-      lines.push(
-        'if <> then',
-        '  move (10) steps',
-        'else',
-        '  repeat (3)',
-        '    turn right (15) degrees',
-        '  end',
-        'end'
-      )
-    } else {
-      lines.push(
-        head,
-        '  move (10) steps',
-        '  repeat (3)',
-        '    turn right (15) degrees',
-        '  end',
-        'end'
-      )
+  it.each(['say [Hello!] for (2) seconds', 'if <> then else', 'distance to [mouse-pointer]'])(
+    'keeps inline `scratch:%s` in its line of text',
+    (block) => {
+      const { container } = render(<MarkdownRenderer content={`Use \`scratch:${block}\` here.`} />)
+      const code = container.querySelector('code[data-scratch-text="true"]')
+      expect(code.textContent).toBe(block)
+      expect(code).toHaveAttribute('aria-label', block)
+      expect(code.closest('p')).toHaveTextContent(`Use ${block} here.`)
     }
-    lines.push('```')
-    const { container } = render(<MarkdownRenderer content={lines.join('\n')} />)
-    const blocks = container.querySelectorAll('[data-scratch-shape="c"]')
-    expect(blocks.length).toBeGreaterThanOrEqual(2)
-    expectOpenMouth(
-      container.querySelector(`[data-scratch-shape="c"][data-scratch-mouths="${mouths}"]`),
-      mouths
-    )
-    expectOpenMouth(blocks[blocks.length - 1], 1)
-  })
+  )
 
-  it('draws a fenced C with inner blocks inside its mouth and a nested C inside that', () => {
-    const content = [
-      '```scratch',
-      'repeat (10)',
-      '  move (10) steps',
-      '  repeat (3)',
-      '    turn right (15) degrees',
-      '```',
-    ].join('\n')
-    const { container } = render(<MarkdownRenderer content={content} />)
-    const outer = container.querySelector('[data-scratch-opcode="control_repeat"]')
-    const mouth = outer.querySelector('[data-scratch-mouth-stack="children"]')
-    expect(mouth.querySelector('[data-scratch-opcode="motion_movesteps"]')).toBeInTheDocument()
-    const inner = mouth.querySelector('[data-scratch-opcode="control_repeat"]')
-    expect(inner.querySelector('[data-scratch-opcode="motion_turnright"]')).toBeInTheDocument()
-  })
-
-  it('renders Scratch blocks with mouths and nested reporter/boolean shapes', () => {
-    const content = [
-      '```scratch',
-      'when green flag clicked',
-      'forever',
-      '  repeat until <(score) > (10)>',
-      '    change [score] by (1)',
-      '  end',
-      '  if <touching [edge]?> then',
-      '    move (pick random (1) to (10)) steps',
-      '  else',
-      '    turn right (15) degrees',
-      '  end',
-      'end',
-      '```',
-    ].join('\n')
-    const { container } = render(<MarkdownRenderer content={content} />)
-
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="event_whenflagclicked"][data-scratch-shape="hat"]'
-      )
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector('[data-scratch-opcode="control_forever"][data-scratch-shape="c"]')
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="control_if"][data-scratch-shape="c"][data-scratch-mouths="2"]'
-      )
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="sensing_touchingobject"][data-scratch-shape="boolean"]'
-      )
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector('[data-scratch-opcode="operator_gt"][data-scratch-shape="boolean"]')
-    ).toBeInTheDocument()
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="operator_random"][data-scratch-shape="reporter"]'
-      )
-    ).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-stack="true"] svg path')).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-unknown="true"]')).not.toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-opcode="motion_movesteps"]')).toHaveTextContent(
-      SCRATCH_BLOCK_BY_OPCODE.motion_movesteps.icon
-    )
-  })
-
-  it('renders inline Scratch reporter blocks with their own shape', () => {
-    const { container } = render(
-      <MarkdownRenderer content="Use `scratch:distance to [mouse-pointer]` here." />
-    )
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="sensing_distanceto"][data-scratch-shape="reporter"]'
-      )
-    ).toBeInTheDocument()
-  })
-
-  it('reserves the notch and bottom connector for inline Scratch stack blocks', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'Use `scratch:say [Hello!] for (2) seconds` here.'} />
-    )
-    const block = container.querySelector(
-      '[data-scratch-opcode="looks_sayforsecs"][data-scratch-shape="stack"]'
-    )
-    const content = block.querySelector('[data-scratch-block-content="true"]')
-    const icon = block.querySelector('[data-scratch-icon-badge="true"]')
-
-    expect(block.dataset.scratchContentTop).toBe('4')
-    expect(Number.parseFloat(block.style.height)).toBe(43)
-    expect(block.querySelector('svg')).toHaveAttribute('height', '43')
-    expect(content.style.inset).toBe('4px 0 auto 0')
-    expect(content.style.height).toBe('32px')
-    expect(icon.style.width).toBe('20px')
-  })
-
-  it('gives long inline Scratch blocks enough width for their fields and labels', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'`scratch:think [Hello!] for (2) seconds`'} />
-    )
-    const block = container.querySelector('[data-scratch-opcode="looks_thinkforsecs"]')
-
-    // The text input is a white oval (no dropdown arrow), so it is a little narrower.
-    expect(Number.parseFloat(block.style.width)).toBeGreaterThanOrEqual(290)
-  })
-
-  it('draws say / think text inputs as typed-text ovals, not dropdowns (HSC Audit 08)', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'```scratch\nsay [Hello!] for (2) seconds\n```'} />
-    )
-    const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
-    expect(block.querySelector('[data-scratch-slot="dropdown"]')).toBeNull()
-    expect(block.querySelector('[data-scratch-slot="value"]')).toHaveTextContent('Hello!')
-  })
-
-  it('still draws a dropdown for a [... v] input, without the v', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'```scratch\nwhen [space v] key pressed\n```'} />
-    )
-    const slot = container.querySelector('[data-scratch-slot="dropdown"]')
-    expect(slot).toHaveTextContent('space')
-    expect(slot).not.toHaveTextContent('space v')
-  })
-
-  it('uses the browser-measured Scratch content row once it is available', () => {
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth')
-    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-      configurable: true,
-      get() {
-        if (this.dataset?.scratchBlockRow === 'true') return 247
-        return descriptor?.get?.call(this) ?? 0
-      },
-    })
-
-    try {
-      const { container } = render(
-        <MarkdownRenderer content={'`scratch:say [Hello!] for (2) seconds`'} />
-      )
-      const block = container.querySelector('[data-scratch-opcode="looks_sayforsecs"]')
-
-      expect(Number.parseFloat(block.style.width)).toBe(273)
-    } finally {
-      if (descriptor) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', descriptor)
-    }
-  })
-
-  it('treats variable names in set blocks as dropdown fields, not guessed reporter blocks', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'```scratch\nset [score] to (0)\n```'} />
-    )
-    expect(
-      container.querySelector('[data-scratch-opcode="data_setvariableto"]')
-    ).toBeInTheDocument()
-    expect(container.querySelector('[data-scratch-slot="dropdown"]')).toHaveTextContent('score')
+  it('does not take a bare variable name for a Scratch fence', () => {
     expect(looksLikeScratchBlocks('score')).toBe(false)
-  })
-
-  it('renders Scratch event affordances like Blockly fields', () => {
-    const content = ['```scratch', 'when green flag clicked', 'broadcast [message1]', '```'].join(
-      '\n'
-    )
-    const { container } = render(<MarkdownRenderer content={content} />)
-
-    const flagBlock = container.querySelector('[data-scratch-opcode="event_whenflagclicked"]')
-    expect(flagBlock.querySelector('[data-scratch-flag="true"]')).toBeInTheDocument()
-    expect(flagBlock).not.toHaveTextContent('green flag')
-    expect(
-      container.querySelector(
-        '[data-scratch-opcode="event_broadcast"] [data-scratch-slot="dropdown"]'
-      )
-    ).toHaveAttribute('data-scratch-slot-tone', 'light')
-  })
-
-  it('keeps inline Scratch operator booleans tightly block-sized', () => {
-    const { container } = render(
-      <MarkdownRenderer content={'```scratch\nrepeat until <(1) = (2)>\nend\n```'} />
-    )
-    const operator = container.querySelector(
-      '[data-scratch-opcode="operator_equals"][data-scratch-shape="boolean"]'
-    )
-    const valueSlots = operator.querySelectorAll('[data-scratch-slot="value"]')
-
-    expect(Number.parseFloat(operator.style.width)).toBeGreaterThanOrEqual(150)
-    expect(Number.parseFloat(operator.style.width)).toBeLessThanOrEqual(195)
-    expect(valueSlots).toHaveLength(2)
-    expect(valueSlots[0]).toHaveAttribute('data-scratch-slot-shadow', 'text')
-    expect(
-      Number.parseFloat(
-        valueSlots[0].querySelector('[data-scratch-slot-field="true"]').style.minWidth
-      )
-    ).toBeGreaterThanOrEqual(18)
-  })
-
-  it('keeps Scratch C-block mouths snug around nested stack blocks', () => {
-    const content = [
-      '```scratch',
-      'repeat until <(1) = (2)>',
-      '  broadcast [message1]',
-      '  go to [random position]',
-      'end',
-      '```',
-    ].join('\n')
-    const { container } = render(<MarkdownRenderer content={content} />)
-    const repeat = container.querySelector(
-      '[data-scratch-opcode="control_repeat_until"][data-scratch-shape="c"]'
-    )
-    const mouthStack = repeat.querySelector('[data-scratch-mouth-stack="children"]')
-    const cSvg = Array.from(repeat.children).find((child) => child.tagName.toLowerCase() === 'svg')
-
-    expect(Number.parseFloat(repeat.style.height)).toBeLessThanOrEqual(143)
-    expect(Number.parseFloat(mouthStack.style.left)).toBe(15)
-    expect(
-      Array.from(cSvg.querySelectorAll('[data-scratch-c-path]')).map(
-        (path) => path.dataset.scratchCPath
-      )
-    ).toEqual(['shadow', 'fill', 'outer', 'highlight'])
-  })
-
-  it('snaps the next root block tightly after a Scratch C-block', () => {
-    const content = [
-      '```scratch',
-      'repeat until <(1) = (2)>',
-      '  broadcast [message1]',
-      '  go to [random position]',
-      'end',
-      'move (10) steps',
-      '```',
-    ].join('\n')
-    const { container } = render(<MarkdownRenderer content={content} />)
-    const moveBlock = container.querySelector('[data-scratch-opcode="motion_movesteps"]')
-    const moveRoot = moveBlock.parentElement
-
-    expect(Number.parseFloat(moveRoot.style.marginTop)).toBe(-10)
+    expect(looksLikeScratchBlocks('set [score] to (0)')).toBe(true)
   })
 })
 
