@@ -98,8 +98,9 @@ function sizedSvg(result, scope) {
 // A fence edited live (the Builder preview) is drawn once typing pauses for this long; the
 // fence text shows meanwhile (visible). The first drawing of a fence is not delayed.
 export const EDIT_DEBOUNCE_MS = 250
-// Text that changes this soon after it last changed (or after the fence first showed) is being
-// typed. A change after longer (the same fence reused for another task) draws at once.
+// Text that changes this soon after it last changed is being typed. The first change after the
+// fence shows (task text arriving, the fence reused for another task) and a change after
+// longer draw at once, hidden while they load, so a student never sees the text flash.
 export const LIVE_EDIT_WINDOW_MS = 1000
 
 // A render that may differ next time (it threw, or the block font was not there yet) is tried
@@ -116,11 +117,12 @@ function BlocklyFence({ code, text = code, inline = false }) {
     result: peekScratchFenceSvg(code),
   }))
   const [slowFor, setSlowFor] = React.useState(null)
-  // When the text last changed, kept in state and updated during render the way React allows
-  // (setState for the props just seen), not by writing to a ref.
+  // When the text last changed (never, at first), kept in state and updated during render the
+  // way React allows (setState for the props just seen), not by writing to a ref. The clock is
+  // read only there, when the text has changed.
   const [lastChange, setLastChange] = React.useState(() => ({
     code,
-    at: Date.now(),
+    at: -Infinity,
     edited: false,
   }))
   let change = lastChange

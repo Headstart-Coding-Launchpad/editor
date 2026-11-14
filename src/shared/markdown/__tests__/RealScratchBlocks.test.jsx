@@ -173,11 +173,12 @@ it('waits for typing to pause before drawing an edited fence', async () => {
     stack.render.mockResolvedValue(DRAWN)
     const { rerender } = render(<RealScratchBlocks code={CODE} />)
     expect(stack.render).toHaveBeenCalledTimes(1)
+    // The first change draws at once; the keys typed straight after wait for a pause.
     for (const n of [1, 2, 3]) rerender(<RealScratchBlocks code={`${CODE}\nmove (${n}) steps`} />)
-    expect(stack.render).toHaveBeenCalledTimes(1)
-    await act(async () => vi.advanceTimersByTime(EDIT_DEBOUNCE_MS + 10))
     expect(stack.render).toHaveBeenCalledTimes(2)
-    expect(stack.render.mock.calls[1][0]).toBe(`${CODE}\nmove (3) steps`)
+    await act(async () => vi.advanceTimersByTime(EDIT_DEBOUNCE_MS + 10))
+    expect(stack.render).toHaveBeenCalledTimes(3)
+    expect(stack.render.mock.calls[2][0]).toBe(`${CODE}\nmove (3) steps`)
   } finally {
     vi.useRealTimers()
   }
@@ -255,6 +256,7 @@ it('shows the fence text straight away while an edited fence waits to be drawn',
   stack.render.mockReturnValue(new Promise(() => {}))
   const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
   rerender(<RealScratchBlocks code={`${CODE}\nmove (5) steps`} />)
+  rerender(<RealScratchBlocks code={`${CODE}\nmove (50) steps`} />)
   const pending = container.querySelector('[data-real-blocks="pending"]')
   expect(pending.style.visibility).toBe('')
   expect(pending).not.toHaveAttribute('aria-hidden')
@@ -289,10 +291,15 @@ it('works out a live edit without writing to a ref during render (StrictMode)', 
         <RealScratchBlocks code={CODE} />
       </React.StrictMode>
     )
-    const first = stack.render.mock.calls.length
     rerender(
       <React.StrictMode>
         <RealScratchBlocks code={`${CODE}\nmove (5) steps`} />
+      </React.StrictMode>
+    )
+    const first = stack.render.mock.calls.length
+    rerender(
+      <React.StrictMode>
+        <RealScratchBlocks code={`${CODE}\nmove (50) steps`} />
       </React.StrictMode>
     )
     // Typed straight after: debounced, not drawn at once, even with renders run twice.
@@ -302,4 +309,14 @@ it('works out a live edit without writing to a ref during render (StrictMode)', 
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('draws a fence whose text changes once just after it shows at once, with no text flash', () => {
+  // Task text arriving just after the explainer mounts is not someone typing.
+  stack.render.mockReturnValue(new Promise(() => {}))
+  const { container, rerender } = render(<RealScratchBlocks code={CODE} />)
+  rerender(<RealScratchBlocks code={`${CODE}\nmove (5) steps`} />)
+  expect(stack.render).toHaveBeenCalledTimes(2)
+  const pending = container.querySelector('[data-real-blocks="pending"]')
+  expect(pending.style.visibility).toBe('hidden')
 })
