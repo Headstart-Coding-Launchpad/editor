@@ -58,6 +58,8 @@ tasks:
 | Every check needs a run | `skipped` |
 | The task has Python `tests` (they decide completion on a run) | `skipped` — its checks and feedback checks are all skipped, as at runtime |
 
+Each source-code case also gets `studentHint`: the hint a learner would see after a Run of that code, in the order of [Which hint is shown](#which-hint-is-shown) ("Not quite, try again!" when nothing has a hint, empty on a plain pass). Checks that need a run count as not matched; when completion is `skipped`, `studentHint` says the case needs a run, unless a blocking feedback check matches on the source alone (its hint is printed).
+
 A `skipped` completion is never counted as a mismatch: the case is reported in `summary.skipped`, and `summary.skippedRuntimeChecks` counts the skipped checks. A task's `check` list is AND-ed, which is the only way checks combine — there are no `any`/`not` check shapes — so a skipped check simply drops out of the AND. Verify the skipped checks with a real Run in the Builder preview. The cases format has no field for stdin or expected output.
 
 ---
@@ -296,28 +298,28 @@ feedbackChecks:
 
 A learner only ever sees **one** hint per attempt. Every module (Python, HTML, Turtle, Arcade, Filesystem, Desktop, Electronics, Scratch) picks it with the same rule, in this order:
 
-1. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched feedback check is shown. With no hint, the learner sees "Not quite."
-2. **The completion checks failed and any feedback check matched** (blocking or nudge) → the highest-priority matched feedback check's hint. Feedback hints always beat completion-check hints.
-3. **Otherwise** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint, and later failed checks are not shown.
-4. **No failed check has a hint** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks).
+1. **A blocking feedback check matched** → the task fails (even if the completion checks passed) and the hint of the highest-priority matched blocking check is shown. With no hint, the learner sees "Not quite."
+2. **Otherwise, the completion checks failed** → the hint of the **first** entry in the `check` list (top to bottom) that **failed** and has a non-empty `hint`. A check that passed never supplies the hint, and later failed checks are not shown.
+3. **No failed check has a hint** → the highest-priority matched `mode: nudge` hint. A nudge never hides a failed check's hint (11 Nov 2026, C5; before, a matched nudge beat it).
+4. **Nothing matched** → the generic banner: "Not quite, try again!" ("Not quite right, try again." on quiz-like tasks).
 
-When the completion checks pass, only a matched `mode: nudge` feedback check's hint is shown, next to "Correct!".
+When the completion checks pass, only a matched `mode: nudge` feedback check's hint is shown, next to "Correct!". A crash the error help explains comes before all of these (see below).
 
-**Priority:** among matched feedback checks, the lowest `priority` number wins (1 beats 2). A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
+**Priority:** among matched feedback checks of one kind (blocking, or nudge), the lowest `priority` number wins (1 beats 2), on a pass and a fail alike. A feedback check without `priority` takes its position in the list (first = 1), so list order decides ties.
 
 Writing hints that reach learners:
 
 - Order completion checks **most specific first**, or give every completion check its own `hint`. A specific check placed after a general one only shows its hint when the general one passes.
-- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint.
+- For a known misconception (wrong text, `=` instead of `==`, a missing indent), write a blocking `feedbackChecks` entry that detects the mistake and give it a `priority`. It beats every completion hint; a `mode: nudge` entry does not.
 - Don't write several hints expecting them to add up: only one is shown.
 
 #### When the code can't run (SyntaxError)
 
 When a Python run ends in an error — a `SyntaxError` such as `def area(w, h) =return w * h`, or a runtime error such as `NameError` — the task **always fails**, whatever the checks say. The checks are still evaluated, though, so the learner still gets a targeted hint chosen by the same four rules above:
 
-- **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and its hint wins over every completion-check hint (rule 2).
-- **The error explained in plain words wins over completion-check hints (27 Oct 2026, Hub #225).** On Python and Turtle tasks the output panel explains common errors in plain words with a hint ladder: where to look, the idea, an example, and the fix last (`src/shared/pythonErrors.js`). These include a missing colon, `range 4` without brackets, brackets, quotes, indentation, `NameError` and common `TypeError`s. When it can explain the error, **no completion-check hint is shown**, so a child with `for i in range 4:` is no longer told "is there a for loop?". Matched `feedbackChecks` still show their hint.
-- **If no feedback check matches and the error has no plain-words help**, the hint comes from the **first failed completion check that has a `hint`** (rule 3). On an errored run, each completion check type behaves like this:
+- **`feedbackChecks` are evaluated as normal**, against the source as typed and against the error text in the output. A `code` regex feedback check that detects the slip (for example `matches_regex: '=\s*return'`) **does match**, and a blocking one's hint wins over every completion-check hint (rule 1).
+- **The error explained in plain words wins over completion-check hints (27 Oct 2026, Hub #225).** On Python and Turtle tasks the output panel explains common errors in plain words with a hint ladder: where to look, the idea, an example, and the fix last (`src/shared/pythonErrors.js`). These include a missing colon, `range 4` without brackets, brackets, quotes, indentation, `NameError` and common `TypeError`s. When it can explain the error, **no completion-check hint is shown**, so a child with `for i in range 4:` is no longer told "is there a for loop?". A matched blocking feedback check still shows its hint; a nudge does not.
+- **If no blocking feedback check matches and the error has no plain-words help**, the hint comes from the **first failed completion check that has a `hint`** (rule 2). On an errored run, each completion check type behaves like this:
 
 | Completion check type | On an errored run | Can it supply the hint? |
 |---|---|---|

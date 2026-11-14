@@ -1,7 +1,9 @@
 import {
   canEvaluateCheckWithoutRun,
   checkNeedsRunResult,
+  evaluateCheckWithCustomFeedback,
   evaluateSingleCheck,
+  GENERIC_FAIL_HINT,
   getCheckDefinition,
   normalizeCheckShape,
   normalizeChecks,
@@ -17,6 +19,7 @@ import { resolvePuzzleChecks } from '../src/shared/puzzle/puzzle.js'
 const EXPECTED_COMPLETION = new Set(['pass', 'fail'])
 
 const SKIPPED = 'skipped'
+const NEEDS_RUN_HINT = '(needs a run: the hint shown depends on checks test-checks cannot judge)'
 const NEEDS_RUN_REASON = 'needs a run, which test-checks never does'
 const TESTS_REASON = 'the task has Python tests, which decide completion on a run'
 
@@ -96,6 +99,23 @@ export function combineCompletion(results) {
   return 'pass'
 }
 
+// The hint a student would see after a Run of the case's code, from the shared evaluator used in
+// class (blocking hint, then the first failed completion check's, then a nudge; a fail with none
+// shows the banner's GENERIC_FAIL_HINT). Checks that need a run count as unmatched; if completion
+// needs one, it says so unless a blocking hint matched. No crash help: no code runs here.
+function studentHintFor(task, actualCompletion, judge) {
+  const evaluation = evaluateCheckWithCustomFeedback(
+    task,
+    actualCompletion === 'pass',
+    (check) => judge(check).result === 'pass',
+    '',
+    {},
+    { isCompletionCheckFailed: (check) => judge(check).result === 'fail' }
+  )
+  if (actualCompletion === SKIPPED && !evaluation.blockingFeedback) return NEEDS_RUN_HINT
+  return evaluation.suggestion || (evaluation.passed ? '' : GENERIC_FAIL_HINT)
+}
+
 function evaluateCase(lesson, task, taskId, testCase, caseIndex) {
   if (!testCase || typeof testCase !== 'object' || Array.isArray(testCase)) {
     throw new Error(`Task ${taskId} case ${caseIndex + 1} must be an object`)
@@ -148,6 +168,7 @@ function evaluateCase(lesson, task, taskId, testCase, caseIndex) {
     expected: { completion: expectedCompletion },
     actual: { completion: actualCompletion, checks },
     matchedFeedback,
+    studentHint: studentHintFor(task, actualCompletion, judge),
     mismatches,
   }
   if (skippedFeedback.length > 0) result.skippedFeedback = skippedFeedback

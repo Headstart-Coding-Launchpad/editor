@@ -77,14 +77,6 @@ export function shapeCorners(command) {
   }
 }
 
-// A local point turned by `angle` degrees clockwise and moved to the centre (x, y).
-export function toStage(command, [lx, ly]) {
-  const a = angleOf(command) * DEG
-  const cos = Math.cos(a)
-  const sin = Math.sin(a)
-  return [command.x + lx * cos - ly * sin, command.y + lx * sin + ly * cos]
-}
-
 // How far the shape reaches from its centre (any angle), not counting the outline.
 export function shapeReach(command) {
   if (command?.type === 'circle') return Math.max(0, Number(command.r) || 0)

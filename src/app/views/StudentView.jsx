@@ -70,6 +70,7 @@ import useCompleteChime from '../hooks/useCompleteChime'
 import { resolveBadge } from '../../badges/badgeDisplay'
 import { listMyMoments } from '../../badges/celebration'
 import LoadingScreen from '../components/LoadingScreen'
+import LessonNotFound from '../components/LessonNotFound'
 import SessionEndedScreen from '../components/SessionEndedScreen'
 import StudentStatusBanners from '../components/StudentStatusBanners'
 import ShowItPanel from '../components/ShowItPanel'
@@ -152,6 +153,7 @@ export default function StudentView({
   const {
     lesson: baseLesson,
     lessonLoading,
+    loadFailed,
     firstTaskId: baseFirstTaskId,
   } = useLessonLoader(lessonId, lessonProp, initialTaskId)
   const soloMode = forceSolo || !!baseLesson?.soloOnly
@@ -640,7 +642,6 @@ export default function StudentView({
   // The shared workspace this student is currently looking at, if any:
   // { entry, snapshot }. Local only — opening a share never touches their work.
   const [activeShare, setActiveShare] = useState(null)
-  const [shareLoading, setShareLoading] = useState(false)
   // A "Show to class (keep coding)" broadcast: whether this student chose to watch it, and the
   // throwaway copy they opened ({ entry, snapshot }), if any. Both reset per broadcast.
   const [watchingStudentPanel, setWatchingStudentPanel] = useState(false)
@@ -797,7 +798,6 @@ export default function StudentView({
       if (lastVisiblePanesRef.current === key) return
       lastVisiblePanesRef.current = key
       writeStudentPresence?.(identity.anonymousId, { visiblePanes: panes })
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [teacherPresentation, identity?.anonymousId, phase, currentTaskId]
   )
@@ -1023,9 +1023,9 @@ export default function StudentView({
     return <LoadingScreen message="Loading…" />
   }
 
-  if (!lesson) {
-    return <LoadingScreen message={`Lesson "${lessonId}" not found.`} />
-  }
+  // Staff (preview, the presentation window) see the lesson id and their own way back.
+  const staffLessonId = previewMode || teacherPresentation ? lessonId : null
+  if (!lesson) return <LessonNotFound loadFailed={loadFailed} staffLessonId={staffLessonId} />
 
   // Computed independently of `phase` (unlike the main lastCodeTaskType/canOpenPlayground
   // below, which reflect whichever taskDisplayMode the student is currently in) because the
@@ -1208,7 +1208,6 @@ export default function StudentView({
 
   async function handleOpenSharedWorkspace(entry) {
     setShareError(null)
-    setShareLoading(true)
     try {
       const snapshot = await readSharedWorkspace(entry.shareId)
       if (!snapshot) {
@@ -1224,8 +1223,6 @@ export default function StudentView({
       }
     } catch (err) {
       setShareError(describeShareError(err))
-    } finally {
-      setShareLoading(false)
     }
   }
 

@@ -2,8 +2,9 @@
 // the code drew on the Python Stage, the drawing. **Run** runs the shared code here, in the
 // viewer's browser (Pyodide, nothing saved or sent), answering any input() in the output panel;
 // the run's output and drawing replace the saved ones (Ryan, 2026-10-22: "it doesn't run it").
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ShareCode, ShareOutput, shareStyles } from '../../shared/exportWork/ShareParts.jsx'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { CodeEditor } from '../../shared/CodeEditor'
+import { useIsMobile } from '../../shared/useIsMobile'
 import StagePane from '../../shared/stage/StagePane.jsx'
 import { readStageResult } from '../../shared/stage/sync.js'
 import OutputPanel from '../../app/components/OutputPanel'
@@ -20,11 +21,19 @@ function readShareStage(payload) {
   }
 }
 
+// The drawing a run shows: its own, else the one kept from before unless it finished OK.
+function shownStage(run) {
+  return run.stage ?? (run.status === 'success' ? null : run.kept)
+}
+
 export default function PythonShareView({ payload }) {
   const savedStage = useMemo(() => readShareStage(payload), [payload])
+  // Matches the 720px phone layout in index.css (.share-py).
+  const phone = useIsMobile(721)
   // null until the viewer presses Run; then this page's own run.
   const [run, setRun] = useState(null)
   const runningRef = useRef(false)
+  const ids = `share-py-${useId()}`
 
   useEffect(
     () => () => {
@@ -36,7 +45,16 @@ export default function PythonShareView({ payload }) {
   async function handleRun() {
     if (runningRef.current || typeof payload?.code !== 'string') return
     runningRef.current = true
-    setRun({ status: 'loading', output: '', stage: null, prompt: null })
+    // `stage` is what this run drew; `kept` is the drawing already shown, which stays up while the
+    // run goes and after one that stops short (an error, Stop, Python asleep), so nothing flips.
+    // A run that finishes OK without drawing shows no drawing: the old one is not its result.
+    setRun((prev) => ({
+      status: 'loading',
+      output: '',
+      stage: null,
+      kept: prev ? shownStage(prev) : savedStage,
+      prompt: null,
+    }))
     const append = (text) => setRun((r) => ({ ...r, output: r.output + text }))
     try {
       await initPyodide()
@@ -72,68 +90,90 @@ export default function PythonShareView({ payload }) {
   }
 
   const busy = run?.status === 'loading' || run?.status === 'running'
-  const stage = run ? run.stage : savedStage
+  const stage = run ? shownStage(run) : savedStage
+  const bar = 'sv-editor-header ui-tabs ui-tabs--editor ui-tabs--code-row share-py-bar'
 
+  // The classroom panel before and after Run (the saved output shown at once, only a run's
+  // output types in), so the page does not jump; it fills the right column when there is no
+  // Stage. On a phone it opens right under the Run bar, not below the code (#301).
+  const output = (
+    <section className="share-py-output" aria-labelledby={`${ids}-output`}>
+      <OutputPanel
+        output={run ? run.output : (payload?.output ?? '')}
+        typewriter={!!run}
+        runStatus={busy ? null : run?.status}
+        hideStatus={!run}
+        running={busy}
+        inputPrompt={run?.prompt ?? null}
+        onInputSubmit={handleInput}
+        collapsible={false}
+        defaultCollapsed={false}
+        fill={!stage && !phone}
+        drew={!!run?.stage}
+        titleId={`${ids}-output`}
+      />
+    </section>
+  )
+
+  // Laid out like the classroom editor (Ryan, 11 Nov 2026); the grid is .share-py in index.css:
+  // Code left, Stage then Output right; on a phone Stage, then Code with the Output under Run.
   return (
-    <div style={shareStyles.grid}>
-      {stage && (
-        <StagePane
-          commands={stage.commands}
-          ran
-          compact
-          truncated={stage.truncated}
-          title="Stage drawing"
-          style={s.stage}
-        />
-      )}
-      <ShareCode code={payload?.code} language="python" />
-      {/* Run and its output share one grid cell, so the output opens right under the
-          button instead of dropping below the code, off-screen (#301). */}
-      <div style={s.runColumn}>
-        <div style={s.runRow}>
-          <button
-            type="button"
-            className="btn-primary"
-            style={s.runBtn}
-            onClick={handleRun}
-            disabled={busy || typeof payload?.code !== 'string'}
-          >
-            {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
-          </button>
-          {busy && (
+    <div className={stage ? 'share-py share-py--stage' : 'share-py'}>
+      <section className="card share-py-card share-py-code" aria-labelledby={`${ids}-code`}>
+        <div className={bar}>
+          <h2 id={`${ids}-code`} className="sv-editor-title share-py-title">
+            Code
+          </h2>
+          <div className="sv-editor-actions">
+            {busy && (
+              <button type="button" className="btn-ghost-outline" onClick={() => stopPython()}>
+                Stop
+              </button>
+            )}
             <button
               type="button"
-              className="btn-ghost-outline"
-              style={s.runBtn}
-              onClick={() => stopPython()}
+              className="btn-primary sv-editor-primary-btn"
+              onClick={handleRun}
+              disabled={busy || typeof payload?.code !== 'string'}
             >
-              Stop
+              {run?.status === 'loading' ? 'Getting Python ready…' : '▶ Run'}
             </button>
-          )}
-          <span style={s.note}>Runs here, in your browser. Nothing is saved.</span>
+          </div>
         </div>
-        {run ? (
-          <OutputPanel
-            output={run.output}
-            runStatus={busy ? null : run.status}
-            running={busy}
-            inputPrompt={run.prompt}
-            onInputSubmit={handleInput}
-            collapsible={false}
-            defaultCollapsed={false}
+        <p className="share-py-note">Runs here, in your browser. Nothing is saved.</p>
+        {phone && output}
+        <div className="share-py-editor">
+          <CodeEditor value={payload?.code ?? ''} language="python" readOnly />
+        </div>
+      </section>
+      {stage && (
+        <section className="card share-py-card share-py-stage" aria-labelledby={`${ids}-stage`}>
+          <div className={bar}>
+            <h2 id={`${ids}-stage`} className="sv-editor-title share-py-title">
+              Stage
+            </h2>
+          </div>
+          {/* compact, no saveTitle or target: no Save my picture or Target buttons here. */}
+          <StagePane
+            commands={stage.commands}
+            ran
+            compact
+            truncated={stage.truncated}
+            title="Stage drawing"
+            style={s.stage}
           />
-        ) : (
-          <ShareOutput output={payload?.output} />
-        )}
-      </div>
+        </section>
+      )}
+      {!phone && output}
     </div>
   )
 }
 
 const s = {
-  stage: { width: '100%', maxWidth: 420, aspectRatio: '1 / 1' },
-  runColumn: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
-  runRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  runBtn: { minHeight: 44, padding: '0 18px' },
-  note: { fontSize: '0.85rem', color: 'var(--colour-text-muted, #6b7280)' },
+  stage: {
+    width: 'calc(100% - 20px)',
+    maxWidth: 'min(420px, 42vh)',
+    aspectRatio: '1 / 1',
+    margin: '10px auto 0',
+  },
 }

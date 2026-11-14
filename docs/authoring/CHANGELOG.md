@@ -37,6 +37,20 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-11
+
+- **A failed check's hint now shows instead of a nudge (C5).** The hint order is: the error help
+  on a crash it explains, then a matched blocking feedback check's hint, then the first failed
+  completion check's hint, then a matched `mode: nudge` hint. Before, any matched nudge beat the
+  failed completion checks' hints, and a nudge showed beside the error help of an explained crash;
+  now neither happens. Nudges are picked by `priority` on a pass and a fail alike (a pass used list
+  order), and a blocking hint is never replaced by a higher-priority nudge's. On idle (before any
+  Run) a matched nudge still shows, not an unrun check's hint. `lessons test-checks --cases`
+  prints `studentHint` per case (or says it needs a run). See [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
+- Affects: checks and feedbackChecks in every module; cli (test-checks) · Existing lessons: no
+  edits needed, but learners see a failed check's hint where they used to see a nudge (make the
+  nudge `mode: blocking` if it should win) · Resolves: none (deep review 2026-11-10, C5)
+
 ## 2026-11-10
 
 - **Scratch fences are drawn by Scratch itself.** A ` ```scratch ` fence in an explainer, quiz

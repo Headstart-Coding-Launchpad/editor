@@ -12,6 +12,7 @@ import { getActivityDefinition } from '../../activities/registry.pure.js'
 import { getActivityId } from '../../activities/resolve.js'
 import ActivityHost from '../../activities/ActivityHost.jsx'
 import CheckFeedbackBanner from './CheckFeedbackBanner'
+import { GENERIC_FAIL_HINT } from '../../modules/checks.js'
 import CarryHoldNotice from './CarryHoldNotice'
 import TaskSlideTransition from './TaskSlideTransition'
 import ReviewNotesControl from './ReviewNotesControl'
@@ -930,7 +931,7 @@ export default function LessonTaskContent({
     ? ''
     : sentHintText ||
       (shouldShowFeedbackBanner && !bannerPassed
-        ? displayCheckSuggestion || 'Not quite, try again!'
+        ? displayCheckSuggestion || GENERIC_FAIL_HINT
         : '') ||
       (shouldShowFeedbackBanner && bannerPassed ? 'Correct!' : '') ||
       hintNudge

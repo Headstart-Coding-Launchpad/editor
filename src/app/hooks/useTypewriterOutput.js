@@ -16,10 +16,16 @@ function nextChunkSize(remainingLength) {
   return 1
 }
 
-export function useTypewriterOutput(output) {
-  const [displayedOutput, setDisplayedOutput] = useState('')
+// `enabled: false` shows the output at once and keeps up with it, so turning typing on later
+// types only what arrives after that, never blanking what is already shown.
+export function useTypewriterOutput(output, { enabled = true } = {}) {
+  const [displayedOutput, setDisplayedOutput] = useState(enabled ? '' : output)
 
   useEffect(() => {
+    if (!enabled) {
+      setDisplayedOutput(output)
+      return
+    }
     if (!output) {
       setDisplayedOutput('')
       return
@@ -37,7 +43,7 @@ export function useTypewriterOutput(output) {
     }, 12)
 
     return () => clearTimeout(timer)
-  }, [output, displayedOutput])
+  }, [output, displayedOutput, enabled])
 
-  return displayedOutput
+  return enabled ? displayedOutput : output
 }

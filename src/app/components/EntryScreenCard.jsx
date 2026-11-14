@@ -1,19 +1,12 @@
-import React from 'react'
-
-// The chrome every pre-lesson screen shares: a centred card with the purple Headstart
-// header, the wordmark, the lesson title and an optional description, above a white body.
-// ChoiceScreen, NameEntry, WaitingRoom and JoinSessionPrompt each carried their own copy
-// of these styles, so the four drifted apart in card width, corner radius and shadow
-// while claiming to be the same thing.
-//
-// The variation that is real is kept as props:
-//   overlay    — render over the lesson (JoinSessionPrompt) rather than as a full page
-//   pageStyle  — ChoiceScreen's scrollable, padded page
-//   cardStyle  — per-screen width/radius/shadow
+// The purple card every entry screen shares (Headstart header, wordmark, title, optional
+// description, white body): LandingPage (join), LoginPage, ChoiceScreen, NameEntry,
+// WaitingRoom, JoinSessionPrompt and LessonNotFound. Per-screen variation is props:
+//   overlay    — over the lesson rather than a full page (JoinSessionPrompt)
+//   pageStyle  — the full page's padding/scroll (LandingPage, LoginPage, ChoiceScreen, LessonNotFound)
+//   cardStyle  — width/radius/shadow (LandingPage, LoginPage, ChoiceScreen, WaitingRoom, JoinSessionPrompt)
 //   titleStyle — NameEntry's larger title
 //   bodyStyle  — centred vs left-aligned body
-//   cardClassName — ChoiceScreen alone never carried the global .card class, so it
-//     has no 1px border; kept as-is rather than restyled during a refactor
+//   cardClassName — ChoiceScreen passes null: no global .card class, so no 1px border
 export default function EntryScreenCard({
   title,
   description,

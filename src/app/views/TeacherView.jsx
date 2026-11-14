@@ -21,6 +21,7 @@ import { listJoiningStudents } from '../joiningStudents'
 import { buildSessionReport } from '../../shared/lessonReport'
 import { saveAfterClassFeedback } from '../afterClassFeedback'
 import TeacherFeedbackModal from '../components/TeacherFeedbackModal'
+import LessonNotFound from '../components/LessonNotFound'
 import AfterClassFeedbackModal from '../components/AfterClassFeedbackModal'
 import { decodeLessonFromFirestore } from '../../shared/lessonBlocksCodec'
 import EditLessonModal from '../components/EditLessonModal'
@@ -459,11 +460,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     getDoc(doc(firestore, 'lessons', lessonId))
       .then((snap) => {
         if (cancelled) return
-        if (snap.exists()) {
-          setBaseLesson(decodeLessonFromFirestore(snap.data()))
-        } else {
-          setLessonError(true)
-        }
+        if (snap.exists()) setBaseLesson(decodeLessonFromFirestore(snap.data()))
         setLessonLoading(false)
       })
       .catch(() => {
@@ -1102,13 +1099,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       </div>
     )
   }
-  if (lessonError || !lesson) {
-    return (
-      <div style={s.centre}>
-        <p>Lesson &ldquo;{lessonId}&rdquo; not found.</p>
-      </div>
-    )
-  }
+  if (lessonError || !lesson)
+    return <LessonNotFound loadFailed={lessonError} staffLessonId={lessonId} />
 
   // Fill-height module workspaces (capabilities.teacherFillHeight) are sized to the centre
   // column, which clips instead of scrolling. Everything else scrolls the column,

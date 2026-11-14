@@ -64,6 +64,7 @@ describe('PlaygroundView', () => {
   it.each([
     ['picture', 'load_image("pixel_fox")'],
     ['beats', 'from beats import *'],
+    ['stage', 'from stage import *'],
   ])('opens the %s kit with its own starter and lesson id', (kit, snippet) => {
     const lesson = renderPlayground('python', `kit=${kit}`)
 

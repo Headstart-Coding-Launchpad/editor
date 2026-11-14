@@ -4242,6 +4242,93 @@ label.te-backdrop-tag,
   margin-left: 16px;
 }
 
+/* The Python share page (src/modules/python/ShareView.jsx), laid out like the classroom editor:
+   Code card left with Run in its bar; Stage card then Output on the right (Output fills the
+   column when there is no Stage); a phone stacks Stage then Code, with the Output inside the
+   Code card under its Run bar (ShareView renders it there below 721px). */
+.share-py {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: 'code output';
+  gap: 14px;
+  align-items: start;
+}
+.share-py--stage {
+  grid-template-areas:
+    'code stage'
+    'code output';
+  grid-template-rows: auto 1fr;
+}
+.share-py-code {
+  grid-area: code;
+}
+.share-py-stage {
+  grid-area: stage;
+  padding-bottom: 10px;
+}
+.share-py-output {
+  grid-area: output;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* PC only: with no Stage the Output fills the right column; a phone's stays compact under Run. */
+@media (min-width: 721px) {
+  .share-py:not(.share-py--stage) .share-py-output {
+    align-self: stretch;
+    min-height: 240px;
+  }
+}
+.share-py-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.share-py-card > .share-py-bar {
+  border: 0 !important;
+  border-bottom: 1px solid var(--ui-border) !important;
+  min-height: 53px;
+  margin-bottom: 0 !important;
+  padding: 4px 8px 4px 0 !important;
+  align-items: center !important;
+}
+.share-py-bar .btn-ghost-outline {
+  min-height: 44px;
+}
+/* Code and Stage are h2 headings, styled as the classroom bar titles. */
+.share-py-title {
+  margin: 0;
+  line-height: inherit;
+}
+/* A phone shows the Output inside the Code card, right under the Run bar (#301). */
+.share-py-code > .share-py-output {
+  margin: 0 10px 10px;
+}
+.share-py-note {
+  margin: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--colour-muted);
+}
+.share-py-editor {
+  margin: 0 10px 10px;
+  border: 1px solid var(--ui-border-neutral);
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 70vh;
+}
+@media (max-width: 720px) {
+  .share-py,
+  .share-py--stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'code';
+    grid-template-rows: none;
+  }
+  .share-py--stage {
+    grid-template-areas: 'stage' 'code';
+  }
+}
+
 /* Confidence check (ConfidenceQuiz): ten 1-10 buttons in one row, down to 44px each, so the
    row fits a portrait tablet; two rows of five on a narrow phone. */
 .confidence-scale {

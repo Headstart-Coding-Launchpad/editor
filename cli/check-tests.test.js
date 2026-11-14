@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { combineCompletion, testLessonChecks } from './check-tests.mjs'
 import { parseJsonOrYaml } from './structured-input.mjs'
+import { GENERIC_FAIL_HINT } from '../src/modules/checks.js'
 
 const lesson = {
   id: 'check-cases-demo',
@@ -73,6 +74,78 @@ describe('lesson check cases', () => {
         result: 'pass',
       }),
     ])
+  })
+
+  it('prints the hint a student would see: blocking, failed check, then nudge (C5)', () => {
+    const hintLesson = {
+      id: 'hint-order',
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          check: [
+            { type: 'code', operator: 'contains', value: 'for', hint: 'Use a for loop.' },
+            { type: 'code', operator: 'contains', value: 'print' },
+          ],
+          feedbackChecks: [
+            { type: 'code', operator: 'contains', value: 'x', mode: 'nudge', hint: 'Name it n.' },
+            { type: 'code', operator: 'contains', value: 'while', hint: 'Use for, not while.' },
+          ],
+        },
+      ],
+    }
+    const result = testLessonChecks(hintLesson, {
+      cases: [
+        { task: 1, name: 'no loop', code: 'x = 1', completion: 'fail' },
+        { task: 1, name: 'while', code: 'while x:\n  print(x)', completion: 'fail' },
+        { task: 1, name: 'no print', code: 'for x in [1]:\n  y = x', completion: 'fail' },
+        { task: 1, name: 'pass, nudged', code: 'for x in [1]:\n  print(x)', completion: 'pass' },
+        { task: 1, name: 'pass', code: 'for i in [1]:\n  print(i)', completion: 'pass' },
+      ],
+    })
+    expect(result.cases.map((c) => c.studentHint)).toEqual([
+      'Use a for loop.',
+      'Use for, not while.',
+      'Name it n.',
+      'Name it n.',
+      '',
+    ])
+    const noNudge = { ...hintLesson.tasks[0], feedbackChecks: [] }
+    const bare = testLessonChecks(
+      { ...hintLesson, tasks: [noNudge] },
+      { cases: [{ task: 1, name: 'no print', code: 'for i in [1]: pass', completion: 'fail' }] }
+    )
+    expect(bare.cases[0].studentHint).toBe(GENERIC_FAIL_HINT)
+  })
+
+  it('says a case needs a run instead of printing a hint the CLI cannot judge (C5)', () => {
+    const lesson = {
+      id: 'run-only',
+      type: 'python',
+      tasks: [{ id: 1, check: { type: 'output_not_empty', hint: 'Print something.' } }],
+    }
+    const result = testLessonChecks(lesson, {
+      cases: [{ task: 1, name: 'prints', code: 'print(1)', completion: 'pass' }],
+    })
+    expect(result.cases[0].studentHint).toMatch(/needs a run/)
+  })
+
+  it('prints a blocking hint that matches on source even when completion needs a run', () => {
+    const lesson = {
+      id: 'run-only-blocking',
+      type: 'python',
+      tasks: [
+        {
+          id: 1,
+          check: { type: 'output_not_empty', hint: 'Print something.' },
+          feedbackChecks: [{ type: 'code_contains', value: 'input', hint: 'No input() here.' }],
+        },
+      ],
+    }
+    const result = testLessonChecks(lesson, {
+      cases: [{ task: 1, name: 'asks', code: 'input()', completion: 'fail' }],
+    })
+    expect(result.cases[0].studentHint).toBe('No input() here.')
   })
 
   it('accepts the documented YAML cases-file shape', () => {

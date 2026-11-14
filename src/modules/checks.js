@@ -448,10 +448,15 @@ export function getHighestPriorityFeedbackMatch(results = []) {
   )
 }
 
+// The banner's words for a failed attempt with no hint (CheckFeedbackBanner, CLI studentHint).
+export const GENERIC_FAIL_HINT = 'Not quite, try again!'
+
 export function getStageOfferMatchThreshold(stageOffer) {
   const threshold = Number(stageOffer?.afterMatches)
   return Number.isInteger(threshold) && threshold > 0 ? threshold : 2
 }
+
+const hintOf = (check) => String(check?.hint ?? '').trim()
 
 // Like getFirstFailedCheckHint, but evaluates each completion check with the caller's own
 // evaluator instead of the generic core-only evaluateSingleCheck — needed for module check
@@ -461,8 +466,7 @@ export function getStageOfferMatchThreshold(stageOffer) {
 // can't judge yet (e.g. a run-time check before any run) must return false so it never
 // supplies the hint.
 function getFirstFailedCheckHintCustom(check, isCheckFailed) {
-  const failed = normalizeChecks(check).find((c) => isCheckFailed(c) && String(c.hint ?? '').trim())
-  return failed ? String(failed.hint).trim() : ''
+  return hintOf(normalizeChecks(check).find((c) => isCheckFailed(c) && hintOf(c)))
 }
 
 function buildCheckFeedbackResult(
@@ -472,40 +476,35 @@ function buildCheckFeedbackResult(
   output,
   context = {},
   isCompletionCheckFailed = null,
-  { runErrored = false, errorExplained = false } = {}
+  { runErrored = false, errorExplained = false, completionRan = true } = {}
 ) {
   // A Run that ended in an error has no picture to judge: hold back the hints of picture checks
   // (the Python Stage's) so the error help shows instead. See isPictureCheck.
   if (runErrored) feedbackResults = feedbackResults.filter((result) => !isPictureCheck(result))
-  const blockingMatch = getHighestPriorityFeedbackMatch(
-    feedbackResults.filter((result) => (result.mode ?? 'blocking') === 'blocking')
+  // Hint order (C5): crash help (ErrorHelp, outside the banner), then the blocking hint, then the
+  // first failed completion check's hint (only after a Run/Check, never on idle), then a nudge,
+  // so a nudge never hides the real fault. Error help it explains also hides completion hints
+  // and nudges (Hub #225: `range 4` got "is there a for loop?").
+  const isBlocking = (result) => (result.mode ?? 'blocking') === 'blocking'
+  const top = (keep) => getHighestPriorityFeedbackMatch(feedbackResults.filter(keep))
+  const blockingMatch = top(isBlocking)
+  // A pass shows only a nudge; on a fail any non-blocking mode's hint can, as before.
+  const nudgeMatch = top(
+    (result) =>
+      !isBlocking(result) && (!completionPassed || result.mode === 'nudge') && hintOf(result)
   )
   const matchedFeedback = getHighestPriorityFeedbackMatch(feedbackResults)
-  const matchedFeedbackHint =
-    matchedFeedback && String(matchedFeedback.hint ?? '').trim()
-      ? matchedFeedback
-      : feedbackResults.find((result) => result.passed && String(result.hint ?? '').trim())
-  const nudgeMatch = feedbackResults.find(
-    (result) => result.passed && result.mode === 'nudge' && String(result.hint ?? '').trim()
-  )
   const passed = completionPassed && !blockingMatch
-  const suggestion = blockingMatch
-    ? String(matchedFeedback?.hint ?? blockingMatch.hint ?? '').trim() || 'Not quite.'
-    : completionPassed
-      ? nudgeMatch
-        ? String(nudgeMatch.hint).trim()
-        : ''
-      : matchedFeedbackHint
-        ? String(matchedFeedbackHint.hint).trim()
-        : // The error help wins over a completion check's content hint when the Run crashed
-          // with an error it explains (Hub #225, session report review #229: `range 4` got
-          // "is there a for loop?"). Feedback checks, which diagnose a specific mistake,
-          // still show.
-          errorExplained
-          ? ''
-          : isCompletionCheckFailed
-            ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
-            : getFirstFailedCheckHint(task?.check, output, context, { runErrored })
+  const showFailedHint = !completionPassed && !blockingMatch && completionRan && !errorExplained
+  const suggestion =
+    [
+      blockingMatch && (hintOf(blockingMatch) || 'Not quite.'),
+      showFailedHint &&
+        (isCompletionCheckFailed
+          ? getFirstFailedCheckHintCustom(task?.check, isCompletionCheckFailed)
+          : getFirstFailedCheckHint(task?.check, output, context, { runErrored })),
+      (completionPassed || !errorExplained) && hintOf(nudgeMatch),
+    ].find(Boolean) || ''
 
   return {
     passed,
@@ -529,6 +528,7 @@ export function evaluateCheckWithFeedback(task, output, context = {}, options = 
   return buildCheckFeedbackResult(task, completionPassed, feedbackResults, output, context, null, {
     runErrored: options.runErrored === true,
     errorExplained: options.runErrored === true && options.errorExplained === true,
+    completionRan: normalizeFeedbackShow(options.feedbackTiming) !== FEEDBACK_TIMING.ON_IDLE,
   })
 }
 
@@ -561,7 +561,8 @@ export function evaluateCheckWithCustomFeedback(
     feedbackResults,
     output,
     context,
-    isCompletionCheckFailed
+    isCompletionCheckFailed,
+    { completionRan: timing !== FEEDBACK_TIMING.ON_IDLE }
   )
 }
 
@@ -575,20 +576,16 @@ export function isPictureCheck(check) {
 
 export function getFirstFailedCheckHint(check, output, context = {}, { runErrored = false } = {}) {
   const failed = evaluateCheckResults(check, output, context).find(
-    (result) =>
-      !result.passed && String(result.hint ?? '').trim() && !(runErrored && isPictureCheck(result))
+    (result) => !result.passed && hintOf(result) && !(runErrored && isPictureCheck(result))
   )
-  return failed ? String(failed.hint).trim() : ''
+  return hintOf(failed)
 }
 
 // Returns the hint from the first incorrect check that passes (i.e. detects a specific mistake).
 // Call this when the completion check has failed to get a targeted hint.
 export function getIncorrectCheckHint(incorrectChecks, output, context = {}) {
   const checks = normalizeFeedbackChecks(incorrectChecks)
-  const matched = checks.find(
-    (c) => evaluateSingleCheck(c, output, context) && String(c.hint ?? '').trim()
-  )
-  return matched ? String(matched.hint).trim() : ''
+  return hintOf(checks.find((c) => evaluateSingleCheck(c, output, context) && hintOf(c)))
 }
 
 // Evaluates only code-based checks (no run required). Safe to call without executing the code.

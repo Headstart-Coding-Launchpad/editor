@@ -78,13 +78,6 @@ export function savePersonalSandboxCode(lessonId, anonymousId, data, moduleId = 
   )
 }
 
-export function loadPersonalSandboxFile(lessonId, filename, anonymousId, moduleId = null) {
-  return (
-    safeParse(personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId))?.content ??
-    null
-  )
-}
-
 export function savePersonalSandboxFile(lessonId, filename, anonymousId, content, moduleId = null) {
   savePersonalSandboxFileRecord(lessonId, filename, anonymousId, { content }, moduleId)
 }
@@ -105,10 +98,6 @@ export function savePersonalSandboxFileRecord(
     personalSandboxFileStorageKey(lessonId, filename, anonymousId, moduleId),
     JSON.stringify(record)
   )
-}
-
-export function loadPersonalSandboxFs(lessonId, anonymousId, moduleId = null) {
-  return safeParse(personalSandboxStorageKey(lessonId, anonymousId, moduleId))?.fs ?? null
 }
 
 export function savePersonalSandboxFs(lessonId, anonymousId, fs, moduleId = null) {

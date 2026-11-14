@@ -17,7 +17,9 @@ test('landing page shows the lesson-code form', async ({ page }) => {
 test('login page shows the sign-in form', async ({ page }) => {
   await page.goto('#/login', { timeout: 30000 })
 
-  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible({ timeout: 15000 })
+  await expect(page.getByRole('heading', { name: 'Tutor sign in', exact: true })).toBeVisible({
+    timeout: 15000,
+  })
   await expect(page.getByLabel(/email/i)).toBeVisible()
   await expect(page.getByLabel(/password/i)).toBeVisible()
 })

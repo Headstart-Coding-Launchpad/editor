@@ -147,8 +147,6 @@ export function forward(net, x) {
   return { h, out: e.map((v) => v / total) }
 }
 
-export const chosenMove = (out) => out.indexOf(Math.max(...out))
-
 function sgdStep(net, x, y) {
   const { h, out } = forward(net, x)
   const dz = out.map((p, k) => p - (k === y ? 1 : 0))

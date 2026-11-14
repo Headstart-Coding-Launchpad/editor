@@ -260,6 +260,51 @@ describe('StudentView', () => {
     })
   })
 
+  // Fun moment: a child who typed a wrong code gets a calm card and one way back, not a
+  // spinner that never stops.
+  it('a missing lesson shows the "no lesson there" card with one Try again link to the join screen', async () => {
+    mocks.fetchLessonById.mockResolvedValue(null)
+    const { container } = render(<StudentView lessonId="zzzz-nope" />)
+
+    expect(await screen.findByRole('heading', { name: 'Hmm, no lesson there' })).toBeInTheDocument()
+    expect(
+      screen.getByText("We can't find that lesson. Check the code and try again.")
+    ).toBeInTheDocument()
+    const tryAgain = screen.getByRole('link', { name: 'Try again' })
+    expect(tryAgain).toHaveAttribute('href', '#/')
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(container.querySelector('.hsc-loading__spinner')).toBeNull()
+    expect(screen.queryByText(/not found/)).not.toBeInTheDocument()
+  })
+
+  it('a lesson that failed to load says so, with one Try again button and no lesson id', async () => {
+    mocks.fetchLessonById.mockRejectedValue(new Error('offline'))
+    render(<StudentView lessonId="python-1-1" />)
+
+    expect(
+      await screen.findByText(
+        'Something went wrong loading the lesson. Check your internet and try again.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.queryByText(/Lesson: /)).not.toBeInTheDocument()
+  })
+
+  it('a staff preview of a missing lesson shows its id and a tutor way back, not the join screen', async () => {
+    mocks.fetchLessonById.mockResolvedValue(null)
+    render(<StudentView lessonId="zzzz-nope" forceSolo previewMode />)
+
+    expect(await screen.findByText('Lesson: zzzz-nope')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Back to Teacher Dashboard' })).toHaveAttribute(
+      'href',
+      '#/?teacher=true'
+    )
+  })
+
   it('loads solo mode when a waiting live session exists for the lesson', async () => {
     render(<StudentView lessonId="python-1-1" forceSolo />)
 

@@ -1,18 +1,20 @@
 import TopBar from './TopBar'
 import { MAIN_KITS, BLANK_KIT } from '../playgroundKits'
 
-// The Python playground's first screen: "Pick a kit to start". Four kit cards and a Blank page
-// button (5 controls), nothing hidden. `carryOnKitId` marks the kit the student used last
-// ("Carry on", Blank page too); `onPick(kit)` opens it.
+// The Python playground's first screen: "Pick a kit to start". Five kit cards and a Blank page
+// button (6 controls), nothing hidden. Cards sit two to a row; an odd last card is centred under
+// the others. `carryOnKitId` marks the kit the student used last ("Carry on", Blank page too);
+// `onPick(kit)` opens it.
 export default function PlaygroundKitChooser({ onPick, carryOnKitId = null }) {
-  function card(kit) {
+  function card(kit, index) {
     const carryOn = kit.id === carryOnKitId
+    const lone = index === MAIN_KITS.length - 1 && MAIN_KITS.length % 2 === 1
     return (
       <button
         key={kit.id}
         type="button"
         data-kit={kit.id}
-        style={{ ...s.card, ...(carryOn ? s.cardCarryOn : null) }}
+        style={{ ...s.card, ...(lone ? s.cardLone : null), ...(carryOn ? s.cardCarryOn : null) }}
         onClick={() => onPick(kit)}
       >
         {carryOn && <span style={s.carryOn}>Carry on</span>}
@@ -101,6 +103,8 @@ const s = {
     fontFamily: 'var(--font-body)',
     color: 'var(--colour-text)',
   },
+  // Spans both columns, one column wide (half the 14px gap off), centred.
+  cardLone: { gridColumn: '1 / -1', justifySelf: 'center', width: 'calc(50% - 7px)' },
   cardCarryOn: { borderColor: 'var(--colour-primary)' },
   carryOn: {
     position: 'absolute',

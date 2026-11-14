@@ -61,12 +61,6 @@ export function surfaceKindOf(id) {
   return String(id ?? '').split(':')[0]
 }
 
-export function surfaceTaskIdOf(id) {
-  const text = String(id ?? '')
-  const colon = text.indexOf(':')
-  return colon < 0 ? '' : text.slice(colon + 1)
-}
-
 export function isExplainerSurface(id) {
   return surfaceKindOf(id) === SURFACE_KINDS.explainer
 }

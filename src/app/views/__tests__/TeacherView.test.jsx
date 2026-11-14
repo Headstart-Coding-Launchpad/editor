@@ -77,8 +77,14 @@ vi.mock('../teacher/TaskRatingPanel', () => ({
   },
 }))
 vi.mock('../teacher/CheckConditionsPanel', () => ({ default: () => null }))
+vi.mock('../../pythonReload', async (importOriginal) => ({
+  ...(await importOriginal()),
+  reloadPage: vi.fn(),
+}))
 
 import { getDoc } from 'firebase/firestore'
+import userEvent from '@testing-library/user-event'
+import { reloadPage } from '../../pythonReload'
 import TeacherView from '../TeacherView'
 
 function turtleLesson() {
@@ -220,5 +226,36 @@ describe('TeacherView task rating', () => {
     act(() => captured.navigator.onSandbox())
     await waitFor(() => expect(captured.editor.isInSandbox).toBe(true))
     expect(screen.queryByTestId('task-rating')).not.toBeInTheDocument()
+  })
+})
+
+// The tutor window with no lesson: the shared not-found card, with the lesson id and a tutor's
+// way back (never the student join screen), and a real retry when the load itself failed.
+describe('TeacherView with no lesson', () => {
+  it('a missing lesson shows the not-found card with the lesson id and the tutor code screen', async () => {
+    getDoc.mockResolvedValue({ exists: () => false, data: () => null })
+    render(<TeacherView lessonId="zzzz-nope" />)
+
+    expect(await screen.findByRole('heading', { name: 'Hmm, no lesson there' })).toBeInTheDocument()
+    expect(screen.getByText('Lesson: zzzz-nope')).toBeInTheDocument()
+    const back = screen.getByRole('link', { name: 'Back to Teacher Dashboard' })
+    expect(back).toHaveAttribute('href', '#/?teacher=true')
+    expect(screen.queryByRole('link', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
+  it('a failed load says so, not "check the code", and Try again retries', async () => {
+    getDoc.mockRejectedValue(new Error('offline'))
+    render(<TeacherView lessonId="python-1-1" />)
+
+    expect(
+      await screen.findByText(
+        'Something went wrong loading the lesson. Check your internet and try again.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Check the code/)).not.toBeInTheDocument()
+    expect(screen.getByText('Lesson: python-1-1')).toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(reloadPage).toHaveBeenCalledTimes(1)
   })
 })

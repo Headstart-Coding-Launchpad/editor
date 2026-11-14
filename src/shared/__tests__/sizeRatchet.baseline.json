@@ -1,0 +1,59 @@
+{
+  "files": {
+    "modules/scratch/ScratchWorkspace.jsx": {
+      "lines": 4944,
+      "suppressions": 7,
+      "inlineStyles": 20
+    },
+    "app/hooks/useStudentCodeState.js": {
+      "lines": 3997,
+      "suppressions": 19,
+      "inlineStyles": 0
+    },
+    "app/hooks/useSession.js": {
+      "lines": 2734,
+      "suppressions": 0,
+      "inlineStyles": 0
+    },
+    "modules/scratch/scratch.js": {
+      "lines": 2733,
+      "suppressions": 0,
+      "inlineStyles": 0
+    },
+    "app/components/StudentModal.jsx": {
+      "lines": 2580,
+      "suppressions": 4,
+      "inlineStyles": 7
+    },
+    "app/views/StudentView.jsx": {
+      "lines": 2503,
+      "suppressions": 6,
+      "inlineStyles": 12
+    },
+    "admin/LessonPanel.jsx": {
+      "lines": 1997,
+      "suppressions": 0,
+      "inlineStyles": 17
+    },
+    "app/views/TeacherView.jsx": {
+      "lines": 1774,
+      "suppressions": 6,
+      "inlineStyles": 4
+    },
+    "modules/electronics/circuit.js": {
+      "lines": 1659,
+      "suppressions": 0,
+      "inlineStyles": 0
+    },
+    "modules/scratch/scratchEditors.jsx": {
+      "lines": 1581,
+      "suppressions": 0,
+      "inlineStyles": 45
+    }
+  },
+  "totals": {
+    "lines": 213320,
+    "suppressions": 165,
+    "inlineStyles": 1082
+  }
+}
