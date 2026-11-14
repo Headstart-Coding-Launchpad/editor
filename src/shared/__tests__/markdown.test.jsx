@@ -432,4 +432,14 @@ describe('MarkdownRenderer "See example" fences', () => {
     expect(screen.queryByRole('button', { name: /example/i })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  it('keeps a code fence readable when the text colour is inherited (selected quiz card)', () => {
+    const { container } = render(
+      <div style={{ color: '#ffffff' }}>
+        <MarkdownRenderer content={'```\nNameError\n```'} inheritColor />
+      </div>
+    )
+    // The fence has a light background, so it must not inherit the card's white text.
+    expect(container.querySelector('pre').style.color).toBe('rgb(31, 41, 55)')
+  })
 })
