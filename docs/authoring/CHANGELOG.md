@@ -58,16 +58,18 @@ Entries written before 2026-09-29 are not tagged.
   blocks look exactly like the ones the student drags (same shapes, colours, C-block arms and
   size); a wide stack shrinks to fit its column. The syntax is unchanged. Text the engine can't
   draw shows as plain monospace text (the old CSS drawing is retired): any line that is not a
-  known block (`switch backdrop to (Farm)` with round brackets instead of `[Farm]`,
-  `say [] for (2) seconds` with an empty slot), a condition that is not a block
+  known block (`say [] for (2) seconds` with an empty slot), a condition that is not a block
   (`if <score > 5> then`; write `if <(score) > (5)> then`), or a block under `forever` inside
   another mouth. In the Builder preview a fence being edited shows its text until typing
-  pauses. A block written under a top-level `forever` is now drawn as its own stack,
+  pauses. A menu value in round brackets (`switch backdrop to (Farm)`, `go to (Tree)`) draws as
+  that menu value, and a word in square brackets is always text (`say [answer]` says the word
+  "answer"; write `say (answer)` for the reporter). An empty number slot (`move () steps`)
+  draws as an empty oval. A block written under a top-level `forever` is now drawn as its own stack,
   as Scratch shows it (before, it looked attached). See
   [markdown-renderer.md](markdown-renderer.md#scratch-blocks-fenced).
-- Affects: scratch, markdown · Existing lessons: no changes needed (write `[Farm]`, not
-  `(Farm)`, for menu values, or the fence shows as plain text) · Resolves: none (Ryan, 10 and
-  14 Nov 2026)
+- Affects: scratch, markdown · Existing lessons: no changes needed (a `say [] for (2) seconds`
+  line with an empty slot shows its fence as plain text) · Resolves: none (Ryan, 10 and 14 Nov
+  2026)
 
 - **Support stages can show the change view (`show: change`).** Before, `show: change` worked on
   a Complete stage only and a Support stage always showed its code as a loose excerpt with no
