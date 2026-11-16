@@ -46,6 +46,15 @@ describe('Complete stage change view', () => {
     expect(panel).not.toHaveTextContent(/line \d/i)
   })
 
+  it('says Add and Remove as plain words, not pills that look like buttons', () => {
+    renderPanel()
+    const panel = screen.getByLabelText('Complete solution stage reference')
+    const word = within(panel).getByText('Add')
+    expect(word.style.background).toBe('')
+    expect(word.style.borderRadius).toBe('')
+    expect(word.style.color).not.toBe('rgb(255, 255, 255)')
+  })
+
   it('"Show all the code" shows the whole program with the new line marked, and back', async () => {
     const user = userEvent.setup()
     renderPanel()

@@ -109,7 +109,7 @@ describe('Student can see strip: the fun moment', () => {
 
     fireEvent.click(within(strip).getByRole('button', { name: /Support 2/ }))
     const preview = screen.getByTestId('can-see-preview')
-    expect(preview).toHaveTextContent('Support stage 2 - what Sam R. sees')
+    expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
     expect(preview).toHaveTextContent('Read-only')
     // The Support change view against Sam's own code: the new lines, anchored after score = 0.
     const change = within(preview).getByTestId('stage-change-view')
@@ -138,7 +138,7 @@ describe('Student can see strip: the fun moment', () => {
 
     fireEvent.click(within(strip).getByRole('button', { name: /^Complete/ }))
     const preview = screen.getByTestId('can-see-preview')
-    expect(preview).toHaveTextContent('Complete - what Sam R. sees')
+    expect(preview).toHaveTextContent('Complete (answer) - what Sam R. sees')
     expect(preview).toHaveTextContent('print(name, score)')
   })
 
@@ -160,9 +160,7 @@ describe('Student can see strip: the fun moment', () => {
       expect.stringMatching(/opened earlier; may be closed now/i)
     )
     fireEvent.click(within(strip).getByRole('button', { name: /Support 2/ }))
-    expect(screen.getByTestId('can-see-preview')).toHaveTextContent(
-      /opened earlier; may be closed now/i
-    )
+    expect(screen.getByTestId('can-see-preview')).toHaveTextContent(/may be closed now/i)
   })
 
   it('keeps the Reference opened chip where the strip does not show (sandbox)', () => {
@@ -184,6 +182,31 @@ describe('Student can see strip: the fun moment', () => {
     expect(screen.getByTestId('can-see-preview')).toBeInTheDocument()
     fireEvent.pointerDown(document.body)
     expect(screen.queryByTestId('can-see-preview')).not.toBeInTheDocument()
+  })
+
+  it('names Support and Complete in words and has a visible x that closes only the preview', () => {
+    const props = renderModal({
+      supportRevealLog: { sam: { 3: { 2: { source: 'student', revealedAt: AT_1432 } } } },
+      studentSignals: { sam: { completeShown: { 3: { at: AT_1441, via: 'preview' } } } },
+    })
+    const strip = screen.getByTestId('student-can-see-strip')
+    fireEvent.click(within(strip).getByRole('button', { name: /Support 2/ }))
+    let preview = screen.getByTestId('can-see-preview')
+    expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
+    expect(preview).toHaveTextContent('Opened by student 14:32; may be closed now.')
+    expect(preview).toHaveTextContent("Compared with Sam R.'s code.")
+
+    const close = within(preview).getByRole('button', { name: 'Close preview' })
+    // Closing the preview hides nothing from the student.
+    expect(close).toHaveAttribute('title', expect.stringMatching(/student still sees it/i))
+    fireEvent.click(close)
+    expect(screen.queryByTestId('can-see-preview')).not.toBeInTheDocument()
+    expect(props.onClose).not.toHaveBeenCalled()
+    expect(props.onRevealSupportStage).not.toHaveBeenCalled()
+
+    fireEvent.click(within(strip).getByRole('button', { name: /^Complete/ }))
+    preview = screen.getByTestId('can-see-preview')
+    expect(preview).toHaveTextContent('Complete (answer) - what Sam R. sees')
   })
 
   it('a preview whose item turned off does not swallow the first Escape', () => {

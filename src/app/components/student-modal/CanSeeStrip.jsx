@@ -27,6 +27,15 @@ function itemText(item) {
   return item.on ? { main: 'Complete', detail } : { main: 'Complete: closed' }
 }
 
+// The preview's foot: who opened it and when (the log can't say it is still open), and what a
+// change view is compared with.
+function previewFoot(item, studentName) {
+  if (item.key === 'copy') return `Same view the student has. ${OPENED_EARLIER}`
+  const { detail } = itemText(item)
+  const opened = detail ? `${detail[0].toUpperCase()}${detail.slice(1)}` : 'Opened earlier'
+  return `${opened}; may be closed now. Compared with ${studentName}'s code.`
+}
+
 const POPOVER_WIDTH = 440
 const OPENED_EARLIER = 'Opened earlier; may be closed now.'
 
@@ -120,11 +129,24 @@ export default function CanSeeStrip({
               {open.key === 'copy'
                 ? 'Copy code'
                 : open.key === 'support'
-                  ? `Support stage ${open.number}`
-                  : 'Complete'}{' '}
+                  ? `Support ${open.number} (hint)`
+                  : 'Complete (answer)'}{' '}
               - what {studentName} sees
             </span>
-            <span style={s.readOnly}>Read-only</span>
+            <span style={s.headerEnd}>
+              <span style={s.readOnly}>Read-only</span>
+              {/* Closes this preview only: what the student has open is theirs to close. */}
+              <button
+                type="button"
+                style={s.close}
+                aria-label="Close preview"
+                title="Close this preview. The student still sees it."
+                data-testid="can-see-preview-close"
+                onClick={() => onOpenChange(null)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </span>
           </div>
           <div style={s.popoverBody}>
             {open.key === 'copy' ? (
@@ -149,7 +171,7 @@ export default function CanSeeStrip({
               />
             )}
           </div>
-          <div style={s.popoverFoot}>Same view the student has. {OPENED_EARLIER} Esc closes.</div>
+          <div style={s.popoverFoot}>{previewFoot(open, studentName)}</div>
         </div>
       )}
     </div>
@@ -241,7 +263,22 @@ const s = {
     fontSize: 13,
     fontWeight: 700,
   },
+  headerEnd: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 },
   readOnly: { flexShrink: 0, fontSize: 12 },
+  close: {
+    width: 28,
+    height: 28,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #d9d0ee',
+    borderRadius: 6,
+    background: '#fff',
+    color: 'var(--colour-primary)',
+    fontSize: 18,
+    lineHeight: 1,
+    cursor: 'pointer',
+  },
   popoverBody: { padding: '8px 10px 0', maxHeight: 320, overflow: 'auto' },
   popoverFoot: {
     padding: '6px 12px 8px',

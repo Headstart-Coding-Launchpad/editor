@@ -236,19 +236,17 @@ const s = {
       marginRight: 2,
     },
   },
-  tags: { display: 'flex', gap: 4, alignSelf: 'center' },
+  tags: { display: 'flex', gap: 8, alignSelf: 'center' },
+  // Plain words in the row's colour, not filled pills: a pill read as a button (tutor-tabs
+  // sketch, OK'd 16 Nov 2026).
   tag: (type) => ({
     alignSelf: 'center',
     fontFamily: 'var(--font-body)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
+    fontSize: '0.75rem',
+    fontWeight: 600,
     lineHeight: 1.3,
-    padding: '1px 8px',
-    borderRadius: 999,
     whiteSpace: 'nowrap',
-    ...(type === 'anchor'
-      ? { color: '#1d4ed8', background: '#dbeafe' }
-      : { color: '#ffffff', background: ROW_COLOURS[type]?.tag }),
+    color: ROW_COLOURS[type]?.tag,
   }),
   // As SupportStagePanel's whole-program view writes them.
   lockedTag: {
