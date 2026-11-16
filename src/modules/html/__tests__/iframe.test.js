@@ -335,3 +335,30 @@ describe('buildIframeSrc copyProtect', () => {
     expect(html).not.toContain("'contextmenu'")
   })
 })
+
+describe('waitForIframeText message source', () => {
+  it('ignores a matching-id report that does not come from a page iframe', async () => {
+    const { waitForIframeText } = await import('../iframe.js')
+    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<html><body>x</body></html>' }])
+    const id = getLastLoadId()
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const pending = waitForIframeText(50)
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: '__hsc_text__', id, text: 'forged' },
+        source: window,
+      })
+    )
+    expect(await pending).toBe('')
+    const pending2 = waitForIframeText(500)
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: '__hsc_text__', id, text: 'real' },
+        source: frame.contentWindow,
+      })
+    )
+    expect(await pending2).toBe('real')
+    frame.remove()
+  })
+})
