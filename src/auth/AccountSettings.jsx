@@ -46,7 +46,7 @@ export default function AccountSettings() {
     <div style={s.page}>
       <main style={s.card}>
         <div style={s.header}>
-          <span style={s.brand}>Headstart Coding - Account</span>
+          <span style={s.brand}>Head Start Coding - Account</span>
           <Link style={s.backLink} to={role === 'admin' ? '/admin/accounts' : '/login'}>
             Back
           </Link>

@@ -14,7 +14,7 @@ test.describe('Builder — initial load', () => {
     await page.goto('builder/', { timeout: 30000 })
 
     // The builder brand text is rendered in the card header
-    await expect(page.getByText('Headstart Coding - LaunchPad | Lesson Builder')).toBeVisible({
+    await expect(page.getByText('Head Start Coding - LaunchPad | Lesson Builder')).toBeVisible({
       timeout: 10000,
     })
 

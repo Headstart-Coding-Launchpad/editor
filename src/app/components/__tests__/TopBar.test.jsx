@@ -79,14 +79,14 @@ describe('TopBar', () => {
     expect(screen.getByText('Extra')).toBeInTheDocument()
   })
 
-  it('renders the Headstart branding on non-mobile', () => {
+  it('renders the Head Start branding on non-mobile', () => {
     render(<TopBar lessonTitle="Lesson" />)
-    expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
+    expect(screen.getByText('Head Start Coding - LaunchPad')).toBeInTheDocument()
   })
 
   it('lets the one-row bar hide the brand name on narrow screens, keeping the full title on hover', () => {
     render(<TopBar lessonTitle="A long lesson title" singleRow />)
-    expect(screen.getByText('Headstart Coding - LaunchPad')).toHaveClass('top-bar__logo-text')
+    expect(screen.getByText('Head Start Coding - LaunchPad')).toHaveClass('top-bar__logo-text')
     expect(screen.getByText('A long lesson title')).toHaveAttribute('title', 'A long lesson title')
   })
 

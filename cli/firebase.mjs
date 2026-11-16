@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { initializeApp, getApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
+import { installFirestoreLog } from './firestore-log.mjs'
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   process.stderr.write(
@@ -60,3 +61,4 @@ export const firestoreDatabaseId =
   process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIRESTORE_DATABASE_ID || '(default)'
 export const db = getFirestore(firestoreDatabaseId)
 export const storage = getStorage()
+installFirestoreLog(db)
