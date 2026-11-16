@@ -14,6 +14,8 @@ export default function IframePreview({
   inspector = null,
 }) {
   const [tab, setTab] = useState('preview')
+  const ownFrameRef = useRef(null)
+  const frameRef = iframeRef ?? ownFrameRef
   const inspectorUi = useHtmlInspector({
     iframeRef,
     src,
@@ -40,7 +42,7 @@ export default function IframePreview({
   useEffect(() => {
     function onMessage(e) {
       if (!e.data || e.data.source !== 'hsc-console') return
-      if (iframeRef?.current && e.source !== iframeRef.current.contentWindow) return
+      if (!frameRef.current || e.source !== frameRef.current.contentWindow) return
       setLogs((prev) => [
         ...prev,
         {
@@ -61,7 +63,7 @@ export default function IframePreview({
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [iframeRef, onConsoleError, src])
+  }, [frameRef, onConsoleError, src])
 
   const wrapStyle = fill
     ? { ...s.wrap, flex: 1, minHeight: 0, flexShrink: 1 }
@@ -96,7 +98,7 @@ export default function IframePreview({
           Inspector layer over the iframe; the Inspector never adds anything inside the page. */}
       <div style={{ ...s.frameWrap, display: tab === 'preview' ? 'flex' : 'none' }}>
         <iframe
-          ref={iframeRef}
+          ref={frameRef}
           src={src ?? 'about:blank'}
           style={s.frame}
           sandbox="allow-scripts allow-modals allow-same-origin"
