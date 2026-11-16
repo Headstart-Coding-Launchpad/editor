@@ -164,6 +164,8 @@ export default function CanSeeStrip({
                 stage={open.stage}
                 lessonType={lessonType}
                 revealed
+                // As the student's own screen draws it: the calm "What to change" box (Python).
+                calm={!!getModuleDefinition(lessonType)?.capabilities?.calmCodeScreen}
                 changeBase={chooseChangeBase(
                   typeof studentCode === 'string' ? studentCode : '',
                   starterCodeOf(task)
