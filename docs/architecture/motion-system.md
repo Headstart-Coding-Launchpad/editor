@@ -18,7 +18,7 @@ any of them.
   fade with no stagger, and emphasis and looping status animation stop. There is no in-app motion
   switch; the OS setting is the switch.
 - **Short.** Most movement is 180–460ms; a badge tumbling in is under a second. The one longer
-  moment is the lesson-complete party (`--motion-celebrate`, 1.5s), the end of a whole lesson.
+  moment is the lesson-complete party (`MOTION_MS.celebrate`, 1.5s), the end of a whole lesson.
 - **No library.** CSS keyframes in `src/index.css` plus `src/shared/motion.js`. Don't add an
   animation dependency.
 
@@ -32,7 +32,6 @@ any of them.
 | `--motion-stagger` | 70ms | Gap between staggered items |
 | `--motion-spin` | 620ms | Length of `motion-spin-once` |
 | `--motion-tumble` | 720ms | Length of `motion-tumble-in` |
-| `--motion-celebrate` | 1500ms | The whole lesson-complete party (set on `.lesson-complete`; `MOTION_MS.celebrate`) |
 | `--motion-ease-out` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | Default: things arriving |
 | `--motion-ease-glide` | `cubic-bezier(0.22, 1, 0.36, 1)` | Long travel (task slides) |
 | `--motion-ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Playful overshoot (spin, tumble) |

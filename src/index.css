@@ -1834,13 +1834,14 @@ select {
 /* Lesson complete (LessonCompleteScreen.jsx, option C): the intro hero with a still party
    picture (stars, confetti, two poppers). With `--celebrate`, the first time on this screen, it
    plays once: the title bounces in letter by letter, the stars pop and the confetti shoots from
-   the bottom corners. Everything has landed by --motion-celebrate (1.5s, MOTION_MS.celebrate)
+   the bottom corners. Everything has landed by 1.5s (MOTION_MS.celebrate)
    after the task slide; the buttons never wait. Reduced motion: the block after this one. */
 .lesson-complete {
   position: relative;
-  overflow: hidden;
+  /* Keeps the hero's overflow: auto, so a short panel can still scroll to the buttons; `safe`
+     stops centring from pushing the top out of reach. */
+  align-items: safe center;
   text-align: center;
-  --motion-celebrate: 1500ms;
 }
 
 .lesson-complete__content {
@@ -1914,15 +1915,6 @@ select {
 
 .information-intro__content h1.lesson-complete__title {
   margin: 0;
-}
-
-.lesson-complete__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .lesson-complete__word {
@@ -2039,12 +2031,6 @@ select {
   to {
     opacity: 1;
     transform: scaleX(-1);
-  }
-}
-
-@media (max-width: 760px) {
-  .information-task--introduction.lesson-complete {
-    align-items: center;
   }
 }
 

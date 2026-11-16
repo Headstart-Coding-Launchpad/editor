@@ -5,8 +5,8 @@ const TITLE_WORDS = ['Lesson', 'complete!']
 const CONFETTI_COLOURS = ['#fba504', '#ffffff', '#ff6b9d', '#4ade80', '#38bdf8', '#ffd84d']
 const CONFETTI_PER_CORNER = 14
 
-// Where each confetti piece lands (as % of the screen), kept out of the middle so the still
-// picture never sits on the words or the buttons. Seeded, so every render looks the same.
+// Where each confetti piece lands (as % of the screen): mostly round the edges, kept out of the
+// middle band where the title and buttons usually sit. Seeded, so every render looks the same.
 const CONFETTI = (() => {
   let seed = 7
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
@@ -80,7 +80,7 @@ export default function LessonCompleteScreen({
           ))}
         </div>
         <h1 className="lesson-complete__title">
-          <span className="lesson-complete__sr">Lesson complete!</span>
+          <span className="act-sr-only">Lesson complete!</span>
           <span aria-hidden="true">
             {TITLE_WORDS.map((word, w) => (
               <React.Fragment key={word}>
