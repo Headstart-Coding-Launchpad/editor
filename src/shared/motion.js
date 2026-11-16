@@ -16,6 +16,8 @@ export const MOTION_MS = Object.freeze({
   tumble: 720,
   // The whole task-change flash (`.task-change-flash`): slide in, hold, slide out.
   taskFlash: 1600,
+  // The lesson-complete party (`.lesson-complete--celebrate`): its last piece lands by then.
+  celebrate: 1500,
 })
 
 /** A stagger never waits for more than this many items, so a long list doesn't drag. */

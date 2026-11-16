@@ -987,6 +987,7 @@ export default function LessonTaskContent({
 
       {!isSandbox && isViewingCompletionScreen ? (
         <LessonCompleteScreen
+          lessonId={lessonId}
           lessonTitle={lesson?.title}
           onOpenPlayground={onOpenPlayground}
           soloCompanion={soloCompanion}

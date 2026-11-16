@@ -89,7 +89,8 @@ describe('LessonCompleteScreen celebration', () => {
     expect(screen.getByRole('heading', { name: 'Lesson complete!' })).toBeInTheDocument()
     expect(screen.getByText('Lesson complete!')).toBeInTheDocument()
     const letters = container.querySelectorAll('.lesson-complete__letter')
-    expect(letters.length).toBe('Lesson complete!'.length)
+    // One bouncing letter per character (the space between the words is a plain gap).
+    expect(letters.length).toBe('Lessoncomplete!'.length)
 
     const stars = screen.getAllByTestId('lesson-complete-star')
     expect(stars).toHaveLength(3)
