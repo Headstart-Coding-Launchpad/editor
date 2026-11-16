@@ -101,7 +101,7 @@ export default function BuilderApp() {
       <div style={s.centreScreen}>
         <div style={s.card} className="card">
           <div style={s.cardHeader}>
-            <span style={s.logo}>Headstart Coding - LaunchPad | Lesson Builder</span>
+            <span style={s.logo}>Head Start Coding - LaunchPad | Lesson Builder</span>
           </div>
           <div style={s.cardBody}>
             <p style={s.message}>

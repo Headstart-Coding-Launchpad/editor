@@ -4,7 +4,7 @@ Use this guide before adding or changing UI elements. It documents the design la
 
 ## Design Goals
 
-Headstart Coding should feel friendly, clear, and work-focused. The visual system is intentionally bright enough for students, but structured enough for teachers and admins working quickly during a live class.
+Head Start Coding should feel friendly, clear, and work-focused. The visual system is intentionally bright enough for students, but structured enough for teachers and admins working quickly during a live class.
 
 - On tutor, Admin and Builder screens, keep primary workflows dense and scannable. Student screens are calm and follow [PRODUCT.md](PRODUCT.md). Avoid marketing-page layouts inside app surfaces.
 - Prefer existing shared components and global classes before adding new styling.

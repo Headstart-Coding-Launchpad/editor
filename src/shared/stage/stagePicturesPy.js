@@ -128,7 +128,7 @@ def _hs_pixels(fn, answer):
 
 
 def load_image(*args, **kwargs):
-    """load_image(name, size=32): a picture from the Headstart image library, as one long list
+    """load_image(name, size=32): a picture from the Head Start image library, as one long list
     of colours, row by row. Draw it with grid(pixels, width=32). size can be 8, 16, 32 or 64."""
     if _js is None:
         return []

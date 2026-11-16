@@ -63,7 +63,7 @@ export default function TopBar({
               className={singleRow && !shortBrand ? 'top-bar__logo-text' : undefined}
               data-testid="top-bar-brand"
             >
-              {shortBrand ? 'LaunchPad' : 'Headstart Coding - LaunchPad'}
+              {shortBrand ? 'LaunchPad' : 'Head Start Coding - LaunchPad'}
             </span>
           </span>
         )}
