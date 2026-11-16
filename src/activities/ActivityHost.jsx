@@ -30,7 +30,7 @@ export function UnavailableActivityNotice() {
       role="status"
       data-testid="activity-unavailable"
     >
-      🧩 This activity isn't available in this version of Headstart. Try reloading the page, or ask
+      🧩 This activity isn't available in this version of Head Start. Try reloading the page, or ask
       your teacher to help you move on to the next task.
     </div>
   )

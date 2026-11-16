@@ -269,6 +269,7 @@ The teacher's live pointer, fading ink and text highlights from the Presentation
 |---|---|
 | `DropdownMenu.jsx` | Reusable popover/dropdown primitive used by StudentModal actions (Tools, Live, the Hint and Message carets), TeacherView and the StudentGrid header's ⋯ menu; props `caret`, `ariaLabel`, `title`, `indicator` (attention dot), `panelStyle`; Escape closes the menu without closing the modal behind it |
 | `StudentHintPanel.jsx` | Read-only "Amy sees" panel (in the modal's left column on code tasks, tagged "student is seeing this" via `tag`; above the body otherwise): the hint on the student's feedback banner (Markdown), "Your hint" for an override, the fail streak and any unopened hint offer (`studentHints.js`) |
+| `ModalTaskNav.jsx` | The previous/next task arrows and the "4/5" counter at the left of the StudentModal header, in a fixed-width box so they do not move when the student's name changes (tutor view) |
 | `OverrideDropdown.jsx` | Teacher check-override items (`OverrideItems`, inside StudentModal's Tools) and the fail-hint modal (`OverrideFailModal`) |
 | `../TipButton.jsx` | Button whose `aria-label`/`title` also shows as a bubble on touch long-press; 44px on touch |
 | `../badges/OneTapAwardButton.jsx` | One-tap award of a student's top ranked suggestion with a 6 s Undo toast (revoke); `src/badges/suggestionRanking.js` holds the pure ranking |

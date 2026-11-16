@@ -42,8 +42,8 @@ describe('JoinSessionPrompt', () => {
     expect(props.onDecline).toHaveBeenCalledOnce()
   })
 
-  it('renders the Headstart Coding branding', () => {
+  it('renders the Head Start Coding branding', () => {
     renderPrompt()
-    expect(screen.getByText('Headstart Coding - LaunchPad')).toBeInTheDocument()
+    expect(screen.getByText('Head Start Coding - LaunchPad')).toBeInTheDocument()
   })
 })

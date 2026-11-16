@@ -1,4 +1,4 @@
-# TESTING.md — Headstart Coding Classroom REPL Platform
+# TESTING.md — Head Start Coding Classroom REPL Platform
 
 Testing strategy, tool choices, and conventions. Read this before writing or modifying any tests.
 
@@ -250,6 +250,10 @@ Run with `npm run test:rules`. This needs `firebase-tools` installed globally an
 (the emulators are Java). `npm test` excludes these tests. CI runs them in a separate `rules` job.
 
 Add a test whenever you change a rules file.
+
+## CSS Syntax Check
+
+`src/shared/__tests__/cssSyntax.test.js` checks every `.css` file under `src/` (including `index.css`) for balanced braces and closed comments, ignoring braces in comments and strings. A failure names the file and line. It needs no CSS tooling; a new `.css` file is picked up automatically.
 
 ## Type-Branch Ratchet
 
