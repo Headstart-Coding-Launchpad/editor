@@ -65,6 +65,27 @@ export function extraStageTabs(task, answerTab) {
     .map(({ tab }) => tab)
 }
 
+/**
+ * The Support or Complete stage a teacher-editor tab shows, when the student would see it as a
+ * stage reference (TeacherStageStudentView): modules with unified stages (Python, HTML, Turtle; as the Student can see
+ * strip). `tab` is 'stage_N', or 'complete' for the unified Complete stage. Null otherwise.
+ */
+export function studentViewStageFor(definition, task, tab) {
+  if (!definition?.capabilities?.unifiedStages || typeof tab !== 'string') return null
+  const stages = Array.isArray(task?.codeStages) ? task.codeStages : []
+  const index = tab.startsWith('stage_')
+    ? Number(tab.slice('stage_'.length))
+    : tab === 'complete'
+      ? stages.findIndex((stage) => getStageRole(stage) === 'complete')
+      : -1
+  const stage = stages[index]
+  const role = getStageRole(stage)
+  if (!stage || (role !== 'support' && role !== 'complete')) return null
+  const hasCode = typeof stage.code === 'string' && stage.code.trim() !== ''
+  if (!hasCode && !(Array.isArray(stage.files) && stage.files.length > 0)) return null
+  return { stage, index, role }
+}
+
 function checkList(check) {
   if (!check) return []
   return Array.isArray(check) ? check : [check]

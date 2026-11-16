@@ -3,10 +3,12 @@ import InformationTask from '../../components/InformationTask'
 import TeacherCodeTabs, { SendStageToAllButton } from '../../components/TeacherCodeTabs'
 import TeacherQuizAnswer from './TeacherQuizAnswer'
 import StageTargetPreview from './StageTargetPreview'
+import TeacherStageStudentView from './TeacherStageStudentView'
 import {
   expectedOutputOf,
   extraStageTabs,
   stagePictureCode,
+  studentViewStageFor,
   teacherAnswerKind,
 } from './teacherAnswer'
 import { getLessonModule } from '../../../modules/registry'
@@ -199,6 +201,24 @@ export default function TeacherEditorPanel({
     : { ...styles.codeWorkspaceStack, minHeight: 'auto' }
   const wrapStyle =
     isInSandbox && mod.capabilities?.teacherSandboxRow ? styles.sandboxRow : codeWorkspaceStack
+  // A Support or Complete tab shows the stage as the student sees it, the raw editor behind a
+  // switch (TeacherStageStudentView).
+  const studentViewStage =
+    readOnly && !isLiveTab ? studentViewStageFor(mod, task, teacherCodeTab) : null
+  const codeBody = pictureCode ? (
+    <div style={styles.answerRow}>
+      <div style={styles.answerCode}>{liveView()}</div>
+      <div style={styles.answerAside}>
+        <StageTargetPreview code={pictureCode} />
+        {expectedOutput != null && <ExpectedOutput value={expectedOutput} stacked />}
+      </div>
+    </div>
+  ) : (
+    <>
+      {liveView()}
+      {expectedOutput != null && <ExpectedOutput value={expectedOutput} />}
+    </>
+  )
 
   return (
     <div style={wrapStyle}>
@@ -225,7 +245,20 @@ export default function TeacherEditorPanel({
           🔴 Live: students see what you type. This doesn&apos;t change the lesson.
         </div>
       )}
+      {studentViewStage ? (
+        <TeacherStageStudentView
+          key={`${displayTaskId}-${teacherCodeTab}`}
+          found={studentViewStage}
+          definition={mod}
+          task={task}
+          action={sendButton}
+          extra={expectedOutput != null ? <ExpectedOutput value={expectedOutput} /> : null}
+        >
+          {codeBody}
+        </TeacherStageStudentView>
+      ) : null}
       {readOnly &&
+        !studentViewStage &&
         (showingAnswer ? (
           <AnswerNote action={sendButton}>
             {mod.capabilities?.run === 'preview'
@@ -244,20 +277,7 @@ export default function TeacherEditorPanel({
             {sendButton}
           </div>
         ))}
-      {pictureCode ? (
-        <div style={styles.answerRow}>
-          <div style={styles.answerCode}>{liveView()}</div>
-          <div style={styles.answerAside}>
-            <StageTargetPreview code={pictureCode} />
-            {expectedOutput != null && <ExpectedOutput value={expectedOutput} stacked />}
-          </div>
-        </div>
-      ) : (
-        <>
-          {liveView()}
-          {expectedOutput != null && <ExpectedOutput value={expectedOutput} />}
-        </>
-      )}
+      {!studentViewStage && codeBody}
     </div>
   )
 

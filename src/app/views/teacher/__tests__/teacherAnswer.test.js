@@ -6,6 +6,7 @@ import {
   shortAnswerModel,
   shortAnswerResponses,
   stagePictureCode,
+  studentViewStageFor,
   tallyChoiceAnswers,
   teacherAnswerKind,
 } from '../teacherAnswer'
@@ -169,5 +170,34 @@ describe('short answers', () => {
     ])
     expect(responses).toEqual([{ id: 'a', name: 'Ava', text: 'It repeats', passed: true }])
     expect(notAnswered).toEqual(['Ben'])
+  })
+})
+
+describe('studentViewStageFor', () => {
+  const unified = { type: 'python', capabilities: { unifiedStages: true } }
+  const task = {
+    codeStages: [
+      { role: 'starter', code: 'a = 1' },
+      { role: 'support', label: 'Hint', code: 'b = 2' },
+      { role: 'complete', code: 'a = 1\nb = 2' },
+      { role: 'support', label: 'Empty', code: '  ' },
+    ],
+  }
+
+  it('finds the Support or Complete stage a tab shows', () => {
+    expect(studentViewStageFor(unified, task, 'stage_1')).toMatchObject({
+      index: 1,
+      role: 'support',
+    })
+    expect(studentViewStageFor(unified, task, 'stage_2')).toMatchObject({ role: 'complete' })
+    // The unified Complete tab is the stage with the complete role.
+    expect(studentViewStageFor(unified, task, 'complete')).toMatchObject({ index: 2 })
+  })
+
+  it('is null for the starter, an empty stage, other tabs and modules without unified stages', () => {
+    expect(studentViewStageFor(unified, task, 'stage_0')).toBeNull()
+    expect(studentViewStageFor(unified, task, 'stage_3')).toBeNull()
+    expect(studentViewStageFor(unified, task, 'live')).toBeNull()
+    expect(studentViewStageFor({ capabilities: {} }, task, 'stage_1')).toBeNull()
   })
 })
