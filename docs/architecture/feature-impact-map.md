@@ -318,7 +318,6 @@ Usually changes with:
 - `src/shared/useAssets.js`
 - `src/shared/useTypeAssets.js`
 - `src/shared/AssetBrowser.jsx`
-- `src/shared/AssetPicker.jsx`
 - `src/admin/SharedAssetsPanel.jsx`
 - `src/builder/components/lesson-meta/`
 - `cli/assets.mjs`

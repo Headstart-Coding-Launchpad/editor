@@ -839,14 +839,6 @@ export function scratchBlockDisplaySample(opcodeOrBlock) {
   return `${block.icon} ${block.sample}`
 }
 
-export function scratchBlockTextWithoutIcon(text, block) {
-  if (!block?.icon) return String(text ?? '')
-  const value = String(text ?? '')
-  return normalizeScratchBlockText(value).startsWith(normalizeScratchBlockText(block.icon))
-    ? value.replace(block.icon, '').trimStart()
-    : value
-}
-
 function normalizeScratchBlockText(text) {
   return String(text ?? '')
     .trim()
