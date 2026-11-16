@@ -1,4 +1,4 @@
-// The purple card every entry screen shares (Headstart header, wordmark, title, optional
+// The purple card every entry screen shares (Head Start header, wordmark, title, optional
 // description, white body): LandingPage (join), LoginPage, ChoiceScreen, NameEntry,
 // WaitingRoom, JoinSessionPrompt and LessonNotFound. Per-screen variation is props:
 //   overlay    — over the lesson rather than a full page (JoinSessionPrompt)
@@ -22,7 +22,7 @@ export default function EntryScreenCard({
     <div style={overlay ? s.overlay : { ...s.page, ...pageStyle }}>
       <div style={{ ...s.card, ...cardStyle }} className={cardClassName}>
         <div style={s.header}>
-          <span style={s.logo}>Headstart Coding - LaunchPad</span>
+          <span style={s.logo}>Head Start Coding - LaunchPad</span>
           <h1 style={{ ...s.title, ...titleStyle }}>{title}</h1>
           {description && <p style={s.description}>{description}</p>}
         </div>

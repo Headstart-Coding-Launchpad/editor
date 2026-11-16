@@ -203,7 +203,7 @@ License text: https://matplotlib.org/stable/project/license.html
 The Python Stage's picture library (`load_image()`, [stage.md](authoring/stage.md#10-image-lab-pictures-are-lists)).
 Every photo is public domain or CC0, from Wikimedia Commons (most of them NASA, U.S. government or
 author-released works), cropped and shrunk to 64 × 64. The pixel art and the green-screen
-astronaut were drawn for Headstart Coding and are released as CC0. `public/image-lab/manifest.json`
+astronaut were drawn for Head Start Coding and are released as CC0. `public/image-lab/manifest.json`
 holds the same list. No attribution is required for any of them; it is kept here so each source
 can be checked.
 
@@ -229,13 +229,13 @@ can be checked.
 | `mars_surface` | NASA/JPL-Caltech/MSSS | Public domain | https://commons.wikimedia.org/wiki/File:NASA%E2%80%99s_Curiosity_Views_a_Sand-Capped_Butte_(PIA26730).png |
 | `nebula` | NASA | Public domain | https://commons.wikimedia.org/wiki/File:A_New_View_of_the_Tarantula_Nebula.jpg |
 | `beach` | Willem V | CC0 | https://commons.wikimedia.org/wiki/File:Another_Day_At_The_Beach_(250445667).jpeg |
-| `astronaut_green` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `pixel_fox` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `alien` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `spaceship` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `robot` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `gem` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
-| `sword` | Headstart Coding | CC0 | Drawn for Headstart Coding (Image Lab build script) |
+| `astronaut_green` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `pixel_fox` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `alien` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `spaceship` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `robot` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `gem` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
+| `sword` | Head Start Coding | CC0 | Drawn for Head Start Coding (Image Lab build script) |
 
 ---
 

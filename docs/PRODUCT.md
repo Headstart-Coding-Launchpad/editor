@@ -4,7 +4,7 @@ The single page that says what LaunchPad is and is not. Open it before designing
 
 ## Mission
 
-LaunchPad is the classroom Headstart Coding tutors teach in: a calm place for a child to make something that works, with a tutor who can see every screen and step in.
+LaunchPad is the classroom Head Start Coding tutors teach in: a calm place for a child to make something that works, with a tutor who can see every screen and step in.
 
 ## Principles
 
@@ -18,7 +18,7 @@ LaunchPad is the classroom Headstart Coding tutors teach in: a calm place for a 
 
 ## Not
 
-- Not a product for other schools, for now. It serves Headstart Coding classes.
+- Not a product for other schools, for now. It serves Head Start Coding classes.
 - Not a general code editor or an LMS.
 - Not an AI tutor. The tutor is a person.
 - Not solo-first. Solo and playground modes exist, but the live classroom is the product.

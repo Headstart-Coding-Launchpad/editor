@@ -245,11 +245,16 @@ await yargs(hideBin(process.argv))
 
       .command(
         'list',
-        'List all published lessons',
-        {},
-        cmd(async () => {
+        'List all published lessons (--light: only id, title, draft, version, levelId, companionOf; reads far less)',
+        (y) =>
+          y.option('light', {
+            type: 'boolean',
+            default: false,
+            describe: 'Cheap list: id, title, draft, version, levelId, companionOf (no taskCount)',
+          }),
+        cmd(async ({ light }) => {
           const { listLessons } = await loadLessons()
-          print(await listLessons())
+          print(await listLessons({ light }))
         })
       )
 

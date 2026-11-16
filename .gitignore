@@ -19,3 +19,4 @@ lessons
 headstartcoding-repl-*.json
 .claude
 .codex
+logs/

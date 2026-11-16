@@ -14,7 +14,7 @@ test.describe('Landing page', () => {
     await page.goto('', { timeout: 30000 })
 
     // The logo text rendered in the brand span
-    await expect(page.getByText('Headstart Coding - LaunchPad')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Head Start Coding - LaunchPad')).toBeVisible({ timeout: 10000 })
 
     // The page heading — "Join a lesson" for non-teacher mode
     await expect(page.getByRole('heading', { name: 'Join a lesson' })).toBeVisible({

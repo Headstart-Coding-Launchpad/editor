@@ -268,12 +268,32 @@ async function fetchLevelRecords() {
   }
 }
 
-export async function listLessons() {
-  const [snap, levels] = await Promise.all([db.collection('lessons').get(), fetchLevelRecords()])
-  return buildLessonListRows(
+// Light mode reads only the fields the sort and the six output columns need (never `tasks`).
+const LIGHT_LIST_FIELDS = [
+  'title',
+  'draft',
+  'version',
+  'levelId',
+  'levelRef',
+  'level',
+  'lessonNumber',
+  'soloOnly',
+  'companionOf',
+]
+const LIGHT_LIST_COLUMNS = ['id', 'title', 'draft', 'version', 'levelId', 'companionOf']
+
+export async function listLessons({ light = false } = {}) {
+  const ref = db.collection('lessons')
+  const [snap, levels] = await Promise.all([
+    (light ? ref.select(...LIGHT_LIST_FIELDS) : ref).get(),
+    fetchLevelRecords(),
+  ])
+  const rows = buildLessonListRows(
     snap.docs.map((doc) => ({ id: doc.id, data: doc.data() })),
     levels
   )
+  if (!light) return rows
+  return rows.map((row) => Object.fromEntries(LIGHT_LIST_COLUMNS.map((k) => [k, row[k]])))
 }
 
 export async function getLesson(id) {
@@ -406,7 +426,8 @@ const SOLO_ID_SUFFIX = '-solo'
 // `companionOf` value, and flags `-solo`-suffixed lessons with no matching parent id
 // instead of guessing.
 export async function linkSoloCompanions({ apply = false } = {}) {
-  const snap = await db.collection('lessons').get()
+  // Only ids and companionOf are read; select() keeps whole lesson docs off the wire.
+  const snap = await db.collection('lessons').select('companionOf').get()
   const byId = new Map(snap.docs.map((doc) => [doc.id, doc.data()]))
 
   const linked = []
@@ -468,9 +489,14 @@ export async function forkLesson(
 }
 
 export async function listLessonForks(sourceLessonId) {
-  const snap = await db.collection('lessons').get()
-  return snap.docs
-    .map((doc) => ({ id: doc.id, ...decodeLessonFromFirestore(doc.data()) }))
+  // Scan only the `fork` field, then read in full just the forks of this source.
+  const scan = await db.collection('lessons').select('fork').get()
+  const forkIds = scan.docs
+    .filter((doc) => doc.data().fork?.sourceLessonId === sourceLessonId)
+    .map((doc) => doc.id)
+  const snaps = await Promise.all(forkIds.map((id) => db.collection('lessons').doc(id).get()))
+  return snaps
+    .map((doc) => ({ id: doc.id, ...readLessonDoc(doc) }))
     .filter((lesson) => lesson.fork?.sourceLessonId === sourceLessonId)
     .sort((a, b) =>
       String(a.fork?.className ?? a.title ?? a.id).localeCompare(
