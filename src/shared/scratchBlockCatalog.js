@@ -19,7 +19,8 @@ function patternFromSample(sample) {
     if (char === '[') {
       const end = sample.indexOf(']', i + 1)
       if (end !== -1) {
-        pattern += '\\[[^\\]]+\\]'
+        // A menu written with round brackets (`switch backdrop to (Farm)`) is the same block.
+        pattern += '(?:\\[[^\\]]+\\]|\\(.*\\))'
         i = end
         continue
       }

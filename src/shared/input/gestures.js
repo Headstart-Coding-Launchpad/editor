@@ -5,18 +5,6 @@
 // Gestures carry the target's semantic kind (data-input-kind) when the element declares one.
 // Pure: works on plain event objects.
 
-export const GESTURES = [
-  'click',
-  'double_click',
-  'right_click',
-  'drag',
-  'scroll',
-  'hover',
-  'tap',
-  'double_tap',
-  'long_press',
-]
-
 // What a touch-screen student does instead of each mouse gesture. Hover has no touch
 // equivalent, so an activity must skip or block hover items on touch devices.
 export const TOUCH_EQUIVALENTS = {

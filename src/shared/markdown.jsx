@@ -16,7 +16,12 @@ import {
 import { TopicLibraryDialog, TopicReference } from './TopicLibraryView'
 import { useBadgeSignals } from './badgeSignalsContext'
 import { TOPIC_LIBRARY_OPEN_ID } from '../badges/signals.js'
-import { InlineScratchBlock, ScratchBlocks, looksLikeScratchBlocks } from './markdown/ScratchBlocks'
+import { looksLikeScratchBlocks } from './markdown/scratchFence'
+// Scratch fences and inline blocks are drawn by the real Blockly engine (text as fallback).
+import {
+  InlineScratchBlock,
+  RealScratchBlocks as ScratchBlocks,
+} from './markdown/RealScratchBlocks'
 import { parseMarkdownBlocks } from './markdown/exampleFence.js'
 import { ExampleFenceButton } from './markdown/ExampleFenceButton.jsx'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
@@ -462,6 +467,7 @@ function MarkdownCode({ node: _node, className, children, ...props }) {
 }
 function MarkdownPre({ children, ...props }) {
   const scale = React.useContext(MarkdownScaleContext)
+  const inheritColor = React.useContext(MarkdownInheritColorContext)
   // Pass through without pre styling when the child is a scratch block
   const child = React.Children.toArray(children)[0]
   if (child?.props?.className?.includes('language-scratch')) {
@@ -479,6 +485,8 @@ function MarkdownPre({ children, ...props }) {
         {...anchorProps(props)}
         style={{
           background: '#fafafa',
+          // On a dark card (inheritColor) the text would be inherited white on this light fence.
+          ...(inheritColor ? { color: '#1f2937' } : {}),
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
           padding: '12px 14px',

@@ -36,6 +36,54 @@ export const SCRIPT_RENDER_OPTIONS = Object.freeze({
   move: { scrollbars: false, drag: false, wheel: false },
 })
 
+/**
+ * An off-screen host for render-only workspaces: hidden from screen readers, inert (nothing in
+ * it can take focus, so Tab and the keyboard never reach it) and click-through. The caller
+ * removes it when done.
+ */
+export function createRenderHost(size, id) {
+  const host = document.createElement('div')
+  if (id) host.id = id
+  host.className = 'scratch-workspace'
+  host.setAttribute('aria-hidden', 'true')
+  host.setAttribute('inert', '')
+  Object.assign(host.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    width: `${size}px`,
+    height: `${size}px`,
+    pointerEvents: 'none',
+  })
+  document.body.appendChild(host)
+  return host
+}
+
+/**
+ * A read-only render workspace in `container`. Blockly.inject makes every new workspace the
+ * "main" one, which receives copy, paste, delete and undo; the student's own workspace is put
+ * back as main straight away. Dispose the workspace when done: disposing puts back the main
+ * workspace there was before (none if there was none), so Blockly's global handlers never reach
+ * a disposed workspace.
+ */
+export function injectRenderWorkspace(Blockly, container) {
+  // A workspace has no isDisposed() (only blocks do), and a disposed one stays Blockly main: it
+  // is alive while Blockly still lists it.
+  const live = (w) => Boolean(w) && Blockly.Workspace.getById?.(w.id) === w
+  const before = Blockly.getMainWorkspace?.()
+  const previous = live(before) ? before : null
+  const ws = Blockly.inject(container, SCRIPT_RENDER_OPTIONS)
+  if (previous && previous !== ws) Blockly.common.setMainWorkspace(previous)
+  const dispose = ws.dispose.bind(ws)
+  ws.dispose = () => {
+    dispose()
+    const main = Blockly.getMainWorkspace?.()
+    if (main === ws || (main && !live(main)))
+      Blockly.common.setMainWorkspace(live(previous) ? previous : null)
+  }
+  return ws
+}
+
 export function copyStyles(source, target) {
   const computed = getComputedStyle(source)
   const style = STYLE_PROPS.map((prop) => [prop, computed.getPropertyValue(prop)])

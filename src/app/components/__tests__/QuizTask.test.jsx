@@ -175,11 +175,9 @@ describe('QuizTask multiple choice', () => {
     const { container } = render(<QuizTask task={SCRATCH_STACK_MULTIPLE_CHOICE_TASK} />)
 
     expect(container.querySelector('[data-scratch-stack="true"]')).toBeInTheDocument()
-    expect(
-      container.querySelector(
-        '[data-scratch-stack="true"] [data-scratch-opcode="looks_sayforsecs"]'
-      )
-    ).toBeInTheDocument()
+    expect(container.querySelector('[data-scratch-stack="true"]')).toHaveTextContent(
+      'say [Hello!] for (2) seconds'
+    )
     expect(container.querySelector('[data-scratch-quiz-scale="stack"]')).toHaveStyle({
       transform: 'scale(1.5)',
     })

@@ -253,6 +253,23 @@ describe('Student View Modal tidy: the fun moment', () => {
   })
 })
 
+describe('Student View Modal header: prev/next arrows keep a fixed place', () => {
+  it('puts the arrows before the name, in a fixed-width box, so a long name cannot move them', () => {
+    const { rerender } = render(<StudentModal {...props({}, { displayName: 'Al' })} />)
+    const nav = screen.getByTestId('student-modal-nav')
+    const who = screen.getByTestId('student-modal-status')
+    expect(nav.compareDocumentPosition(who) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const width = nav.style.width
+    expect(width).toMatch(/px$/)
+    rerender(
+      <StudentModal
+        {...props({ position: 10, total: 12 }, { displayName: 'Bartholomew Longname-Smythe' })}
+      />
+    )
+    expect(screen.getByTestId('student-modal-nav').style.width).toBe(width)
+  })
+})
+
 describe('fitChipCount', () => {
   it('shows every chip when they all fit, or when there is no layout (0 width)', () => {
     expect(fitChipCount([50, 50, 50], 400, { gap: 8, moreWidth: 48 })).toBe(3)
