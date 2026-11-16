@@ -45,7 +45,7 @@ vi.mock('./firebase.mjs', () => ({
   },
 }))
 
-import { linkSoloCompanions, listLessonForks } from './lessons.mjs'
+import { linkSoloCompanions, listLessonForks, listLessons } from './lessons.mjs'
 
 const task = { id: 1, type: 'code', title: 'T', bigCode: 'x'.repeat(100) }
 
@@ -108,5 +108,31 @@ describe('lessons collection reads select only what they need', () => {
         className: 'Zed',
       },
     ])
+  })
+
+  it('listLessons --light selects no tasks and returns only the six columns', async () => {
+    state.lessons.get('c-solo').levelId = 'lv1'
+    const rows = await listLessons({ light: true })
+    expect(state.fullReads).toBe(0)
+    expect(state.selects).toHaveLength(1)
+    expect(state.selects[0]).not.toContain('tasks')
+    expect(rows).toHaveLength(6)
+    for (const row of rows) {
+      expect(Object.keys(row)).toEqual([
+        'id',
+        'title',
+        'draft',
+        'version',
+        'levelId',
+        'companionOf',
+      ])
+    }
+    expect(rows.find((r) => r.id === 'c-solo')).toMatchObject({ levelId: 'lv1', companionOf: 'c' })
+  })
+
+  it('default listLessons still reads full docs with taskCount', async () => {
+    const rows = await listLessons()
+    expect(state.fullReads).toBe(1)
+    expect(rows.find((r) => r.id === 'f2')).toMatchObject({ taskCount: 2 })
   })
 })

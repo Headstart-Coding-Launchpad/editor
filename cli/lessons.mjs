@@ -268,12 +268,32 @@ async function fetchLevelRecords() {
   }
 }
 
-export async function listLessons() {
-  const [snap, levels] = await Promise.all([db.collection('lessons').get(), fetchLevelRecords()])
-  return buildLessonListRows(
+// Light mode reads only the fields the sort and the six output columns need (never `tasks`).
+const LIGHT_LIST_FIELDS = [
+  'title',
+  'draft',
+  'version',
+  'levelId',
+  'levelRef',
+  'level',
+  'lessonNumber',
+  'soloOnly',
+  'companionOf',
+]
+const LIGHT_LIST_COLUMNS = ['id', 'title', 'draft', 'version', 'levelId', 'companionOf']
+
+export async function listLessons({ light = false } = {}) {
+  const ref = db.collection('lessons')
+  const [snap, levels] = await Promise.all([
+    (light ? ref.select(...LIGHT_LIST_FIELDS) : ref).get(),
+    fetchLevelRecords(),
+  ])
+  const rows = buildLessonListRows(
     snap.docs.map((doc) => ({ id: doc.id, data: doc.data() })),
     levels
   )
+  if (!light) return rows
+  return rows.map((row) => Object.fromEntries(LIGHT_LIST_COLUMNS.map((k) => [k, row[k]])))
 }
 
 export async function getLesson(id) {
