@@ -157,6 +157,13 @@ function rewriteAssetReferences(file, assets, assetsPath, storageAssets = []) {
  * postMessage script fires after DOMContentLoaded. Matches against the load ID
  * set by the most recent buildIframeSrc call. Resolves to '' on timeout.
  */
+// True only when a message came from the window of an <iframe> in this page,
+// so another window or tab cannot forge the preview's reports.
+function isFromPageIframe(source) {
+  if (!source) return false
+  return Array.from(document.querySelectorAll('iframe')).some((f) => f.contentWindow === source)
+}
+
 export function waitForIframeText(timeout = 1500) {
   const expectedId = _lastLoadId
   return new Promise((resolve) => {
@@ -166,7 +173,11 @@ export function waitForIframeText(timeout = 1500) {
     }, timeout)
 
     function handler(event) {
-      if (event.data?.type === '__hsc_text__' && event.data?.id === expectedId) {
+      if (
+        event.data?.type === '__hsc_text__' &&
+        event.data?.id === expectedId &&
+        isFromPageIframe(event.source)
+      ) {
         clearTimeout(timer)
         window.removeEventListener('message', handler)
         resolve(event.data.text ?? '')
