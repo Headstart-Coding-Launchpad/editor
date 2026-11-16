@@ -5,10 +5,9 @@
 // student's own view (compared with their code) is in their window's "Student can see" strip.
 import { useState } from 'react'
 import SupportStagePanel from '../../components/SupportStagePanel'
-import { getStarterStage } from '../../../shared/taskStages'
+import { starterCodeOf } from '../../../modules/moduleContract'
 import { getStageLineHints } from '../../../shared/lineHints'
 import { getTaskLockSets } from '../../../shared/lockedLines'
-import { stageShowsChange } from '../../../shared/stageChange'
 
 const ROLE_TEXT = {
   support: {
@@ -33,8 +32,9 @@ export default function TeacherStageStudentView({
   const [mode, setMode] = useState('student')
   const { stage, index, role } = found
   const text = ROLE_TEXT[role]
-  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode ?? ''
-  const showsChange = stageShowsChange(stage) && !!definition?.capabilities?.stageChangeView
+  const starter = starterCodeOf(task) ?? ''
+  // Told by the panel itself, so a fall-back (the whole program) never claims a change view.
+  const [showsChange, setShowsChange] = useState(false)
   return (
     <div style={s.wrap} data-testid="teacher-stage-student-view">
       <div style={{ ...s.bar, ...s.barRole[role] }}>
@@ -61,7 +61,7 @@ export default function TeacherStageStudentView({
       {mode === 'raw' ? (
         children
       ) : (
-        <div style={s.body}>
+        <div style={s.body} data-testid="teacher-stage-student-body">
           <div style={s.heading}>
             What the student sees{' '}
             <span style={s.headingNote}>
@@ -76,6 +76,7 @@ export default function TeacherStageStudentView({
             revealed
             calm={!!definition?.capabilities?.calmCodeScreen}
             changeBase={starter}
+            onChangeViewShown={setShowsChange}
             lineHintsFor={(file) => getStageLineHints(task, index, file)}
             lockSets={getTaskLockSets(task)}
           />

@@ -194,6 +194,7 @@ describe('Student can see strip: the fun moment', () => {
     let preview = screen.getByTestId('can-see-preview')
     expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
     expect(preview).toHaveTextContent('Opened by student 14:32; may be closed now.')
+    expect(preview).toHaveTextContent('Esc closes.')
     expect(preview).toHaveTextContent("Compared with Sam R.'s code.")
 
     const close = within(preview).getByRole('button', { name: 'Close preview' })

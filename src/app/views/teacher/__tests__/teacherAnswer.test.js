@@ -174,7 +174,7 @@ describe('short answers', () => {
 })
 
 describe('studentViewStageFor', () => {
-  const unified = { type: 'python', capabilities: { unifiedStages: true } }
+  const unified = { type: 'python', capabilities: { unifiedStages: true, stageChangeView: true } }
   const task = {
     codeStages: [
       { role: 'starter', code: 'a = 1' },
@@ -190,14 +190,16 @@ describe('studentViewStageFor', () => {
       role: 'support',
     })
     expect(studentViewStageFor(unified, task, 'stage_2')).toMatchObject({ role: 'complete' })
-    // The unified Complete tab is the stage with the complete role.
-    expect(studentViewStageFor(unified, task, 'complete')).toMatchObject({ index: 2 })
   })
 
-  it('is null for the starter, an empty stage, other tabs and modules without unified stages', () => {
+  it('is null for the starter, an empty stage, other tabs and modules without the change view', () => {
     expect(studentViewStageFor(unified, task, 'stage_0')).toBeNull()
     expect(studentViewStageFor(unified, task, 'stage_3')).toBeNull()
     expect(studentViewStageFor(unified, task, 'live')).toBeNull()
-    expect(studentViewStageFor({ capabilities: {} }, task, 'stage_1')).toBeNull()
+    // The legacy Complete tab, and modules without the change view (Turtle, HTML, Arcade).
+    expect(studentViewStageFor(unified, task, 'complete')).toBeNull()
+    expect(
+      studentViewStageFor({ capabilities: { unifiedStages: true } }, task, 'stage_1')
+    ).toBeNull()
   })
 })

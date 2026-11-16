@@ -27,13 +27,19 @@ function itemText(item) {
   return item.on ? { main: 'Complete', detail } : { main: 'Complete: closed' }
 }
 
-// The preview's foot: who opened it and when (the log can't say it is still open), and what a
-// change view is compared with.
-function previewFoot(item, studentName) {
-  if (item.key === 'copy') return `Same view the student has. ${OPENED_EARLIER}`
+// The preview's foot: who opened it and when (the log can't say it is still open), and, for a
+// change view, what it is compared with (their code, or the starter while their editor is blank).
+function previewFoot(item, studentName, comparedWith) {
+  if (item.key === 'copy') return 'Same view the student has. Esc closes.'
   const { detail } = itemText(item)
   const opened = detail ? `${detail[0].toUpperCase()}${detail.slice(1)}` : 'Opened earlier'
-  return `${opened}; may be closed now. Compared with ${studentName}'s code.`
+  const compared =
+    comparedWith === 'student'
+      ? ` Compared with ${studentName}'s code.`
+      : comparedWith === 'starter'
+        ? ' Compared with the starter code.'
+        : ''
+  return `${opened}; may be closed now.${compared} Esc closes.`
 }
 
 const POPOVER_WIDTH = 440
@@ -60,6 +66,7 @@ export default function CanSeeStrip({
   // portals elsewhere (React events bubble through portals), so the document listener skips it.
   const insideRef = useRef(false)
   const [anchorLeft, setAnchorLeft] = useState(140)
+  const [changeViewShown, setChangeViewShown] = useState(false)
   const onOpenChangeRef = useLatestRef(onOpenChange)
 
   // A press anywhere else (mouse, touch or pen) closes the preview.
@@ -77,6 +84,10 @@ export default function CanSeeStrip({
 
   if (!items.length) return null
   const open = items.find((item) => item.key === openKey && item.on) ?? null
+  const studentText = typeof studentCode === 'string' ? studentCode : ''
+  const changeBase = chooseChangeBase(studentText, starterCodeOf(task))
+  // What the change view compares with, when the preview shows one.
+  const comparedWith = !changeViewShown ? null : changeBase === studentText ? 'student' : 'starter'
 
   return (
     <div
@@ -166,14 +177,14 @@ export default function CanSeeStrip({
                 revealed
                 // As the student's own screen draws it: the calm "What to change" box (Python).
                 calm={!!getModuleDefinition(lessonType)?.capabilities?.calmCodeScreen}
-                changeBase={chooseChangeBase(
-                  typeof studentCode === 'string' ? studentCode : '',
-                  starterCodeOf(task)
-                )}
+                changeBase={changeBase}
+                onChangeViewShown={setChangeViewShown}
               />
             )}
           </div>
-          <div style={s.popoverFoot}>{previewFoot(open, studentName)}</div>
+          <div style={s.popoverFoot}>
+            {previewFoot(open, studentName, open.key === 'copy' ? null : comparedWith)}
+          </div>
         </div>
       )}
     </div>

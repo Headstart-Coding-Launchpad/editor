@@ -252,34 +252,51 @@ export default function TeacherEditorPanel({
           definition={mod}
           task={task}
           action={sendButton}
-          extra={expectedOutput != null ? <ExpectedOutput value={expectedOutput} /> : null}
+          // The Answer tab keeps its target picture and expected output under the student view.
+          extra={
+            pictureCode ? (
+              <div style={styles.answerAside}>
+                <StageTargetPreview code={pictureCode} />
+                {expectedOutput != null && <ExpectedOutput value={expectedOutput} stacked />}
+              </div>
+            ) : expectedOutput != null ? (
+              <ExpectedOutput value={expectedOutput} />
+            ) : null
+          }
         >
+          {/* Raw code: the editor with its note, as before (the Reveal button is in the bar). */}
+          {readOnlyNote(null)}
           {codeBody}
         </TeacherStageStudentView>
-      ) : null}
-      {readOnly &&
-        !studentViewStage &&
-        (showingAnswer ? (
-          <AnswerNote action={sendButton}>
-            {mod.capabilities?.run === 'preview'
-              ? 'the model page and the code behind it.'
-              : pictureCode
-                ? 'the model solution, the picture it draws and what it prints.'
-                : 'the model solution.'}
-          </AnswerNote>
-        ) : (
-          // Explains the editor's pale red read-only border (HSC Audit, Visual Review 05).
-          <div style={styles.readOnlyNote} data-testid="teacher-panel-readonly-note">
-            <span aria-hidden="true">🔒</span>{' '}
-            {isLiveTab
-              ? 'Read-only: your live code from the presentation window.'
-              : 'Read-only: the code students get at this stage. Edit it in Edit Lesson or the sandbox.'}
-            {sendButton}
-          </div>
-        ))}
-      {!studentViewStage && codeBody}
+      ) : (
+        <>
+          {readOnly && readOnlyNote(sendButton)}
+          {codeBody}
+        </>
+      )}
     </div>
   )
+
+  function readOnlyNote(action) {
+    return showingAnswer ? (
+      <AnswerNote action={action}>
+        {mod.capabilities?.run === 'preview'
+          ? 'the model page and the code behind it.'
+          : pictureCode
+            ? 'the model solution, the picture it draws and what it prints.'
+            : 'the model solution.'}
+      </AnswerNote>
+    ) : (
+      // Explains the editor's pale red read-only border (HSC Audit, Visual Review 05).
+      <div style={styles.readOnlyNote} data-testid="teacher-panel-readonly-note">
+        <span aria-hidden="true">🔒</span>{' '}
+        {isLiveTab
+          ? 'Read-only: your live code from the presentation window.'
+          : 'Read-only: the code students get at this stage. Edit it in Edit Lesson or the sandbox.'}
+        {action}
+      </div>
+    )
+  }
 
   function liveView() {
     return (

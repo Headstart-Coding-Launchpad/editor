@@ -67,6 +67,8 @@ describe('Tutor Support / Complete tabs show what the student sees', () => {
     expect(studentBtn).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(within(switchGroup).getByRole('button', { name: 'Raw code' }))
     expect(screen.getByTestId('code-editor')).toHaveTextContent('for i in range(3):')
+    // Raw code keeps the note that explains the read-only editor.
+    expect(screen.getByTestId('teacher-panel-readonly-note')).toHaveTextContent(/Read-only/)
     expect(screen.queryByTestId('stage-change-view')).not.toBeInTheDocument()
 
     fireEvent.click(within(switchGroup).getByRole('button', { name: 'Student view' }))
