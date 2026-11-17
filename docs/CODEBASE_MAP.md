@@ -135,8 +135,7 @@ Referenced from `AGENTS.md`. Use this as a navigation index: search headings or 
 | `CarryHoldNotice.jsx` | "Waiting for your tutor to find your Lesson N work…" card that `LessonTaskContent` shows in place of the workspace while a cross-lesson carry holds |
 | `WaitingRoom.jsx` | Full-screen modal: lesson title + "Your tutor is getting ready" with three animated dots (`.activity-dots`); shows a "📹 Join Video Call" link when the session's `videoCallLink` is set |
 | `ChoiceScreen.jsx` | `choice`-phase screen: Join a Live Lesson (the highlighted, primary choice) or Go Solo (shown when no active session exists and the student hasn't committed to solo) |
-| `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, `JoinSessionPrompt`, plus `LandingPage`, `LoginPage` and `LessonNotFound`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
-| `JoinSessionPrompt.jsx` | Modal: option to join a live session that started during solo work |
+| `EntryScreenCard.jsx` | Shared chrome for the pre-lesson screens (`ChoiceScreen`, `NameEntry`, `WaitingRoom`, plus `LandingPage`, `LoginPage` and `LessonNotFound`): centred card, purple header, wordmark, lesson title and optional description, above a white body. Exports `centredBody` and `ghostLink` for the body layouts and quiet secondary links those screens share |
 | `VideoCallPrompt.jsx` | Modal shown when the teacher pushes the video call: one student via "📹 Send Video Call Link" (`students/{id}/videoCallLinkPushedAt`) or everyone via "📹 Send to all" (`videoCallBroadcastAt`); shown on name entry, the waiting room and the lesson page, timed by `useVideoCallPrompt` |
 | `RecordingWidget.jsx` | Solo-mode-only fixed-corner pop-out player for a lesson's `recordingUrl` (YouTube recording, authorable on any lesson). Hide pauses via the YouTube IFrame API; the player stays mounted so reopening resumes in place |
 | `NameEntry.jsx` | Student name input with duplicate-suffix handling and solo fallback; shares the trimmed name being typed via `onNameTyping` (throttled, for the teacher's joining list) |
@@ -864,7 +863,6 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`, authoring in `docs
 | `exportWork/ShareParts.jsx` | Read-only pieces for module share viewers: `ShareCode`, `SharePanel`, `shareStyles` (HTML and Turtle; Python has its own `.share-py` layout) |
 | `AssetBrowser.jsx` | Read-only lesson asset browser: file tree, click-to-copy paths, image hover preview |
 | `AssetImagePreview.jsx` | Shared asset image thumbnail and preview presentation |
-| `AssetPicker.jsx` | Dropdown asset picker for builder inputs: grouped by lesson/shared/common sources, manual fallback |
 | `assetPaths.js` | Encoded absolute asset URL construction for iframe and Scratch consumers |
 | `spritePresets.js` | Pure Scratch sprite/backdrop preset validation, unique lesson-sprite/backdrop creation, and admin-library-vs-author-subset resolution (`resolvePresetLibrary`) — shared by the builder's author-side "Add sprite"/"Add backdrop" pickers and the student-facing runtime pickers in `ScratchWorkspace.jsx` |
 | `storageAssets.js` | Pure Firebase Storage asset metadata merge helper: folder listing is inventory, schema entries preserve per-file options |
