@@ -70,7 +70,6 @@ Testing strategy, tool choices, and conventions. Read this before writing or mod
 | `src/app/views/CodeFileWorkspace.jsx` | Opens a validated `.launchpad` task list, switches tasks, runs code through the shared Python runtime, and warns learners to download edits |
 | `src/app/components/WaitingRoom.jsx` | Title and description rendering; animated dot progression |
 | `src/app/components/JoinChoiceScreen.jsx` | Session-state message variants; Wait/Solo callbacks |
-| `src/app/components/JoinSessionPrompt.jsx` | Title rendering; Join/Decline callbacks |
 | `src/app/components/NameEntry.jsx` | Submit with unique name; duplicate-suffix confirmation step; solo link; waiting-room mode |
 | `src/app/components/ExplainerPanel.jsx` | Collapsible toggle; aria-expanded; non-collapsible mode; content passes to MarkdownRenderer |
 | `src/app/components/CopyCodePanel.jsx` | Renders task `copyCode` only when non-empty; preserves whitespace; blocks copy/selection-adjacent browser actions |

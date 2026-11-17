@@ -137,7 +137,7 @@ Check for these before creating a new element.
 | Code editor | `CodeEditor` in [src/shared/CodeEditor.jsx](../src/shared/CodeEditor.jsx) |
 | Markdown editing/preview | `MarkdownFieldEditor` in [src/shared/MarkdownFieldEditor.jsx](../src/shared/MarkdownFieldEditor.jsx) |
 | Split panes | `SplitPane` in [src/shared/SplitPane.jsx](../src/shared/SplitPane.jsx) |
-| Asset browsing or picking | `AssetBrowser` / `AssetPicker` in [src/shared](../src/shared) |
+| Asset browsing or picking | `AssetBrowser` in [src/shared](../src/shared) |
 | Builder field wrappers and code tabs | `Field`, `CodeWorkspaceTabs`, `Modal` in [src/builder/components/task-editor/TaskEditorFields.jsx](../src/builder/components/task-editor/TaskEditorFields.jsx) |
 | Teacher code tabs | `TeacherCodeTabs` in [src/app/components/TeacherCodeTabs.jsx](../src/app/components/TeacherCodeTabs.jsx) |
 | Presence state | `PresenceBadge` in [src/app/components/PresenceBadge.jsx](../src/app/components/PresenceBadge.jsx) |
