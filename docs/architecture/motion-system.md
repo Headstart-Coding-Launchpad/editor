@@ -17,7 +17,8 @@ any of them.
 - **Respect reduced motion.** Under `prefers-reduced-motion: reduce` entrances become a short
   fade with no stagger, and emphasis and looping status animation stop. There is no in-app motion
   switch; the OS setting is the switch.
-- **Short.** Most movement is 180–460ms; the longest (a badge tumbling in) is under a second.
+- **Short.** Most movement is 180–460ms; a badge tumbling in is under a second. The one longer
+  moment is the lesson-complete party (`MOTION_MS.celebrate`, 1.5s), the end of a whole lesson.
 - **No library.** CSS keyframes in `src/index.css` plus `src/shared/motion.js`. Don't add an
   animation dependency.
 
@@ -120,6 +121,7 @@ the Builder preview.
 
 | Moment | Where | Motion |
 |---|---|---|
+| Lesson complete party | `LessonCompleteScreen.jsx` (`.lesson-complete` in `index.css`), solo, after Next off the last task | Option C (Ryan, 16 Nov): title letters bounce in 35ms apart, three stars pop (the middle one bigger), confetti shoots from both bottom corners past two 🎉 poppers and lands away from the words; all landed by 1.5s, once per lesson per screen (`useFirstView`), then and on any return a still picture. The buttons never wait. Reduced motion: the still picture. No sound. Student screen only; the tutor dashboard never shows it |
 | Task change flash | `TaskChangeFlash.jsx` (`.task-change-flash` in `index.css`, `MOTION_MS.taskFlash`), in `StudentView` | When the class moves to a new task (the session's `currentTaskId` changes), a full-width primary-colour band under the top bar reads "Task 4 · Title": slides down, holds ~1.2 s, slides away (1.6 s). Live lesson and the presentation window only; not first load, reload, `viewingTaskId` browsing, solo, preview or the tutor dashboard. `pointer-events: none`, no focus change; an always-mounted `aria-live="polite"` region says "Now on task 4: Title". Reduced motion: no slide, the band only fades. No sound |
 | Task slide | `TaskSlideTransition.jsx` (students via `LessonTaskContent`, presentation window, teacher explainer in `TeacherView`) | Direction-aware 120px slide over `--motion-slow` / glide; Back slides the other way |
 | Neighbour images | `usePreloadNeighbourImages` (`src/shared/preloadImages.js`) in `StudentView` and `TeacherView` | Not motion: the next and previous tasks' images load in the background, so they don't pop in after the slide |
