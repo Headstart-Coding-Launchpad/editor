@@ -49,10 +49,10 @@ export default defineConfig({
       thresholds: coverageShard
         ? undefined
         : {
-            lines: 53,
-            branches: 48,
-            functions: 48,
-            statements: 51,
+            lines: 80,
+            branches: 73,
+            functions: 74,
+            statements: 78,
             'src/modules/checks.js': { lines: 90, branches: 85 },
             'src/modules/{python,turtle,filesystem,scratch}/checks.js': { lines: 85, branches: 75 },
             'src/shared/taskUtils.js': { lines: 90, branches: 85 },

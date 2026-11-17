@@ -211,7 +211,7 @@ parsing only) are excluded.
 
 | Scope | Floor | Measured Sept 2026 |
 |---|---|---|
-| Whole suite | 53% lines, 48% branches, 48% functions, 51% statements | 54.7% / 49.2% / 49.2% / 52.8% |
+| Whole suite | 80% lines, 73% branches, 74% functions, 78% statements | 81.0% / 73.9% / 75.4% / 78.8% (17 Nov 2026) |
 | `src/modules/checks.js`, `src/shared/taskUtils.js` | 90% lines, 85% branches | 95% / 88–89% |
 | `src/modules/{python,turtle,filesystem,scratch}/checks.js` | 85% lines, 75% branches | 87–100% |
 | `src/shared/composedLesson.js` | 90% lines, 75% branches | 96% / 80% |
