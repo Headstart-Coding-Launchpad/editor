@@ -1793,11 +1793,11 @@ export default function ScratchWorkspace({
     return buildAlwaysOpenToolbox(withCreateVariable, { position: { x: state.x, y: state.y } })
   }
 
-  function refreshSpriteToolbox(spriteId) {
+  function refreshSpriteToolbox(spriteId, rebuild = true) {
     const ws = workspaceRefs.current[spriteId]
     if (!ws || readOnly) return
     try {
-      ws.updateToolbox(buildToolboxForSprite(spriteId))
+      if (rebuild) ws.updateToolbox(buildToolboxForSprite(spriteId))
       requestAnimationFrame(() => {
         try {
           ws.getFlyout?.()?.setVisible(!flyoutCollapsed)
@@ -2062,6 +2062,12 @@ export default function ScratchWorkspace({
   function injectWorkspaceFor(Blockly, spriteId, initState) {
     const div = blocksDivRefs.current[spriteId]
     if (!div || workspaceRefs.current[spriteId]) return null
+    // A sprite the student can neither select nor run code for (a prop with no blocks) is never
+    // shown or run, so its Blockly workspace (flyout, toolbox, SVG) is pure mount cost.
+    if (!initState && respectStudentEditable && spriteId !== '__stage__') {
+      const sp = sprites.find((s) => s.id === spriteId)
+      if (sp && !isSpriteStudentEditable(sp)) return null
+    }
     const ws = Blockly.inject(div, {
       toolbox: buildToolboxForSprite(spriteId),
       renderer: 'zelos',
@@ -2320,12 +2326,17 @@ export default function ScratchWorkspace({
     setFlyoutCollapsed((collapsed) => !collapsed)
   }
 
+  const toolboxBuiltRef = useRef(false)
   // ── Update toolbox when task.toolbox or predefined blocks change ─────────────
   useEffect(() => {
     if (status !== 'ready' || !BlocklyRef.current) return
+    // The first run (workspaces just became ready) keeps the toolbox injected a moment ago and
+    // only re-applies the flyout visibility; rebuilding every toolbox there doubled mount cost.
+    const rebuild = toolboxBuiltRef.current
+    toolboxBuiltRef.current = true
     try {
-      for (const sp of sprites) refreshSpriteToolbox(sp.id)
-      if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
+      for (const sp of sprites) refreshSpriteToolbox(sp.id, rebuild)
+      if (task?.enableStageCode) refreshSpriteToolbox('__stage__', rebuild)
     } catch {}
   }, [
     task?.toolbox,
