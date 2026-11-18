@@ -9,6 +9,7 @@ import { lineHintsExtension, setLineHints } from '../codemirror.js'
 import { lockedLinesExtension, setLockedLineSets } from '../lockedLinesEditor.js'
 import { scrubExtension } from '../scrub/scrubExtension.js'
 import { errorLineField, setErrorLine } from '../errorLine.js'
+import { valueSkeleton } from '../lockedLines.js'
 
 const IMPORT = 'from stage import *'
 const MOON = 'circle(33, "white", x=50, y=50)'
@@ -127,7 +128,7 @@ describe('calmer Stage code lines', () => {
 
   it('a fenced locked line keeps its short words in view', () => {
     const { view } = makeView()
-    const tag = view.dom.querySelectorAll('.cm-lockedTag')[1]
+    const tag = view.dom.querySelector('.cm-lockedTag[aria-label^="Locked ·"]')
     expect(tag.textContent).toBe('🔒 nothing below')
     expect(tag.getAttribute('aria-label')).toBe('Locked · nothing below')
   })
@@ -182,7 +183,10 @@ describe('calmer Stage code lines', () => {
     vi.useFakeTimers()
     const doc = 'x = 10\ny = 20'
     const viewOnly = makeView({ doc, extra: EditorView.editable.of(false) })
-    const locked = makeView({ doc, locks: [[{ line: 2, target: 'y = 20', values: true }]] })
+    const locked = makeView({
+      doc,
+      locks: [[{ line: 2, target: valueSkeleton('y = 20'), values: true }]],
+    })
     for (const { view, handlers, selections } of [viewOnly, locked]) {
       caretOn(view, 1)
       selections.length = 0
@@ -199,7 +203,9 @@ describe('calmer Stage code lines', () => {
     const { view, handlers } = makeView({ doc: 'background("navy")\nfill("red")' })
     caretOn(view, 1)
     const swatch = view.dom.querySelector('.cm-scrubSwatch')
-    expect(swatch.previousSibling.textContent).toBe('navy')
+    const word = view.dom.querySelector('.cm-scrubbable')
+    expect(word.textContent).toBe('navy')
+    expect(word.compareDocumentPosition(swatch)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     fakeLayout(view)
     // "navy" is columns 12-16 (x 120-160): just past its end, over the swatch, still picks it ...
     view.posAtCoords = () => 13

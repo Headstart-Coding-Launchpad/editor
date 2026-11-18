@@ -3,7 +3,7 @@
 // counter at the end of each loop header line ("pass 3 of 4").
 //
 // Kept apart from src/shared/CodeEditor.jsx: PythonEditor installs it on demand through the
-// editor's `getView()` handle (applySlowMoMarker). Modelled on CodeEditor's errorLineField: set
+// editor's `getView()` handle (applySlowMoMarker). Modelled on errorLine.js's errorLineField: set
 // by an effect, cleared as soon as the code changes.
 import { StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, WidgetType } from '@codemirror/view'

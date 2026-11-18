@@ -305,9 +305,6 @@ export function minimalReplace(current, next) {
   return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) }
 }
 
-// Runtime error-line highlight (./errorLine.js).
-export { errorLineField, setErrorLine }
-
 // Python block brackets (./blockGuides.js), on only while the `blockGuides` prop is set.
 const blockGuidesCompartment = new Compartment()
 

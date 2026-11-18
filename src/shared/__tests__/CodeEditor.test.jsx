@@ -4,16 +4,15 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import {
   CodeEditor,
-  errorLineField,
   isAutocompletePick,
   isCorrectionKey,
   isUserEditUpdate,
   minimalReplace,
-  setErrorLine,
   setTeacherHighlights,
   teacherHighlightsField,
   typedCharsInUpdate,
 } from '../CodeEditor'
+import { errorLineField, setErrorLine } from '../errorLine.js'
 
 // Per docs/TESTING.md, CodeMirror editor internals (EditorView/DOM) are not
 // unit-tested — instead we exercise the errorLineField StateField directly

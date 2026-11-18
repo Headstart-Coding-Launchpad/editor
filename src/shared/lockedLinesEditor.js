@@ -31,7 +31,7 @@
 //     would add there is dropped with that note. Enter on the line adds on its open side.
 //   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default):
 //     an edit that would give it more lines, or join a line onto it, is dropped with "This space
-//     takes one line". It has a soft wash (its title is that note), and no tag.
+//     takes one line". It has a soft wash and a small ✎ (both carry that note).
 //   - `puzzle.noNewLines`: an edit that adds lines outside the slots is dropped.
 //
 // Dispatch `setLockedLineSets.of(sets)` (the task's lock sets, getTaskLockSets) to (re)place the
@@ -580,32 +580,40 @@ function enterOnLockedLine(view) {
 
 // ─── Showing the locks ───────────────────────────────────────────────────────
 
-// The lock icon at the end of a locked line: its words ("Locked", a fenced line's "Locked ·
-// nothing below") are its label, and its note is its title.
+// The icon at the end of a locked line (🔒, read out as "Locked"), of a fenced one with its short
+// words in view ("🔒 nothing below"), of a values-locked one ("🔒 Change the values only", a
+// pill) or of a slot's first line (a ✎ read out as "This space takes one line"; not colour alone).
 class LockedTagWidget extends WidgetType {
-  constructor(label = 'Locked', title = LOCKED_LINE_NOTE) {
+  constructor(label = 'Locked', title = LOCKED_LINE_NOTE, words = '', className = '', icon = '🔒') {
     super()
-    this.label = label
-    this.title = title
+    Object.assign(this, { label, title, words, className, icon })
   }
   eq(other) {
-    return other.label === this.label && other.title === this.title
+    return ['label', 'title', 'words', 'className', 'icon'].every((k) => other[k] === this[k])
   }
   toDOM() {
     const tag = document.createElement('span')
-    tag.className = 'cm-lockedTag'
+    tag.className = `cm-lockedTag ${this.className}`.trim()
     tag.title = this.title
     tag.setAttribute('role', 'img')
     tag.setAttribute('aria-label', this.label)
-    tag.textContent = '🔒'
+    tag.textContent = this.words ? `${this.icon} ${this.words}` : this.icon
     return tag
   }
 }
 
 const FENCE_TAGS = {
-  last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE),
-  first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE),
+  last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE, 'nothing below'),
+  first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE, 'nothing above'),
 }
+const VALUES_TAG = new LockedTagWidget(
+  LOCKED_VALUES_TAG,
+  LOCKED_VALUES_NOTE,
+  LOCKED_VALUES_TAG,
+  'cm-valuesTag'
+)
+const slotMark = (size) =>
+  new LockedTagWidget(slotNote(size), slotNote(size), '', 'cm-slotMark', '✎')
 
 const slotLineDeco = (size) =>
   Decoration.line({ class: 'cm-slotLine', attributes: { title: slotNote(size) } })
@@ -621,23 +629,6 @@ const lockedValuesLineDeco = Decoration.line({
 })
 
 const editableValueMark = Decoration.mark({ class: EDITABLE_VALUE_CLASS })
-
-class ValuesTagWidget extends WidgetType {
-  eq() {
-    return true
-  }
-  toDOM() {
-    const tag = document.createElement('span')
-    tag.className = 'cm-lockedTag cm-valuesTag'
-    tag.title = LOCKED_VALUES_NOTE
-    const icon = document.createElement('span')
-    icon.setAttribute('aria-hidden', 'true')
-    icon.textContent = '🔒 '
-    tag.appendChild(icon)
-    tag.appendChild(document.createTextNode(LOCKED_VALUES_TAG))
-    return tag
-  }
-}
 
 // An empty editable string's box (`name = ""`), so there is somewhere to tap and type.
 class EmptyValueWidget extends WidgetType {
@@ -671,7 +662,7 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
             : editableValueMark.range(from, to)
         )
       }
-      ranges.push(Decoration.widget({ widget: new ValuesTagWidget(), side: 1 }).range(line.to))
+      ranges.push(Decoration.widget({ widget: VALUES_TAG, side: 1 }).range(line.to))
       continue
     }
     ranges.push(lockedLineDeco.range(line.from))
@@ -685,6 +676,7 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
     for (let n = first.number; n <= last.number; n += 1) {
       ranges.push(slotLineDeco(slot.size).range(state.doc.line(n).from))
     }
+    ranges.push(Decoration.widget({ widget: slotMark(slot.size), side: 1 }).range(first.to))
   }
   return Decoration.set(ranges, true)
 })
