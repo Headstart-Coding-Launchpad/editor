@@ -122,8 +122,6 @@ describe('scrubExtension', () => {
   })
 })
 
-// P6-24: every scrubbable number is marked without hovering, in the shared "you can change
-// this" look (src/shared/editableValueStyle.js).
 describe('True and False (P6-31)', () => {
   const BOOLEANS = { ...CONFIG, booleans: true }
 
@@ -169,8 +167,8 @@ describe('True and False (P6-31)', () => {
   })
 })
 
-describe('always-visible marker on scrubbable numbers', () => {
-  it('marks each number, and none with numbers off', () => {
+describe('value boxes on the caret line (calmer Stage lines; see stageLinesCalmer.test.js)', () => {
+  it("marks each of the caret line's numbers, and none with numbers off", () => {
     const { view } = makeView('rect(120, 60)\nname = "Sam"')
     const marked = [...view.dom.querySelectorAll('.cm-editableValue.cm-scrubbable')]
     expect(marked.map((el) => el.textContent)).toEqual(['120', '60'])

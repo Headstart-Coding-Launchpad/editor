@@ -46,8 +46,7 @@ function makeView({ scrub = SCRUB, doc = DOC } = {}) {
   return { view, handlers }
 }
 
-const boxed = (view) =>
-  [...view.dom.querySelectorAll('.cm-scrubbable')].map((el) => el.textContent)
+const boxed = (view) => [...view.dom.querySelectorAll('.cm-scrubbable')].map((el) => el.textContent)
 const caretOn = (view, n) => view.dispatch({ selection: { anchor: view.state.doc.line(n).from } })
 
 afterEach(() => {
@@ -101,7 +100,7 @@ describe('calmer Stage code lines', () => {
     caretOn(view, 1)
     view.dispatch({ effects: setErrorLine.of(3) })
     expect(boxed(view)).toEqual(['10', '20'])
-    view.dispatch({ changes: { from: 0, insert: '#' } })
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' ' } })
     expect(boxed(view)).toEqual(['10'])
   })
 
