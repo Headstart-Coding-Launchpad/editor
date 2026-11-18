@@ -117,7 +117,10 @@ function validateLessonEnvelope(lesson, errors, extraRules) {
   if (!title || !String(title).trim()) errors.push('title is required')
   extraRules?.(lesson, errors)
   if (lesson.fork != null) validateLessonFork(lesson, errors)
-  if (lesson.recordingUrl != null && !isValidRecordingUrl(lesson.recordingUrl)) {
+  // A blank field means "no recording" (the Builder leaves '' when the URL is cleared).
+  const recordingUrl =
+    typeof lesson.recordingUrl === 'string' ? lesson.recordingUrl.trim() : lesson.recordingUrl
+  if (recordingUrl != null && recordingUrl !== '' && !isValidRecordingUrl(recordingUrl)) {
     errors.push('recordingUrl must be a YouTube link (youtube.com or youtu.be)')
   }
   // Optional; null means "no number" (the Builder clears the field to null).

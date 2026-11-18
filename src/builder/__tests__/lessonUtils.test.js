@@ -1046,3 +1046,19 @@ describe('normalizeTasksForExport', () => {
     ])
   })
 })
+
+describe('validateLesson recordingUrl', () => {
+  const withUrl = (recordingUrl) => ({ ...lesson('python', []), recordingUrl })
+  const hasUrlError = (url) =>
+    validateLesson(withUrl(url)).errors.some((e) => e.includes('recordingUrl'))
+
+  it('treats an empty or whitespace-only value as cleared', () => {
+    expect(hasUrlError('')).toBe(false)
+    expect(hasUrlError('   ')).toBe(false)
+  })
+
+  it('still rejects a bad link and accepts a YouTube one', () => {
+    expect(hasUrlError('https://example.com/x')).toBe(true)
+    expect(hasUrlError('https://youtu.be/dQw4w9WgXcQ')).toBe(false)
+  })
+})
