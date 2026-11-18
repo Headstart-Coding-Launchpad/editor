@@ -178,10 +178,10 @@ For tasks where the student should write or change **one specific line**, or whe
         draw(robot)
 ```
 
-- **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. Its 🔒 icon is read out as "Locked · nothing below" (the note shows on hover). Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
-- **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), its 🔒 read out as "Locked · nothing above".
+- **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. It ends in "🔒 nothing below" (read out as "Locked · nothing below"; the note shows on hover). Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
+- **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), its tag "🔒 nothing above".
 - At most one of each per task. Validation warns when there are more, when one has no line after it, and when the complete code has lines on a fenced side.
-- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a soft yellow wash (no outline or tag; hovering it shows "This space takes one line"), so give it a `#>` hint saying what to write. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
+- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a soft yellow wash and a small ✎ at its end (no outline or words; the ✎ is read out, and hovering shows, "This space takes one line"), so give it a `#>` hint saying what to write. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
 - **`puzzle.noNewLines: true`**: students can't add a line anywhere ("No new lines in this task. Change the lines you can edit."); they edit the editable lines and fill the slots. With slots, everything is fixed except the line the student writes. With `onlyEdit`, it is "change one line, add nothing", the Debug task case: `puzzle: { onlyEdit: [4], noNewLines: true }`.
 - These guard the student's own typing only. Reset, a support stage, carried code and a tutor's edit go through as written. Slots and fences follow their lines through saving and reloading, as locks do.
 - Python and Turtle tasks, side-quest starters included. Tutors see the same outline and tags in the student's card view and Go Live.
@@ -999,9 +999,11 @@ What students get:
 
 - **Which values show a box.** Only the values on the line the student is working on (the line
   with the cursor) and on the error line after a failed run show their box and colour swatch, so
-  the rest of the code stays calm. Every value still works on every line: hovering one marks it,
+  the rest of the code stays calm. Before the student first clicks into the code, the first line
+  with a value shows them instead, so a tablet student sees there is something to tap; a
+  read-only editor shows none. Every value still works on every line: hovering one marks it,
   and a click, drag or tap on one moves the cursor to its line (its boxes appear) and opens its
-  slider or picker. `scrub: false` still turns them all off.
+  slider or picker (on a `#@lock-values` line or in a view-only editor the cursor stays put). `scrub: false` still turns them all off.
 - **Numbers.** A number that can be dragged carries a light box with a dashed outline, on
   computers and tablets alike — the same "you can change this" look as
   the values on a [`#@lock-values`](#locked-lines-with-editable-values-lock-values) line. It is
@@ -1010,7 +1012,7 @@ What students get:
   steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
   − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
   the slider, and the arrow keys move it.
-- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch and the same dashed
+- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch after it and the same dashed
   "you can change this" box as a number. Clicking or tapping it opens a picker that writes
   **colour names only** (`colourNames`, on by default): the colour-blind-safe colours first, under
   their nearest CSS names (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`,
