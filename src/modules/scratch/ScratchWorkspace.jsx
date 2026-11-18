@@ -49,7 +49,7 @@ import {
   partialEvaluateScratchCheckForSprites,
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
-import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
+import PanelTabs from '../../app/components/PanelTabs'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import {
@@ -232,15 +232,6 @@ const toCanvasX = (x) => STAGE_W / 2 + x
 const toCanvasY = (y) => STAGE_H / 2 - y
 
 export const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
-
-const SPRITE_TYPE_COLOR = {
-  cat: '#FFA500',
-  ball: '#4C97FF',
-  star: '#FFD700',
-  arrow: '#9966FF',
-  bat: '#374151',
-  parrot: '#22c55e',
-}
 
 export function isSpriteStudentEditable(sprite) {
   return sprite?.studentEditable !== false
@@ -2062,8 +2053,7 @@ export default function ScratchWorkspace({
   function injectWorkspaceFor(Blockly, spriteId, initState) {
     const div = blocksDivRefs.current[spriteId]
     if (!div || workspaceRefs.current[spriteId]) return null
-    // A sprite the student can neither select nor run code for (a prop with no blocks) is never
-    // shown or run, so its Blockly workspace (flyout, toolbox, SVG) is pure mount cost.
+    // Non-editable prop sprites are never shown or run: skip the Blockly mount cost.
     if (!initState && respectStudentEditable && spriteId !== '__stage__') {
       const sp = sprites.find((s) => s.id === spriteId)
       if (sp && !isSpriteStudentEditable(sp)) return null
@@ -2330,8 +2320,7 @@ export default function ScratchWorkspace({
   // ── Update toolbox when task.toolbox or predefined blocks change ─────────────
   useEffect(() => {
     if (status !== 'ready' || !BlocklyRef.current) return
-    // The first run (workspaces just became ready) keeps the toolbox injected a moment ago and
-    // only re-applies the flyout visibility; rebuilding every toolbox there doubled mount cost.
+    // First run keeps the just-injected toolbox (a rebuild doubled mount cost).
     const rebuild = toolboxBuiltRef.current
     toolboxBuiltRef.current = true
     try {
