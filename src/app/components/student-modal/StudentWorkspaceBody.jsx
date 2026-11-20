@@ -133,7 +133,7 @@ export default function StudentWorkspaceBody({
   // Teacher edits of an activity chain on the latest edited state, not the last render's, so
   // an activity UI that updates several times in one event never loses a step.
   const activityEditRef = useRef(null)
-  // The task's 💡 line hints on the mirrored code, as the student's editor shows them
+  // The task's line hints on the mirrored code, as the student's editor shows them
   // (display only — see mirrorLineHints.js).
   const lineHints = getMirrorLineHintSets(task, {
     mirror,

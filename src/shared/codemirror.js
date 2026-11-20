@@ -1,10 +1,8 @@
-import { EditorState, Compartment, RangeSet, StateEffect, StateField } from '@codemirror/state'
+import { EditorState, Compartment, StateEffect, StateField } from '@codemirror/state'
 import {
   Decoration,
   EditorView,
-  GutterMarker,
   WidgetType,
-  gutter,
   keymap,
   lineNumbers,
   highlightActiveLine,
@@ -211,8 +209,8 @@ export function createBaseExtensions(
 
 // ─── Line hints ──────────────────────────────────────────────────────────────
 // Author hints attached to lines of starter code (see ./lineHints.js for the authoring syntax
-// and anchoring). Each hinted line gets a 💡 gutter marker whose title is the hint, and the hint
-// as faded ghost text after the line's content. Neither is part of the document, so hints never
+// and anchoring). Each hinted line gets the hint as a note box on the line above it (no gutter
+// icon: the note itself is the hint's one mark). It is not part of the document, so hints never
 // reach the student's code, the clipboard or the undo history. A hint follows its line through
 // edits and disappears when the line itself is deleted (its text and a line break removed);
 // clearing the line's text keeps it, so the student can rewrite the line with the hint in view.
@@ -311,25 +309,6 @@ class LineHintNoteWidget extends WidgetType {
   }
 }
 
-class LineHintGutterMarker extends GutterMarker {
-  constructor(text) {
-    super()
-    this.text = text
-  }
-  eq(other) {
-    return other.text === this.text
-  }
-  toDOM() {
-    const icon = document.createElement('span')
-    icon.className = 'cm-lineHintIcon'
-    icon.textContent = '💡'
-    icon.title = this.text
-    icon.setAttribute('role', 'img')
-    icon.setAttribute('aria-label', `Hint: ${this.text}`)
-    return icon
-  }
-}
-
 const lineHintDecorations = EditorView.decorations.compute([lineHintsField], (state) =>
   Decoration.set(
     hintsByLine(state).map(({ line, texts }) =>
@@ -342,22 +321,7 @@ const lineHintDecorations = EditorView.decorations.compute([lineHintsField], (st
   )
 )
 
-const lineHintGutter = gutter({
-  class: 'cm-lineHintGutter',
-  markers: (view) =>
-    RangeSet.of(
-      hintsByLine(view.state).map(({ line, texts }) =>
-        new LineHintGutterMarker(texts.join('\n')).range(line.from)
-      )
-    ),
-})
-
 const lineHintTheme = EditorView.baseTheme({
-  '.cm-lineHintGutter .cm-gutterElement': {
-    padding: '0 2px',
-    cursor: 'help',
-    fontSize: '0.8em',
-  },
   // A small note box on the line above the hinted line; long hints wrap inside the box.
   '.cm-lineHintNote': {
     margin: '2px 8px 2px 4px',
@@ -382,5 +346,5 @@ const lineHintTheme = EditorView.baseTheme({
 
 // The line-hint extension: add it to an editor, then dispatch setLineHints.
 export function lineHintsExtension() {
-  return [lineHintsField, lineHintDecorations, lineHintGutter, lineHintTheme]
+  return [lineHintsField, lineHintDecorations, lineHintTheme]
 }

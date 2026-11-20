@@ -8,10 +8,13 @@
 // - A click or tap on a Python True or False flips it (P6-31): one edit, no popover.
 // - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider);
 //   on a True or False it flips it.
-// - Colour literals get a small swatch before them.
-// - Every scrubbable number carries an always-visible marker (P6-24): the shared "you can change
-//   this" look (../editableValueStyle.js), the same as a #@lock-values line's values, on desktop
-//   and touch alike, with no hover or tap needed. Hovering strengthens it as before.
+// - The scrubbable values on the line being worked on (the caret's line) and on the error line
+//   after a failed run carry the shared "you can change this" box (../editableValueStyle.js),
+//   colours a small swatch after the word. Before the student first clicks in, the first line
+//   with a value shows them instead; a read-only editor shows none. Other lines stay plain, but
+//   their values still work: hovering one marks it, and a tap or click opens its control and
+//   moves the caret to its line (not in a view-only editor or onto a locked line), so its boxes
+//   show (calmer Stage lines, 18 Nov; was every line, P6-24).
 //
 // While a value is moving the document changes with `scrubPreviewAnnotation` (and no undo
 // history): the editor's owner must not treat those as edits (no save, no live write, no typing
@@ -31,7 +34,8 @@ import {
   startsInsideStyle,
   valueForDrag,
 } from './literals.js'
-import { isFullyLockedPos } from '../lockedLinesEditor.js'
+import { isFullyLockedPos, isLockedPos } from '../lockedLinesEditor.js'
+import { errorLineStart } from '../errorLine.js'
 import { EDITABLE_VALUE_CLASS, editableValueTheme } from '../editableValueStyle.js'
 
 /** On a preview change: 'preview' (re-run it) or 'revert' (undoing a preview before the commit). */
@@ -173,6 +177,39 @@ export function scrubLiteralAt(state, pos, options) {
   return found ? { ...found, from: found.from + line.from, to: found.to + line.from } : null
 }
 
+// Whether the student has clicked into the editor yet (it then boxes the caret's line).
+const setEngaged = StateEffect.define()
+const engagedField = StateField.define({
+  create: () => false,
+  update: (value, tr) => value || tr.effects.some((effect) => effect.is(setEngaged)),
+})
+const canEdit = (state) => !state.readOnly && state.facet(EditorView.editable)
+
+// The line numbers whose values show their boxes: the caret's (before the first click, the first
+// line with a value) and the error line's; none in a read-only editor.
+function boxedLines(state, options) {
+  const lines = new Set()
+  if (!canEdit(state)) return lines
+  if (state.field(engagedField)) {
+    for (const range of state.selection.ranges) lines.add(state.doc.lineAt(range.head).number)
+  } else {
+    for (let n = 1; n <= state.doc.lines && !lines.size; n += 1) {
+      if (lineLiterals(state, state.doc.line(n), options).length) lines.add(n)
+    }
+  }
+  const error = errorLineStart(state)
+  if (error != null) lines.add(state.doc.lineAt(error).number)
+  return lines
+}
+
+// A tapped or dragged value's caret move to its line, so its boxes show: none in a view-only
+// editor or onto a locked line (no on-screen keyboard raised there).
+function caretMove(state, literal, anchor) {
+  if (!canEdit(state) || isLockedPos(state, literal.from)) return []
+  const here = state.doc.lineAt(state.selection.main.head).number === literal.line
+  return [{ effects: setEngaged.of(true), ...(!here && { selection: { anchor } }) }]
+}
+
 // The literal under a pointer, only when the pointer is over its text (not past a line's end).
 function literalAtPointer(view, event, options) {
   const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
@@ -182,9 +219,9 @@ function literalAtPointer(view, event, options) {
   const start = view.coordsAtPos(literal.from, 1)
   const end = view.coordsAtPos(literal.to, -1)
   if (start && end) {
-    // The colour swatch sits just before the literal and counts as part of it.
-    const left = start.left - (literal.kind === 'colour' ? 18 : 2)
-    if (event.clientX < left || event.clientX > end.right + 2) return null
+    // A shown colour swatch sits just after the literal and counts as part of it.
+    const swatch = literal.kind === 'colour' && boxedLines(view.state, options).has(literal.line)
+    if (event.clientX < start.left - 2 || event.clientX > end.right + (swatch ? 18 : 2)) return null
     if (event.clientY < start.top - 2 || event.clientY > end.bottom + 2) return null
   }
   return literal
@@ -264,32 +301,27 @@ function booleanMark(literal) {
   })
 }
 
-// Colour swatches and the always-visible marker on every scrubbable number, colour and
-// True / False (P6-24).
-function swatchDecorations(view, options) {
-  if (!options.colours && !options.numbers && !options.booleans) return Decoration.none
+// Colour swatches and the box on each scrubbable number, colour and True / False of the boxed
+// lines (boxedLines).
+function swatchDecorations(state, options) {
   const ranges = []
-  for (const { from, to } of view.visibleRanges) {
-    let pos = from
-    while (pos <= to) {
-      const line = view.state.doc.lineAt(pos)
-      for (const literal of lineLiterals(view.state, line, options)) {
-        if (literal.kind === 'number') {
-          if (literal.from < literal.to)
-            ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
-          continue
-        }
-        if (literal.kind === 'boolean') {
-          ranges.push(booleanMark(literal).range(literal.from, literal.to))
-          continue
-        }
-        ranges.push(
-          Decoration.widget({ widget: new SwatchWidget(literal.hex), side: -1 }).range(literal.from)
-        )
+  for (const n of [...boxedLines(state, options)].sort((a, b) => a - b)) {
+    for (const literal of lineLiterals(state, state.doc.line(n), options)) {
+      if (literal.kind === 'number') {
         if (literal.from < literal.to)
-          ranges.push(scrubbableColourMark.range(literal.from, literal.to))
+          ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
+        continue
       }
-      pos = line.to + 1
+      if (literal.kind === 'boolean') {
+        ranges.push(booleanMark(literal).range(literal.from, literal.to))
+        continue
+      }
+      // After the word, so showing it never moves the word under a tap.
+      if (literal.from < literal.to)
+        ranges.push(scrubbableColourMark.range(literal.from, literal.to))
+      ranges.push(
+        Decoration.widget({ widget: new SwatchWidget(literal.hex), side: 1 }).range(literal.to)
+      )
     }
   }
   return Decoration.set(ranges, true)
@@ -314,7 +346,7 @@ const scrubTheme = EditorView.baseTheme({
     display: 'inline-block',
     width: '0.8em',
     height: '0.8em',
-    marginRight: '3px',
+    marginLeft: '3px',
     verticalAlign: '-1px',
     border: '1px solid rgba(0, 0, 0, 0.35)',
     borderRadius: '3px',
@@ -359,7 +391,7 @@ export function scrubExtension({ config, language, handlersRef }) {
   }
 
   function openPopover(view, literal) {
-    view.dispatch({ effects: setHover.of(null) })
+    view.dispatch({ effects: setHover.of(null) }, ...caretMove(view.state, literal, literal.to))
     handlers().openPopover?.(popoverRequest(view, literal))
   }
 
@@ -382,6 +414,8 @@ export function scrubExtension({ config, language, handlersRef }) {
       const dx = e.clientX - startX
       if (!session) {
         if (Math.abs(dx) < DRAG_START_PX) return
+        const move = caretMove(view.state, literal, literal.from)
+        if (move.length) view.dispatch(...move)
         session = beginScrub(view, literal)
         view.dom.classList.add('cm-scrubbing')
         document.body.style.cursor = 'ew-resize'
@@ -449,7 +483,7 @@ export function scrubExtension({ config, language, handlersRef }) {
   const swatches = ViewPlugin.fromClass(
     class {
       constructor(view) {
-        this.decorations = swatchDecorations(view, options)
+        this.decorations = swatchDecorations(view.state, options)
       }
       update(update) {
         // Keep an active session's position right when something else edits the document.
@@ -471,8 +505,10 @@ export function scrubExtension({ config, language, handlersRef }) {
             session.from = tr.changes.mapPos(session.from, 1)
           }
         }
-        if (update.docChanged || update.viewportChanged) {
-          this.decorations = swatchDecorations(update.view, options)
+        // Any transaction (caret, edit, error line, locks, first click, a reconfigure) may change
+        // the boxed lines; they never depend on the viewport.
+        if (update.transactions.length) {
+          this.decorations = swatchDecorations(update.state, options)
         }
       }
     },
@@ -480,6 +516,7 @@ export function scrubExtension({ config, language, handlersRef }) {
   )
 
   return [
+    engagedField,
     hoverField,
     swatches,
     scrubTheme,
@@ -505,6 +542,10 @@ export function scrubExtension({ config, language, handlersRef }) {
         const current = view.state.field(hoverField).literal
         if (literal?.from === current?.from && literal?.to === current?.to) return false
         view.dispatch({ effects: setHover.of(literal) })
+        return false
+      },
+      focus(_event, view) {
+        if (!view.state.field(engagedField)) view.dispatch({ effects: setEngaged.of(true) })
         return false
       },
       mouseleave(_event, view) {

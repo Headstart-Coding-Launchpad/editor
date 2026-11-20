@@ -68,7 +68,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 
 ## Line Hints
 
-Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown beside the next line — a 💡 in the editor gutter (hover for the text) and the text in faded grey after the line. The hint is never part of the student's code. Lines inside a triple-quoted string (`"""…"""` or `'''…'''`) are never hints.
+Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown as a small "Hint: …" note just above the next line (no gutter icon). The hint is never part of the student's code. Lines inside a triple-quoted string (`"""…"""` or `'''…'''`) are never hints.
 
 ```yaml
     codeStages:
@@ -100,7 +100,7 @@ Three tools to save lesson time and focus a task, chosen per task. They work the
 
 ### Locked lines (`#@lock`)
 
-A line whose trimmed text is `#@lock` locks the **next non-blank line**. The marker is stripped like a `#>` hint; the locked line shows greyed with a 🔒 **Locked** tag, and students can't type in it, delete it, cut or paste over it, or re-indent it. They **can** add new lines before, between and after locked lines — the list is made on a locked line, and students add to it below.
+A line whose trimmed text is `#@lock` locks the **next non-blank line**. The marker is stripped like a `#>` hint; the locked line shows greyed with a small 🔒 icon at its end (read out as "Locked"), and students can't type in it, delete it, cut or paste over it, or re-indent it. They **can** add new lines before, between and after locked lines — the list is made on a locked line, and students add to it below.
 
 ```yaml
 - id: 31
@@ -178,10 +178,10 @@ For tasks where the student should write or change **one specific line**, or whe
         draw(robot)
 ```
 
-- **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. Its tag reads 🔒 **Locked · nothing below**. Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
-- **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), tag 🔒 **Locked · nothing above**.
+- **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. It ends in "🔒 nothing below" (read out as "Locked · nothing below"; the note shows on hover). Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
+- **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), its tag "🔒 nothing above".
 - At most one of each per task. Validation warns when there are more, when one has no line after it, and when the complete code has lines on a fenced side.
-- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a dashed outline and a ✏️ **Write one line here** tag. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
+- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a soft yellow wash and a small ✎ at its end (no outline or words; the ✎ is read out, and hovering shows, "This space takes one line"), so give it a `#>` hint saying what to write. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
 - **`puzzle.noNewLines: true`**: students can't add a line anywhere ("No new lines in this task. Change the lines you can edit."); they edit the editable lines and fill the slots. With slots, everything is fixed except the line the student writes. With `onlyEdit`, it is "change one line, add nothing", the Debug task case: `puzzle: { onlyEdit: [4], noNewLines: true }`.
 - These guard the student's own typing only. Reset, a support stage, carried code and a tutor's edit go through as written. Slots and fences follow their lines through saving and reloading, as locks do.
 - Python and Turtle tasks, side-quest starters included. Tutors see the same outline and tags in the student's card view and Go Live.
@@ -997,15 +997,22 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
 
 What students get:
 
-- **Numbers.** Every number that can be dragged carries a light box with a dashed outline from the
-  moment the task opens, on computers and tablets alike — the same "you can change this" look as
+- **Which values show a box.** Only the values on the line the student is working on (the line
+  with the cursor) and on the error line after a failed run show their box and colour swatch, so
+  the rest of the code stays calm. Before the student first clicks into the code, the first line
+  with a value shows them instead, so a tablet student sees there is something to tap; a
+  read-only editor shows none. Every value still works on every line: hovering one marks it,
+  and a click, drag or tap on one moves the cursor to its line (its boxes appear) and opens its
+  slider or picker (on a `#@lock-values` line or in a view-only editor the cursor stays put). `scrub: false` still turns them all off.
+- **Numbers.** A number that can be dragged carries a light box with a dashed outline, on
+  computers and tablets alike — the same "you can change this" look as
   the values on a [`#@lock-values`](#locked-lines-with-editable-values-lock-values) line. It is
   calm (no animation) and its dashed shape reads without colour. On a computer, a number also
   underlines when the pointer is over it; dragging left or right changes it. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
   steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
   − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
   the slider, and the arrow keys move it.
-- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch and the same dashed
+- **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch after it and the same dashed
   "you can change this" box as a number. Clicking or tapping it opens a picker that writes
   **colour names only** (`colourNames`, on by default): the colour-blind-safe colours first, under
   their nearest CSS names (`black`, `orange`, `cornflowerblue`, `teal`, `gold`, `steelblue`,
@@ -1017,7 +1024,7 @@ What students get:
   colour-blind-safe hex colours (written as hex, `#E69F00`) and a hex box; there, a name stays a
   name when the choice has one, and hex keeps its style (`#F00` stays short and in capitals when
   it can).
-- **True and False.** Every `True` and `False` in code gets the same dashed box. One click or tap
+- **True and False.** A `True` or `False` in code gets the same dashed box. One click or tap
   flips it (`True` ↔ `False`) and redraws like a drag; with `checkOnRelease` the checks run once.
   It is one edit and one Undo step, and works on a `#@lock-values` line too, so a locked flag
   line can still be flipped (typing over the word there is still blocked). Only the keywords

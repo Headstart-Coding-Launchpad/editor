@@ -37,6 +37,23 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-18
+
+- **Calmer code lines.** A `#>` line hint shows only as its "Hint: …" note above the line (the 💡
+  gutter icon is gone). A `#@slot` line has a soft yellow wash and a small ✎ at its end (read out
+  as "This space takes one line"), with no dashed outline and no "Write one line here" tag (the
+  one-line limit and its note are unchanged), so start an empty slot with a `#>` hint saying what
+  to write. A locked line ends in a small 🔒 icon (read out as "Locked") instead of the "🔒
+  Locked" pill; `#@lock-last` / `#@lock-first` lines keep their words ("🔒 nothing below" /
+  "🔒 nothing above"). With `scrub`, value boxes and colour swatches (now after the colour word)
+  show only on the cursor line (before the first click, the first line with a value) and the
+  error line after a failed run; values on other lines still respond to a drag, click or tap,
+  which moves the cursor there. See
+  [python.md live scrubbing](python.md#live-scrubbing-scrub).
+- Affects: python, turtle, html (line hints, locks, slots, scrub) · Existing lessons: no changes
+  needed (give empty `#@slot` lines a `#>` hint if they lack one) · Resolves: none (Ryan's calmer
+  Stage lines sketch, 18 Nov)
+
 ## 2026-11-11
 
 - **A failed check's hint now shows instead of a nudge (C5).** The hint order is: the error help

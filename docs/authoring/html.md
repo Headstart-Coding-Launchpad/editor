@@ -74,7 +74,7 @@ modules:
 
 ## Line Hints
 
-Put instructions **next to** a line of a starter file instead of in an HTML comment. A line whose trimmed text is `<!--> … -->` (note the `>` straight after `<!--`) is a **line hint**: it is removed from the file and its text is shown beside the next line — a 💡 in the editor gutter (hover for the text) and faded grey text after the line.
+Put instructions **next to** a line of a starter file instead of in an HTML comment. A line whose trimmed text is `<!--> … -->` (note the `>` straight after `<!--`) is a **line hint**: it is removed from the file and its text is shown as a small "Hint: …" note just above the next line (no gutter icon).
 
 ```yaml
     starterFiles:

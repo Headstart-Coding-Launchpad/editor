@@ -17,7 +17,7 @@ const DEFAULT_TURTLE_STATE = createTurtleState()
 // writeStudentTurtleResult after every run (see useStudentCodeState.js). In the
 // Builder's authoring/preview context (TeacherEditorPanel.jsx) there's no student
 // and no run result, so the canvas is simply blank — there's nothing to show yet.
-// `lineHints` (StudentModal only): the task's 💡 line hint sets, shown read-only on the
+// `lineHints` (StudentModal only): the task's line hint sets, shown read-only on the
 // student's code (getMirrorLineHintSets in src/app/components/student-modal/mirrorLineHints.js).
 export default function TeacherLiveView({
   task,

@@ -1,7 +1,7 @@
 import { chooseLineHints, getTaskLineHintSets } from '../../../shared/lineHints'
 import { getTaskLockSets } from '../../../shared/lockedLines'
 
-// The task's author line hints (💡, src/shared/lineHints.js) on the code the teacher watches in
+// The task's author line hints (src/shared/lineHints.js) on the code the teacher watches in
 // StudentModal. Computed from the lesson the same way the student's editor gets them
 // (getTaskLineHintSets) — nothing new is mirrored — and only displayed: the CodeEditor
 // re-anchors them by line text whenever the mirrored code changes, so a hint the student has

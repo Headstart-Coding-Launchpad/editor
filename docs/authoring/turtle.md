@@ -60,8 +60,8 @@ interaction mode and no `tests` support.
 ## Line hints
 
 Turtle starter code takes the same `#>` line hints as Python: a line whose
-trimmed text starts with `#>` is removed from the code and shown beside the
-next line (a 💡 in the gutter and faded text after the line), so instructions
+trimmed text starts with `#>` is removed from the code and shown as a
+"Hint: …" note just above the next line (no gutter icon), so instructions
 never sit in the student's code.
 
 ```yaml
@@ -176,7 +176,7 @@ keyboard use.
   tutor update), about every 200 ms while the drag keeps moving. A program that calls `input()`
   replays the answers from the student's last Run ("Using your last answers: …"); before a Run
   the student sees "Press Run and answer the questions first".
-- Draggable numbers carry an always-visible dashed box, as in Python.
+- Draggable numbers carry a dashed box on the cursor line and error line, as in Python.
 - Colour strings use CSS names (`'red'`, `'cornflowerblue'`) or hex (`'#ff0000'`).
 - When the drag ends the value is a normal edit, saved and sent to a watching tutor, and (with
   `checkOnRelease`, on by default) the checks run once as a Run, the attempt marked

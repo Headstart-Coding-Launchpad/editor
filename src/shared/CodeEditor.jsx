@@ -34,6 +34,7 @@ import { BadgeSignalsContext } from './badgeSignalsContext'
 import { useEditorScrub } from './scrub/useEditorScrub.jsx'
 import { useIsTouchDevice } from './useIsTouchDevice'
 import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
+import { errorLineField, setErrorLine } from './errorLine.js'
 
 // The CodeMirror user-event types that are the student's own editing (typing, pasting,
 // deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry-through,
@@ -303,31 +304,6 @@ export function minimalReplace(current, next) {
   }
   return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) }
 }
-
-// Runtime error-line highlight: a single whole-line marker showing where the
-// student's last Run threw. Cleared automatically the moment the document
-// changes (first keystroke after the error), not just on the next Run.
-export const setErrorLine = StateEffect.define()
-
-export const errorLineField = StateField.define({
-  create() {
-    return Decoration.none
-  },
-  update(deco, transaction) {
-    for (const effect of transaction.effects) {
-      if (!effect.is(setErrorLine)) continue
-      const line = effect.value
-      if (line == null) return Decoration.none
-      const maxLine = transaction.state.doc.lines
-      const lineNum = Math.min(Math.max(Math.trunc(line), 1), maxLine)
-      const lineInfo = transaction.state.doc.line(lineNum)
-      return Decoration.set([Decoration.line({ class: 'cm-errorLine' }).range(lineInfo.from)])
-    }
-    if (transaction.docChanged) return Decoration.none
-    return deco
-  },
-  provide: (field) => EditorView.decorations.from(field),
-})
 
 // Python block brackets (./blockGuides.js), on only while the `blockGuides` prop is set.
 const blockGuidesCompartment = new Compartment()

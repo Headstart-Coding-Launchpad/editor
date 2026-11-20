@@ -1,5 +1,5 @@
 // Locked lines in the CodeMirror editor (see ./lockedLines.js for the authoring side and the
-// anchoring). A locked line is greyed with a "🔒 Locked" tag and can't be typed in, deleted,
+// anchoring). A locked line is greyed with a 🔒 icon (labelled "Locked") and can't be typed in, deleted,
 // cut, pasted over, re-indented or merged with its neighbours. New lines can still be added
 // before, between and after locked lines:
 //   - Enter on a locked line adds a new line: above it when the cursor is at (or before) the
@@ -31,7 +31,7 @@
 //     would add there is dropped with that note. Enter on the line adds on its open side.
 //   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default):
 //     an edit that would give it more lines, or join a line onto it, is dropped with "This space
-//     takes one line". It is outlined, with a "Write one line here" tag.
+//     takes one line". It has a soft wash and a small ✎ (both carry that note).
 //   - `puzzle.noNewLines`: an edit that adds lines outside the slots is dropped.
 //
 // Dispatch `setLockedLineSets.of(sets)` (the task's lock sets, getTaskLockSets) to (re)place the
@@ -68,8 +68,6 @@ export const FENCE_FIRST_NOTE = 'This line stays first. Add your code below it.'
 export const NO_NEW_LINES_NOTE = 'No new lines in this task. Change the lines you can edit.'
 export const slotNote = (size) =>
   size > 1 ? `This space takes up to ${size} lines` : 'This space takes one line'
-export const slotTag = (size) =>
-  size > 1 ? `Write up to ${size} lines here` : 'Write one line here'
 const NOTE_MS = 1800
 
 export const setLockedLineSets = StateEffect.define()
@@ -582,38 +580,43 @@ function enterOnLockedLine(view) {
 
 // ─── Showing the locks ───────────────────────────────────────────────────────
 
-// The tag at the end of a locked line ("🔒 Locked", a fenced line's "🔒 Locked · nothing
-// below"), or of a slot's first line ("✏️ Write one line here").
+// The icon at the end of a locked line (🔒, read out as "Locked"), of a fenced one with its short
+// words in view ("🔒 nothing below"), of a values-locked one ("🔒 Change the values only", a
+// pill) or of a slot's first line (a ✎ read out as "This space takes one line"; not colour alone).
 class LockedTagWidget extends WidgetType {
-  constructor(label = 'Locked', title = LOCKED_LINE_NOTE, icon = '🔒', className = 'cm-lockedTag') {
+  constructor(label = 'Locked', title = LOCKED_LINE_NOTE, words = '', className = '', icon = '🔒') {
     super()
-    this.label = label
-    this.title = title
-    this.icon = icon
-    this.className = className
+    Object.assign(this, { label, title, words, className, icon })
   }
   eq(other) {
-    return other.label === this.label && other.title === this.title && other.icon === this.icon
+    return ['label', 'title', 'words', 'className', 'icon'].every((k) => other[k] === this[k])
   }
   toDOM() {
     const tag = document.createElement('span')
-    tag.className = this.className
+    tag.className = `cm-lockedTag ${this.className}`.trim()
     tag.title = this.title
-    const icon = document.createElement('span')
-    icon.setAttribute('aria-hidden', 'true')
-    icon.textContent = `${this.icon} `
-    tag.appendChild(icon)
-    tag.appendChild(document.createTextNode(this.label))
+    tag.setAttribute('role', 'img')
+    tag.setAttribute('aria-label', this.label)
+    tag.textContent = this.words ? `${this.icon} ${this.words}` : this.icon
     return tag
   }
 }
 
 const FENCE_TAGS = {
-  last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE),
-  first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE),
+  last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE, 'nothing below'),
+  first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE, 'nothing above'),
 }
+const VALUES_TAG = new LockedTagWidget(
+  LOCKED_VALUES_TAG,
+  LOCKED_VALUES_NOTE,
+  LOCKED_VALUES_TAG,
+  'cm-valuesTag'
+)
+const slotMark = (size) =>
+  new LockedTagWidget(slotNote(size), slotNote(size), '', 'cm-slotMark', '✎')
 
-const slotLineDeco = Decoration.line({ class: 'cm-slotLine' })
+const slotLineDeco = (size) =>
+  Decoration.line({ class: 'cm-slotLine', attributes: { title: slotNote(size) } })
 
 const lockedLineDeco = Decoration.line({
   class: 'cm-lockedLine',
@@ -626,23 +629,6 @@ const lockedValuesLineDeco = Decoration.line({
 })
 
 const editableValueMark = Decoration.mark({ class: EDITABLE_VALUE_CLASS })
-
-class ValuesTagWidget extends WidgetType {
-  eq() {
-    return true
-  }
-  toDOM() {
-    const tag = document.createElement('span')
-    tag.className = 'cm-lockedTag'
-    tag.title = LOCKED_VALUES_NOTE
-    const icon = document.createElement('span')
-    icon.setAttribute('aria-hidden', 'true')
-    icon.textContent = '🔒 '
-    tag.appendChild(icon)
-    tag.appendChild(document.createTextNode(LOCKED_VALUES_TAG))
-    return tag
-  }
-}
 
 // An empty editable string's box (`name = ""`), so there is somewhere to tap and type.
 class EmptyValueWidget extends WidgetType {
@@ -676,7 +662,7 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
             : editableValueMark.range(from, to)
         )
       }
-      ranges.push(Decoration.widget({ widget: new ValuesTagWidget(), side: 1 }).range(line.to))
+      ranges.push(Decoration.widget({ widget: VALUES_TAG, side: 1 }).range(line.to))
       continue
     }
     ranges.push(lockedLineDeco.range(line.from))
@@ -688,15 +674,9 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
     const first = state.doc.lineAt(slot.from)
     const last = state.doc.lineAt(slot.to)
     for (let n = first.number; n <= last.number; n += 1) {
-      ranges.push(slotLineDeco.range(state.doc.line(n).from))
+      ranges.push(slotLineDeco(slot.size).range(state.doc.line(n).from))
     }
-    const tag = new LockedTagWidget(
-      slotTag(slot.size),
-      slotNote(slot.size),
-      '✏️',
-      'cm-lockedTag cm-slotTag'
-    )
-    ranges.push(Decoration.widget({ widget: tag, side: 1 }).range(first.to))
+    ranges.push(Decoration.widget({ widget: slotMark(slot.size), side: 1 }).range(first.to))
   }
   return Decoration.set(ranges, true)
 })
@@ -815,31 +795,28 @@ const lockedTheme = EditorView.baseTheme({
   },
   '.cm-lockedTag': {
     marginLeft: '1.2em',
+    fontSize: '0.78em',
+    opacity: 0.7,
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    pointerEvents: 'none',
+  },
+  // A values-locked line keeps its "🔒 Change the values only" words, as a pill.
+  '.cm-lockedTag.cm-valuesTag': {
     padding: '0 6px',
     borderRadius: '999px',
     border: '1px solid #cbd5e1',
     background: '#f1f5f9',
     color: '#475569 !important',
     fontFamily: 'var(--font-body, sans-serif)',
-    fontSize: '0.78em',
-    fontStyle: 'normal',
     fontWeight: 600,
-    userSelect: 'none',
-    WebkitUserSelect: 'none',
-    pointerEvents: 'none',
+    opacity: 1,
     whiteSpace: 'nowrap',
   },
-  // A slot: the dashed "you can change this" outline, around the whole line.
+  // A slot: one soft wash across the whole line (its hint note says what goes there).
   '.cm-slotLine': {
-    outline: '1.5px dashed #94a3b8',
-    outlineOffset: '-2px',
     borderRadius: '4px',
-    backgroundColor: 'rgba(250, 204, 21, 0.08)',
-  },
-  '.cm-lockedTag.cm-slotTag': {
-    borderStyle: 'dashed',
-    background: '#fffbeb',
-    color: '#78350f !important',
+    backgroundColor: 'rgba(250, 204, 21, 0.14)',
   },
   '.cm-tooltip.cm-lockedNote': {
     padding: '4px 10px',

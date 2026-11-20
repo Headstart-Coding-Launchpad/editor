@@ -277,7 +277,7 @@ export function useStudentCodeState({
   const [interactions, setInteractionsState] = useState({})
   const [editorSelection, setEditorSelection] = useState(null)
   const [editorActivity, setEditorActivity] = useState(null)
-  // Runtime error-line highlight (see src/shared/CodeEditor.jsx errorLineField).
+  // Runtime error-line highlight (see src/shared/errorLine.js errorLineField).
   // errorLine: Python's failing line number (single-file editor).
   // htmlErrorLocation: { file, line } — HTML/JS has multiple files/tabs, so the
   // errored file name travels with the line number; the workspace only shows
