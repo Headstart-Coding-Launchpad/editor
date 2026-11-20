@@ -1,7 +1,7 @@
 import { createCheckRegistry } from './checkRegistry.js'
 import { CHECKS as FS_CHECKS, FS_CHECK_TYPES } from './filesystem/checks.js'
 import { CHECKS as PYTHON_CHECKS } from './python/checks.js'
-import { CHECKS as HTML_CHECKS } from './html/checks.js'
+import { CHECKS as HTML_CHECKS, normalizeHtmlCheck } from './html/checks.js'
 import { ELECTRONICS_CHECK_TYPES, evaluateElectronicsCheck } from './electronics/circuit.js'
 import { CHECKS as ELECTRONICS_CHECKS } from './electronics/checks.js'
 import { CHECKS as TURTLE_CHECKS, TURTLE_CHECK_TYPES } from './turtle/checks.js'
@@ -145,6 +145,16 @@ export function normalizeCheckShape(check) {
     ...alias,
     operator: check.operator ?? alias.operator,
   }
+}
+
+// The style properties a task's checks and feedback checks read (the HTML preview reports them).
+export function checkedStyleProps(task) {
+  const props = new Set()
+  for (const c of [...normalizeChecks(task?.check), ...normalizeFeedbackChecks(task ?? [])]) {
+    const check = normalizeHtmlCheck(normalizeCheckShape(c))
+    if (check?.type === 'html_element_style_property' && check.property) props.add(check.property)
+  }
+  return [...props]
 }
 
 export function normalizeFeedbackChecks(taskOrChecks) {

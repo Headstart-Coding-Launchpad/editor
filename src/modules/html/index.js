@@ -6,6 +6,7 @@ import { buildIframeSrc, getPreviewDoc, waitForIframeText as waitForPreviewText 
 import { scrollLayoutStyles } from '../sharedStyles.js'
 import { defineUiModule } from '../defineModule.js'
 import definition from './definition.js'
+import { checkedStyleProps } from '../checks.js'
 
 const { taskContentStyle, editorAreaStyle } = scrollLayoutStyles
 
@@ -30,8 +31,9 @@ const htmlModule = defineUiModule(definition, {
     run: null,
     buildPreviewSrc: (state, task, opts = {}) =>
       buildIframeSrc(state?.files ?? state, state?.entryFile ?? task?.entryFile, {
-        ...opts, // the page reports the computed value of every style property a check names
-        styleProps: [...new Set(JSON.stringify(task ?? {}).match(/(?<="property":")[\w-]+/g))],
+        ...opts, // a Run or Inspector build: the page reports its snapshot (iframe.js)
+        snapshot: opts.snapshot ?? true,
+        styleProps: checkedStyleProps(task),
       }),
     waitForPreviewText,
     getPreviewDoc,

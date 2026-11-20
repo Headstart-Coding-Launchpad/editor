@@ -75,6 +75,7 @@ export default function StudentWorkspace({
             assets: lesson.assets ?? [],
             assetsPath: resolveAssetsPath(lesson.assetsPath) || '',
             storageAssets: htmlStorageAssets,
+            snapshot: !!task?.inspector?.enabled, // only the Inspector reads it; no checks run here
           })
         : null,
     // Rebuild only when the selected task's file content or entry point changes.

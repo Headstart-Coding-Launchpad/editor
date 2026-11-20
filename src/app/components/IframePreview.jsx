@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useHtmlInspector } from '../../modules/html/inspector/HtmlInspector'
+import { snapshotMirrorHtml } from '../../modules/html/iframe'
 
 export default function IframePreview({
   src,
@@ -52,7 +53,8 @@ export default function IframePreview({
   useEffect(() => {
     function onMessage(e) {
       if (!frameRef.current || e.source !== frameRef.current.contentWindow) return
-      if (e.data?.type === '__hsc_text__') return inspector && setSnapshot(e.data.html)
+      if (e.data?.type === '__hsc_text__')
+        return inspector && setSnapshot(snapshotMirrorHtml(e.data))
       if (e.data?.source !== 'hsc-console') return
       setLogs((prev) => [
         ...prev,
@@ -118,7 +120,7 @@ export default function IframePreview({
         {inspector && snapshot && (
           <iframe
             ref={mirrorRef}
-            srcDoc={`<!DOCTYPE html>${snapshot}`}
+            srcDoc={snapshot}
             sandbox="allow-same-origin"
             style={inspecting ? s.mirror : { ...s.mirror, visibility: 'hidden' }}
             title="Inspector copy of the preview"
@@ -237,7 +239,6 @@ const s = {
     background: '#fff',
     minHeight: 0,
   },
-  mirror: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' },
   consolePane: {
     flex: 1,
     overflow: 'auto',
@@ -278,3 +279,4 @@ const s = {
     wordBreak: 'break-word',
   },
 }
+s.mirror = { ...s.frame, position: 'absolute', inset: 0, height: '100%' }

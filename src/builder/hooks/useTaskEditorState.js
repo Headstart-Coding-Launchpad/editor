@@ -239,7 +239,7 @@ export function useTaskEditorState({
           .waitForPreviewText()
           .then((text) => {
             setOutput(text)
-            const iframeDoc = htmlMod.runtime.getPreviewDoc()
+            const iframeDoc = htmlMod.runtime.getPreviewDoc(src)
             const results = checksToEval.map((c) => ({
               ...c,
               passed: evaluateSingleCheck(c, text, { code: codeStr, iframeDoc, ran: true }),

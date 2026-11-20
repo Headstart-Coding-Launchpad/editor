@@ -27,18 +27,41 @@ let _lastLoadId = null
 let _lastErrorContext = null
 
 // The preview runs in an opaque origin (sandbox without allow-same-origin), so the parent never
-// touches its document. The page reports a snapshot instead (HTML after its scripts ran, input
-// values, computed values of the checked style properties); html_* checks read it as `iframeDoc`.
-let _lastDoc = null
-export const getPreviewDoc = () => _lastDoc
+// touches its document. A build with `snapshot` has the page report one (HTML after its scripts,
+// each element tagged with its index, input values, computed values of `styleProps`), on
+// DOMContentLoaded and again on load; html_* checks read it as `iframeDoc` (getPreviewDoc(src)).
+let _lastSrc = null
+const _docs = new Map()
+export const getPreviewDoc = (src) => _docs.get(src) ?? null
 
-function snapshotDoc({ html = '', styles = [], values = [] }) {
+function snapshotDoc({ html, styles, values }) {
+  if (typeof html !== 'string') return null
   const doc = new DOMParser().parseFromString('<!DOCTYPE html>' + html, 'text/html')
-  const els = Array.from(doc.querySelectorAll('*'))
-  els.forEach((el, i) => values[i] != null && (el.value = values[i]))
-  const get = (el, p) => styles[els.indexOf(el)]?.[p] ?? ''
-  const getComputedStyle = (el) => ({ getPropertyValue: (p) => get(el, p) })
+  const style = new Map()
+  for (const el of doc.querySelectorAll('[data-hsc-i]')) {
+    const i = Number(el.getAttribute('data-hsc-i'))
+    el.removeAttribute('data-hsc-i')
+    style.set(el, (Array.isArray(styles) && styles[i]) || {})
+    if (Array.isArray(values) && values[i] != null) el.value = values[i]
+  }
+  const getComputedStyle = (el) => ({ getPropertyValue: (p) => style.get(el)?.[p] ?? '' })
   return Object.defineProperty(doc, 'defaultView', { value: { getComputedStyle } })
+}
+
+const safeSnapshotDoc = (data) => {
+  try {
+    return snapshotDoc(data ?? {})
+  } catch {
+    return null
+  }
+}
+
+// The Inspector's script-less same-origin copy: the student's CSP/refresh/base tags (and noscript,
+// never shown live) go and the app's CSP comes first, so it loads nothing the preview couldn't.
+export function snapshotMirrorHtml(data) {
+  const doc = safeSnapshotDoc(data)
+  doc?.querySelectorAll('meta[http-equiv], base, noscript').forEach((el) => el.remove())
+  return doc && `<!DOCTYPE html>${cspMeta()}${doc.documentElement.outerHTML}`
 }
 
 // Files → a Blob URL for the sandboxed preview: each file is a Blob, the entry's href/src to
@@ -47,7 +70,7 @@ function snapshotDoc({ html = '', styles = [], values = [] }) {
 export function buildIframeSrc(
   files,
   entryFile = 'index.html',
-  { assets = [], assetsPath = '', storageAssets = [], copyProtect = false, styleProps = [] } = {}
+  { assets = [], assetsPath = '', storageAssets = [], copyProtect, styleProps = [], snapshot } = {}
 ) {
   if (!files || files.length === 0) return null
 
@@ -85,11 +108,12 @@ export function buildIframeSrc(
   // Inject security (CSP + console interceptor + text reporter)
   const loadId = Math.random().toString(36).slice(2)
   _lastLoadId = loadId
-  const injected = _injectSecurity(html, loadId, { copyProtect, styleProps })
+  const injected = _injectSecurity(html, loadId, { copyProtect, styleProps, snapshot })
 
   // Return new Blob URL for the rewritten HTML
   const rewrittenBlob = new Blob([injected.html], { type: 'text/html' })
   const src = URL.createObjectURL(rewrittenBlob)
+  _lastSrc = src
   rememberPreviewFileName(src, entry.name)
 
   // Other files keep their own line numbers; the entry's live document is `src` (offset by
@@ -105,49 +129,23 @@ export function buildIframeSrc(
   return src
 }
 
+// Asset names → URLs in the file's href/src attributes (HTML) and url(...) values (HTML, CSS).
 function rewriteAssetReferences(file, assets, assetsPath, storageAssets = []) {
   const isHtml = file.type === 'html' || file.name.endsWith('.html')
-  const isCss = file.type === 'css' || file.name.endsWith('.css')
-  if (!isHtml && !isCss) return file.content
-
+  if (!isHtml && file.type !== 'css' && !file.name.endsWith('.css')) return file.content
+  const staticUrl = (path) => assetsPath + path.split('/').map(encodeURIComponent).join('/')
+  const targets = [
+    ...(assetsPath ? assets.map((path) => ({ name: path, url: staticUrl(path) })) : []),
+    ...storageAssets,
+  ]
   let content = file.content
-
-  if (assetsPath && assets.length > 0) {
-    for (const assetPath of assets) {
-      const escaped = assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const encodedAssetPath = assetPath.split('/').map(encodeURIComponent).join('/')
-      const staticUrl = assetsPath + encodedAssetPath
-
-      if (isHtml) {
-        content = content.replace(
-          new RegExp(`((?:href|src)\\s*=\\s*["'])${escaped}(["'])`, 'g'),
-          `$1${staticUrl}$2`
-        )
-      }
-
-      content = content.replace(
-        new RegExp(`(url\\(\\s*["']?)${escaped}(["']?\\s*\\))`, 'g'),
-        `$1${staticUrl}$2`
-      )
-    }
-  }
-
-  for (const { name, url } of storageAssets) {
+  for (const { name, url } of targets) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-    if (isHtml) {
-      content = content.replace(
-        new RegExp(`((?:href|src)\\s*=\\s*["'])${escaped}(["'])`, 'g'),
-        `$1${url}$2`
-      )
-    }
-
-    content = content.replace(
-      new RegExp(`(url\\(\\s*["']?)${escaped}(["']?\\s*\\))`, 'g'),
-      `$1${url}$2`
-    )
+    const attr = new RegExp(`((?:href|src)\\s*=\\s*["'])${escaped}(["'])`, 'g')
+    const cssUrl = new RegExp(`(url\\(\\s*["']?)${escaped}(["']?\\s*\\))`, 'g')
+    if (isHtml) content = content.replace(attr, `$1${url}$2`)
+    content = content.replace(cssUrl, `$1${url}$2`)
   }
-
   return content
 }
 
@@ -158,30 +156,29 @@ function isFromPageIframe(source) {
   return Array.from(document.querySelectorAll('iframe')).some((f) => f.contentWindow === source)
 }
 
-// Resolves to the page's body text once its reporter fires after DOMContentLoaded (matched
-// to the latest buildIframeSrc load), keeping its snapshot for getPreviewDoc; '' on timeout.
+// Resolves to the page's body text from its latest report for the latest buildIframeSrc load
+// (the load-time one, or whatever came before the timeout; '' if none), keeping its snapshot.
 export function waitForIframeText(timeout = 1500) {
   const expectedId = _lastLoadId
-  _lastDoc = null
+  const src = _lastSrc
   return new Promise((resolve) => {
-    const timer = setTimeout(() => {
+    let latest = null
+    const timer = setTimeout(finish, timeout)
+    function finish() {
+      clearTimeout(timer)
       window.removeEventListener('message', handler)
-      resolve('')
-    }, timeout)
-
-    function handler(event) {
-      if (
-        event.data?.type === '__hsc_text__' &&
-        event.data?.id === expectedId &&
-        isFromPageIframe(event.source)
-      ) {
-        clearTimeout(timer)
-        window.removeEventListener('message', handler)
-        _lastDoc = snapshotDoc(event.data)
-        resolve(event.data.text ?? '')
-      }
+      _docs.delete(src)
+      _docs.set(src, safeSnapshotDoc(latest))
+      if (_docs.size > 8) _docs.delete(_docs.keys().next().value)
+      resolve(typeof latest?.text === 'string' ? latest.text : '')
     }
-
+    function handler(event) {
+      const data = event.data
+      if (data?.type !== '__hsc_text__' || data.id !== expectedId) return
+      if (!isFromPageIframe(event.source)) return
+      latest = data
+      if (data.final) finish()
+    }
     window.addEventListener('message', handler)
   })
 }
@@ -198,47 +195,36 @@ const COPY_PROTECT_SNIPPET =
   '<style>*{-webkit-user-select:none!important;user-select:none!important}</style>' +
   "<script>['copy','cut','contextmenu','dragstart'].forEach(function(t){document.addEventListener(t,function(e){e.preventDefault()},true)})</script>"
 
-// Returns { html, offsetLines }: the lines injected ahead of the student's markup.
-function _injectSecurity(html, loadId, { copyProtect = false, styleProps = [] } = {}) {
-  // CSP blocks outbound requests (fetch, XHR, WebSocket). The page's origin is opaque, so
-  // 'self' matches nothing: the app's origin is named for lesson assets. blob: and
-  // 'unsafe-inline'/'unsafe-eval' serve the virtual files and typical student code.
+// CSP blocks outbound requests (fetch, XHR, WebSocket). The page's origin is opaque, so 'self'
+// matches nothing: the app's origin is named for lesson assets. blob:/data: and
+// 'unsafe-inline'/'unsafe-eval' serve the virtual files and typical student code.
+function cspMeta() {
   const self = `'self' ${window.location.origin}`
-  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src ${self}; script-src ${self} 'unsafe-inline' 'unsafe-eval' blob: data:; style-src ${self} 'unsafe-inline' blob: data:; connect-src ${self} ws://localhost:5173; img-src ${self} data: blob: https://firebasestorage.googleapis.com;">`
-  // Reporter: on DOMContentLoaded (and on '__hsc_snap__') posts the body text (output_contains
-  // checks) and the snapshot behind getPreviewDoc and the Inspector's mirror.
-  const textReporter = `<script>(function(){var P=${JSON.stringify(styleProps)};var s=function(){try{var e=document.querySelectorAll('*'),st=[],v=[];for(var i=0;i<e.length;i++){var c=getComputedStyle(e[i]),o={};P.forEach(function(p){o[p]=c.getPropertyValue(p)});st.push(o);v.push(/^(INPUT|TEXTAREA|SELECT)$/.test(e[i].tagName)?e[i].value:null)}window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:'',html:document.documentElement.outerHTML,styles:st,values:v},'*')}catch(x){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}addEventListener('message',function(m){if(m.data==='__hsc_snap__')s()})})()</script>`
-  const consoleInterceptor = buildConsoleInterceptorScript(loadId)
-
-  // Inject CSP + console interceptor right after <head> (or prepend if no <head>)
-  const headMatch = html.match(/<head[^>]*>/i)
-  let offsetLines
-  if (headMatch) {
-    const injected = csp + consoleInterceptor
-    offsetLines = countNewlines(injected)
-    const pos = headMatch.index + headMatch[0].length
-    html = html.slice(0, pos) + injected + html.slice(pos)
-  } else {
-    const injected = '<head>' + csp + '</head>' + consoleInterceptor
-    offsetLines = countNewlines(injected)
-    html = injected + html
-  }
-
-  // Inject text reporter (and any copy protection) before </body> (or append if
-  // no </body>) — this comes after any student script, so it never shifts a
-  // script's own line numbers.
-  const tail = textReporter + (copyProtect ? COPY_PROTECT_SNIPPET : '')
-  if (/<\/body>/i.test(html)) {
-    html = html.replace(/<\/body>/i, tail + '</body>')
-  } else {
-    html += tail
-  }
-
-  return { html, offsetLines }
+  return `<meta http-equiv="Content-Security-Policy" content="default-src ${self}; script-src ${self} 'unsafe-inline' 'unsafe-eval' blob: data:; style-src ${self} 'unsafe-inline' blob: data:; connect-src ${self} ws://localhost:5173; img-src ${self} data: blob: https://firebasestorage.googleapis.com;">`
 }
 
-function countNewlines(str) {
-  return (str.match(/\n/g) || []).length
+// The page's report: body text (output_contains checks) on DOMContentLoaded, on load (`final`)
+// and on '__hsc_snap__'; with `snapshot`, also what snapshotDoc needs.
+function reporterScript(loadId, styleProps, snapshot) {
+  const snap = `var e=document.querySelectorAll('*'),c=document.documentElement.cloneNode(true),k=[c].concat([].slice.call(c.querySelectorAll('*'))),st=[],v=[];for(var i=0;i<e.length;i++){var g=getComputedStyle(e[i]),o={};P.forEach(function(p){o[p]=g.getPropertyValue(p)});st.push(o);v.push(/^(INPUT|TEXTAREA|SELECT)$/.test(e[i].tagName)?e[i].value:null);if(k[i])k[i].setAttribute('data-hsc-i',i)}m.html=c.outerHTML;m.styles=st;m.values=v;`
+  return `<script>(function(){var P=${JSON.stringify(styleProps)};var s=function(f){try{var m={type:'__hsc_text__',id:'${loadId}',final:f,text:document.body?document.body.innerText:''};${snapshot ? snap : ''}window.parent.postMessage(m,'*')}catch(x){}};document.addEventListener('DOMContentLoaded',function(){s(false)});addEventListener('load',function(){s(true)});addEventListener('message',function(m){if(m.data==='__hsc_snap__')s(true)})})()</script>`
+}
+
+// Returns { html, offsetLines }: the lines injected ahead of the student's markup.
+function _injectSecurity(html, loadId, { copyProtect, styleProps = [], snapshot } = {}) {
+  const csp = cspMeta()
+  const textReporter = reporterScript(loadId, styleProps, snapshot)
+  const consoleInterceptor = buildConsoleInterceptorScript(loadId)
+
+  // CSP + console interceptor right after <head> (or a new <head> first); the reporter (and any
+  // copy protection) before </body>, after every student script, so no line numbers shift.
+  const headMatch = html.match(/<head[^>]*>/i)
+  const head = headMatch ? csp + consoleInterceptor : `<head>${csp}</head>${consoleInterceptor}`
+  const pos = headMatch ? headMatch.index + headMatch[0].length : 0
+  html = html.slice(0, pos) + head + html.slice(pos)
+  const tail = textReporter + (copyProtect ? COPY_PROTECT_SNIPPET : '')
+  html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, tail + '</body>') : html + tail
+  return { html, offsetLines: (head.match(/\n/g) || []).length }
 }
 
 // Maps a preview runtime error (loadId = the 'hsc-console' message's id) to the student's

@@ -2183,7 +2183,7 @@ export function useStudentCodeState({
         suggestion = '',
         scrubPassed = null
       if (scrubRun && alreadySolved && task?.check) {
-        const iframeDoc = getPreviewDoc()
+        const iframeDoc = getPreviewDoc(src)
         scrubPassed = evaluateCheckWithFeedback(
           task,
           text,
@@ -2191,7 +2191,7 @@ export function useStudentCodeState({
         ).passed
       }
       if (!alreadySolved) {
-        const iframeDoc = getPreviewDoc()
+        const iframeDoc = getPreviewDoc(src)
         const evaluation = evaluateCheckWithFeedback(
           task,
           text,
@@ -3341,7 +3341,7 @@ export function useStudentCodeState({
       () =>
         definition.checking.buildContext(next.files, {
           output: outputRef.current,
-          iframeDoc: getPreviewDoc(),
+          iframeDoc: getPreviewDoc(iframeSrc),
         }),
       { feedbackFilter: checkAllowedForSubmit }
     )

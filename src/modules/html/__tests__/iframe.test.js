@@ -1,9 +1,10 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   buildIframeSrc,
   getLastLoadId,
   getPreviewDoc,
   resolveIframeErrorLocation,
+  snapshotMirrorHtml,
   waitForIframeText,
 } from '../iframe.js'
 import { evaluateHtmlCheck } from '../checks.js'
@@ -373,48 +374,141 @@ describe('waitForIframeText message source', () => {
 })
 
 describe('sandboxed preview snapshot (R6: no same-origin access to the page)', () => {
-  it('asks the page for the checked style properties and lets the CSP name the app origin', async () => {
+  let n = 0
+  beforeEach(() => {
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:load-${++n}`)
+  })
+
+  async function builtHtml(options) {
     const blobs = []
     vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
       blobs.push(blob)
       return `blob:test-${blobs.length}`
     })
-    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }], 'index.html', {
-      styleProps: ['color'],
-    })
-    const html = await blobs[blobs.length - 1].text()
-    expect(html).toContain('outerHTML')
-    expect(html).toContain('["color"]')
-    expect(html).toContain(window.location.origin)
-  })
+    buildIframeSrc(
+      [{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }],
+      'index.html',
+      options
+    )
+    return blobs[blobs.length - 1].text()
+  }
 
-  it('runs element checks on the snapshot the page reports', async () => {
-    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>x</p>' }])
-    const frame = document.createElement('iframe')
-    document.body.appendChild(frame)
-    const pending = waitForIframeText(500)
-    const html = '<html><head></head><body><h1 class="t">Hi</h1><input id="n"></body></html>'
-    const styles = [{}, {}, {}, { color: 'rgb(255, 0, 0)' }, {}]
-    const values = [null, null, null, null, 'Sam']
+  // Posts one report from a page iframe for the latest build.
+  function report(frame, data) {
     window.dispatchEvent(
       new MessageEvent('message', {
-        data: { type: '__hsc_text__', id: getLastLoadId(), text: 'Hi', html, styles, values },
+        data: { type: '__hsc_text__', id: getLastLoadId(), ...data },
         source: frame.contentWindow,
       })
     )
-    expect(await pending).toBe('Hi')
-    const iframeDoc = getPreviewDoc()
-    const check = (c) => evaluateHtmlCheck(c, 'Hi', { iframeDoc })
-    expect(check({ type: 'html_element', selector: 'h1.t' })).toBe(true)
-    expect(
-      check({
-        type: 'html_element_style_property',
-        selector: 'h1',
-        property: 'color',
-        value: 'rgb(255, 0, 0)',
+  }
+
+  function withFrame(fn) {
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    return fn(frame).finally(() => frame.remove())
+  }
+
+  it('asks a snapshot build for the checked style properties; the CSP names the app origin', async () => {
+    const html = await builtHtml({ styleProps: ['color'], snapshot: true })
+    expect(html).toContain('outerHTML')
+    expect(html).toContain('["color"]')
+    expect(html).toContain("addEventListener('load'")
+    expect(html).toContain(window.location.origin)
+  })
+
+  it('keeps a build without `snapshot` (live views, thumbnails) to the text-only report', async () => {
+    const html = await builtHtml()
+    expect(html).toContain('__hsc_text__')
+    expect(html).not.toContain('outerHTML')
+  })
+
+  it('maps styles and values by tagged index, even with a noscript before the target', () =>
+    withFrame(async (frame) => {
+      const src = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>x</p>' }])
+      const pending = waitForIframeText(500)
+      const html =
+        '<html data-hsc-i="0"><head data-hsc-i="1"></head><body data-hsc-i="2">' +
+        '<noscript data-hsc-i="3"><p>no js</p></noscript><h1 data-hsc-i="4" class="t">Hi</h1>' +
+        '<input data-hsc-i="5" id="n"></body></html>'
+      const styles = [{}, {}, {}, {}, { color: 'rgb(255, 0, 0)' }, {}]
+      report(frame, { text: 'Hi', html, styles, values: [null, null, null, null, null, 'Sam'] })
+      report(frame, {
+        text: 'Hi',
+        html,
+        styles,
+        values: [null, null, null, null, null, 'Sam'],
+        final: true,
       })
-    ).toBe(true)
-    expect(check({ type: 'html_element_value', selector: '#n', value: 'Sam' })).toBe(true)
-    frame.remove()
+      expect(await pending).toBe('Hi')
+      const iframeDoc = getPreviewDoc(src)
+      const check = (c) => evaluateHtmlCheck(c, 'Hi', { iframeDoc })
+      expect(check({ type: 'html_element', selector: 'h1.t' })).toBe(true)
+      const color = { type: 'html_element_style_property', selector: 'h1', property: 'color' }
+      expect(check({ ...color, value: 'rgb(255, 0, 0)' })).toBe(true)
+      expect(check({ type: 'html_element_value', selector: '#n', value: 'Sam' })).toBe(true)
+      expect(iframeDoc.querySelector('[data-hsc-i]')).toBeNull()
+    }))
+
+  it('uses the load-time report (stylesheets applied), not the first one', () =>
+    withFrame(async (frame) => {
+      const src = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<h1>x</h1>' }])
+      const pending = waitForIframeText(500)
+      const html =
+        '<html data-hsc-i="0"><head data-hsc-i="1"></head><body data-hsc-i="2"><h1 data-hsc-i="3">x</h1></body></html>'
+      report(frame, { text: 'x', html, styles: [{}, {}, {}, { color: 'rgb(0, 0, 0)' }] })
+      report(frame, {
+        text: 'x',
+        html,
+        styles: [{}, {}, {}, { color: 'rgb(255, 0, 0)' }],
+        final: true,
+      })
+      await pending
+      const h1 = getPreviewDoc(src).querySelector('h1')
+      expect(getPreviewDoc(src).defaultView.getComputedStyle(h1).getPropertyValue('color')).toBe(
+        'rgb(255, 0, 0)'
+      )
+    }))
+
+  it('keeps each load its own snapshot, keyed by its src', () =>
+    withFrame(async (frame) => {
+      const first = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>1</p>' }])
+      const one = waitForIframeText(500)
+      report(frame, { text: '1', html: '<p id="one">1</p>', final: true })
+      await one
+      const second = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>2</p>' }])
+      const two = waitForIframeText(500)
+      report(frame, { text: '2', html: '<p id="two">2</p>', final: true })
+      await two
+      expect(getPreviewDoc(first).querySelector('#one')).not.toBeNull()
+      expect(getPreviewDoc(second).querySelector('#two')).not.toBeNull()
+    }))
+
+  it('survives a malformed report: values null, html not a string', () =>
+    withFrame(async (frame) => {
+      const src = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>x</p>' }])
+      const pending = waitForIframeText(500)
+      report(frame, { text: 'ok', html: '<p>ok</p>', styles: null, values: null, final: true })
+      expect(await pending).toBe('ok')
+      expect(getPreviewDoc(src).querySelector('p').textContent).toBe('ok')
+      const src2 = buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>x</p>' }])
+      const pending2 = waitForIframeText(500)
+      report(frame, { text: 5, html: 5, final: true })
+      expect(await pending2).toBe('')
+      expect(getPreviewDoc(src2)).toBeNull()
+    }))
+
+  it("gives the Inspector's copy the app's CSP and drops the student's CSP and base tags", () => {
+    const html =
+      '<html><head><meta http-equiv="Content-Security-Policy" content="default-src *">' +
+      '<base href="https://example.com/"></head><body><noscript><p>no js</p></noscript></body></html>'
+    const mirror = snapshotMirrorHtml({ html })
+    expect(mirror.startsWith('<!DOCTYPE html><meta http-equiv="Content-Security-Policy"')).toBe(
+      true
+    )
+    expect(mirror).not.toContain('default-src *')
+    expect(mirror).not.toContain('<base')
+    expect(mirror).not.toContain('no js')
+    expect(snapshotMirrorHtml({ html: null })).toBeNull()
   })
 })

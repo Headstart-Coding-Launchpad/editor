@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-20
+
+- **HTML previews run sandboxed, with no web storage (security, Deep Review R6).** The student's
+  page now runs in an opaque origin, so its scripts can't reach the app (or the tutor's sign-in).
+  `localStorage`, `sessionStorage`, `document.cookie` and `indexedDB` throw a `SecurityError`
+  in an HTML task: don't write tasks that save data with them (keep state in variables). Linked
+  files (`style.css`, `script.js`) still load, and element checks now read the page as it is
+  after it finishes loading (images and stylesheets), not just after its HTML is parsed. See
+  [html.md](html.md#the-preview-sandbox).
+- Affects: html (preview, element checks, Inspector), code_arrange (HTML preview) · Existing
+  lessons: no changes needed (no lesson in the repo or the Lesson Gen folders uses web storage;
+  Firestore lessons not searched) · Resolves: none (Deep Review R6)
+
 ## 2026-11-18
 
 - **Calmer code lines.** A `#>` line hint shows only as its "Hint: …" note above the line (the 💡

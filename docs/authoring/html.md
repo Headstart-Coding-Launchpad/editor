@@ -193,6 +193,15 @@ count in the file being edited, in every file. The session report counts each st
 opens them with a "Now make it yours" line (see
 [Python → Live scrubbing](python.md#live-scrubbing-scrub)).
 
+## The preview sandbox
+
+The student's page runs in a sandboxed iframe with its own opaque origin, so its scripts can't
+read the app's storage or sign-in. JavaScript, `alert`, the console, CSS, linked files, images
+and fonts from the lesson's assets work. **Web storage doesn't:** `localStorage`,
+`sessionStorage`, `document.cookie` and `indexedDB` throw a `SecurityError`, so don't set tasks
+that save data with them. Forms don't submit and their `submit` event doesn't fire (as before):
+handle the button's `click` in JavaScript. Element checks read the page once it has loaded.
+
 ## HTML Element Checks (run mode only)
 
 All element checks require a `selector` (CSS selector).

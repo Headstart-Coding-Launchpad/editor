@@ -1733,3 +1733,21 @@ describe('turtle check dispatch', () => {
     ).toBe(true)
   })
 })
+
+describe('checkedStyleProps', () => {
+  it('lists the style properties named by checks and feedback checks, legacy aliases included', async () => {
+    const { checkedStyleProps } = await import('../checks.js')
+    const task = {
+      check: [
+        { type: 'html_element_style_property', selector: 'h1', property: 'color', value: 'x' },
+        { type: 'html_element', selector: 'p' },
+      ],
+      feedbackChecks: [
+        { type: 'element_style_property', selector: 'p', property: 'margin-top', hint: 'h' },
+      ],
+      inspector: { enabled: true, property: 'not-a-check' },
+    }
+    expect(checkedStyleProps(task)).toEqual(['color', 'margin-top'])
+    expect(checkedStyleProps(null)).toEqual([])
+  })
+})
