@@ -1086,6 +1086,18 @@ select {
   border-color: #f59e0b;
 }
 
+/* Under 1200px (a tablet-width tutor window) the chip is just the dot and the count, so the
+   lesson title keeps its room; the name stays in the button's label and title. */
+@media (max-width: 1199px) {
+  .class-health__label {
+    display: none;
+  }
+
+  .class-health__chip {
+    padding: 0 10px;
+  }
+}
+
 .class-health__chip--red {
   border-color: #ef4444;
 }

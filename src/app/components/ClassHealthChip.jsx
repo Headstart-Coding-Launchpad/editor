@@ -69,7 +69,7 @@ export default function ClassHealthChip({ students, appVersion, onOpenStudent, o
         onClick={() => setOpen((v) => !v)}
       >
         <i className="class-health__dot" aria-hidden="true" />
-        Class health
+        <span className="class-health__label">Class health</span>
         {count > 0 && (
           <b className="class-health__count" data-testid="class-health-count">
             {count}
