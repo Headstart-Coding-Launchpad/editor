@@ -36,6 +36,7 @@ import ClassCountdownEndedStrip from '../components/ClassCountdownEndedStrip'
 import { MINUTE_MS } from '../../shared/classCountdown'
 import { nextClassTaskId } from '../../shared/classNavigation'
 import TeacherSessionControls from '../components/TeacherSessionControls'
+import { APP_VERSION } from '../../shared/healthBeacon'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
@@ -440,6 +441,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // { studentId, at }: the side-quest panel asking the student grid to open that student's
   // side-quest in their StudentModal.
   const [openSideQuestRequest, setOpenSideQuestRequest] = useState(null)
+  const [openStudentRequest, setOpenStudentRequest] = useState(null) // Class health chip's Open
   // The work the teacher's editor shows, one value per sandbox kind
   // (`capabilities.sandboxState`: 'code', 'blocks', 'fs', 'desktop', 'files'), each in the
   // module's stored-work form — see ../teacherSandboxWork.js.
@@ -748,6 +750,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       pendingSuggestions: badgeSuggestions.suggestions,
       topics,
       catalogueBadges,
+      appVersion: APP_VERSION,
     }
   }
 
@@ -1274,6 +1277,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
                     ? "A student's work is live. Stop that first."
                     : null
               }
+              onOpenStudent={(studentId) => setOpenStudentRequest({ studentId, at: Date.now() })}
+              onNudgeStudent={nudgeStudent}
               goLiveControl={
                 session &&
                 !isInSandbox &&
@@ -1534,6 +1539,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
             collapsed={rightCollapsed}
             onToggle={() => setRightCollapsed((v) => !v)}
             openSideQuestRequest={openSideQuestRequest}
+            openStudentRequest={openStudentRequest}
             rosterStatus={rosterStatus}
             onOpenRoster={() => setShowMatchDialog(true)}
             classControls={classControls}

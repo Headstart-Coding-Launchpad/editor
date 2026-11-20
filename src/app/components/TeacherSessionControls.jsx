@@ -4,6 +4,7 @@ import ClassCountdownControl from './ClassCountdownControl'
 import TeacherPollControl from './polls/TeacherPollControl'
 import DropdownMenu from './student-modal/DropdownMenu'
 import { useExtraClassToolsOn } from '../../shared/extraClassToolsSetting'
+import ClassHealthChip from './ClassHealthChip'
 
 // The teacher view's top row (calm teacher view, sketch v2): one fixed-height row of Present,
 // Countdown (with the quieter Rate beside it), Add Video Call, End Session (it asks first, in
@@ -52,6 +53,8 @@ export default function TeacherSessionControls({
   onGoLive,
   goLiveDisabledReason = null,
   goLiveControl = null,
+  onOpenStudent, // the Class health chip's Open and Nudge (student id), while the session runs
+  onNudgeStudent,
 }) {
   const [showExtraTools] = useExtraClassToolsOn()
   const state = session?.state
@@ -205,6 +208,9 @@ export default function TeacherSessionControls({
 
   return (
     <div className="teacher-session-controls" data-testid="teacher-top-row">
+      {isRunning && onOpenStudent && (
+        <ClassHealthChip {...{ session, serverTimeOffset, onOpenStudent, onNudgeStudent }} />
+      )}
       <button
         type="button"
         className="teacher-session-controls__action teacher-top-row__present"

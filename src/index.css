@@ -1058,6 +1058,204 @@ select {
   color: #78350f;
 }
 
+/* Class health chip (ClassHealthChip.jsx, R1 health beacon): a white pill before Present,
+   green / amber / red, with a list of the students whose screen needs a look. */
+.class-health {
+  position: relative;
+  display: inline-flex;
+}
+
+.class-health__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px 0 10px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.class-health__chip--amber {
+  border-color: #f59e0b;
+}
+
+/* Under 1200px (a tablet-width tutor window) the chip is just the dot and the count, so the
+   lesson title keeps its room; the name stays in the button's label and title. */
+@media (max-width: 1199px) {
+  .class-health__label {
+    display: none;
+  }
+
+  .class-health__chip {
+    padding: 0 10px;
+  }
+}
+
+.class-health__chip--red {
+  border-color: #ef4444;
+}
+
+.class-health__chip--open {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+
+.class-health__dot {
+  display: block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.class-health__chip--amber .class-health__dot,
+.class-health__dot--amber {
+  background: #f59e0b;
+}
+
+.class-health__chip--red .class-health__dot,
+.class-health__dot--red {
+  background: #ef4444;
+}
+
+.class-health__dot--ok {
+  background: #22c55e;
+}
+
+.class-health__count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #b45309;
+  color: #fff;
+  font-size: 11px;
+}
+
+.class-health__chip--red .class-health__count {
+  background: #dc2626;
+}
+
+.class-health__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 372px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid #e6e0f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+  color: var(--colour-text);
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.class-health__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 14px 8px;
+}
+
+.class-health__head h4 {
+  margin: 0;
+  font-family: var(--font-heading, Montserrat, sans-serif);
+  font-size: 0.95rem;
+  color: var(--colour-primary-dark);
+}
+
+.class-health__head span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.class-health__summary {
+  padding: 0 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.class-health__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid #f3eeff;
+}
+
+.class-health__row .class-health__dot {
+  margin-top: 5px;
+}
+
+.class-health__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.class-health__text b {
+  font-size: 14px;
+}
+
+.class-health__text > div {
+  margin-top: 2px;
+  font-size: 12.5px;
+}
+
+.class-health__text em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.class-health__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.class-health__btn {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid #cdbdec;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--colour-primary);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.class-health__btn--primary {
+  background: var(--colour-primary);
+  border-color: var(--colour-primary);
+  color: #fff;
+}
+
+.class-health__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 1px solid #e6e0f0;
+  border-radius: 0 0 12px 12px;
+  background: #fbf9ff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 /* The student list header's Class menu (Focus Class, Highlight Class). */
 .student-grid-class-menu {
   padding: 3px 10px;

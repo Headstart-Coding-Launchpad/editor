@@ -111,6 +111,7 @@ export default function StudentGrid({
   onToggle,
   // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
   openSideQuestRequest = null,
+  openStudentRequest = null, // { studentId, at } from the Class health chip: open their modal
   // Tutor-only class roster status (summariseRosterStatus in src/shared/roster/rosterModel.js,
   // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
   rosterStatus = null,
@@ -250,6 +251,15 @@ export default function StudentGrid({
     }
   }, [openSideQuestRequest, handleOpenSideQuestRef])
 
+  // Class health chip's Open (like clicking their card); a request older than this mount is stale.
+  const mountedAt = useRef(Date.now()).current
+  const openRequested = useLatestRef(
+    (id) => (collapsed && onToggle?.(), handleExpand({ anonymousId: id }))
+  )
+  useEffect(() => {
+    const req = openStudentRequest
+    if (req?.studentId && req.at >= mountedAt) openRequested.current(req.studentId)
+  }, [openStudentRequest, openRequested, mountedAt])
   function handleClose() {
     onStopLive?.()
     setExpandedStudentId(null)

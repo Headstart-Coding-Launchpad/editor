@@ -49,7 +49,7 @@ import {
   partialEvaluateScratchCheckForSprites,
 } from './checkDispatch.js'
 import { useTypeAssets } from '../../shared/useTypeAssets'
-import PanelTabs, { PanelTabPanel } from '../../app/components/PanelTabs'
+import PanelTabs from '../../app/components/PanelTabs'
 import { loadLayoutTab, saveLayoutTab } from '../../app/studentStorage'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import {
@@ -232,15 +232,6 @@ const toCanvasX = (x) => STAGE_W / 2 + x
 const toCanvasY = (y) => STAGE_H / 2 - y
 
 export const SPRITE_TYPES = ['cat', 'ball', 'star', 'arrow', 'bat', 'parrot']
-
-const SPRITE_TYPE_COLOR = {
-  cat: '#FFA500',
-  ball: '#4C97FF',
-  star: '#FFD700',
-  arrow: '#9966FF',
-  bat: '#374151',
-  parrot: '#22c55e',
-}
 
 export function isSpriteStudentEditable(sprite) {
   return sprite?.studentEditable !== false
@@ -1793,11 +1784,11 @@ export default function ScratchWorkspace({
     return buildAlwaysOpenToolbox(withCreateVariable, { position: { x: state.x, y: state.y } })
   }
 
-  function refreshSpriteToolbox(spriteId) {
+  function refreshSpriteToolbox(spriteId, rebuild = true) {
     const ws = workspaceRefs.current[spriteId]
     if (!ws || readOnly) return
     try {
-      ws.updateToolbox(buildToolboxForSprite(spriteId))
+      if (rebuild) ws.updateToolbox(buildToolboxForSprite(spriteId))
       requestAnimationFrame(() => {
         try {
           ws.getFlyout?.()?.setVisible(!flyoutCollapsed)
@@ -2062,6 +2053,11 @@ export default function ScratchWorkspace({
   function injectWorkspaceFor(Blockly, spriteId, initState) {
     const div = blocksDivRefs.current[spriteId]
     if (!div || workspaceRefs.current[spriteId]) return null
+    // Non-editable prop sprites are never shown or run: skip the Blockly mount cost.
+    if (!initState && respectStudentEditable && spriteId !== '__stage__') {
+      const sp = sprites.find((s) => s.id === spriteId)
+      if (sp && !isSpriteStudentEditable(sp)) return null
+    }
     const ws = Blockly.inject(div, {
       toolbox: buildToolboxForSprite(spriteId),
       renderer: 'zelos',
@@ -2320,12 +2316,16 @@ export default function ScratchWorkspace({
     setFlyoutCollapsed((collapsed) => !collapsed)
   }
 
+  const toolboxBuiltRef = useRef(false)
   // ── Update toolbox when task.toolbox or predefined blocks change ─────────────
   useEffect(() => {
     if (status !== 'ready' || !BlocklyRef.current) return
+    // First run keeps the just-injected toolbox (a rebuild doubled mount cost).
+    const rebuild = toolboxBuiltRef.current
+    toolboxBuiltRef.current = true
     try {
-      for (const sp of sprites) refreshSpriteToolbox(sp.id)
-      if (task?.enableStageCode) refreshSpriteToolbox('__stage__')
+      for (const sp of sprites) refreshSpriteToolbox(sp.id, rebuild)
+      if (task?.enableStageCode) refreshSpriteToolbox('__stage__', rebuild)
     } catch {}
   }, [
     task?.toolbox,

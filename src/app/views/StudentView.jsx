@@ -44,6 +44,7 @@ import RecordingWidget from '../components/RecordingWidget'
 import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
+import { useStudentBeacon } from '../hooks/useHealthBeacon'
 import useNudgeAlert from '../hooks/useNudgeAlert'
 import useThumbsUp from '../hooks/useThumbsUp'
 import ThumbsUpToast from '../components/ThumbsUpToast'
@@ -497,6 +498,8 @@ export default function StudentView({
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
   })
+  const live = nudgeEnabled && !previewMode && !soloMode // R1 health beacon (useHealthBeacon.js)
+  useStudentBeacon({ sessionKey, session, identity, cs, connected, serverTimeOffset, live })
   // The teacher's transient 👍 "on the right track" toast — same live-only gate as nudges.
   const { thumbsUpAt } = useThumbsUp({
     ready: !!session,

@@ -15,6 +15,7 @@ import {
 } from './autoCheck.js'
 import { buildShownResponsesByTask } from './shownResponses.js'
 import { buildPollsReport } from './classPolls.js'
+import { screenHealthFields } from './healthBeacon.js'
 import {
   buildBadgeSummary,
   buildQuizGroupReport,
@@ -748,6 +749,7 @@ export function buildSessionReport({
   catalogueBadges = [],
   // peerHelp/{lessonId}, read once by the teacher (src/app/hooks/usePeerHelp.js).
   peerHelp = null,
+  appVersion = null, // the tutor tab's app version (R1 health beacon)
 }) {
   const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
@@ -925,6 +927,7 @@ export function buildSessionReport({
       // Stable across sessions, never the device id (src/shared/exportWork/shareLink.js).
       studentKey: studentShareKey(anonymousId),
       ...studentJoinFields(studentsSnapshot[anonymousId], session),
+      ...screenHealthFields(studentsSnapshot[anonymousId]),
       ...studentBadgeFields({ session, studentId: anonymousId, timeline, catalogueBadges }),
       tasks: taskResults,
     }
@@ -1075,6 +1078,7 @@ export function buildSessionReport({
     sessionId: session?.startedAt != null ? String(session.startedAt) : null,
     startedAt: session?.startedAt ?? null,
     endedAt: session?.endedAt ?? Date.now(),
+    ...(appVersion ? { appVersion } : {}),
     students,
     taskSummary,
     ...(taskTimeline.length > 0 ? { taskTimeline } : {}),
