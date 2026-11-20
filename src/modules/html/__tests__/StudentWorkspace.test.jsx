@@ -13,7 +13,8 @@ vi.mock('../../../app/components/CollapsibleIframePreview', () => ({
     </button>
   ),
 }))
-vi.mock('../iframe', () => ({
+vi.mock('../iframe', async (importOriginal) => ({
+  ...(await importOriginal()),
   buildIframeSrc: vi.fn(() => 'PREV_TASK_SRC'),
 }))
 vi.mock('../../../app/studentTaskContent', () => ({

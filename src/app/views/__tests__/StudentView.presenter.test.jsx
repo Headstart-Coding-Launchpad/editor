@@ -51,7 +51,8 @@ vi.mock('../../../modules/python/pyodide', () => ({
   isPythonRunning: () => false,
 }))
 
-vi.mock('../../../modules/html/iframe', () => ({
+vi.mock('../../../modules/html/iframe', async (importOriginal) => ({
+  ...(await importOriginal()),
   buildIframeSrc: (...args) => mocks.buildIframeSrc(...args),
   waitForIframeText: vi.fn(() => Promise.resolve('')),
 }))

@@ -50,7 +50,8 @@ vi.mock('../../../modules/python/pyodide', () => {
   }
 })
 
-vi.mock('../../../modules/html/iframe', () => ({
+vi.mock('../../../modules/html/iframe', async (importOriginal) => ({
+  ...(await importOriginal()),
   buildIframeSrc: vi.fn(() => 'about:blank'),
   waitForIframeText: vi.fn(() => Promise.resolve('Hello')),
 }))
