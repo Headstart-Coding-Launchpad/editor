@@ -1288,6 +1288,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
                   <ClassHealthChip
                     students={students}
                     appVersion={TUTOR_APP_VERSION}
+                    serverTimeOffset={serverTimeOffset}
                     onOpenStudent={(studentId) =>
                       setOpenStudentRequest({ studentId, at: Date.now() })
                     }

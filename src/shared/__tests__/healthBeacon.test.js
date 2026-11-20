@@ -6,6 +6,8 @@ import {
   formatAgo,
   HEALTH_BEACON_MESSAGE_MAX,
   HEALTH_RECENT_MS,
+  HEALTH_BEACON_VERSION_MAX,
+  normalizeHealthBeacon,
   isIgnoredError,
   reportScreenHealth,
   sanitizeErrorMessage,
@@ -116,9 +118,67 @@ describe('reportScreenHealth', () => {
     expect(reportScreenHealth({})).toBe(null)
     expect(reportScreenHealth({ healthBeacon: { pythonStatus: 'odd' } })).toEqual({
       appVersion: null,
-      pythonStatus: null,
+      pythonStatus: 'idle',
       errorCount: 0,
       connectionDrops: 0,
     })
+  })
+})
+
+describe('review fixes (R1 code review)', () => {
+  it('strips an unterminated quote and everything after it', () => {
+    expect(sanitizeErrorMessage("Unexpected token 'secret answer here")).toBe("Unexpected token '…")
+    expect(sanitizeErrorMessage('Bad "Mia" then "open tail')).toBe('Bad "…" then "…')
+  })
+
+  it('clamps a hostile beacon on read: 1 MB lastError, long version, junk enum and counts', () => {
+    const beacon = normalizeHealthBeacon({
+      appVersion: 'v'.repeat(10_000),
+      pythonStatus: 'pwned',
+      errorCount: 1e12,
+      connectionDrops: 'many',
+      pythonLoadMs: -5,
+      lastError: 'y'.repeat(1_000_000),
+      lastErrorAt: 'yesterday',
+      updatedAt: 99,
+    })
+    expect(beacon.appVersion).toHaveLength(HEALTH_BEACON_VERSION_MAX)
+    expect(beacon.pythonStatus).toBe('idle')
+    expect(beacon.errorCount).toBe(1_000_000)
+    expect(beacon.connectionDrops).toBe(0)
+    expect(beacon).not.toHaveProperty('pythonLoadMs')
+    expect(beacon.lastError.length).toBeLessThanOrEqual(HEALTH_BEACON_MESSAGE_MAX)
+    expect(beacon).not.toHaveProperty('lastErrorAt')
+    expect(beacon.updatedAt).toBe(99)
+    expect(normalizeHealthBeacon('nope')).toBe(null)
+    expect(normalizeHealthBeacon([1])).toBe(null)
+    expect(
+      reportScreenHealth({ healthBeacon: { lastError: 'z'.repeat(1_000_000) } }).lastError.length
+    ).toBeLessThanOrEqual(HEALTH_BEACON_MESSAGE_MAX)
+  })
+
+  it('times a retry after a failed load, and never overwrites a measured load time', () => {
+    let t = 0
+    const failed = createHealthBeaconState({ now: () => t })
+    failed.setPythonStatus('loading')
+    t = 5000
+    failed.setPythonStatus('error')
+    failed.setPythonStatus('loading') // retry starts the clock again
+    t = 7000
+    failed.setPythonStatus('ready')
+    expect(failed.summary().pythonLoadMs).toBe(2000)
+
+    failed.setPythonStatus('loading') // a later reload of the runtime
+    t = 60_000
+    failed.setPythonStatus('ready')
+    expect(failed.summary().pythonLoadMs).toBe(2000)
+  })
+
+  it('says "Recent error" rather than a lifetime count', () => {
+    const status = studentHealthStatus(
+      { online: true, healthBeacon: { errorCount: 40, lastErrorAt: 1000 } },
+      { now: 2000 }
+    )
+    expect(status.headline).toBe('Recent error')
   })
 })

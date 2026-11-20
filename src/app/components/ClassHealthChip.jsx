@@ -13,19 +13,27 @@ const TICK_MS = 15_000
  * Reads only: it writes nothing itself. Data: students/{id}/healthBeacon and /health
  * (src/shared/healthBeacon.js).
  */
-export default function ClassHealthChip({ students, appVersion, onOpenStudent, onNudgeStudent }) {
+export default function ClassHealthChip({
+  students,
+  appVersion,
+  onOpenStudent,
+  onNudgeStudent,
+  // Firebase's (server clock - this device's clock) in ms (useSession): the beacons' times are
+  // server time, so every age and the 10-minute window are measured against server time too.
+  serverTimeOffset = 0,
+}) {
   const [open, setOpen] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
+  const [tick, setTick] = useState(() => Date.now())
   const wrapRef = useRef(null)
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), TICK_MS)
+    const id = setInterval(() => setTick(Date.now()), TICK_MS)
     return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
     if (!open) return
-    setNow(Date.now())
+    setTick(Date.now())
     function onDown(e) {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
     }
@@ -40,6 +48,9 @@ export default function ClassHealthChip({ students, appVersion, onOpenStudent, o
     }
   }, [open])
 
+  // `tick` only re-renders on a timer; the clock is read fresh each render.
+  void tick
+  const now = Date.now() + (Number(serverTimeOffset) || 0)
   const health = classHealth(students, { now, appVersion })
   const count = health.rows.length
   const headline =
@@ -138,7 +149,7 @@ export default function ClassHealthChip({ students, appVersion, onOpenStudent, o
               {health.versionTotal > 0 &&
                 ` · ${health.versionMatch} of ${health.versionTotal} match`}
             </span>
-            <span>No code or answers sent</span>
+            <span>Errors: first line, quotes and links removed</span>
           </div>
         </div>
       )}

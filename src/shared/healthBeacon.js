@@ -6,8 +6,9 @@
  *   { appVersion, pythonStatus, pythonLoadMs?, errorCount, lastError?, lastErrorAt?,
  *     connectionDrops, lastDropAt?, updatedAt }
  * Throttled: once on joining, then only when the summary changes and at most once every
- * HEALTH_BEACON_MIN_INTERVAL_MS. Never code, names or answers: an error message keeps its first
- * line only, with quoted text and links taken out, cut to HEALTH_BEACON_MESSAGE_MAX characters.
+ * HEALTH_BEACON_MIN_INTERVAL_MS. The error line is kept short and stripped: first line only,
+ * quoted text (and an unterminated quote's tail) and links removed, cut to
+ * HEALTH_BEACON_MESSAGE_MAX characters. Other words in a message are not checked.
  *
  * The tutor's Class health chip (src/app/components/ClassHealthChip.jsx) reads it through
  * classHealth() below, alongside the older one-word `health` field (src/shared/studentHealth.js),
@@ -35,17 +36,20 @@ export function isIgnoredError(message) {
 }
 
 /**
- * An error message safe to send: the first line, quoted text replaced by '…', links replaced by
- * <link>, spaces collapsed, at most HEALTH_BEACON_MESSAGE_MAX characters. Quoted text is where a
- * name, an answer or a line of code would show (e.g. "reading 'answer'").
+ * An error message to send: the first line, quoted text replaced by '…' (an unterminated quote
+ * loses everything after it), links replaced by <link>, spaces collapsed, at most
+ * HEALTH_BEACON_MESSAGE_MAX characters. Quoted text is where a name, an answer or a line of code
+ * usually shows (e.g. "reading 'answer'"); unquoted words are not checked.
  */
 export function sanitizeErrorMessage(message) {
-  let text = String(message ?? '').split(/\r?\n/)[0]
+  // Cut first so a huge message costs nothing; a quote cut open here is removed below.
+  let text = String(message ?? '')
+    .slice(0, HEALTH_BEACON_MESSAGE_MAX * 4)
+    .split(/\r?\n/)[0]
   text = text
     .replace(/https?:\/\/\S+/gi, '<link>')
-    .replace(/'[^']*'/g, "'…'")
-    .replace(/"[^"]*"/g, '"…"')
-    .replace(/`[^`]*`/g, '`…`')
+    // A quoted stretch, or an unterminated quote and everything after it.
+    .replace(/(['"`])(?:(?!\1).)*(\1|$)/g, (_m, open, close) => `${open}…${close}`)
     .replace(/\s+/g, ' ')
     .trim()
   if (!text) text = 'Unknown error'
@@ -96,7 +100,8 @@ export function createHealthBeaconState({ appVersion = 'dev', now = () => Date.n
     setPythonStatus(status) {
       const next = PYTHON_STATUSES.includes(status) ? status : 'idle'
       if (next === state.pythonStatus) return false
-      if (next === 'loading') state.pythonLoadStartedAt = now()
+      // A load (or a retry after an error) starts the clock; a load time once measured stays.
+      if (next === 'loading' && state.pythonLoadMs == null) state.pythonLoadStartedAt = now()
       if (next === 'ready' && state.pythonLoadStartedAt != null && state.pythonLoadMs == null) {
         state.pythonLoadMs = Math.max(0, now() - state.pythonLoadStartedAt)
       }
@@ -145,6 +150,47 @@ export function summaryKey(summary) {
 
 // ─── Tutor side ──────────────────────────────────────────────────────────────
 
+export const HEALTH_BEACON_VERSION_MAX = 40
+const COUNT_MAX = 1_000_000
+
+function finiteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function wholeCount(value) {
+  const n = finiteNumber(value)
+  return n == null ? 0 : Math.min(COUNT_MAX, Math.max(0, Math.floor(n)))
+}
+
+/**
+ * A beacon read from the database, made safe before the chip or the report uses it. The rules
+ * do not check this field's shape yet (a `.validate` block is a follow-up needing a rules
+ * deploy), so a bad or hostile write is clamped here: appVersion capped at
+ * HEALTH_BEACON_VERSION_MAX characters, lastError re-sanitised (so capped), pythonStatus one of
+ * PYTHON_STATUSES, counts whole numbers 0..1,000,000, times finite numbers. Null when it is not
+ * an object.
+ */
+export function normalizeHealthBeacon(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out = {
+    appVersion:
+      typeof raw.appVersion === 'string' && raw.appVersion
+        ? raw.appVersion.slice(0, HEALTH_BEACON_VERSION_MAX)
+        : null,
+    pythonStatus: PYTHON_STATUSES.includes(raw.pythonStatus) ? raw.pythonStatus : 'idle',
+    errorCount: wholeCount(raw.errorCount),
+    connectionDrops: wholeCount(raw.connectionDrops),
+  }
+  const loadMs = finiteNumber(raw.pythonLoadMs)
+  if (loadMs != null && loadMs >= 0) out.pythonLoadMs = loadMs
+  if (typeof raw.lastError === 'string') out.lastError = sanitizeErrorMessage(raw.lastError)
+  for (const key of ['lastErrorAt', 'lastDropAt', 'updatedAt']) {
+    const at = finiteNumber(raw[key])
+    if (at != null) out[key] = at
+  }
+  return out
+}
+
 const LEVEL_RANK = { ok: 0, amber: 1, red: 2 }
 
 function plural(n, one, many = `${one}s`) {
@@ -170,7 +216,7 @@ function isRecent(at, now) {
  */
 export function studentHealthStatus(student, { now = Date.now(), appVersion = null } = {}) {
   if (!student?.online) return null
-  const beacon = student.healthBeacon ?? null
+  const beacon = normalizeHealthBeacon(student.healthBeacon)
   const versionNote = (() => {
     const v = beacon?.appVersion
     if (!v) return null
@@ -189,9 +235,11 @@ export function studentHealthStatus(student, { now = Date.now(), appVersion = nu
     }
   }
   if (beacon?.errorCount > 0 && isRecent(beacon.lastErrorAt, now)) {
+    // errorCount covers the screen's whole page load, so the headline only says one was recent;
+    // the detail gives its age.
     return {
       level: 'amber',
-      headline: plural(beacon.errorCount, 'error'),
+      headline: 'Recent error',
       detail: withVersion(`Last error ${formatAgo(now - beacon.lastErrorAt)}`),
       message: beacon.lastError ?? null,
     }
@@ -228,7 +276,7 @@ export function classHealth(students, { now = Date.now(), appVersion = null } = 
     const status = studentHealthStatus(student, { now, appVersion })
     if (!status) continue
     total += 1
-    const beacon = student.healthBeacon
+    const beacon = normalizeHealthBeacon(student.healthBeacon)
     if (typeof beacon?.updatedAt === 'number') {
       checkedAt = Math.max(checkedAt ?? 0, beacon.updatedAt)
     }
@@ -258,15 +306,15 @@ export function classHealth(students, { now = Date.now(), appVersion = null } = 
  * never sent a beacon.
  */
 export function reportScreenHealth(studentNode) {
-  const beacon = studentNode?.healthBeacon
-  if (!beacon || typeof beacon !== 'object') return null
+  const beacon = normalizeHealthBeacon(studentNode?.healthBeacon)
+  if (!beacon) return null
   const out = {
-    appVersion: typeof beacon.appVersion === 'string' ? beacon.appVersion : null,
-    pythonStatus: PYTHON_STATUSES.includes(beacon.pythonStatus) ? beacon.pythonStatus : null,
-    errorCount: Number.isFinite(beacon.errorCount) ? beacon.errorCount : 0,
-    connectionDrops: Number.isFinite(beacon.connectionDrops) ? beacon.connectionDrops : 0,
+    appVersion: beacon.appVersion,
+    pythonStatus: beacon.pythonStatus,
+    errorCount: beacon.errorCount,
+    connectionDrops: beacon.connectionDrops,
   }
-  if (Number.isFinite(beacon.pythonLoadMs)) out.pythonLoadMs = beacon.pythonLoadMs
-  if (typeof beacon.lastError === 'string') out.lastError = sanitizeErrorMessage(beacon.lastError)
+  if (beacon.pythonLoadMs != null) out.pythonLoadMs = beacon.pythonLoadMs
+  if (beacon.lastError != null) out.lastError = beacon.lastError
   return out
 }

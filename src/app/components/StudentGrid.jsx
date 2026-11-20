@@ -261,8 +261,13 @@ export default function StudentGrid({
     setSideQuestViewRequest(null)
   }
   const handleOpenStudentRef = useLatestRef(handleOpenStudent)
+  // A request made before this grid mounted (TeacherView keeps the last one in state) is stale:
+  // a remount (folding the panel, a re-render of the page) must not reopen that student.
+  const mountedAtRef = useRef(Date.now())
   useEffect(() => {
-    if (openStudentRequest?.studentId) handleOpenStudentRef.current(openStudentRequest.studentId)
+    if (!openStudentRequest?.studentId) return
+    if (!(openStudentRequest.at >= mountedAtRef.current)) return
+    handleOpenStudentRef.current(openStudentRequest.studentId)
   }, [openStudentRequest, handleOpenStudentRef])
 
   function handleClose() {

@@ -120,3 +120,56 @@ describe('useHealthBeacon (Fun moment: an error on a student reaches the tutor, 
     expect(write).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('useHealthBeacon review fixes', () => {
+  it('keeps the 30 s throttle when enabled flips off and on (node reset), then re-sends', async () => {
+    const { write, rerender, props } = renderBeacon()
+    expect(write).toHaveBeenCalledTimes(1)
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    rerender({ ...props, enabled: false })
+    rerender({ ...props, enabled: true })
+    // Re-enabled 1 s after the last write: no burst.
+    expect(write).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_BEACON_MIN_INTERVAL_MS - 1000)
+    })
+    // The node came back, so the same summary is sent again once the window allows.
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+
+  it('a new student id starts the throttle afresh', () => {
+    const { write, rerender, props } = renderBeacon()
+    rerender({ ...props, anonymousId: 'kid-2' })
+    expect(write).toHaveBeenCalledTimes(2)
+    expect(write.mock.calls[1][0]).toBe('kid-2')
+  })
+
+  it('a skipped write (no student node) is retried after the throttle window', async () => {
+    const write = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    renderHook((p) => useHealthBeacon(p), {
+      initialProps: {
+        enabled: true,
+        anonymousId: 'kid-1',
+        write,
+        pythonStatus: 'idle',
+        connected: true,
+        appVersion: '1',
+      },
+    })
+    expect(write).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_BEACON_MIN_INTERVAL_MS)
+    })
+    expect(write).toHaveBeenCalledTimes(2)
+    // Written now: nothing more while nothing changes.
+    await act(async () => {
+      vi.advanceTimersByTime(HEALTH_BEACON_MIN_INTERVAL_MS * 3)
+    })
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+})

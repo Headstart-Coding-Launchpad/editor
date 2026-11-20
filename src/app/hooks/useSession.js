@@ -2291,12 +2291,14 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   // The student's health beacon (src/shared/healthBeacon.js, R1): the throttled summary from
   // useHealthBeacon (at most one write every 30 s, only on a change). A student missing from the
-  // snapshot (not joined yet, or removed) is never recreated: the write is skipped.
+  // snapshot (not joined yet, or removed) is never recreated: the write is skipped. Resolves true
+  // when it wrote, false when it skipped (the beacon then sends again later).
   const writeStudentHealthBeacon = useCallback(
     async (anonymousId, summary) => {
-      if (!lessonId || !anonymousId || !summary || typeof summary !== 'object') return
-      if (!sessionValueRef.current?.students?.[anonymousId]) return
+      if (!lessonId || !anonymousId || !summary || typeof summary !== 'object') return false
+      if (!sessionValueRef.current?.students?.[anonymousId]) return false
       await set(ref(db, `sessions/${lessonId}/students/${anonymousId}/healthBeacon`), summary)
+      return true
     },
     [lessonId]
   )

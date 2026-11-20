@@ -42,6 +42,19 @@ export default function useHealthBeacon({
   const sentRef = useRef({ key: null, at: null, timer: null })
 
   const flushRef = useRef(null)
+  // A write that was skipped (no student node yet) or failed: forget it, so the same summary is
+  // sent again, and try once more after the throttle window.
+  function retryLater(key) {
+    const sent = sentRef.current
+    if (sent.key !== key) return
+    sent.key = null
+    if (!sent.timer) {
+      sent.timer = setTimeout(() => {
+        sent.timer = null
+        flushRef.current?.()
+      }, HEALTH_BEACON_MIN_INTERVAL_MS)
+    }
+  }
   flushRef.current = function flush() {
     const { enabled: on, anonymousId: id, write: send } = live.current
     if (!on || !id || !send) return
@@ -61,10 +74,14 @@ export default function useHealthBeacon({
     }
     sent.key = key
     sent.at = Date.now()
-    Promise.resolve(send(id, { ...summary, updatedAt: nowRef.current() })).catch(() => {
-      // Try again with the next change or after the throttle window.
-      if (sentRef.current.key === key) sentRef.current.key = null
-    })
+    // `write` resolves false when it did not write (useSession.writeStudentHealthBeacon skips a
+    // student missing from the snapshot).
+    Promise.resolve(send(id, { ...summary, updatedAt: nowRef.current() })).then(
+      (wrote) => {
+        if (wrote === false) retryLater(key)
+      },
+      () => retryLater(key)
+    )
   }
 
   // Global handlers: one pair for the screen's life.
@@ -94,10 +111,17 @@ export default function useHealthBeacon({
     if (beaconRef.current.setConnected(connected)) flushRef.current?.()
   }, [connected])
 
-  // A new student id (or a fresh enable) starts the throttle afresh and sends once.
+  // A new student id starts the throttle afresh.
   useEffect(() => {
     sentRef.current.key = null
     sentRef.current.at = null
-    if (enabled) flushRef.current?.()
+  }, [anonymousId])
+
+  // Enabled (joined, or the node came back after a reset or removal): send the summary again,
+  // still no sooner than HEALTH_BEACON_MIN_INTERVAL_MS after the last write.
+  useEffect(() => {
+    if (!enabled) return
+    sentRef.current.key = null
+    flushRef.current?.()
   }, [enabled, anonymousId])
 }

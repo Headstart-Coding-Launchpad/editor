@@ -270,7 +270,9 @@ describe('writeStudentHealthBeacon (R1)', () => {
   it("writes the summary to the student's own node", async () => {
     const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
     await act(async () => {
-      await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+      expect(
+        await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+      ).toBe(true)
     })
     expect(beaconWrites()).toEqual([{ errorCount: 1, updatedAt: 5 }])
   })
@@ -278,7 +280,9 @@ describe('writeStudentHealthBeacon (R1)', () => {
   it('never recreates a student missing from the session', async () => {
     const { result } = renderSession({ students: {} })
     await act(async () => {
-      await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+      expect(
+        await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+      ).toBe(false)
     })
     expect(beaconWrites()).toEqual([])
   })

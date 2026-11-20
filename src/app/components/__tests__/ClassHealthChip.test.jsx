@@ -65,7 +65,11 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
       student('a', 'Amy', beacon()),
       student('d', 'Dev', beacon({ pythonStatus: 'error' })),
       student('h', 'Hana', beacon({ errorCount: 3, lastErrorAt: NOW - 40_000 })),
-      student('i', 'Ivo', beacon({ connectionDrops: 4, lastDropAt: NOW - 60_000, appVersion: '1.0.900' })),
+      student(
+        'i',
+        'Ivo',
+        beacon({ connectionDrops: 4, lastDropAt: NOW - 60_000, appVersion: '1.0.900' })
+      ),
     ])
     const chip = screen.getByRole('button', { name: /class health/i })
     expect(chip).toHaveAttribute('data-level', 'red')
@@ -80,7 +84,8 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
       .map((row) => row.getAttribute('data-student'))
     expect(names).toEqual(['d', 'h', 'i'])
     expect(within(panel).getByText('Python failed to load')).toBeInTheDocument()
-    expect(within(panel).getByText('3 errors')).toBeInTheDocument()
+    expect(within(panel).getByText('Recent error')).toBeInTheDocument()
+    expect(within(panel).getByText(/Last error 40 s ago/)).toBeInTheDocument()
     expect(within(panel).getByText('Connection dropped 4 times')).toBeInTheDocument()
     expect(within(panel).getByText(/older version/)).toBeInTheDocument()
     expect(within(panel).getByText('1 student fine')).toBeInTheDocument()
@@ -89,9 +94,7 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
     fireEvent.click(within(panel).getByRole('button', { name: "Open Dev's screen" }))
     expect(props.onOpenStudent).toHaveBeenCalledWith('d')
     fireEvent.click(chip)
-    fireEvent.click(
-      within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Nudge' })[1]
-    )
+    fireEvent.click(within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Nudge' })[1])
     expect(props.onNudgeStudent).toHaveBeenCalledWith('h')
   })
 
@@ -104,6 +107,53 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
       'data-level',
       'ok'
     )
+  })
+
+  it('measures ages in server time, so a skewed tutor clock still sees a recent error', () => {
+    // The tutor's device clock runs 15 min ahead of the server: server time = NOW - 15 min.
+    const skew = -15 * 60_000
+    const serverNow = NOW + skew
+    const students = [
+      student(
+        'h',
+        'Hana',
+        beacon({ errorCount: 1, lastErrorAt: serverNow - 40_000, updatedAt: serverNow - 5_000 })
+      ),
+    ]
+    renderChip(students, { serverTimeOffset: skew })
+    const chip = screen.getByRole('button', { name: /class health/i })
+    expect(chip).toHaveAttribute('data-level', 'amber')
+    fireEvent.click(chip)
+    const panel = screen.getByRole('dialog')
+    expect(within(panel).getByText(/Last error 40 s ago/)).toBeInTheDocument()
+    expect(within(panel).getByText('checked 5 s ago')).toBeInTheDocument()
+  })
+
+  it('without the offset the same error would look 15 min old and the chip stay green', () => {
+    const serverNow = NOW - 15 * 60_000
+    renderChip([student('h', 'Hana', beacon({ errorCount: 1, lastErrorAt: serverNow - 40_000 }))])
+    expect(screen.getByRole('button', { name: /class health/i })).toHaveAttribute(
+      'data-level',
+      'ok'
+    )
+  })
+
+  it('copes with a hostile beacon: a 1 MB error line, junk status and counts', () => {
+    renderChip([
+      student('h', 'Hana', {
+        appVersion: 'v'.repeat(5000),
+        pythonStatus: 'pwned',
+        errorCount: 'lots',
+        connectionDrops: -4,
+        lastError: 'x'.repeat(1_000_000),
+        lastErrorAt: NOW - 1000,
+      }),
+    ])
+    // errorCount is not a number, so it counts as 0: nothing to show.
+    const chip = screen.getByRole('button', { name: /class health/i })
+    expect(chip).toHaveAttribute('data-level', 'ok')
+    fireEvent.click(chip)
+    expect(screen.getByRole('dialog').textContent.length).toBeLessThan(400)
   })
 
   it("counts the existing screen-health field (Python stuck) when there's no beacon yet", () => {
