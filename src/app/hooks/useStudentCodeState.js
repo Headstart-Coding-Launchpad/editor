@@ -51,7 +51,7 @@ import {
   selectPythonTaskCode,
 } from '../studentTaskContent'
 import { decodeSessionFiles, getFileType } from '../../shared/workspaceData'
-import { resolveIframeErrorLocation } from '../../modules/html/iframe'
+import { getPreviewDoc, resolveIframeErrorLocation } from '../../modules/html/iframe'
 import { buildCodeCheckContext } from '../codeCheckContext'
 import { useCheckFeedback } from './useCheckFeedback'
 import { useLatestRef } from './useLatestRef'
@@ -2183,7 +2183,7 @@ export function useStudentCodeState({
         suggestion = '',
         scrubPassed = null
       if (scrubRun && alreadySolved && task?.check) {
-        const iframeDoc = iframeRef.current?.contentDocument ?? null
+        const iframeDoc = getPreviewDoc()
         scrubPassed = evaluateCheckWithFeedback(
           task,
           text,
@@ -2191,7 +2191,7 @@ export function useStudentCodeState({
         ).passed
       }
       if (!alreadySolved) {
-        const iframeDoc = iframeRef.current?.contentDocument ?? null
+        const iframeDoc = getPreviewDoc()
         const evaluation = evaluateCheckWithFeedback(
           task,
           text,
@@ -3341,7 +3341,7 @@ export function useStudentCodeState({
       () =>
         definition.checking.buildContext(next.files, {
           output: outputRef.current,
-          iframeDoc: iframeRef.current?.contentDocument ?? null,
+          iframeDoc: getPreviewDoc(),
         }),
       { feedbackFilter: checkAllowedForSubmit }
     )

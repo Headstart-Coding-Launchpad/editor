@@ -16,9 +16,13 @@ export default function IframePreview({
   const [tab, setTab] = useState('preview')
   const ownFrameRef = useRef(null)
   const frameRef = iframeRef ?? ownFrameRef
+  // The Inspector reads a script-less copy of the page (its reported snapshot): the live page
+  // runs in an opaque origin, so the app never touches its document.
+  const mirrorRef = useRef(null)
+  const [snapshot, setSnapshot] = useState(null)
   const inspectorUi = useHtmlInspector({
-    iframeRef,
-    src,
+    iframeRef: mirrorRef,
+    src: snapshot && src,
     visible: tab === 'preview',
     config: inspector?.config ?? null,
     ...(inspector && 'live' in inspector ? { live: inspector.live } : {}),
@@ -28,9 +32,15 @@ export default function IframePreview({
   const [logs, setLogs] = useState([])
   const logEndRef = useRef(null)
 
+  const inspecting = !!inspectorUi.layer
+  useEffect(() => {
+    if (inspecting) frameRef.current?.contentWindow?.postMessage('__hsc_snap__', '*')
+  }, [inspecting, frameRef])
+
   // Clear console on each new run
   useEffect(() => {
     setLogs([])
+    setSnapshot(null)
   }, [src])
 
   // Auto-scroll console to bottom when new entries arrive
@@ -41,8 +51,9 @@ export default function IframePreview({
   // Listen for postMessage events from the iframe
   useEffect(() => {
     function onMessage(e) {
-      if (!e.data || e.data.source !== 'hsc-console') return
       if (!frameRef.current || e.source !== frameRef.current.contentWindow) return
+      if (e.data?.type === '__hsc_text__') return inspector && setSnapshot(e.data.html)
+      if (e.data?.source !== 'hsc-console') return
       setLogs((prev) => [
         ...prev,
         {
@@ -63,7 +74,7 @@ export default function IframePreview({
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [frameRef, onConsoleError, src])
+  }, [frameRef, onConsoleError, src, inspector])
 
   const wrapStyle = fill
     ? { ...s.wrap, flex: 1, minHeight: 0, flexShrink: 1 }
@@ -101,9 +112,18 @@ export default function IframePreview({
           ref={frameRef}
           src={src ?? 'about:blank'}
           style={s.frame}
-          sandbox="allow-scripts allow-modals allow-same-origin"
+          sandbox="allow-scripts allow-modals"
           title="Output preview"
         />
+        {inspector && snapshot && (
+          <iframe
+            ref={mirrorRef}
+            srcDoc={`<!DOCTYPE html>${snapshot}`}
+            sandbox="allow-same-origin"
+            style={inspecting ? s.mirror : { ...s.mirror, visibility: 'hidden' }}
+            title="Inspector copy of the preview"
+          />
+        )}
         {inspectorUi.layer}
       </div>
 
@@ -126,31 +146,21 @@ export default function IframePreview({
   )
 }
 
-function rowStyle(level) {
-  switch (level) {
-    case 'error':
-      return { background: 'rgba(239,68,68,0.06)', color: '#b91c1c' }
-    case 'warn':
-      return { background: 'rgba(245,158,11,0.06)', color: '#92400e' }
-    case 'info':
-      return { color: '#1e40af' }
-    default:
-      return { color: 'var(--colour-text)' }
-  }
+// Console row and tag colours per level: [row, tag].
+const LEVEL_STYLES = {
+  error: [
+    { background: 'rgba(239,68,68,0.06)', color: '#b91c1c' },
+    { background: '#fee2e2', color: '#b91c1c' },
+  ],
+  warn: [
+    { background: 'rgba(245,158,11,0.06)', color: '#92400e' },
+    { background: '#fef3c7', color: '#92400e' },
+  ],
+  info: [{ color: '#1e40af' }, { background: '#dbeafe', color: '#1e40af' }],
+  log: [{ color: 'var(--colour-text)' }, { background: '#f3f4f6', color: '#374151' }],
 }
-
-function tagStyle(level) {
-  switch (level) {
-    case 'error':
-      return { background: '#fee2e2', color: '#b91c1c' }
-    case 'warn':
-      return { background: '#fef3c7', color: '#92400e' }
-    case 'info':
-      return { background: '#dbeafe', color: '#1e40af' }
-    default:
-      return { background: '#f3f4f6', color: '#374151' }
-  }
-}
+const rowStyle = (level) => (LEVEL_STYLES[level] ?? LEVEL_STYLES.log)[0]
+const tagStyle = (level) => (LEVEL_STYLES[level] ?? LEVEL_STYLES.log)[1]
 
 const s = {
   wrap: {
@@ -227,6 +237,7 @@ const s = {
     background: '#fff',
     minHeight: 0,
   },
+  mirror: { position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' },
   consolePane: {
     flex: 1,
     overflow: 'auto',

@@ -68,4 +68,11 @@ describe('IframePreview', () => {
 
     expect(onConsoleError).not.toHaveBeenCalled()
   })
+
+  it('runs student pages in an opaque origin so their scripts cannot reach the app (R6)', () => {
+    const { container } = render(<IframePreview src="blob:preview-1" />)
+    const sandbox = container.querySelector('iframe').getAttribute('sandbox').split(' ')
+    expect(sandbox).toContain('allow-scripts')
+    expect(sandbox).not.toContain('allow-same-origin')
+  })
 })

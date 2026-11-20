@@ -1,9 +1,7 @@
 import { rememberPreviewFileName } from './inspector/previewFileNames.js'
 
-// Injected into every iframe HTML to relay console output to the parent via postMessage.
-// Parameterised per-load with `loadId` so the parent can match a runtime error
-// back to the specific buildIframeSrc() call it came from (see
-// resolveIframeErrorLocation) and reject stale messages from a previous Run.
+// Relays console output to the parent, tagged with the load's id so a runtime error maps to
+// its own buildIframeSrc() call (resolveIframeErrorLocation) and stale Runs are ignored.
 function buildConsoleInterceptorScript(loadId) {
   return `<script>(function(){
   var __hscLoadId=${JSON.stringify(loadId)};
@@ -22,30 +20,34 @@ function buildConsoleInterceptorScript(loadId) {
 })()</script>`
 }
 
-// Tracks the load ID of the most recently built iframe src so waitForIframeText
-// can match the postMessage from the correct iframe load.
+// The most recent load's id, so waitForIframeText matches that load's report.
 let _lastLoadId = null
 
-// Tracks enough about the most recently built iframe to map a runtime error's
-// (filename, lineno) — as reported by the browser inside the sandboxed
-// document — back to the student-facing file name and original line number.
-// See resolveIframeErrorLocation.
+// Maps a runtime error in the most recent build back to the student's file and line.
 let _lastErrorContext = null
 
-/**
- * Converts an array of file objects into a sandboxed iframe src URL.
- * Each file becomes a Blob URL; cross-references in the entry HTML are
- * rewritten before injection so that href/src attributes resolve correctly.
- *
- * Asset references (paths in `assets`) in HTML attributes or CSS url(...)
- * values are rewritten to their static server URL: `assetsPath + assetPath`.
- * Storage asset names (entries in `storageAssets`) are rewritten to their
- * Firebase Storage download URLs so students can reference them by filename.
- */
+// The preview runs in an opaque origin (sandbox without allow-same-origin), so the parent never
+// touches its document. The page reports a snapshot instead (HTML after its scripts ran, input
+// values, computed values of the checked style properties); html_* checks read it as `iframeDoc`.
+let _lastDoc = null
+export const getPreviewDoc = () => _lastDoc
+
+function snapshotDoc({ html = '', styles = [], values = [] }) {
+  const doc = new DOMParser().parseFromString('<!DOCTYPE html>' + html, 'text/html')
+  const els = Array.from(doc.querySelectorAll('*'))
+  els.forEach((el, i) => values[i] != null && (el.value = values[i]))
+  const get = (el, p) => styles[els.indexOf(el)]?.[p] ?? ''
+  const getComputedStyle = (el) => ({ getPropertyValue: (p) => get(el, p) })
+  return Object.defineProperty(doc, 'defaultView', { value: { getComputedStyle } })
+}
+
+// Files → a Blob URL for the sandboxed preview: each file is a Blob, the entry's href/src to
+// sibling files point at those, `assets` become `assetsPath + path`, `storageAssets` names
+// their Firebase Storage URLs.
 export function buildIframeSrc(
   files,
   entryFile = 'index.html',
-  { assets = [], assetsPath = '', storageAssets = [], copyProtect = false } = {}
+  { assets = [], assetsPath = '', storageAssets = [], copyProtect = false, styleProps = [] } = {}
 ) {
   if (!files || files.length === 0) return null
 
@@ -83,18 +85,15 @@ export function buildIframeSrc(
   // Inject security (CSP + console interceptor + text reporter)
   const loadId = Math.random().toString(36).slice(2)
   _lastLoadId = loadId
-  const injected = _injectSecurity(html, loadId, { copyProtect })
+  const injected = _injectSecurity(html, loadId, { copyProtect, styleProps })
 
   // Return new Blob URL for the rewritten HTML
   const rewrittenBlob = new Blob([injected.html], { type: 'text/html' })
   const src = URL.createObjectURL(rewrittenBlob)
   rememberPreviewFileName(src, entry.name)
 
-  // Non-entry files (e.g. external .js) are served from their own blob with
-  // unmodified content/line numbers, so a reported error's filename matching
-  // one of these maps directly. The entry file's live document is `src`
-  // (not blobUrls[entry.name], which is a pre-injection blob only used above
-  // for other files' href rewriting) and needs `offsetLines` subtracted.
+  // Other files keep their own line numbers; the entry's live document is `src` (offset by
+  // the injected lines), not its pre-injection blob.
   _lastErrorContext = {
     loadId,
     entrySrc: src,
@@ -152,11 +151,6 @@ function rewriteAssetReferences(file, assets, assetsPath, storageAssets = []) {
   return content
 }
 
-/**
- * Returns a Promise that resolves to the iframe's body text once the injected
- * postMessage script fires after DOMContentLoaded. Matches against the load ID
- * set by the most recent buildIframeSrc call. Resolves to '' on timeout.
- */
 // True only when a message came from the window of an <iframe> in this page,
 // so another window or tab cannot forge the preview's reports.
 function isFromPageIframe(source) {
@@ -164,8 +158,11 @@ function isFromPageIframe(source) {
   return Array.from(document.querySelectorAll('iframe')).some((f) => f.contentWindow === source)
 }
 
+// Resolves to the page's body text once its reporter fires after DOMContentLoaded (matched
+// to the latest buildIframeSrc load), keeping its snapshot for getPreviewDoc; '' on timeout.
 export function waitForIframeText(timeout = 1500) {
   const expectedId = _lastLoadId
+  _lastDoc = null
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       window.removeEventListener('message', handler)
@@ -180,6 +177,7 @@ export function waitForIframeText(timeout = 1500) {
       ) {
         clearTimeout(timer)
         window.removeEventListener('message', handler)
+        _lastDoc = snapshotDoc(event.data)
         resolve(event.data.text ?? '')
       }
     }
@@ -195,25 +193,21 @@ function getMime(typeOrName) {
   return 'text/plain'
 }
 
-// A student watching a broadcast sees the teacher's (or a pinned peer's) page:
-// no selecting, copying, dragging or right-click (which offers "View frame
-// source"). A deterrent, like the editor's live-copy-blocked class — dev tools
-// still show everything.
+// A broadcast viewer's copy: no selecting, copying, dragging or right-click. A deterrent only.
 const COPY_PROTECT_SNIPPET =
   '<style>*{-webkit-user-select:none!important;user-select:none!important}</style>' +
   "<script>['copy','cut','contextmenu','dragstart'].forEach(function(t){document.addEventListener(t,function(e){e.preventDefault()},true)})</script>"
 
-// Returns { html, offsetLines } — offsetLines is how many extra lines the
-// injected CSP + console interceptor add ahead of the student's own markup,
-// so a browser-reported error line in this document can be translated back
-// to the original entry file's line number (see resolveIframeErrorLocation).
-function _injectSecurity(html, loadId, { copyProtect = false } = {}) {
-  // CSP blocks all outbound network requests (fetch, XHR, WebSocket).
-  // blob: and 'unsafe-inline'/'unsafe-eval' are needed for the virtual filesystem
-  // and typical student code patterns.
-  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' blob:; connect-src 'self' ws://localhost:5173; img-src 'self' data: blob: https://firebasestorage.googleapis.com;">` // Text reporter: fires on DOMContentLoaded and posts body text to the parent.
-  // The parent's waitForIframeText() listens for this message to run output_contains checks.
-  const textReporter = `<script>(function(){var s=function(){try{window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:''},'*')}catch(e){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}})()</script>`
+// Returns { html, offsetLines }: the lines injected ahead of the student's markup.
+function _injectSecurity(html, loadId, { copyProtect = false, styleProps = [] } = {}) {
+  // CSP blocks outbound requests (fetch, XHR, WebSocket). The page's origin is opaque, so
+  // 'self' matches nothing: the app's origin is named for lesson assets. blob: and
+  // 'unsafe-inline'/'unsafe-eval' serve the virtual files and typical student code.
+  const self = `'self' ${window.location.origin}`
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src ${self}; script-src ${self} 'unsafe-inline' 'unsafe-eval' blob:; style-src ${self} 'unsafe-inline' blob:; connect-src ${self} ws://localhost:5173; img-src ${self} data: blob: https://firebasestorage.googleapis.com;">`
+  // Reporter: on DOMContentLoaded (and on '__hsc_snap__') posts the body text (output_contains
+  // checks) and the snapshot behind getPreviewDoc and the Inspector's mirror.
+  const textReporter = `<script>(function(){var P=${JSON.stringify(styleProps)};var s=function(){try{var e=document.querySelectorAll('*'),st=[],v=[];for(var i=0;i<e.length;i++){var c=getComputedStyle(e[i]),o={};P.forEach(function(p){o[p]=c.getPropertyValue(p)});st.push(o);v.push(/^(INPUT|TEXTAREA|SELECT)$/.test(e[i].tagName)?e[i].value:null)}window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:'',html:document.documentElement.outerHTML,styles:st,values:v},'*')}catch(x){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}addEventListener('message',function(m){if(m.data==='__hsc_snap__')s()})})()</script>`
   const consoleInterceptor = buildConsoleInterceptorScript(loadId)
 
   // Inject CSP + console interceptor right after <head> (or prepend if no <head>)
@@ -247,18 +241,9 @@ function countNewlines(str) {
   return (str.match(/\n/g) || []).length
 }
 
-/**
- * Maps a runtime error reported inside a sandboxed iframe (built by the most
- * recent buildIframeSrc() call) back to the student-facing file name and
- * original line number. Returns null when the error can't be confidently
- * attributed — a stale/mismatched loadId, an unrecognised filename (e.g. a
- * static asset), or a line number that resolves before the start of the file
- * — since no highlight is better than a wrong one.
- *
- * `loadId` must be the `id` field from the 'hsc-console' postMessage (embedded
- * per-load by buildConsoleInterceptorScript) so an error from a since-replaced
- * iframe document can't be misattributed to the current one.
- */
+// Maps a preview runtime error (loadId = the 'hsc-console' message's id) to the student's
+// { file, line }; null for a stale load, unknown file or out-of-range line (no highlight
+// beats a wrong one).
 export function resolveIframeErrorLocation(loadId, filename, lineno) {
   const ctx = _lastErrorContext
   if (!ctx || !loadId || ctx.loadId !== loadId) return null

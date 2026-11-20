@@ -1,7 +1,7 @@
 // The HTML Inspector on the preview (task field `inspector`, ./config.js). Drawn by the parent
 // page over the iframe — nothing is ever added to the student's page, so html_* checks and the
-// page itself never see it. The preview iframe is same-origin (IframePreview's sandbox keeps
-// allow-same-origin), so the parent reads the page's layout and stylesheets directly.
+// page itself never see it. It reads IframePreview's script-less, same-origin copy of the page
+// (the live page runs in an opaque origin), so the parent reads layout and stylesheets directly.
 //
 // useHtmlInspector returns the Inspect toggle (for the preview header) and the layer (overlay +
 // panel, ./InspectorLayer.jsx) to place over the iframe. With `live` set it follows that state

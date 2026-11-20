@@ -1,5 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { buildIframeSrc, getLastLoadId, resolveIframeErrorLocation } from '../iframe.js'
+import {
+  buildIframeSrc,
+  getLastLoadId,
+  getPreviewDoc,
+  resolveIframeErrorLocation,
+  waitForIframeText,
+} from '../iframe.js'
+import { evaluateHtmlCheck } from '../checks.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -359,6 +366,53 @@ describe('waitForIframeText message source', () => {
       })
     )
     expect(await pending2).toBe('real')
+    frame.remove()
+  })
+})
+
+describe('sandboxed preview snapshot (R6: no same-origin access to the page)', () => {
+  it('asks the page for the checked style properties and lets the CSP name the app origin', async () => {
+    const blobs = []
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      blobs.push(blob)
+      return `blob:test-${blobs.length}`
+    })
+    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>Hi</p>' }], 'index.html', {
+      styleProps: ['color'],
+    })
+    const html = await blobs[blobs.length - 1].text()
+    expect(html).toContain('outerHTML')
+    expect(html).toContain('["color"]')
+    expect(html).toContain(window.location.origin)
+  })
+
+  it('runs element checks on the snapshot the page reports', async () => {
+    buildIframeSrc([{ name: 'index.html', type: 'html', content: '<p>x</p>' }])
+    const frame = document.createElement('iframe')
+    document.body.appendChild(frame)
+    const pending = waitForIframeText(500)
+    const html = '<html><head></head><body><h1 class="t">Hi</h1><input id="n"></body></html>'
+    const styles = [{}, {}, {}, { color: 'rgb(255, 0, 0)' }, {}]
+    const values = [null, null, null, null, 'Sam']
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: '__hsc_text__', id: getLastLoadId(), text: 'Hi', html, styles, values },
+        source: frame.contentWindow,
+      })
+    )
+    expect(await pending).toBe('Hi')
+    const iframeDoc = getPreviewDoc()
+    const check = (c) => evaluateHtmlCheck(c, 'Hi', { iframeDoc })
+    expect(check({ type: 'html_element', selector: 'h1.t' })).toBe(true)
+    expect(
+      check({
+        type: 'html_element_style_property',
+        selector: 'h1',
+        property: 'color',
+        value: 'rgb(255, 0, 0)',
+      })
+    ).toBe(true)
+    expect(check({ type: 'html_element_value', selector: '#n', value: 'Sam' })).toBe(true)
     frame.remove()
   })
 })
