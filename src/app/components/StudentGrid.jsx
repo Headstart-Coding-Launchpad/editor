@@ -111,8 +111,7 @@ export default function StudentGrid({
   onToggle,
   // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
   openSideQuestRequest = null,
-  // { studentId, at } from the Class health chip: open that student's screen (the modal).
-  openStudentRequest = null,
+  openStudentRequest = null, // { studentId, at } from the Class health chip: open their modal
   // Tutor-only class roster status (summariseRosterStatus in src/shared/roster/rosterModel.js,
   // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
   rosterStatus = null,
@@ -252,24 +251,15 @@ export default function StudentGrid({
     }
   }, [openSideQuestRequest, handleOpenSideQuestRef])
 
-  // The Class health chip's "Open <name>'s screen": the same as clicking their card.
-  function handleOpenStudent(studentId) {
-    if (!studentId) return
-    if (collapsed) onToggle?.()
-    onGoLive?.(studentId)
-    setExpandedStudentId(studentId)
-    setSideQuestViewRequest(null)
-  }
-  const handleOpenStudentRef = useLatestRef(handleOpenStudent)
-  // A request made before this grid mounted (TeacherView keeps the last one in state) is stale:
-  // a remount (folding the panel, a re-render of the page) must not reopen that student.
-  const mountedAtRef = useRef(Date.now())
+  // Class health chip's Open (like clicking their card); a request older than this mount is stale.
+  const mountedAt = useRef(Date.now()).current
+  const openRequested = useLatestRef(
+    (id) => (collapsed && onToggle?.(), handleExpand({ anonymousId: id }))
+  )
   useEffect(() => {
-    if (!openStudentRequest?.studentId) return
-    if (!(openStudentRequest.at >= mountedAtRef.current)) return
-    handleOpenStudentRef.current(openStudentRequest.studentId)
-  }, [openStudentRequest, handleOpenStudentRef])
-
+    const req = openStudentRequest
+    if (req?.studentId && req.at >= mountedAt) openRequested.current(req.studentId)
+  }, [openStudentRequest, openRequested, mountedAt])
   function handleClose() {
     onStopLive?.()
     setExpandedStudentId(null)

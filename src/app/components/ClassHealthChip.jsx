@@ -1,133 +1,84 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { classHealth, formatAgo } from '../../shared/healthBeacon'
+import { useEffect, useRef, useState } from 'react'
+import { APP_VERSION, classHealth, formatAgo } from '../../shared/healthBeacon'
 
-// How often the chip re-reads the clock (ages and the 10-minute "recent" window).
-const TICK_MS = 15_000
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 
-/**
- * The tutor's Class health chip (R1, sketch OK'd by Ryan 20 Nov 2026): one pill in the top row,
- * green when every online student's screen is fine, amber when someone has errors, a screen
- * error or a shaky connection, red when someone's Python failed to load or is stuck. The count
- * is the students who need a look. Clicking opens a list of them, red first, each with
- * "Open <name>'s screen" (the usual student modal, which sets activeStudentView) and Nudge.
- * Reads only: it writes nothing itself. Data: students/{id}/healthBeacon and /health
- * (src/shared/healthBeacon.js).
- */
-export default function ClassHealthChip({
-  students,
-  appVersion,
-  onOpenStudent,
-  onNudgeStudent,
-  // Firebase's (server clock - this device's clock) in ms (useSession): the beacons' times are
-  // server time, so every age and the 10-minute window are measured against server time too.
-  serverTimeOffset = 0,
-}) {
+// The tutor's Class health chip (R1, sketch OK'd 20 Nov 2026), in TeacherSessionControls. Reads
+// `students` or `session.students` (src/shared/healthBeacon.js), ages in server time. No writes.
+export default function ClassHealthChip(props) {
+  const { session, serverTimeOffset, onOpenStudent, onNudgeStudent } = props
+  const appVersion = props.appVersion ?? APP_VERSION
   const [open, setOpen] = useState(false)
-  const [tick, setTick] = useState(() => Date.now())
+  const [, setTick] = useState(0)
   const wrapRef = useRef(null)
-
   useEffect(() => {
-    const id = setInterval(() => setTick(Date.now()), TICK_MS)
+    const id = setInterval(() => setTick(Date.now()), 15_000) // ages and the 10-minute window
     return () => clearInterval(id)
   }, [])
-
   useEffect(() => {
     if (!open) return
-    setTick(Date.now())
-    function onDown(e) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
+    const out = (e) =>
+      e.type === 'keydown' ? e.key === 'Escape' : !wrapRef.current?.contains(e.target)
+    const close = (e) => out(e) && setOpen(false)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => ['mousedown', 'keydown'].forEach((t) => document.removeEventListener(t, close))
   }, [open])
-
-  // `tick` only re-renders on a timer; the clock is read fresh each render.
-  void tick
+  const students =
+    props.students ??
+    Object.entries(session?.students ?? {}).map(([id, s]) => ({ ...s, anonymousId: id }))
+  if (students.length === 0) return null
   const now = Date.now() + (Number(serverTimeOffset) || 0)
-  const health = classHealth(students, { now, appVersion })
-  const count = health.rows.length
-  const headline =
-    count === 0
-      ? `All ${health.total} ${health.total === 1 ? 'screen is' : 'screens are'} fine`
-      : `${count} of ${health.total} ${health.total === 1 ? 'student' : 'students'} ${
-          count === 1 ? 'needs' : 'need'
-        } a look`
-  const title =
-    count === 0
-      ? 'Class health: every screen is fine'
-      : `Class health: ${count} ${count === 1 ? 'student needs' : 'students need'} a look`
-
+  const h = classHealth(students, { now, appVersion })
+  const n = h.rows.length
+  const label = n
+    ? `Class health: ${plural(n, 'student needs', 'students need')} a look`
+    : 'Class health: every screen is fine'
+  const fine = `${plural(h.fineCount, 'student', 'students')} fine`
+  const versions = h.versionTotal ? ` · ${h.versionMatch} of ${h.versionTotal} match` : ''
+  const act = (fn, id) => () => Promise.resolve(fn?.(id)).catch(() => {})
+  const btn = 'class-health__btn'
   return (
     <div ref={wrapRef} className="class-health">
       <button
         type="button"
-        className={`class-health__chip class-health__chip--${health.level}${
-          open ? ' class-health__chip--open' : ''
-        }`}
-        data-level={health.level}
-        data-testid="class-health-chip"
+        className={`class-health__chip class-health__chip--${h.level} ${open ? 'class-health__chip--open' : ''}`}
+        data-level={h.level}
         aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={title}
-        title={title}
+        aria-label={label}
         onClick={() => setOpen((v) => !v)}
       >
-        <i className="class-health__dot" aria-hidden="true" />
+        <i className="class-health__dot" />
         <span className="class-health__label">Class health</span>
-        {count > 0 && (
-          <b className="class-health__count" data-testid="class-health-count">
-            {count}
-          </b>
-        )}
+        {n > 0 && <b className="class-health__count">{n}</b>}
       </button>
-
       {open && (
         <div className="class-health__panel" role="dialog" aria-label="Class health">
           <div className="class-health__head">
             <h4>Class health</h4>
-            {health.checkedAt != null && (
-              <span>checked {formatAgo(Math.max(0, now - health.checkedAt))}</span>
-            )}
+            {h.checkedAt != null && <span>checked {formatAgo(now - h.checkedAt)}</span>}
           </div>
-          <div className="class-health__summary">{headline}</div>
-          {health.rows.map((row) => (
-            <div
-              key={row.id}
-              className="class-health__row"
-              data-testid="class-health-row"
-              data-student={row.id}
-            >
-              <i className={`class-health__dot class-health__dot--${row.level}`} aria-hidden />
+          <div className="class-health__summary">
+            {n
+              ? `${n} of ${plural(h.total, 'student', 'students')} ${n === 1 ? 'needs' : 'need'} a look`
+              : `All ${plural(h.total, 'screen is', 'screens are')} fine`}
+          </div>
+          {h.rows.map((r) => (
+            <div key={r.id} className="class-health__row" data-student={r.id}>
+              <i className={`class-health__dot class-health__dot--${r.level}`} />
               <div className="class-health__text">
-                <b>{row.name}</b>
-                <div title={row.message ?? undefined}>{row.headline}</div>
-                {row.detail && <em>{row.detail}</em>}
+                <b>{r.name}</b>
+                <div title={r.message ?? undefined}>{r.headline}</div>
+                {r.detail && <em>{r.detail}</em>}
                 <div className="class-health__actions">
                   <button
-                    type="button"
-                    className="class-health__btn class-health__btn--primary"
-                    onClick={() => {
-                      setOpen(false)
-                      onOpenStudent?.(row.id)
-                    }}
+                    className={`${btn} ${btn}--primary`}
+                    onClick={() => setOpen(false) || act(onOpenStudent, r.id)()}
                   >
-                    {`Open ${row.name}'s screen`}
+                    {`Open ${r.name}'s screen`}
                   </button>
                   {onNudgeStudent && (
-                    <button
-                      type="button"
-                      className="class-health__btn"
-                      onClick={() => {
-                        Promise.resolve(onNudgeStudent(row.id)).catch(() => {})
-                      }}
-                    >
+                    <button className={btn} onClick={act(onNudgeStudent, r.id)}>
                       Nudge
                     </button>
                   )}
@@ -135,20 +86,14 @@ export default function ClassHealthChip({
               </div>
             </div>
           ))}
-          {health.fineCount > 0 && count > 0 && (
+          {h.fineCount > 0 && n > 0 && (
             <div className="class-health__row">
-              <i className="class-health__dot class-health__dot--ok" aria-hidden />
-              <div className="class-health__text">
-                {health.fineCount} {health.fineCount === 1 ? 'student' : 'students'} fine
-              </div>
+              <i className="class-health__dot class-health__dot--ok" />
+              <div className="class-health__text">{fine}</div>
             </div>
           )}
           <div className="class-health__foot">
-            <span>
-              {appVersion ? `App v${appVersion}` : 'App version unknown'}
-              {health.versionTotal > 0 &&
-                ` · ${health.versionMatch} of ${health.versionTotal} match`}
-            </span>
+            <span>{`App v${appVersion}${versions}`}</span>
             <span>Errors: first line, quotes and links removed</span>
           </div>
         </div>

@@ -44,7 +44,7 @@ import RecordingWidget from '../components/RecordingWidget'
 import TaskProgressDots from '../components/TaskProgressDots'
 import TeacherMessageToast from '../components/TeacherMessageToast'
 import { NudgeBanner, NudgePermissionPrompt } from '../components/NudgeBanner'
-import useHealthBeacon from '../hooks/useHealthBeacon'
+import { useStudentBeacon } from '../hooks/useHealthBeacon'
 import useNudgeAlert from '../hooks/useNudgeAlert'
 import useThumbsUp from '../hooks/useThumbsUp'
 import ThumbsUpToast from '../components/ThumbsUpToast'
@@ -216,7 +216,6 @@ export default function StudentView({
     writeSideQuestCode,
     writeStudentPresence,
     writeStudentHealth,
-    writeStudentHealthBeacon,
     setTaskId,
     setTeacherLive,
     updateTeacherLive,
@@ -499,19 +498,8 @@ export default function StudentView({
     studentPushedAt: session?.students?.[identity?.anonymousId]?.nudgePushedAt ?? null,
     classPushedAt: session?.nudgeAwayPushedAt ?? null,
   })
-  // The health beacon (R1, src/shared/healthBeacon.js): this screen's errors, Python status and
-  // load time, and connection drops, for the tutor's Class health chip. Throttled to one write
-  // every 30 s at most, only on a change; own screen in a live lesson only, never recreating a
-  // removed student's node.
-  useHealthBeacon({
-    enabled:
-      nudgeEnabled && !previewMode && !soloMode && !!session?.students?.[identity?.anonymousId],
-    anonymousId: identity?.anonymousId ?? null,
-    write: writeStudentHealthBeacon,
-    pythonStatus: cs.pythonStuck ? 'stuck' : cs.pyodideStatus,
-    connected,
-    now: () => Date.now() + (serverTimeOffset ?? 0),
-  })
+  const live = nudgeEnabled && !previewMode && !soloMode // R1 health beacon (useHealthBeacon.js)
+  useStudentBeacon({ sessionKey, session, identity, cs, connected, serverTimeOffset, live })
   // The teacher's transient 👍 "on the right track" toast — same live-only gate as nudges.
   const { thumbsUpAt } = useThumbsUp({
     ready: !!session,

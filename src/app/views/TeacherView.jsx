@@ -36,8 +36,7 @@ import ClassCountdownEndedStrip from '../components/ClassCountdownEndedStrip'
 import { MINUTE_MS } from '../../shared/classCountdown'
 import { nextClassTaskId } from '../../shared/classNavigation'
 import TeacherSessionControls from '../components/TeacherSessionControls'
-import ClassHealthChip from '../components/ClassHealthChip'
-import { formatVersionNumber, getAppBuildInfo } from '../../shared/appVersion'
+import { APP_VERSION } from '../../shared/healthBeacon'
 import TeacherPreviewBanner from '../components/TeacherPreviewBanner'
 import TeacherSandboxBanner from '../components/TeacherSandboxBanner'
 import TeacherEndSessionModal from '../components/TeacherEndSessionModal'
@@ -193,10 +192,6 @@ function previewKeyOwnedElsewhere(event) {
   }
   return !!document.querySelector(OPEN_LAYERS)
 }
-
-// This tab's app version: the Class health chip compares each student's screen with it, and the
-// session report records it.
-const TUTOR_APP_VERSION = formatVersionNumber(getAppBuildInfo())
 
 export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // The Realtime Database key of this tutor's live class (src/shared/sessionKey.js); the lesson
@@ -446,8 +441,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
   // { studentId, at }: the side-quest panel asking the student grid to open that student's
   // side-quest in their StudentModal.
   const [openSideQuestRequest, setOpenSideQuestRequest] = useState(null)
-  // The Class health chip's "Open <name>'s screen": { studentId, at } for StudentGrid.
-  const [openStudentRequest, setOpenStudentRequest] = useState(null)
+  const [openStudentRequest, setOpenStudentRequest] = useState(null) // Class health chip's Open
   // The work the teacher's editor shows, one value per sandbox kind
   // (`capabilities.sandboxState`: 'code', 'blocks', 'fs', 'desktop', 'files'), each in the
   // module's stored-work form — see ../teacherSandboxWork.js.
@@ -756,7 +750,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
       pendingSuggestions: badgeSuggestions.suggestions,
       topics,
       catalogueBadges,
-      appVersion: TUTOR_APP_VERSION,
+      appVersion: APP_VERSION,
     }
   }
 
@@ -1283,19 +1277,8 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
                     ? "A student's work is live. Stop that first."
                     : null
               }
-              healthControl={
-                students.length > 0 ? (
-                  <ClassHealthChip
-                    students={students}
-                    appVersion={TUTOR_APP_VERSION}
-                    serverTimeOffset={serverTimeOffset}
-                    onOpenStudent={(studentId) =>
-                      setOpenStudentRequest({ studentId, at: Date.now() })
-                    }
-                    onNudgeStudent={nudgeStudent}
-                  />
-                ) : null
-              }
+              onOpenStudent={(studentId) => setOpenStudentRequest({ studentId, at: Date.now() })}
+              onNudgeStudent={nudgeStudent}
               goLiveControl={
                 session &&
                 !isInSandbox &&

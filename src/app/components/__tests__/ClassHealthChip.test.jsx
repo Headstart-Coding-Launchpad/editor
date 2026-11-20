@@ -47,7 +47,7 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
     renderChip([student('a', 'Amy', beacon()), student('b', 'Ben', beacon())])
     const chip = screen.getByRole('button', { name: /class health/i })
     expect(chip).toHaveAttribute('data-level', 'ok')
-    expect(within(chip).queryByTestId('class-health-count')).toBeNull()
+    expect(chip.querySelector('.class-health__count')).toBeNull()
   })
 
   it('turns amber with a count when a student has errors', () => {
@@ -57,7 +57,7 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
     ])
     const chip = screen.getByRole('button', { name: /class health/i })
     expect(chip).toHaveAttribute('data-level', 'amber')
-    expect(within(chip).getByTestId('class-health-count')).toHaveTextContent('1')
+    expect(chip.querySelector('.class-health__count')).toHaveTextContent('1')
   })
 
   it('turns red when Python failed to load, and the panel lists who needs a look', () => {
@@ -73,15 +73,15 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
     ])
     const chip = screen.getByRole('button', { name: /class health/i })
     expect(chip).toHaveAttribute('data-level', 'red')
-    expect(within(chip).getByTestId('class-health-count')).toHaveTextContent('3')
+    expect(chip.querySelector('.class-health__count')).toHaveTextContent('3')
 
     fireEvent.click(chip)
     const panel = screen.getByRole('dialog', { name: /class health/i })
     expect(within(panel).getByText('3 of 4 students need a look')).toBeInTheDocument()
     // Red first.
-    const names = within(panel)
-      .getAllByTestId('class-health-row')
-      .map((row) => row.getAttribute('data-student'))
+    const names = [...panel.querySelectorAll('[data-student]')].map((row) =>
+      row.getAttribute('data-student')
+    )
     expect(names).toEqual(['d', 'h', 'i'])
     expect(within(panel).getByText('Python failed to load')).toBeInTheDocument()
     expect(within(panel).getByText('Recent error')).toBeInTheDocument()
