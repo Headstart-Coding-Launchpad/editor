@@ -15,6 +15,7 @@ import {
 } from './autoCheck.js'
 import { buildShownResponsesByTask } from './shownResponses.js'
 import { buildPollsReport } from './classPolls.js'
+import { reportScreenHealth } from './healthBeacon.js'
 import {
   buildBadgeSummary,
   buildQuizGroupReport,
@@ -623,6 +624,11 @@ export function studentJoinFields(studentNode, session) {
   return fields
 }
 
+function screenHealthFields(studentNode) {
+  const screenHealth = reportScreenHealth(studentNode)
+  return screenHealth ? { screenHealth } : {}
+}
+
 export function anonymizeSessionReport(report) {
   if (!report) return report
   // Old or hand-made reports may name students; every reference to a student elsewhere in the
@@ -748,6 +754,8 @@ export function buildSessionReport({
   catalogueBadges = [],
   // peerHelp/{lessonId}, read once by the teacher (src/app/hooks/usePeerHelp.js).
   peerHelp = null,
+  // The tutor tab's app version (src/shared/appVersion.js), recorded at the top (R1).
+  appVersion = null,
 }) {
   const tasks = flattenTasks(lesson?.tasks ?? []).filter(isReportableTask)
   const studentsSnapshot = session?.students ?? {}
@@ -925,6 +933,8 @@ export function buildSessionReport({
       // Stable across sessions, never the device id (src/shared/exportWork/shareLink.js).
       studentKey: studentShareKey(anonymousId),
       ...studentJoinFields(studentsSnapshot[anonymousId], session),
+      // The screen's health beacon (src/shared/healthBeacon.js, R1), when it sent one.
+      ...screenHealthFields(studentsSnapshot[anonymousId]),
       ...studentBadgeFields({ session, studentId: anonymousId, timeline, catalogueBadges }),
       tasks: taskResults,
     }
@@ -1075,6 +1085,7 @@ export function buildSessionReport({
     sessionId: session?.startedAt != null ? String(session.startedAt) : null,
     startedAt: session?.startedAt ?? null,
     endedAt: session?.endedAt ?? Date.now(),
+    ...(appVersion ? { appVersion } : {}),
     students,
     taskSummary,
     ...(taskTimeline.length > 0 ? { taskTimeline } : {}),

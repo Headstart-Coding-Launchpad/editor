@@ -261,3 +261,25 @@ describe('writeStudentHealth', () => {
     }
   })
 })
+
+const BEACON = `sessions/${LESSON}/students/${STUDENT}/healthBeacon`
+const beaconWrites = () =>
+  firebaseMocks.set.mock.calls.filter(([r]) => r.path === BEACON).map(([, value]) => value)
+
+describe('writeStudentHealthBeacon (R1)', () => {
+  it("writes the summary to the student's own node", async () => {
+    const { result } = renderSession({ students: { [STUDENT]: { displayName: 'Mia' } } })
+    await act(async () => {
+      await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+    })
+    expect(beaconWrites()).toEqual([{ errorCount: 1, updatedAt: 5 }])
+  })
+
+  it('never recreates a student missing from the session', async () => {
+    const { result } = renderSession({ students: {} })
+    await act(async () => {
+      await result.current.writeStudentHealthBeacon(STUDENT, { errorCount: 1, updatedAt: 5 })
+    })
+    expect(beaconWrites()).toEqual([])
+  })
+})

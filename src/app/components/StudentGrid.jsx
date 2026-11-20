@@ -111,6 +111,8 @@ export default function StudentGrid({
   onToggle,
   // { studentId, at } from TeacherView's side-quest panel: open that student's side-quest.
   openSideQuestRequest = null,
+  // { studentId, at } from the Class health chip: open that student's screen (the modal).
+  openStudentRequest = null,
   // Tutor-only class roster status (summariseRosterStatus in src/shared/roster/rosterModel.js,
   // plus `needsClass` while a stock lesson's class isn't chosen) and the Match students opener.
   rosterStatus = null,
@@ -249,6 +251,19 @@ export default function StudentGrid({
       handleOpenSideQuestRef.current(openSideQuestRequest.studentId)
     }
   }, [openSideQuestRequest, handleOpenSideQuestRef])
+
+  // The Class health chip's "Open <name>'s screen": the same as clicking their card.
+  function handleOpenStudent(studentId) {
+    if (!studentId) return
+    if (collapsed) onToggle?.()
+    onGoLive?.(studentId)
+    setExpandedStudentId(studentId)
+    setSideQuestViewRequest(null)
+  }
+  const handleOpenStudentRef = useLatestRef(handleOpenStudent)
+  useEffect(() => {
+    if (openStudentRequest?.studentId) handleOpenStudentRef.current(openStudentRequest.studentId)
+  }, [openStudentRequest, handleOpenStudentRef])
 
   function handleClose() {
     onStopLive?.()

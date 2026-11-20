@@ -52,6 +52,8 @@ export default function TeacherSessionControls({
   onGoLive,
   goLiveDisabledReason = null,
   goLiveControl = null,
+  // The Class health chip (ClassHealthChip), first in the row while the session runs.
+  healthControl = null,
 }) {
   const [showExtraTools] = useExtraClassToolsOn()
   const state = session?.state
@@ -205,6 +207,7 @@ export default function TeacherSessionControls({
 
   return (
     <div className="teacher-session-controls" data-testid="teacher-top-row">
+      {isRunning && healthControl}
       <button
         type="button"
         className="teacher-session-controls__action teacher-top-row__present"
