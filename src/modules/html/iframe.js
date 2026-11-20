@@ -63,8 +63,8 @@ export function buildIframeSrc(
   const blobUrls = {}
   for (const file of resolvedFiles) {
     const mime = getMime(file.type || file.name)
-    const blob = new Blob([file.content], { type: mime })
-    blobUrls[file.name] = URL.createObjectURL(blob)
+    // A data: URL: the opaque-origin page cannot load the app's own blob: URLs.
+    blobUrls[file.name] = `data:${mime};charset=utf-8,${encodeURIComponent(file.content)}`
     rememberPreviewFileName(blobUrls[file.name], file.name)
   }
 
@@ -204,7 +204,7 @@ function _injectSecurity(html, loadId, { copyProtect = false, styleProps = [] } 
   // 'self' matches nothing: the app's origin is named for lesson assets. blob: and
   // 'unsafe-inline'/'unsafe-eval' serve the virtual files and typical student code.
   const self = `'self' ${window.location.origin}`
-  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src ${self}; script-src ${self} 'unsafe-inline' 'unsafe-eval' blob:; style-src ${self} 'unsafe-inline' blob:; connect-src ${self} ws://localhost:5173; img-src ${self} data: blob: https://firebasestorage.googleapis.com;">`
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src ${self}; script-src ${self} 'unsafe-inline' 'unsafe-eval' blob: data:; style-src ${self} 'unsafe-inline' blob: data:; connect-src ${self} ws://localhost:5173; img-src ${self} data: blob: https://firebasestorage.googleapis.com;">`
   // Reporter: on DOMContentLoaded (and on '__hsc_snap__') posts the body text (output_contains
   // checks) and the snapshot behind getPreviewDoc and the Inspector's mirror.
   const textReporter = `<script>(function(){var P=${JSON.stringify(styleProps)};var s=function(){try{var e=document.querySelectorAll('*'),st=[],v=[];for(var i=0;i<e.length;i++){var c=getComputedStyle(e[i]),o={};P.forEach(function(p){o[p]=c.getPropertyValue(p)});st.push(o);v.push(/^(INPUT|TEXTAREA|SELECT)$/.test(e[i].tagName)?e[i].value:null)}window.parent.postMessage({type:'__hsc_text__',id:'${loadId}',text:document.body?document.body.innerText:'',html:document.documentElement.outerHTML,styles:st,values:v},'*')}catch(x){}};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',s)}else{s()}addEventListener('message',function(m){if(m.data==='__hsc_snap__')s()})})()</script>`

@@ -157,8 +157,8 @@ describe('buildIframeSrc — assetsPath option', () => {
       },
     ]
     const options = { assets: ['cat.png'], assetsPath: 'https://cdn.example.com/' }
-    expect(buildIframeSrc(files, 'index.html', options)).toBe('blob:test-2')
-    expect(await blobs[1].text()).toContain('src="https://cdn.example.com/cat.png"')
+    expect(buildIframeSrc(files, 'index.html', options)).toBe('blob:test-1')
+    expect(await blobs[0].text()).toContain('src="https://cdn.example.com/cat.png"')
   })
 
   it('rewrites relative asset references inside linked CSS files', async () => {
@@ -181,7 +181,10 @@ describe('buildIframeSrc — assetsPath option', () => {
     ]
     const options = { assets: ['skiing.jpg'], assetsPath: 'https://cdn.example.com/' }
     buildIframeSrc(files, 'index.html', options)
-    expect(await blobs[1].text()).toContain("url('https://cdn.example.com/skiing.jpg')")
+    // Sibling files are data: URLs (an opaque-origin page cannot load the app's blob: URLs).
+    expect(decodeURIComponent(await blobs[0].text())).toContain(
+      "url('https://cdn.example.com/skiing.jpg')"
+    )
   })
 
   it('keeps editable files ahead of same-named static assets', async () => {
@@ -200,8 +203,8 @@ describe('buildIframeSrc — assetsPath option', () => {
     ]
     const options = { assets: ['style.css'], assetsPath: 'https://cdn.example.com/' }
     buildIframeSrc(files, 'index.html', options)
-    expect(await blobs[2].text()).toContain('href="blob:test-2"')
-    expect(await blobs[2].text()).not.toContain('https://cdn.example.com/style.css')
+    expect(await blobs[0].text()).toContain('href="data:text/css;charset=utf-8,body')
+    expect(await blobs[0].text()).not.toContain('https://cdn.example.com/style.css')
   })
 })
 
@@ -268,9 +271,8 @@ describe('resolveIframeErrorLocation', () => {
 
     buildIframeSrc(files)
     const loadId = getLastLoadId()
-    // resolvedFiles is iterated in file order, so index.html -> blob:test-1,
-    // app.js -> blob:test-2 (the entry's live document is the later blob:test-3).
-    const appJsUrl = 'blob:test-2'
+    // Sibling files are served as data: URLs; the entry's live document is a blob.
+    const appJsUrl = `data:application/javascript;charset=utf-8,${encodeURIComponent(files[1].content)}`
 
     const location = resolveIframeErrorLocation(loadId, appJsUrl, 2)
 
