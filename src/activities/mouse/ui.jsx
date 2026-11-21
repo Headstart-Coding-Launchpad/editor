@@ -400,24 +400,26 @@ export function MouseStudentView({
 
   return (
     <div className="act-panel" data-testid="mouse-activity">
-      <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+      <div className="act-mouse-head">
+        <RoundProgress done={flow.doneCount} total={items.length} core={core} />
+        <p className="act-row" aria-live="polite">
+          {isBonus && <span className="act-badge">Bonus</span>}
+          <span className="act-prompt" data-testid="mouse-instruction">
+            {current ? (
+              instructionFor(task, current, touch)
+            ) : flow.lingering ? (
+              <>
+                <SpinTick /> Got it!
+              </>
+            ) : (
+              <>
+                <SpinTick /> All done — great mousing!
+              </>
+            )}
+          </span>
+        </p>
+      </div>
       {!tutor && inBonus && !flow.finished && <BonusBanner />}
-      <p className="act-row" aria-live="polite">
-        {isBonus && <span className="act-badge">Bonus</span>}
-        <span className="act-prompt" data-testid="mouse-instruction">
-          {current ? (
-            instructionFor(task, current, touch)
-          ) : flow.lingering ? (
-            <>
-              <SpinTick /> Got it!
-            </>
-          ) : (
-            <>
-              <SpinTick /> All done — great mousing!
-            </>
-          )}
-        </span>
-      </p>
       {message && <p role="status">{message}</p>}
       {hint && !message && (
         <p className="act-hint" role="status">

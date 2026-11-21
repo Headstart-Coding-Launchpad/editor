@@ -267,7 +267,12 @@ describe('Mouse UI: core and bonus rounds', () => {
 // is capped to the screen height so the whole panel fits a 1366x768 screen.
 describe('Mouse UI fits the screen', () => {
   it('puts the instruction on the progress row, above the arena', () => {
-    renderMouse(taskWith([{ id: 'a', action: 'click', target: 'star' }]))
+    renderMouse(
+      taskWith([
+        { id: 'a', action: 'click', target: 'star' },
+        { id: 'b', action: 'click', target: 'box' },
+      ])
+    )
     const head = screen.getByTestId('mouse-instruction').closest('.act-mouse-head')
     expect(head).not.toBeNull()
     expect(head).toContainElement(screen.getByTestId('round-progress'))
