@@ -415,6 +415,69 @@ describe('TaskProgressDots', () => {
       expect(screen.getByTitle('Task progress').scrollLeft).toBe(0)
     })
 
+    // Calm screens (21 Nov 2026): under about 900px wide the top bar shows a window of 5 whole
+    // dots centred on the current one, with a tappable "+N" chip on each side that hides dots.
+    describe('at a 768px viewport (tablet portrait)', () => {
+      const ELEVEN = TWELVE.slice(0, 11)
+      let savedWidth
+      const at768 = () => {
+        savedWidth = window.innerWidth
+        window.innerWidth = 768
+        touchDevice = true
+        activeRestore = stubRowWidth(400)
+      }
+      afterEach(() => {
+        if (savedWidth) window.innerWidth = savedWidth
+      })
+      const dotLabels = () =>
+        screen
+          .getAllByRole('button')
+          .filter((b) => !b.classList.contains('task-dots-chip'))
+          .map((b) => b.getAttribute('aria-label'))
+
+      it('shows 5 whole dots centred on the current one, with +N chips for the rest', () => {
+        at768()
+        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={vi.fn()} />)
+        const row = screen.getByTitle('Task progress')
+        expect(row).toHaveAttribute('data-mode', 'window')
+        expect(row.style.overflowX).not.toBe('auto')
+        expect(row.style.maskImage ?? '').toBe('')
+        expect(dotLabels()).toEqual(['Task 3', 'Task 4', 'Task 5', 'Task 6', 'Task 7'])
+        expect(screen.getByRole('button', { name: /2 earlier tasks/ })).toHaveTextContent('+2')
+        expect(screen.getByRole('button', { name: /4 later tasks/ })).toHaveTextContent('+4')
+      })
+
+      it('only puts a chip on a side that has hidden dots', () => {
+        at768()
+        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={1} onDotClick={vi.fn()} />)
+        expect(dotLabels()).toEqual(['Task 1', 'Task 2', 'Task 3', 'Task 4', 'Task 5'])
+        expect(screen.queryByRole('button', { name: /earlier tasks/ })).toBeNull()
+        expect(screen.getByRole('button', { name: /6 later tasks/ })).toBeInTheDocument()
+      })
+
+      it('a chip pages the window without changing the task', async () => {
+        at768()
+        const onDotClick = vi.fn()
+        render(
+          <TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={onDotClick} />
+        )
+        await userEvent.click(screen.getByRole('button', { name: /4 later tasks/ }))
+        expect(dotLabels()).toEqual(['Task 7', 'Task 8', 'Task 9', 'Task 10', 'Task 11'])
+        expect(screen.getByRole('button', { name: /6 earlier tasks/ })).toBeInTheDocument()
+        expect(onDotClick).not.toHaveBeenCalled()
+        await userEvent.click(screen.getByRole('button', { name: /6 earlier tasks/ }))
+        expect(dotLabels()).toEqual(['Task 2', 'Task 3', 'Task 4', 'Task 5', 'Task 6'])
+      })
+
+      it('shows every dot when they all fit, and nothing changes at 1024 wide', () => {
+        at768()
+        activeRestore()
+        activeRestore = stubRowWidth(2000)
+        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={vi.fn()} />)
+        expect(screen.getByTitle('Task progress')).toHaveAttribute('data-mode', 'fits')
+      })
+    })
+
     it('uses bigger, finger-sized dots on a touch device', () => {
       touchDevice = true
       activeRestore = stubRowWidth(2000)

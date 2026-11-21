@@ -1,4 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { MouseStudentView } from '../ui.jsx'
 import mouse from '../definition.js'
@@ -258,5 +260,30 @@ describe('Mouse UI: core and bonus rounds', () => {
     expect(state().items).toEqual({})
     expect(screen.getByTestId('mouse-instruction')).toHaveTextContent('Click the star')
     expect(onSubmit).not.toHaveBeenCalled()
+  })
+})
+
+// Calm screens (21 Nov 2026): the instruction sits beside the progress on one row, and the arena
+// is capped to the screen height so the whole panel fits a 1366x768 screen.
+describe('Mouse UI fits the screen', () => {
+  it('puts the instruction on the progress row, above the arena', () => {
+    renderMouse(taskWith([{ id: 'a', action: 'click', target: 'star' }]))
+    const head = screen.getByTestId('mouse-instruction').closest('.act-mouse-head')
+    expect(head).not.toBeNull()
+    expect(head).toContainElement(screen.getByTestId('round-progress'))
+    expect(head.nextElementSibling).toBe(screen.getByTestId('mouse-stage'))
+  })
+
+  it('keeps the orange ring on the current target', () => {
+    renderMouse(taskWith([{ id: 'a', action: 'click', target: 'star' }]))
+    expect(target('star')).toHaveClass('act-target--current')
+    expect(target('box')).not.toHaveClass('act-target--current')
+  })
+
+  it('caps the arena to the screen height (index.css)', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const start = css.indexOf('.act-mouse-head ~ .act-stage {')
+    expect(start).toBeGreaterThanOrEqual(0)
+    expect(css.slice(start, css.indexOf('}', start))).toMatch(/max-height:.*100dvh/)
   })
 })

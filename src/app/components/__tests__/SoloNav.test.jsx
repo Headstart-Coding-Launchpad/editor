@@ -60,3 +60,28 @@ describe('SoloNav Next button motion', () => {
     expect(document.activeElement).toBe(first)
   })
 })
+
+// Calm screens (21 Nov 2026): under about 900px wide the top bar's count is the short "5/11",
+// leaving room for the task title and the dots window.
+describe('SoloNav count label width', () => {
+  const at = (width, fn) => {
+    const saved = window.innerWidth
+    window.innerWidth = width
+    try {
+      fn()
+    } finally {
+      window.innerWidth = saved
+    }
+  }
+  const eleven = Array.from({ length: 11 }, (_, i) => ({ id: `t${i + 1}` }))
+
+  it('reads "5/11" at a 768px viewport', () => {
+    at(768, () => render(nav({ compact: true, flatTasks: eleven, currentIndex: 4 })))
+    expect(screen.getByText('5/11')).toBeInTheDocument()
+  })
+
+  it('still reads "Task 5 of 11" at 1024px wide', () => {
+    at(1024, () => render(nav({ compact: true, flatTasks: eleven, currentIndex: 4 })))
+    expect(screen.getByText('Task 5 of 11')).toBeInTheDocument()
+  })
+})
