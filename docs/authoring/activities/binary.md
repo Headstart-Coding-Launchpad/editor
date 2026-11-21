@@ -73,7 +73,7 @@ tasks:
 | `mode` | Yes | `make_number`, `to_binary`, `to_decimal`, `add`, `overflow`, `hex`, `ascii` or `pixels` (see below). |
 | `bits` | No | Number of bit columns, 1–16. Default `8`. Not used by `ascii` (always 8-bit codes) or `pixels`. |
 | `showPlaceValues` | No | Show 128 / 64 / … above each column. Default `true`. |
-| `showDecimal` | No | Show the running decimal value under the bits. Default `true` for `make_number`, `false` otherwise (it would give the answer away). |
+| `showDecimal` | No | Show the running decimal value under the bits. Default `true` for `make_number`, `false` otherwise (it would give the answer away). In `make_number` it comes with the worked sum ("4 + 1 = 5"); `to_binary` never shows the sum. |
 | `requireCarries` | No | `add` and `overflow`: the carry row must be filled in too. Default `false`. |
 | `codeFormat` | No | `ascii` only: `binary` (8-bit codes, default) or `decimal` (65, 66, …). |
 | `showTable` | No | `ascii` only: show a fold-out ASCII lookup table. Default `false`. |
