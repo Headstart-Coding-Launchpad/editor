@@ -14,7 +14,8 @@ export default function SoloNav({
   // actually reachable, but the label should still read the real task count until then).
   displayTotal = flatTasks.length,
 }) {
-  const isMobile = useIsMobile()
+  // The top bar (compact) uses the short "5/11" under 900px wide, leaving room for its dots.
+  const isMobile = useIsMobile(compact ? 900 : 640)
   const navStyle = compact ? s.soloNavCompact : s.soloNav
   const btnStyle = compact ? s.soloNavBtnCompact : s.soloNavBtn
   const labelStyle = compact

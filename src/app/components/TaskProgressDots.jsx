@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getProgressItems } from '../../shared/taskUtils'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
+import { useIsMobile } from '../../shared/useIsMobile'
 
 const DOT_WIDTH = 32
 const DOT_GAP = 6
@@ -17,6 +18,12 @@ const COMPACT_PAD = 3
 const FADE_PX = 18
 // Below this many dots' worth of room, scrolling stops being useful: show the "x/y" counter.
 const MIN_SCROLL_DOTS = 5
+// Calm screens (21 Nov 2026): under NARROW_BELOW px wide a compact row that does not fit shows a
+// window of WINDOW_DOTS whole dots round the current one, and a 44px "+N" chip (.task-dots-chip)
+// on each side that hides dots; a chip pages the window. No scrolling, no fade.
+const NARROW_BELOW = 900
+const WINDOW_DOTS = 5
+const CHIP = 44
 
 // Fitting the dots is a two-phase measurement, not something CSS can decide alone:
 // a flex item's "natural" size (used to divide space with its siblings, e.g. the
@@ -48,7 +55,9 @@ export default function TaskProgressDots({
   const pad = compact ? COMPACT_PAD * 2 : 0
   const naturalWidth = items.length * step - dotGap + pad
   const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * step - dotGap)
-  const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'scroll' | 'collapsed'
+  const narrow = useIsMobile(NARROW_BELOW) && compact && items.length > WINDOW_DOTS
+  const windowWidth = WINDOW_DOTS * step + 2 * (CHIP + dotGap) - dotGap + pad
+  const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'window' | 'scroll' | 'collapsed'
   // Scroll mode: the row is narrowed to a whole number of dots, so none is cut in half.
   const [scrollWidth, setScrollWidth] = useState(null)
   const [edges, setEdges] = useState({ left: false, right: false })
@@ -57,16 +66,17 @@ export default function TaskProgressDots({
     if (mode !== 'probing') return
     const width = rowRef.current?.getBoundingClientRect().width ?? 0
     if (width >= naturalWidth) setMode('fits')
+    else if (narrow && width >= windowWidth) setMode('window')
     else if (compact && width >= minScrollWidth) {
       const wholeDots = Math.max(1, Math.floor((width - pad + dotGap) / step))
       setScrollWidth(wholeDots * step - dotGap + pad)
       setMode('scroll')
     } else setMode('collapsed')
-  }, [mode, naturalWidth, minScrollWidth, compact, pad, dotGap, step])
+  }, [mode, naturalWidth, minScrollWidth, compact, pad, dotGap, step, narrow, windowWidth])
 
   useEffect(() => {
     setMode('probing')
-  }, [naturalWidth])
+  }, [naturalWidth, narrow])
 
   useEffect(() => {
     const reopen = () => setMode('probing')
@@ -81,6 +91,23 @@ export default function TaskProgressDots({
   const viewingIndex =
     viewingTaskId != null ? items.findIndex((item) => item.taskIds.includes(viewingTaskId)) : -1
   const focusIndex = viewingIndex !== -1 ? viewingIndex : currentIndex
+  // Window mode: the first dot shown, centred on the focus dot until a chip pages it.
+  const [paged, setPaged] = useState(null)
+  useEffect(() => setPaged(null), [focusIndex])
+  const lastStart = Math.max(0, items.length - WINDOW_DOTS)
+  const start = paged ?? Math.min(lastStart, Math.max(0, focusIndex - 2))
+  const shown = mode === 'window' ? [start, start + WINDOW_DOTS] : [0, items.length]
+  const chip = (side, hidden, to) => (
+    <button
+      key={side}
+      type="button"
+      className="task-dots-chip"
+      aria-label={`Show ${hidden} ${side} tasks`}
+      onClick={() => setPaged(Math.min(lastStart, Math.max(0, to)))}
+    >
+      {side === 'earlier' ? `‹+${hidden}` : `+${hidden}›`}
+    </button>
+  )
 
   const updateEdges = useCallback(() => {
     const row = rowRef.current
@@ -113,7 +140,7 @@ export default function TaskProgressDots({
 
   if (mode === 'collapsed') {
     return (
-      <span style={s.counter} title="Task progress">
+      <span className="task-dots-counter" title="Task progress">
         {currentNumber}/{items.length}
       </span>
     )
@@ -137,7 +164,9 @@ export default function TaskProgressDots({
       data-fade-right={mode === 'scroll' && edges.right ? 'true' : undefined}
       onScroll={mode === 'scroll' ? updateEdges : undefined}
     >
-      {items.map((item, index) => {
+      {mode === 'window' && start > 0 && chip('earlier', start, start - WINDOW_DOTS)}
+      {items.slice(...shown).map((item, i) => {
+        const index = i + shown[0]
         const isCurrent = item.taskIds.includes(currentTaskId)
         const isViewing = viewingTaskId != null && item.taskIds.includes(viewingTaskId)
         const isPast = item.taskIds.every((id) => id < currentTaskId)
@@ -149,8 +178,8 @@ export default function TaskProgressDots({
         return (
           <button
             key={item.id}
+            className="task-dot"
             style={{
-              ...s.dot,
               ...(compact ? compactDot(dotWidth, touch) : null),
               ...(mode === 'scroll' ? s.dotSnap : null),
               ...(isGroup ? (compact ? { borderRadius: 7, width: dotWidth + 4 } : s.dotGroup) : {}),
@@ -169,6 +198,9 @@ export default function TaskProgressDots({
           </button>
         )
       })}
+      {mode === 'window' &&
+        shown[1] < items.length &&
+        chip('later', items.length - shown[1], start + WINDOW_DOTS)}
     </div>
   )
 }
@@ -210,31 +242,6 @@ const s = {
   },
   dotSnap: {
     scrollSnapAlign: 'start',
-  },
-  counter: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    color: '#fff',
-    opacity: 0.9,
-    whiteSpace: 'nowrap',
-  },
-  dot: {
-    width: 32,
-    height: 32,
-    flexShrink: 0,
-    borderRadius: '50%',
-    border: '2px solid rgba(255,255,255,0.5)',
-    background: 'transparent',
-    color: '#fff',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
-    fontSize: '0.8rem',
-    padding: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background 0.2s, border-color 0.2s, transform 0.2s',
   },
   dotGroup: {
     borderRadius: 8,
