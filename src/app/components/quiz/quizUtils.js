@@ -62,11 +62,12 @@ export function nextPictureNarrow(wasNarrow, width) {
 }
 
 // Word answer tiles (calm screens, 21 Nov 2026): never an orphan tile, never a stretched one. 2
-// side by side; 3 in a row (bars under ~900px or with a long answer); 4 as 2x2; 5 as bars; 6 as
-// 3x2 (2x3 narrow). rowMax caps a row's height. Wide from 920px, narrow again under 880px.
-export function quizWordLayout(count, width, wasWide, long = false) {
-  const wide = !(width > 0) ? wasWide : width >= (wasWide ? 880 : 920)
-  const cols = count === 5 ? 1 : count === 3 ? (wide && !long ? 3 : 1) : count === 6 && wide ? 3 : 2
+// side by side; 3 in a row (bars on a screen under 900px, in a quiz frame under 580px (back over
+// 620px), or with a long answer); 4 as 2x2; 5 as bars; 6 as 3x2 (else 2x3). rowMax caps a row.
+export function quizWordLayout(count, width, wasWide, long = false, screenWide = true) {
+  const wide = !(width > 0) ? wasWide : width >= (wasWide ? 580 : 620)
+  const row = wide && screenWide
+  const cols = count === 5 ? 1 : count === 3 ? (row && !long ? 3 : 1) : count === 6 && row ? 3 : 2
   const n = Math.max(1, Math.min(count, cols))
   const rows = Math.ceil(count / n)
   const rowMax = n === 1 ? (count <= 3 ? 110 : 76) : ([320, 250, 160][rows - 1] ?? null)

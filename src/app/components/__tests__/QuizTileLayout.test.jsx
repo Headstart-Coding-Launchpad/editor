@@ -16,7 +16,9 @@ function frameWidth(width) {
     get: () => width,
   })
 }
+const savedInner = window.innerWidth
 afterEach(() => {
+  window.innerWidth = savedInner
   if (saved) Object.defineProperty(HTMLElement.prototype, 'clientWidth', saved)
   else delete HTMLElement.prototype.clientWidth
 })
@@ -44,7 +46,22 @@ describe('quiz tiles: no orphan tile', () => {
     expect(grid().style.getPropertyValue('--quiz-row-max')).toBe('320px')
   })
 
-  it('stacks 3 options as bars under about 900px wide (768 tablet)', () => {
+  it('keeps 3 short options in one row in a split layout at 1366 (frame ~760px)', () => {
+    window.innerWidth = 1366
+    frameWidth(760)
+    render(<QuizTask task={quiz(3)} />)
+    expect(grid()).toHaveAttribute('data-quiz-cols', '3')
+  })
+
+  it('stacks 3 options in a narrow quiz frame (a tutor window), even on a wide screen', () => {
+    window.innerWidth = 1366
+    frameWidth(500)
+    render(<QuizTask task={quiz(3)} />)
+    expect(grid()).toHaveAttribute('data-quiz-cols', '1')
+  })
+
+  it('stacks 3 options as bars on a screen under about 900px wide (768 tablet)', () => {
+    window.innerWidth = 768
     frameWidth(730)
     render(<QuizTask task={quiz(3)} />)
     expect(grid()).toHaveAttribute('data-quiz-cols', '1')
@@ -92,18 +109,49 @@ describe('quiz tiles: no orphan tile', () => {
 })
 
 describe('quizWordLayout', () => {
-  it('has hysteresis around 900px so a frame cannot flip back and forth', () => {
-    expect(quizWordLayout(3, 910, false).cols).toBe(1)
-    expect(quizWordLayout(3, 930, false).cols).toBe(3)
-    expect(quizWordLayout(3, 890, true).cols).toBe(3)
-    expect(quizWordLayout(3, 870, true).cols).toBe(1)
+  it('has frame hysteresis (620 / 580) so a frame cannot flip back and forth', () => {
+    expect(quizWordLayout(3, 600, false).cols).toBe(1)
+    expect(quizWordLayout(3, 630, false).cols).toBe(3)
+    expect(quizWordLayout(3, 600, true).cols).toBe(3)
+    expect(quizWordLayout(3, 570, true).cols).toBe(1)
     // Width unknown (not laid out yet): keep the last answer.
     expect(quizWordLayout(3, 0, true).cols).toBe(3)
+    // A screen under 900px stacks whatever the frame.
+    expect(quizWordLayout(3, 800, true, false, false).cols).toBe(1)
   })
 
   it('6 options are 3x2 wide and 2x3 narrow; one option is one tile', () => {
     expect(quizWordLayout(6, 1300, true)).toMatchObject({ cols: 3, rowMax: 250 })
-    expect(quizWordLayout(6, 700, false)).toMatchObject({ cols: 2, rowMax: 160 })
+    expect(quizWordLayout(6, 500, false)).toMatchObject({ cols: 2, rowMax: 160 })
     expect(quizWordLayout(1, 1300, true).cols).toBe(1)
+  })
+})
+
+// The tile, badge and header-dot base styles are CSS classes now (no longer inline), so nothing
+// else in index.css may restyle them: only their own rules name them, and the global `button`
+// rules (element selectors, lower specificity) never set a minimum size.
+describe('moved base styles are not overridden', () => {
+  const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    ''
+  )
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+    selector: m[1].trim(),
+    body: m[2],
+  }))
+
+  it('only their own rules name .quiz-word-option and .task-dot', () => {
+    const named = rules
+      .filter((r) => /\.(quiz-word-option(__id)?|task-dot)(?![\w-])/.test(r.selector))
+      .map((r) => r.selector)
+    expect(named.sort()).toEqual(['.quiz-word-option', '.quiz-word-option__id', '.task-dot'])
+  })
+
+  it('no element-only button rule sets a minimum size', () => {
+    const elementOnly = rules.filter(
+      (r) => /(^|[\s,>])button(?![\w-])/.test(r.selector) && !/[.#[]/.test(r.selector)
+    )
+    expect(elementOnly.length).toBeGreaterThan(0)
+    for (const r of elementOnly) expect(r.body).not.toMatch(/min-(height|width)/)
   })
 })

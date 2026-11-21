@@ -98,10 +98,12 @@ export default function MultipleChoiceQuiz({
           nextPictureNarrow(content.hasAttribute('data-picture-narrow'), container.clientWidth)
         )
       else {
-        // Word tiles: the column count follows the frame's width (quizWordLayout), so set it
-        // here too, before the fit measures.
+        // Word tiles: the column count follows the frame's and screen's width (quizWordLayout),
+        // so set it here too, before the fit measures.
         const wasWide = content.dataset.quizWide === 'true'
-        const layout = quizWordLayout(content.children.length, container.clientWidth, wasWide, long)
+        const width = container.clientWidth
+        const screenWide = window.innerWidth >= 900
+        const layout = quizWordLayout(content.children.length, width, wasWide, long, screenWide)
         content.dataset.quizWide = String(layout.wide)
         content.dataset.quizCols = String(layout.cols)
         content.style.setProperty('--quiz-cols', String(layout.cols))
@@ -303,7 +305,7 @@ export default function MultipleChoiceQuiz({
                     </div>
                   )}
                   {verdictWords && (
-                    <span id={verdictId} style={s.visuallyHidden}>
+                    <span id={verdictId} className="quiz-visually-hidden">
                       {verdictWords}
                     </span>
                   )}
@@ -374,7 +376,7 @@ export default function MultipleChoiceQuiz({
         </div>
       </div>
       {revealAnswers && !checkPassed && (
-        <div style={s.correctAnswerNote}>
+        <div className="quiz-correct-note">
           Correct answer:{' '}
           {optionHasPicture(correctOption) && (
             <QuizOptionPicture
@@ -384,7 +386,7 @@ export default function MultipleChoiceQuiz({
               style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 6 }}
             />
           )}
-          <span style={s.correctAnswerText}>
+          <span className="quiz-correct-note__answer">
             {/* A caption is Markdown, as on the card; a picture's alt text or id is plain words. */}
             {optionHasPicture(correctOption) && !quizOptionHasCaption(correctOption) ? (
               quizOptionLabel(correctOption)

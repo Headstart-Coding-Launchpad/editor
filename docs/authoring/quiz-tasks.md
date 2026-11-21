@@ -70,8 +70,8 @@ A multiple-choice quiz takes exactly one `answer_equals` check (or the `answer:`
 | `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}`. Option text is mapped to its id. |
 
 **Word answer layout** (no orphan tile, none stretched): 2 options sit side by side, 3 in one row
-(stacked as bars when the quiz is under about 900px wide, or when any answer is over about 40
-characters), 4 make a 2x2 grid, 5 are one column of bars, and 6 make 3x2 (2x3 when narrow). The
+(stacked as bars on a screen under about 900px wide, when the quiz frame itself is under about
+600px wide, as in a tutor's small student window, or when any answer is over about 40 characters), 4 make a 2x2 grid, 5 are one column of bars, and 6 make 3x2 (2x3 when narrow). The
 tiles stop growing at a capped height and sit under the question. Prefer 2 to 4 short options.
 
 ### Picture options

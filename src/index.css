@@ -949,6 +949,29 @@ select {
 .task-dots-chip:hover {
   background: rgba(255, 255, 255, 0.26);
 }
+
+/* SoloNav's count: "5/11" instead of "Task 5 of 11" under 900px wide, only while the student's
+   dots are windowed or scrolling (they did not all fit). Driven by the dots' measured mode. */
+.solo-nav__short {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  body:has([title='Task progress'][data-mode='window'], [title='Task progress'][data-mode='scroll'])
+    .solo-nav__label {
+    min-width: 0 !important;
+  }
+
+  body:has([title='Task progress'][data-mode='window'], [title='Task progress'][data-mode='scroll'])
+    .solo-nav__long {
+    display: none;
+  }
+
+  body:has([title='Task progress'][data-mode='window'], [title='Task progress'][data-mode='scroll'])
+    .solo-nav__short {
+    display: inline;
+  }
+}
 /* ── end calm screens: header task dots window ── */
 
 /* Presentation window header buttons (StudentView): finger-sized on touch screens, where they
@@ -1977,9 +2000,11 @@ select {
 
 /* ── Calm screens: word answer tiles (MultipleChoiceQuiz, 21 Nov 2026) ──
    No orphan tile and no stretched tile. MultipleChoiceQuiz sets --quiz-cols (2 side by side;
-   3 in a row, or bars under ~900px; 4 as 2x2; 5 as bars) and --quiz-row-max (320px for one
-   row, 250px for two, 110px or 76px for bars) from the frame's width before the shrink-to-fit
-   step (quizUtils quizWordLayout). Rows grow into the frame up to the cap, then stop; the
+   3 in a row, or bars on a screen under 900px or a quiz frame under ~600px; 4 as 2x2; 5 as
+   bars) and --quiz-row-max (320px for one row, 250px for two, 110px or 76px for bars) from the
+   widths before the shrink-to-fit step (quizUtils quizWordLayout). The tile and badge base
+   styles are classes, not inline: no rule in this file but the global `button` (a lower
+   specificity) touches these selectors (tested in QuizTileLayout.test.jsx). Rows grow into the frame up to the cap, then stop; the
    tiles sit at the top. */
 .quiz-word-grid {
   grid-template-columns: repeat(var(--quiz-cols, 2), minmax(0, 1fr));
@@ -2021,6 +2046,37 @@ select {
   font-weight: 700;
   text-transform: uppercase;
   color: #fff;
+}
+
+/* The tutor's "Correct answer:" note and a picture card's verdict for screen readers (moved
+   here from quizStyles' inline styles). */
+.quiz-correct-note {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--colour-success-bg);
+  border: 1px solid var(--colour-success-edge);
+  color: var(--colour-success-text);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.quiz-correct-note__answer {
+  font-weight: 700;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.quiz-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 /* ── end calm screens: word answer tiles ── */
 
@@ -6527,7 +6583,9 @@ label.te-backdrop-tag,
    The progress and the instruction share one row, and the arena is capped to the screen
    height (about 530px at 768 high instead of 16:9's ~645px at 1366 wide), so the whole panel
    fits; it gets wider than 16:9 instead. Targets are placed in percent, so they follow. The
-   238px is the top bar, the task strip, the panel, this row and a miss hint line. */
+   238px is the top bar, the task strip, the panel, this row and a miss hint line. Only the
+   student's own screen (.act-stage--fit): a tutor's view and the presentation keep 16:9. At the
+   280px floor, 104px targets at y 0.3 and 0.75 still sit 126px apart. */
 .act-mouse-head {
   display: flex;
   flex-wrap: wrap;
@@ -6541,7 +6599,7 @@ label.te-backdrop-tag,
   margin: 0;
 }
 
-.act-mouse-head ~ .act-stage {
+.act-stage--fit {
   max-height: max(280px, calc(100dvh - 238px));
 }
 /* ── end calm screens: Mouse arena ── */

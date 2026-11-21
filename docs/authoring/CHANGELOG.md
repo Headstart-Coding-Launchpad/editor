@@ -37,6 +37,20 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-21
+
+- **Word quiz answers re-lay-out: no orphan tile, no stretched tile.** Multiple-choice and poll
+  word options now follow the option count: 2 side by side, 3 in one row (stacked as bars on a
+  screen under about 900px wide, in a quiz frame under about 600px, or when any answer is over
+  about 40 characters), 4 as 2x2, 5 as one column of bars, 6 as 3x2 (2x3 when narrow). Tiles
+  stop growing at a capped height (320px for one row, 250px for two, bars about 80-110px) and
+  sit under the question. 3-, 5- and 6-option quizzes look different from before (3 used to
+  leave a lone tile, 5 used to make 3 rows). Picture options are unchanged. See
+  [quiz-tasks.md](quiz-tasks.md#fields).
+- Affects: quiz (multiple_choice, poll), quiz_multiple_choice, quiz_poll · Existing lessons: no
+  changes needed (prefer 2 to 4 short options; a long answer stacks 3 options) · Resolves: none
+  (calm-screen sketches, Ryan 21 Nov 2026)
+
 ## 2026-11-20
 
 - **HTML previews run sandboxed, with no web storage (security, Deep Review R6).** The student's

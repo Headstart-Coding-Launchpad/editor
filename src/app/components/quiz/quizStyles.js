@@ -201,18 +201,6 @@ export const baseStyles = {
     fontSize: 'calc(var(--quiz-option-scale, 1) * 1.15rem)',
     fontWeight: 700,
   },
-  // The verdict in words, for screen readers only.
-  visuallyHidden: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    padding: 0,
-    margin: -1,
-    overflow: 'hidden',
-    clip: 'rect(0 0 0 0)',
-    whiteSpace: 'nowrap',
-    border: 0,
-  },
   // The picture is QUIZ_PICTURE_HEIGHT tall and as wide as its shape, never wider than the box.
   // The box's width (a flex basis of auto, so it counts in intrinsic sizing) is the full-size
   // picture's: the height cap times its shape (--quiz-picture-aspect, set when the image loads,
@@ -238,21 +226,6 @@ export const baseStyles = {
   markdownOnDark: {
     '--colour-text': '#ffffff',
     '--colour-primary-dark': '#ffffff',
-  },
-  correctAnswerNote: {
-    padding: '8px 12px',
-    borderRadius: 6,
-    background: 'var(--colour-success-bg)',
-    border: '1px solid var(--colour-success-edge)',
-    color: 'var(--colour-success-text)',
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.88rem',
-    fontWeight: 600,
-  },
-  correctAnswerText: {
-    fontWeight: 700,
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
   },
 }
 

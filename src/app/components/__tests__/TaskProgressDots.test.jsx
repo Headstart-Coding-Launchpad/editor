@@ -437,7 +437,15 @@ describe('TaskProgressDots', () => {
 
       it('shows 5 whole dots centred on the current one, with +N chips for the rest', () => {
         at768()
-        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={vi.fn()} />)
+        render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
         const row = screen.getByTitle('Task progress')
         expect(row).toHaveAttribute('data-mode', 'window')
         expect(row.style.overflowX).not.toBe('auto')
@@ -449,7 +457,15 @@ describe('TaskProgressDots', () => {
 
       it('only puts a chip on a side that has hidden dots', () => {
         at768()
-        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={1} onDotClick={vi.fn()} />)
+        render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={1}
+            onDotClick={vi.fn()}
+          />
+        )
         expect(dotLabels()).toEqual(['Task 1', 'Task 2', 'Task 3', 'Task 4', 'Task 5'])
         expect(screen.queryByRole('button', { name: /earlier tasks/ })).toBeNull()
         expect(screen.getByRole('button', { name: /6 later tasks/ })).toBeInTheDocument()
@@ -459,7 +475,13 @@ describe('TaskProgressDots', () => {
         at768()
         const onDotClick = vi.fn()
         render(
-          <TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={onDotClick} />
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={onDotClick}
+          />
         )
         await userEvent.click(screen.getByRole('button', { name: /4 later tasks/ }))
         expect(dotLabels()).toEqual(['Task 7', 'Task 8', 'Task 9', 'Task 10', 'Task 11'])
@@ -473,8 +495,98 @@ describe('TaskProgressDots', () => {
         at768()
         activeRestore()
         activeRestore = stubRowWidth(2000)
-        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={vi.fn()} />)
+        render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
         expect(screen.getByTitle('Task progress')).toHaveAttribute('data-mode', 'fits')
+      })
+
+      // Touch dots: step 40 (34 + 6), chips 2 x (44 + 6), padding 6: room for N dots is
+      // floor((width - 100) / 40), from 3 to 5.
+      it('fits a 4-dot window in a realistic 260px row and a 3-dot one in 220px', () => {
+        at768()
+        activeRestore()
+        activeRestore = stubRowWidth(260)
+        const { unmount } = render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
+        expect(screen.getByTitle('Task progress')).toHaveAttribute('data-mode', 'window')
+        expect(dotLabels()).toEqual(['Task 3', 'Task 4', 'Task 5', 'Task 6'])
+        unmount()
+        activeRestore()
+        activeRestore = stubRowWidth(300)
+        render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
+        expect(dotLabels()).toHaveLength(5)
+      })
+
+      it('the presentation window and tutors keep the old row (no windowed prop)', () => {
+        at768()
+        activeRestore()
+        activeRestore = stubRowWidth(260)
+        render(<TaskProgressDots compact tasks={ELEVEN} currentTaskId={5} onDotClick={vi.fn()} />)
+        expect(screen.getByTitle('Task progress')).toHaveAttribute('data-mode', 'scroll')
+        expect(document.querySelector('.task-dots-chip')).toBeNull()
+      })
+
+      it('keeps keyboard focus on a chip after paging, even when the clicked one goes', async () => {
+        at768()
+        render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
+        await userEvent.click(screen.getByRole('button', { name: /4 later tasks/ }))
+        // The window reached the end, so the "later" chip is gone; focus moves to the other one.
+        expect(screen.queryByRole('button', { name: /later tasks/ })).toBeNull()
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: /6 earlier tasks/ }))
+      })
+
+      it('re-centres the window when the task count changes after paging', async () => {
+        at768()
+        const { rerender } = render(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={ELEVEN}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
+        await userEvent.click(screen.getByRole('button', { name: /4 later tasks/ }))
+        rerender(
+          <TaskProgressDots
+            compact
+            windowed
+            tasks={TWELVE}
+            currentTaskId={5}
+            onDotClick={vi.fn()}
+          />
+        )
+        expect(dotLabels()).toEqual(['Task 3', 'Task 4', 'Task 5', 'Task 6', 'Task 7'])
       })
     })
 

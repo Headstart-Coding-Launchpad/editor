@@ -3,6 +3,7 @@ import MouseBuilderEditor from './MouseBuilderEditor.jsx'
 import { SpinTick } from '../ui/ActivityCorrect.jsx'
 import RoundProgress, { BonusBanner, RoundFinished } from '../ui/RoundProgress.jsx'
 import { useRoundFlow } from '../ui/useRoundFlow.js'
+import { usePresentation } from '../ui/presentation.js'
 import { coreCountOf } from '../round.js'
 import { activeMouseItems, describeMouseItem, gradeMouseItem, missesOf } from './mouse.js'
 import {
@@ -70,6 +71,7 @@ export function MouseStudentView({
   // A tutor (read-only view, or editing a student's answers) never lingers or advances: they
   // follow the student's item or pick one in the tutor-only picker.
   const tutor = readOnly || teacher
+  const presenting = usePresentation()
   // The round moves on by itself: an item ticks when done, shows its done moment, then the next
   // appears. While the tick shows, gestures are ignored (no current item to answer).
   const flow = useRoundFlow(items, isDone, { readOnly: tutor })
@@ -428,7 +430,7 @@ export function MouseStudentView({
       )}
       <div
         ref={stageRef}
-        className="act-stage"
+        className={tutor || presenting ? 'act-stage' : 'act-stage act-stage--fit'}
         data-testid="mouse-stage"
         onClick={onStageClick}
         onDoubleClick={onStageDoubleClick}

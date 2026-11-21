@@ -285,9 +285,18 @@ describe('Mouse UI fits the screen', () => {
     expect(target('box')).not.toHaveClass('act-target--current')
   })
 
+  it('caps the arena only on the student screen, not in a tutor view', () => {
+    const task = taskWith([{ id: 'a', action: 'click', target: 'star' }])
+    const { unmount } = renderMouse(task)
+    expect(screen.getByTestId('mouse-stage')).toHaveClass('act-stage--fit')
+    unmount()
+    renderMouse(task, { readOnly: true })
+    expect(screen.getByTestId('mouse-stage')).not.toHaveClass('act-stage--fit')
+  })
+
   it('caps the arena to the screen height (index.css)', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
-    const start = css.indexOf('.act-mouse-head ~ .act-stage {')
+    const start = css.indexOf('.act-stage--fit {')
     expect(start).toBeGreaterThanOrEqual(0)
     expect(css.slice(start, css.indexOf('}', start))).toMatch(/max-height:.*100dvh/)
   })

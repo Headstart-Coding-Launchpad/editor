@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import SoloNav from '../SoloNav'
 
@@ -61,27 +63,28 @@ describe('SoloNav Next button motion', () => {
   })
 })
 
-// Calm screens (21 Nov 2026): under about 900px wide the top bar's count is the short "5/11",
-// leaving room for the task title and the dots window.
-describe('SoloNav count label width', () => {
-  const at = (width, fn) => {
-    const saved = window.innerWidth
-    window.innerWidth = width
-    try {
-      fn()
-    } finally {
-      window.innerWidth = saved
-    }
-  }
+// Calm screens (21 Nov 2026): in the top bar both "Task 5 of 11" and "5/11" render; index.css
+// shows the short one under 900px wide only while the dots are windowed or scrolling, so a short
+// lesson whose dots all fit keeps the words.
+describe('SoloNav count label', () => {
   const eleven = Array.from({ length: 11 }, (_, i) => ({ id: `t${i + 1}` }))
 
-  it('reads "5/11" at a 768px viewport', () => {
-    at(768, () => render(nav({ compact: true, flatTasks: eleven, currentIndex: 4 })))
-    expect(screen.getByText('5/11')).toBeInTheDocument()
+  it('renders both forms in the top bar', () => {
+    render(nav({ compact: true, flatTasks: eleven, currentIndex: 4 }))
+    expect(screen.getByText('Task 5 of 11')).toHaveClass('solo-nav__long')
+    expect(screen.getByText('5/11')).toHaveClass('solo-nav__short')
   })
 
-  it('still reads "Task 5 of 11" at 1024px wide', () => {
-    at(1024, () => render(nav({ compact: true, flatTasks: eleven, currentIndex: 4 })))
-    expect(screen.getByText('Task 5 of 11')).toBeInTheDocument()
+  it('the bottom nav keeps only the words', () => {
+    render(nav({ flatTasks: eleven, currentIndex: 4 }))
+    expect(screen.queryByText('5/11')).toBeNull()
+  })
+
+  it('index.css switches to the short form from the dots measured mode, under 900px', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+    const media = css.slice(css.indexOf('.solo-nav__short {'))
+    expect(media).toMatch(/@media \(max-width: 899px\)/)
+    expect(media).toMatch(/:has\(\[title='Task progress'\]\[data-mode='window'\]/)
+    expect(css).not.toMatch(/data-mode='fits'\][^{]*solo-nav__short/)
   })
 })

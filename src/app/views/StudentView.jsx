@@ -1493,13 +1493,13 @@ export default function StudentView({
   const teacherLiveWorkspace = myStudentTeacherEdit?.teacherLiveWorkspace ?? null
   const teacherLiveArcadeDesign = myStudentTeacherEdit?.teacherLiveArcadeDesign ?? null
 
-  // A playground is one open coding space, not a lesson: no task dots (an unlabelled orange "1")
-  // and no "Previous / Task 1 of 1 / Next".
+  // A playground is one open coding space, not a lesson: no task dots and no "Task 1 of 1" nav.
   const isPlayground = !!(lessonProp?.isPlayground || lesson?.isPlayground)
   const taskProgressControl =
     !isSandbox && !isPlayground ? (
       <TaskProgressDots
         compact
+        windowed={!teacherPresentation}
         tasks={visibleTasks}
         currentTaskId={currentTaskId}
         viewingTaskId={viewingTaskId}

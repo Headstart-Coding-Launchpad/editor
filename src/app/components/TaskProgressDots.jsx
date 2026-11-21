@@ -18,11 +18,10 @@ const COMPACT_PAD = 3
 const FADE_PX = 18
 // Below this many dots' worth of room, scrolling stops being useful: show the "x/y" counter.
 const MIN_SCROLL_DOTS = 5
-// Calm screens (21 Nov 2026): under NARROW_BELOW px wide a compact row that does not fit shows a
-// window of WINDOW_DOTS whole dots round the current one, and a 44px "+N" chip (.task-dots-chip)
-// on each side that hides dots; a chip pages the window. No scrolling, no fade.
+// Calm screens (21 Nov 2026), `windowed` (the student's bar, never a tutor's): under NARROW_BELOW
+// px wide a row that does not fit shows a window of 3 to 5 whole dots round the current one and a
+// 44px "+N" chip (.task-dots-chip) each side that hides dots; a chip pages the window.
 const NARROW_BELOW = 900
-const WINDOW_DOTS = 5
 const CHIP = 44
 
 // Fitting the dots is a two-phase measurement, not something CSS can decide alone:
@@ -45,6 +44,7 @@ export default function TaskProgressDots({
   isSolo,
   canSelectTask,
   compact = false,
+  windowed = false,
 }) {
   const rowRef = useRef(null)
   const touch = useIsTouchDevice()
@@ -55,8 +55,8 @@ export default function TaskProgressDots({
   const pad = compact ? COMPACT_PAD * 2 : 0
   const naturalWidth = items.length * step - dotGap + pad
   const minScrollWidth = Math.min(naturalWidth, MIN_SCROLL_DOTS * step - dotGap)
-  const narrow = useIsMobile(NARROW_BELOW) && compact && items.length > WINDOW_DOTS
-  const windowWidth = WINDOW_DOTS * step + 2 * (CHIP + dotGap) - dotGap + pad
+  const narrow = useIsMobile(NARROW_BELOW) && compact && windowed
+  const [winDots, setWinDots] = useState(5)
   const [mode, setMode] = useState('probing') // 'probing' | 'fits' | 'window' | 'scroll' | 'collapsed'
   // Scroll mode: the row is narrowed to a whole number of dots, so none is cut in half.
   const [scrollWidth, setScrollWidth] = useState(null)
@@ -65,14 +65,18 @@ export default function TaskProgressDots({
   useLayoutEffect(() => {
     if (mode !== 'probing') return
     const width = rowRef.current?.getBoundingClientRect().width ?? 0
+    // Room for two chips and N whole dots, N from 3 to 5 (fewer means the counter is clearer).
+    const fitDots = Math.min(5, Math.floor((width - pad - 2 * (CHIP + dotGap) + dotGap) / step))
     if (width >= naturalWidth) setMode('fits')
-    else if (narrow && width >= windowWidth) setMode('window')
-    else if (compact && width >= minScrollWidth) {
+    else if (narrow && fitDots >= 3) {
+      setWinDots(fitDots)
+      setMode('window')
+    } else if (compact && width >= minScrollWidth) {
       const wholeDots = Math.max(1, Math.floor((width - pad + dotGap) / step))
       setScrollWidth(wholeDots * step - dotGap + pad)
       setMode('scroll')
     } else setMode('collapsed')
-  }, [mode, naturalWidth, minScrollWidth, compact, pad, dotGap, step, narrow, windowWidth])
+  }, [mode, naturalWidth, minScrollWidth, compact, pad, dotGap, step, narrow])
 
   useEffect(() => {
     setMode('probing')
@@ -91,19 +95,32 @@ export default function TaskProgressDots({
   const viewingIndex =
     viewingTaskId != null ? items.findIndex((item) => item.taskIds.includes(viewingTaskId)) : -1
   const focusIndex = viewingIndex !== -1 ? viewingIndex : currentIndex
-  // Window mode: the first dot shown, centred on the focus dot until a chip pages it.
+  // Window mode: the first dot shown, centred on the focus dot until a chip pages it. After a
+  // page the focus moves to the chip on that side (or the other one) if the clicked one is gone.
   const [paged, setPaged] = useState(null)
-  useEffect(() => setPaged(null), [focusIndex])
-  const lastStart = Math.max(0, items.length - WINDOW_DOTS)
-  const start = paged ?? Math.min(lastStart, Math.max(0, focusIndex - 2))
-  const shown = mode === 'window' ? [start, start + WINDOW_DOTS] : [0, items.length]
+  const pageFocus = useRef(null)
+  useEffect(() => setPaged(null), [focusIndex, mode, items.length])
+  const lastStart = Math.max(0, items.length - winDots)
+  const start = Math.min(lastStart, paged ?? Math.max(0, focusIndex - Math.floor(winDots / 2)))
+  const shown = mode === 'window' ? [start, start + winDots] : [0, items.length]
+  useLayoutEffect(() => {
+    const row = rowRef.current
+    if (!pageFocus.current || !row) return
+    const sel = `[data-chip="${pageFocus.current}"]`
+    ;(row.querySelector(sel) ?? row.querySelector('[data-chip]'))?.focus()
+    pageFocus.current = null
+  }, [start])
   const chip = (side, hidden, to) => (
     <button
       key={side}
       type="button"
       className="task-dots-chip"
+      data-chip={side}
       aria-label={`Show ${hidden} ${side} tasks`}
-      onClick={() => setPaged(Math.min(lastStart, Math.max(0, to)))}
+      onClick={() => {
+        pageFocus.current = side
+        setPaged(Math.min(lastStart, Math.max(0, to)))
+      }}
     >
       {side === 'earlier' ? `‹+${hidden}` : `+${hidden}›`}
     </button>
@@ -164,7 +181,7 @@ export default function TaskProgressDots({
       data-fade-right={mode === 'scroll' && edges.right ? 'true' : undefined}
       onScroll={mode === 'scroll' ? updateEdges : undefined}
     >
-      {mode === 'window' && start > 0 && chip('earlier', start, start - WINDOW_DOTS)}
+      {mode === 'window' && start > 0 && chip('earlier', start, start - winDots)}
       {items.slice(...shown).map((item, i) => {
         const index = i + shown[0]
         const isCurrent = item.taskIds.includes(currentTaskId)
@@ -200,7 +217,7 @@ export default function TaskProgressDots({
       })}
       {mode === 'window' &&
         shown[1] < items.length &&
-        chip('later', items.length - shown[1], start + WINDOW_DOTS)}
+        chip('later', items.length - shown[1], start + winDots)}
     </div>
   )
 }

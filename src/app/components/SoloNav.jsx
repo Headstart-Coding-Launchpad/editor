@@ -14,8 +14,7 @@ export default function SoloNav({
   // actually reachable, but the label should still read the real task count until then).
   displayTotal = flatTasks.length,
 }) {
-  // The top bar (compact) uses the short "5/11" under 900px wide, leaving room for its dots.
-  const isMobile = useIsMobile(compact ? 900 : 640)
+  const isMobile = useIsMobile()
   const navStyle = compact ? s.soloNavCompact : s.soloNav
   const btnStyle = compact ? s.soloNavBtnCompact : s.soloNavBtn
   const labelStyle = compact
@@ -55,10 +54,19 @@ export default function SoloNav({
       {cs.inPersonalSandbox ? (
         <span style={labelStyle}>{isMobile ? 'Sandbox' : 'Personal Sandbox'}</span>
       ) : (
-        <span style={labelStyle}>
-          {isMobile
-            ? `${currentIndex + 1}/${displayTotal}`
-            : `Task ${currentIndex + 1} of ${displayTotal}`}
+        // In the top bar both forms render; index.css shows "5/11" under 900px wide only while the
+        // dots are windowed or scrolling (they did not all fit), so a short lesson keeps the words.
+        <span style={labelStyle} className="solo-nav__label">
+          {isMobile ? (
+            `${currentIndex + 1}/${displayTotal}`
+          ) : (
+            <>
+              <span className="solo-nav__long">{`Task ${currentIndex + 1} of ${displayTotal}`}</span>
+              {compact && (
+                <span className="solo-nav__short">{`${currentIndex + 1}/${displayTotal}`}</span>
+              )}
+            </>
+          )}
         </span>
       )}
       {!cs.inPersonalSandbox && (
