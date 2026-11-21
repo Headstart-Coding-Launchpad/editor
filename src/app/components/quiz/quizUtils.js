@@ -61,6 +61,18 @@ export function nextPictureNarrow(wasNarrow, width) {
   return wasNarrow ? width <= PICTURE_WIDE_ABOVE : width < PICTURE_NARROW_BELOW
 }
 
+// Word answer tiles (calm screens, 21 Nov 2026): never an orphan tile, never a stretched one. 2
+// side by side; 3 in a row (bars under ~900px or with a long answer); 4 as 2x2; 5 as bars; 6 as
+// 3x2 (2x3 narrow). rowMax caps a row's height. Wide from 920px, narrow again under 880px.
+export function quizWordLayout(count, width, wasWide, long = false) {
+  const wide = !(width > 0) ? wasWide : width >= (wasWide ? 880 : 920)
+  const cols = count === 5 ? 1 : count === 3 ? (wide && !long ? 3 : 1) : count === 6 && wide ? 3 : 2
+  const n = Math.max(1, Math.min(count, cols))
+  const rows = Math.ceil(count / n)
+  const rowMax = n === 1 ? (count <= 3 ? 110 : 76) : ([320, 250, 160][rows - 1] ?? null)
+  return { wide, cols: n, rowMax }
+}
+
 // A loaded picture's shape, for its card's box (--quiz-picture-aspect, quizStyles pictureBox):
 // width over height, from 1.1 (a square Stage picture's card hugs it, with a little room; a tall
 // picture keeps a card wide enough to tap) to 3:1. null when the size is unknown (an SVG with no

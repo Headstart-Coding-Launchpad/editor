@@ -17,6 +17,7 @@ import {
   nextPictureNarrow,
   normalizeQuizAnswerText,
   pictureBoxAspect,
+  quizWordLayout,
   OPTION_COLOURS,
   OPTION_VERDICT_COLOURS,
   QuestionPanel,
@@ -65,6 +66,7 @@ export default function MultipleChoiceQuiz({
   // (a validation error) still all show, in more rows.
   const pictureMode = !multiple && task?.quizType !== 'poll' && quizHasPictureOptions(task)
   const pictureColumns = options.length === 3 ? 3 : 2
+  const long = options.some((o) => normalizeQuizAnswerText(o.text ?? '').length > 40)
 
   React.useLayoutEffect(() => {
     const container = optionsFrameRef.current
@@ -95,7 +97,17 @@ export default function MultipleChoiceQuiz({
           'data-picture-narrow',
           nextPictureNarrow(content.hasAttribute('data-picture-narrow'), container.clientWidth)
         )
-      else content.removeAttribute('data-picture-narrow')
+      else {
+        // Word tiles: the column count follows the frame's width (quizWordLayout), so set it
+        // here too, before the fit measures.
+        const wasWide = content.dataset.quizWide === 'true'
+        const layout = quizWordLayout(content.children.length, container.clientWidth, wasWide, long)
+        content.dataset.quizWide = String(layout.wide)
+        content.dataset.quizCols = String(layout.cols)
+        content.style.setProperty('--quiz-cols', String(layout.cols))
+        if (layout.rowMax) content.style.setProperty('--quiz-row-max', `${layout.rowMax}px`)
+        else content.style.removeProperty('--quiz-row-max')
+      }
       const options = Array.from(content.children)
       options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))
       try {
@@ -162,7 +174,7 @@ export default function MultipleChoiceQuiz({
       observer.disconnect()
       stopPictureRefit()
     }
-  }, [displayedOptions, pictureMode])
+  }, [displayedOptions, pictureMode, long])
 
   return (
     <div style={s.wrap}>
@@ -171,7 +183,7 @@ export default function MultipleChoiceQuiz({
         <div
           ref={optionsGridRef}
           style={pictureMode ? { ...s.options, ...s.pictureOptions } : s.options}
-          className={pictureMode ? 'quiz-picture-grid' : undefined}
+          className={pictureMode ? 'quiz-picture-grid' : 'quiz-word-grid'}
           data-picture-columns={pictureMode ? pictureColumns : undefined}
           role={multiple ? 'group' : 'radiogroup'}
           aria-label={task?.title ?? 'Quiz options'}
@@ -306,9 +318,8 @@ export default function MultipleChoiceQuiz({
                 aria-checked={active}
                 aria-disabled={locked || undefined}
                 tabIndex={locked ? -1 : 0}
-                className={optionEntrance.className}
+                className={['quiz-word-option', optionEntrance.className].filter(Boolean).join(' ')}
                 style={{
-                  ...s.option,
                   background: bg,
                   borderColor: border,
                   color: textColour,
@@ -319,11 +330,10 @@ export default function MultipleChoiceQuiz({
                 onKeyDown={onKeyDown}
               >
                 <span
+                  className="quiz-word-option__id"
                   style={{
-                    ...s.optionId,
                     background:
                       active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active,
-                    color: '#fff',
                   }}
                 >
                   {multiple && active ? '\u2713' : option.id}

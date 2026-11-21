@@ -99,48 +99,15 @@ export const baseStyles = {
     // fit against (that feedback loop caused answers to shake/thrash).
     scrollbarGutter: 'stable',
   },
+  // Word tiles take their columns and capped rows from .quiz-word-grid (index.css).
   options: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    // Rows share the frame equally and grow into it, so the answers fill the space the
-    // question leaves rather than sitting in a band at the top.
-    gridAutoRows: 'minmax(min-content, 1fr)',
     gap: 'calc(var(--quiz-option-scale, 1) * 10px)',
     minHeight: '100%',
-  },
-  option: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    width: '100%',
-    minHeight: 0,
-    height: '100%',
-    padding: 'calc(var(--quiz-option-scale, 1) * 18px) calc(var(--quiz-option-scale, 1) * 20px)',
-    border: '2px solid',
-    borderRadius: 8,
-    cursor: 'pointer',
-    textAlign: 'left',
-    fontFamily: 'var(--font-body)',
-    fontSize: 'calc(var(--quiz-option-scale, 1) * 1.42rem)',
-    fontWeight: 600,
-    transition: 'background 0.12s, border-color 0.12s, box-shadow 0.12s',
   },
   optionActive: {
     boxShadow: 'inset 0 0 0 3px rgba(255, 255, 255, 0.5), 0 6px 18px rgba(17, 24, 39, 0.18)',
     zIndex: 2,
-  },
-  optionId: {
-    width: 'calc(var(--quiz-option-scale, 1) * 42px)',
-    height: 'calc(var(--quiz-option-scale, 1) * 42px)',
-    borderRadius: 6,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    textTransform: 'uppercase',
   },
   // Words wrap whole, and code keeps its spaces but wraps at them (`.quiz-option-text code`
   // in index.css). No overflow:auto here: it put scroll bars on every answer and the shrink
@@ -166,12 +133,10 @@ export const baseStyles = {
     width: 'max-content',
   },
   // Picture answer options (request 128). The columns come from .quiz-picture-grid in
-  // index.css (2, 3, or 1 in a narrow pane), so the inline 2-column rule is dropped here.
-  // The grid does not stretch to fill the frame (a word quiz does): it is as tall as its
+  // index.css (2, 3, or 1 in a narrow pane). The grid does not stretch to fill the frame (a word quiz does): it is as tall as its
   // picture-capped cards need, and (index.css) as wide, centred, so four squarish pictures make
   // a tidy 2x2 block.
   pictureOptions: {
-    gridTemplateColumns: undefined,
     gridAutoRows: '1fr',
     minHeight: 0,
     alignContent: 'start',
