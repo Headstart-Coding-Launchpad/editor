@@ -20,7 +20,8 @@ function renderBinary(task) {
   return renderActivityUi(BinaryStudentView, { task, initialState: binary.initialState(task) })
 }
 
-const flip = (place) => fireEvent.click(screen.getByRole('switch', { name: `Bits ${place} column` }))
+const flip = (place) =>
+  fireEvent.click(screen.getByRole('switch', { name: `Bits ${place} column` }))
 
 describe('Binary calm layout', () => {
   it('make the number: target once, big boxes, live number and the worked sum', () => {
