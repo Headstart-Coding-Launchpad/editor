@@ -171,11 +171,40 @@ export default function FallingWordsView({
     )
   }
 
-  if (readOnly || !game) {
-    const finished = !!saved.done
-    return (
-      <div className="act-panel" data-testid="keyboard-activity">
+  // Calm layout (sketch OK'd 21 Nov 2026). The student's play area is there from the start with
+  // one big Start inside; before a round only the timer shows (no word list: the words are seen
+  // as they fall), Score / Cleared / Missed only while playing. The tutor sees the word list and
+  // the saved result (written on each clear or miss and at the end, so no words in flight).
+  const result = game ? fallingResult(game) : saved
+  const finished = game ? game.over : !!saved.done
+  const tokens = game?.tokens ?? []
+  // The token the student is typing: the lowest one that starts with what they've typed.
+  const aimed = game?.buffer
+    ? tokens.filter((token) => token.text.startsWith(game.buffer)).sort((a, b) => b.y - a.y)[0]
+    : null
+  const justMissed =
+    !reducedMotion && game?.lastEvent?.kind === 'missed' && game.elapsedMs - game.lastEvent.at < 300
+
+  return (
+    <div className="act-panel" data-testid="keyboard-activity">
+      <div className="act-falling-head">
         <p className="act-prompt">Type the falling words before they reach the bottom</p>
+        {!readOnly && (
+          <p className="act-row" aria-live="off">
+            <span className="act-badge" data-testid="falling-time">
+              ⏱ {Math.max(0, Math.ceil((durationMs - (game?.elapsedMs ?? 0)) / 1000))}s
+            </span>
+            {playing && (
+              <>
+                <span className="act-badge">Score {game.score}</span>
+                <span className="act-badge">Cleared {game.cleared}</span>
+                <span className="act-badge">Missed {game.missed}</span>
+              </>
+            )}
+          </p>
+        )}
+      </div>
+      {readOnly && (
         <p className="act-target-text" style={{ fontSize: '1rem' }}>
           {(task?.words ?? []).map((word, i) => (
             <React.Fragment key={i}>
@@ -184,114 +213,83 @@ export default function FallingWordsView({
             </React.Fragment>
           ))}
         </p>
-        {historyLine(saved, finished)}
-        {saved.cleared != null && <Stats result={saved} />}
-        {readOnly && saved.cleared != null && !finished && (
-          <p role="status">
-            Playing: {Math.round((saved.timeMs ?? 0) / 1000)}s of {Math.round(durationMs / 1000)}s
-          </p>
-        )}
-        {finished && <ActivityCorrect>Round complete!</ActivityCorrect>}
-        {!readOnly && (
-          <div className="act-row">
-            <button
-              type="button"
-              className="btn-primary act-btn"
-              onClick={start}
-              data-testid="falling-start"
-            >
-              {saved.cleared != null
-                ? 'Play again'
-                : `Start (${Math.round(durationMs / 1000)} seconds)`}
-            </button>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const secondsLeft = Math.max(0, Math.ceil((durationMs - game.elapsedMs) / 1000))
-  const onTrack = bufferOnTrack(game)
-  // The token the student is typing: the lowest one that starts with what they've typed.
-  const aimed = game.buffer
-    ? game.tokens.filter((token) => token.text.startsWith(game.buffer)).sort((a, b) => b.y - a.y)[0]
-    : null
-  const justMissed =
-    !reducedMotion && game.lastEvent?.kind === 'missed' && game.elapsedMs - game.lastEvent.at < 300
-
-  return (
-    <div className="act-panel" data-testid="keyboard-activity">
-      <p className="act-row" aria-live="off">
-        <span className="act-badge" data-testid="falling-time">
-          ⏱ {secondsLeft}s
-        </span>
-        <span className="act-badge">Score {game.score}</span>
-        <span className="act-badge">Cleared {game.cleared}</span>
-        <span className="act-badge">Missed {game.missed}</span>
-      </p>
-      <div
-        ref={areaRef}
-        className={`act-falling-area${justMissed ? ' act-falling-area--miss' : ''}`}
-        role="application"
-        tabIndex={0}
-        aria-label="Falling words: type each word before it reaches the bottom"
-        data-keyboard-practice="true"
-        data-testid="falling-area"
-        onKeyDown={onKeyDown}
-        onFocus={resume}
-        onPointerDown={resume}
-        onBlur={() => !game.over && setPaused(true)}
-        onPaste={(e) => e.preventDefault()}
-      >
-        {game.tokens.map((token) => {
-          const isAimed = aimed?.id === token.id
-          return (
-            <span
-              key={token.id}
-              className={`act-falling-token${isAimed ? ' act-falling-token--aimed' : ''}`}
-              style={{ left: `${token.x * 100}%`, top: `calc(${token.y} * (100% - 2.2em))` }}
-              data-testid="falling-token"
-            >
-              {isAimed ? (
-                <>
-                  <span className="act-char--ok">{game.buffer}</span>
-                  {token.text.slice(game.buffer.length)}
-                </>
-              ) : (
-                token.text
-              )}
-            </span>
-          )
-        })}
-        {paused && !game.over && (
-          <div className="act-falling-paused" role="status">
-            Paused: click here to carry on
-          </div>
-        )}
-        {game.over && (
-          <div className="act-falling-paused" role="status">
-            Time&apos;s up!
-          </div>
-        )}
-      </div>
-      <p className="act-falling-buffer" aria-live="off">
-        <span className="act-edit-label">You typed: </span>
-        <code className={onTrack ? undefined : 'act-char--bad'} data-testid="falling-buffer">
-          {game.buffer || ' '}
-        </code>
-      </p>
-      {game.over && (
+      )}
+      {!readOnly && (
         <>
-          <Stats result={fallingResult(game)} />
-          {historyLine(fallingResult(game), true)}
-          <ActivityCorrect>Round complete!</ActivityCorrect>
-          <div className="act-row">
-            <button type="button" className="btn-ghost-outline act-btn" onClick={start}>
-              Play again
-            </button>
+          <div
+            ref={areaRef}
+            className={`act-falling-area${justMissed ? ' act-falling-area--miss' : ''}`}
+            role="application"
+            tabIndex={playing ? 0 : -1}
+            aria-label="Falling words: type each word before it reaches the bottom"
+            data-keyboard-practice="true"
+            data-testid="falling-area"
+            onKeyDown={onKeyDown}
+            onFocus={resume}
+            onPointerDown={resume}
+            onBlur={() => playing && setPaused(true)}
+            onPaste={(e) => e.preventDefault()}
+          >
+            {tokens.map((token) => {
+              const isAimed = aimed?.id === token.id
+              return (
+                <span
+                  key={token.id}
+                  className={`act-falling-token${isAimed ? ' act-falling-token--aimed' : ''}`}
+                  style={{ left: `${token.x * 100}%`, top: `calc(${token.y} * (100% - 2.2em))` }}
+                  data-testid="falling-token"
+                >
+                  {isAimed ? (
+                    <>
+                      <span className="act-char--ok">{game.buffer}</span>
+                      {token.text.slice(game.buffer.length)}
+                    </>
+                  ) : (
+                    token.text
+                  )}
+                </span>
+              )
+            })}
+            {paused && playing && (
+              <div className="act-falling-paused" role="status">
+                Paused: click here to carry on
+              </div>
+            )}
+            {!playing && (
+              <div className={`act-falling-paused${game ? '' : ' act-falling-paused--start'}`}>
+                {game?.over && <span role="status">Time&apos;s up!</span>}
+                <button
+                  type="button"
+                  className="btn-primary act-btn act-falling-start"
+                  onClick={start}
+                  data-testid="falling-start"
+                >
+                  {saved.cleared != null
+                    ? 'Play again'
+                    : `Start (${Math.round(durationMs / 1000)} seconds)`}
+                </button>
+              </div>
+            )}
           </div>
+          <p className="act-falling-buffer" aria-live="off">
+            <span className="act-edit-label">You typed: </span>
+            <code
+              className={game && !bufferOnTrack(game) ? 'act-char--bad' : undefined}
+              data-testid="falling-buffer"
+            >
+              {game?.buffer || ' '}
+            </code>
+          </p>
         </>
       )}
+      {!playing && historyLine(result, finished)}
+      {(readOnly ? result.cleared != null : finished) && <Stats result={result} />}
+      {readOnly && result.cleared != null && !finished && (
+        <p role="status">
+          Playing: {Math.round((result.timeMs ?? 0) / 1000)}s of {Math.round(durationMs / 1000)}s
+        </p>
+      )}
+      {finished && <ActivityCorrect>Round complete!</ActivityCorrect>}
     </div>
   )
 }
