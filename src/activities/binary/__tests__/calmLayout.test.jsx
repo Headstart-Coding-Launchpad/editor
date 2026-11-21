@@ -37,6 +37,8 @@ describe('Binary calm layout', () => {
     expect(screen.getByTestId('live-decimal')).toHaveTextContent('5')
     expect(screen.getByTestId('live-decimal')).toHaveClass('act-binary-number--right')
     expect(screen.getByTestId('worked-sum')).toHaveTextContent('4 + 1 = 5')
+    // Not inside the live announcement twice: the sum is visual only.
+    expect(screen.getByTestId('worked-sum')).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('to_binary never shows the worked sum, even when the author shows the number', () => {

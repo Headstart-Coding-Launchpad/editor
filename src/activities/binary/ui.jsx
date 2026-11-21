@@ -26,7 +26,6 @@ import BinaryBuilderEditor from './BinaryBuilderEditor.jsx'
 
 const NEW_MODES = ['overflow', 'hex', 'ascii', 'pixels']
 const BASE_NAMES = { binary: 'binary', hex: 'hex', decimal: 'decimal' }
-
 // The calm "big" modes (index.css "Calm Binary"): the words either side of the target tile.
 const BIG_PROMPTS = { make_number: ['Make the number', ''], to_binary: ['Write', 'in binary'] }
 
@@ -281,6 +280,7 @@ function moveInGrid(event) {
 }
 
 const CELL = 44
+const PIXEL_ROW = { alignItems: 'flex-start', gap: 16, '--act-cell': `${CELL}px` }
 
 function PixelGrid({ rows, onToggle, readOnly, label }) {
   const width = rows[0]?.length ?? 0
@@ -483,7 +483,7 @@ function BinaryItem({ task, item, itemState, update, readOnly, correct }) {
     const rows = Array.isArray(item.rows) ? item.rows.map(String) : []
     if (item.direction === 'encode') {
       return (
-        <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+        <div className="act-row" style={PIXEL_ROW}>
           <PixelGrid rows={rows} label="Picture" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {rows.map((row, r) => (
@@ -505,7 +505,7 @@ function BinaryItem({ task, item, itemState, update, readOnly, correct }) {
     }
     // Draw: the rows of bits to draw from sit beside the grid, one per grid row.
     return (
-      <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+      <div className="act-row" style={PIXEL_ROW}>
         <PixelGrid
           rows={itemState.cells}
           label="Drawing grid"
@@ -607,7 +607,7 @@ function BinaryItem({ task, item, itemState, update, readOnly, correct }) {
       </p>
       {renderBody()}
       {showDecimal && mode !== 'to_decimal' && itemState.bits != null && (
-        // The worked sum is make_number only: in to_binary it would give the answer away.
+        // The worked sum is make_number only (in to_binary it gives the answer away); not re-read.
         <p className="act-binary-live" aria-live="polite">
           Your bits make{' '}
           <strong
@@ -617,7 +617,7 @@ function BinaryItem({ task, item, itemState, update, readOnly, correct }) {
             {value}
           </strong>
           {mode === 'make_number' && (
-            <span className="act-binary-sum" data-testid="worked-sum">
+            <span className="act-binary-sum" data-testid="worked-sum" aria-hidden="true">
               {workedSum(itemState.bits, value)}
             </span>
           )}

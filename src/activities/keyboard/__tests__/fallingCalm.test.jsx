@@ -46,6 +46,24 @@ describe('Falling code calm layout', () => {
     expect(screen.getByText('Missed 0')).toBeInTheDocument()
   })
 
+  it('the play area is a keyboard application only while playing', () => {
+    renderFalling()
+    expect(screen.queryByRole('application')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('falling-start'))
+    expect(screen.getByRole('application')).toHaveAttribute('data-keyboard-practice', 'true')
+  })
+
+  it('a finished round reloaded shows no full timer beside Round complete', () => {
+    const state = {
+      v: 1,
+      items: { round: { mode: 'falling_words', cleared: 7, missed: 2, score: 80, done: true } },
+    }
+    renderFalling({ initialState: state })
+    expect(screen.getByText('Round complete!')).toBeInTheDocument()
+    expect(screen.queryByTestId('falling-time')).not.toBeInTheDocument()
+    expect(screen.getByTestId('falling-start')).toHaveTextContent('Play again')
+  })
+
   it('the tutor still sees the word list and no Start', () => {
     renderFalling({ readOnly: true })
     expect(screen.getByText('print(')).toBeInTheDocument()

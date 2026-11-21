@@ -189,7 +189,7 @@ export default function FallingWordsView({
     <div className="act-panel" data-testid="keyboard-activity">
       <div className="act-falling-head">
         <p className="act-prompt">Type the falling words before they reach the bottom</p>
-        {!readOnly && (
+        {!readOnly && (game || !finished) && (
           <p className="act-row" aria-live="off">
             <span className="act-badge" data-testid="falling-time">
               ⏱ {Math.max(0, Math.ceil((durationMs - (game?.elapsedMs ?? 0)) / 1000))}s
@@ -219,10 +219,10 @@ export default function FallingWordsView({
           <div
             ref={areaRef}
             className={`act-falling-area${justMissed ? ' act-falling-area--miss' : ''}`}
-            role="application"
+            role={playing ? 'application' : undefined}
             tabIndex={playing ? 0 : -1}
             aria-label="Falling words: type each word before it reaches the bottom"
-            data-keyboard-practice="true"
+            data-keyboard-practice={playing ? 'true' : undefined}
             data-testid="falling-area"
             onKeyDown={onKeyDown}
             onFocus={resume}

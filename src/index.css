@@ -5417,7 +5417,8 @@ label.te-backdrop-tag,
   padding: 4px;
 }
 
-/* Pixel mode: the grid (columns set inline, 44px each) and its read-only cells. */
+/* Pixel mode: the grid (columns set inline) and its read-only cells. --act-cell comes from CELL
+   in binary/ui.jsx (set on the pixel row), so the CSS and the JS cell size stay in step. */
 .act-pixel-grid {
   display: grid;
   gap: 2px;
@@ -5425,8 +5426,8 @@ label.te-backdrop-tag,
 }
 
 .act-pixel {
-  width: 44px;
-  height: 44px;
+  width: var(--act-cell, 44px);
+  height: var(--act-cell, 44px);
   border-radius: 4px;
   border: 2px solid var(--ui-border-strong);
   background: var(--ui-surface);
@@ -5436,10 +5437,10 @@ label.te-backdrop-tag,
   background: var(--colour-ink-strong);
 }
 
-/* The bits beside the pixel drawing grid, one per 44px grid row. */
+/* The bits beside the pixel drawing grid, one per grid row. */
 .act-pixel-code {
-  height: 44px;
-  line-height: 44px;
+  height: var(--act-cell, 44px);
+  line-height: var(--act-cell, 44px);
   font-family: var(--font-code);
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -5449,7 +5450,7 @@ label.te-backdrop-tag,
    panel, .act-bits--big on the row). The target sits in a tile, the boxes grow to 128px wide and
    shrink to fit (never under 44px, then the row scrolls as .act-bits does), and the live number
    is a circle. The other modes and the Show it tiles keep the plain .act-bits / .act-bit. */
-.act-binary--big .act-prompt {
+.act-binary--big > .act-prompt {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -5496,7 +5497,7 @@ label.te-backdrop-tag,
 .act-bits--big .act-bit {
   width: 100%;
   aspect-ratio: 128 / 173;
-  max-height: min(173px, calc(100dvh - 520px));
+  max-height: 173px;
   font-size: clamp(1.25rem, 38cqi, 3rem);
 }
 
@@ -5546,10 +5547,35 @@ label.te-backdrop-tag,
   background: var(--colour-success-bg);
 }
 
+/* Show it tiles keep the plain Binary sizes. */
 .show-it-tile .act-binary--big .act-bit {
   aspect-ratio: auto;
   max-height: none;
   font-size: 1.5rem;
+}
+
+.show-it-tile .act-binary--big > .act-prompt {
+  gap: 6px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.show-it-tile .act-binary-target,
+.show-it-tile .act-binary-number {
+  min-width: 0;
+  height: auto;
+  padding: 0 6px;
+  border-width: 2px;
+  font-size: inherit;
+}
+
+.show-it-tile .act-bits--big .act-bit-place {
+  font-size: 1.05rem;
+}
+
+.show-it-tile .act-binary-live {
+  gap: 6px;
+  font-size: 1.1rem;
 }
 
 .act-number-input {
@@ -6292,8 +6318,11 @@ label.te-backdrop-tag,
 /* Keyboard falling_words: the play area, its tokens and the typed buffer (FallingWordsView.jsx). */
 .act-falling-area {
   position: relative;
-  /* Calm Falling code (21 Nov 2026): fills the screen's height (about 490px at 768 high). */
-  height: clamp(320px, calc(100dvh - 280px), 640px);
+  /* Calm Falling code (21 Nov 2026): fills the rest of its pane (see .act-host:has below), 320px
+     to 640px, so the Start and the bottom line stay inside the pane at any size. */
+  flex: 1 1 auto;
+  min-height: 320px;
+  max-height: 640px;
   width: 100%;
   overflow: hidden;
   border: 2px dashed var(--ui-border-strong);
@@ -6352,6 +6381,13 @@ label.te-backdrop-tag,
   font-weight: 600;
   font-size: 1.2rem;
   color: var(--colour-primary-dark);
+}
+
+/* The activity host and panel around a falling_words play area grow to fill the task pane (both
+   are flex columns), so the area takes the pane's spare height rather than the window's. */
+.act-host:has(.act-falling-area),
+.act-panel:has(> .act-falling-area) {
+  flex: 1 1 auto;
 }
 
 /* Calm Falling code: the prompt and the round badges on one row; the one big Start (or Play
