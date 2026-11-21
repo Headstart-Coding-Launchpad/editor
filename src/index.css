@@ -5542,6 +5542,12 @@ label.te-backdrop-tag,
   transform: scale(0.96);
 }
 
+.act-bit--static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .act-bit--static,
 .act-bit--static:disabled {
   cursor: default;
@@ -5558,6 +5564,178 @@ label.te-backdrop-tag,
 .act-bit:disabled {
   opacity: 1;
   cursor: default;
+}
+
+.act-ascii-table__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--font-code);
+  font-size: 0.9rem;
+  padding: 4px;
+}
+
+/* Pixel mode: the grid (columns set inline) and its read-only cells. --act-cell comes from CELL
+   in binary/ui.jsx (set on the pixel row), so the CSS and the JS cell size stay in step. */
+.act-pixel-grid {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+}
+
+.act-pixel {
+  width: var(--act-cell, 44px);
+  height: var(--act-cell, 44px);
+  border-radius: 4px;
+  border: 2px solid var(--ui-border-strong);
+  background: var(--ui-surface);
+}
+
+.act-pixel--on {
+  background: var(--colour-ink-strong);
+}
+
+/* The bits beside the pixel drawing grid, one per grid row. */
+.act-pixel-code {
+  height: var(--act-cell, 44px);
+  line-height: var(--act-cell, 44px);
+  font-family: var(--font-code);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+}
+
+/* Calm Binary (sketch OK'd 21 Nov 2026): make_number and to_binary only (.act-binary--big on the
+   panel, .act-bits--big on the row). The target sits in a tile, the boxes grow to 128px wide and
+   shrink to fit (never under 44px, then the row scrolls as .act-bits does), and the live number
+   is a circle. The other modes and the Show it tiles keep the plain .act-bits / .act-bit. */
+.act-binary--big > .act-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+
+.act-binary-target {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 88px;
+  padding: 0 16px;
+  border: 3px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-tint);
+  font-family: var(--font-title);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
+}
+
+.act-bits--big {
+  flex: 1 1 auto;
+  min-width: 0;
+  grid-auto-columns: minmax(44px, 128px);
+  gap: 12px;
+  justify-content: safe center;
+}
+
+/* Each column is a size container, so the place value and the digit scale with the box
+   (16 bits on a tablet: "32768" still fits its column). */
+.act-bits--big > div {
+  container-type: inline-size;
+}
+
+.act-bits--big .act-bit-place {
+  font-size: clamp(0.75rem, 21cqi, 1.7rem);
+}
+
+.act-bits--big .act-bit {
+  width: 100%;
+  aspect-ratio: 128 / 173;
+  max-height: 173px;
+  font-size: clamp(1.25rem, 38cqi, 3rem);
+}
+
+.act-binary-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 1.35rem;
+}
+
+.act-binary-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 88px;
+  padding: 0 12px;
+  border: 4px solid var(--colour-primary);
+  border-radius: 999px;
+  font-family: var(--font-code);
+  font-size: 2.5rem;
+  color: var(--colour-ink-strong);
+}
+
+.act-binary-number--right {
+  border-color: var(--colour-success-edge);
+  background: var(--colour-success-bg);
+  color: var(--colour-success-text);
+}
+
+.act-binary-sum {
+  font-family: var(--font-code);
+  font-size: 1.2rem;
+  color: var(--colour-muted);
+}
+
+.act-binary--big > .act-result,
+.act-binary--big > .act-round__text {
+  align-self: center;
+}
+
+.act-binary--big > .act-result--pass {
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--colour-success-bg);
+}
+
+/* Show it tiles keep the plain Binary sizes. */
+.show-it-tile .act-binary--big .act-bit {
+  aspect-ratio: auto;
+  max-height: none;
+  font-size: 1.5rem;
+}
+
+.show-it-tile .act-binary--big > .act-prompt {
+  gap: 6px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.show-it-tile .act-binary-target,
+.show-it-tile .act-binary-number {
+  min-width: 0;
+  height: auto;
+  padding: 0 6px;
+  border-width: 2px;
+  font-size: inherit;
+}
+
+.show-it-tile .act-bits--big .act-bit-place {
+  font-size: 1.05rem;
+}
+
+.show-it-tile .act-binary-live {
+  gap: 6px;
+  font-size: 1.1rem;
 }
 
 .act-number-input {
@@ -6300,7 +6478,11 @@ label.te-backdrop-tag,
 /* Keyboard falling_words: the play area, its tokens and the typed buffer (FallingWordsView.jsx). */
 .act-falling-area {
   position: relative;
-  height: 320px;
+  /* Calm Falling code (21 Nov 2026): fills the rest of its pane (see .act-host:has below), 320px
+     to 640px, so the Start and the bottom line stay inside the pane at any size. */
+  flex: 1 1 auto;
+  min-height: 320px;
+  max-height: 640px;
   width: 100%;
   overflow: hidden;
   border: 2px dashed var(--ui-border-strong);
@@ -6351,12 +6533,41 @@ label.te-backdrop-tag,
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
+  gap: 16px;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.82);
   font-weight: 600;
   font-size: 1.2rem;
   color: var(--colour-primary-dark);
+}
+
+/* The activity host and panel around a falling_words play area grow to fill the task pane (both
+   are flex columns), so the area takes the pane's spare height rather than the window's. */
+.act-host:has(.act-falling-area),
+.act-panel:has(> .act-falling-area) {
+  flex: 1 1 auto;
+}
+
+/* Calm Falling code: the prompt and the round badges on one row; the one big Start (or Play
+   again, under "Time's up!") sits inside the play area. */
+.act-falling-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.act-falling-paused--start {
+  background: transparent;
+}
+
+.act-falling-area .act-falling-start {
+  min-width: min(330px, 80%);
+  min-height: 72px;
+  font-size: 1.5rem;
 }
 
 .act-falling-buffer code {

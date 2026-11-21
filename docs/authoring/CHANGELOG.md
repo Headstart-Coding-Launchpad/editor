@@ -51,6 +51,16 @@ Entries written before 2026-09-29 are not tagged.
   changes needed (prefer 2 to 4 short options; a long answer stacks 3 options) · Resolves: none
   (calm-screen sketches, Ryan 21 Nov 2026)
 
+- **Calmer Binary and Falling code screens.** Binary `make_number` and `to_binary` show the
+  target once, big ("Make the number [5]", "Write [5] in binary"), with big bit boxes (no "Bits"
+  label) and the running number in a circle; `make_number` also shows the worked sum ("4 + 1 =
+  5"), never `to_binary`, even with `showDecimal: true`. `falling_words` shows its play area from
+  the start with one big Start inside and only the timer above it: the student no longer sees the
+  `words` list before the round (the tutor still does), only the words as they fall. No fields
+  change.
+- Affects: binary (make_number, to_binary), keyboard (falling_words) · Existing lessons: no
+  changes needed · Resolves: none (calm-screen sketches, 21 Nov 2026)
+
 ## 2026-11-20
 
 - **HTML previews run sandboxed, with no web storage (security, Deep Review R6).** The student's

@@ -191,7 +191,9 @@ or Esc empties it. When two tokens on screen match, the lowest one is cleared.
   reaches the bottom is missed and costs 5 points (the score never goes below 0).
 - The round **always runs for the full `durationSeconds`** and then completes, whatever the score:
   it is a warm-up, and the score is the outcome. Tokens come a little faster as the round goes on.
-- The student presses **Start**. The round pauses when the tab is hidden or the play area loses
+- The play area shows from the start, with one big **Start** inside it and only the timer above
+  it: the student sees the words only as they fall (the tutor sees the `words` list). Score,
+  Cleared and Missed show while the round plays. The round pauses when the tab is hidden or the play area loses
   focus ("Paused: click here to carry on"). **Play again** starts a new round.
 - With *reduce motion* turned on in the device settings, tokens fall 1.5 times slower and a miss
   doesn't shake the play area.

@@ -17,6 +17,10 @@ const MAKE = {
   ],
 }
 
+// The prompt is split round the big target tile, so match the whole prompt's text.
+const prompt = (text) => (_, el) =>
+  el?.dataset?.testid === 'binary-prompt' && el.textContent.replace(/\s+/g, ' ').trim() === text
+
 // The done moment (~700 ms) plus slack on a slow machine.
 const MOMENT = { timeout: 3000 }
 
@@ -40,7 +44,7 @@ describe('Binary UI', () => {
     const switches = screen.getAllByRole('switch')
     expect(switches).toHaveLength(4)
     expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 4 column' }))
     fireEvent.click(screen.getByRole('switch', { name: 'Bits 1 column' }))
     expect(screen.getByRole('switch', { name: 'Bits 4 column' })).toHaveAttribute(
@@ -54,7 +58,7 @@ describe('Binary UI', () => {
 
   it('hides the running total in to_binary mode', () => {
     renderBinary({ ...MAKE, mode: 'to_binary' })
-    expect(screen.getByText('Write 5 in binary')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Write 5 in binary'))).toBeInTheDocument()
     expect(screen.queryByTestId('live-decimal')).not.toBeInTheDocument()
   })
 
@@ -84,10 +88,10 @@ describe('Binary UI', () => {
     // Straight away: a tick on the item and the strip counts it. The tiles are locked meanwhile.
     expect(screen.getByText('Correct')).toBeInTheDocument()
     expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     for (const tile of screen.getAllByRole('switch')) expect(tile).toBeDisabled()
     // Then it advances to the next question without any click.
-    expect(await screen.findByText('Make the number 3', {}, MOMENT)).toBeInTheDocument()
+    expect(await screen.findByText(prompt('Make the number 3'), {}, MOMENT)).toBeInTheDocument()
     expect(screen.queryByText('Correct')).not.toBeInTheDocument()
   })
 
@@ -95,11 +99,11 @@ describe('Binary UI', () => {
     const onChange = vi.fn()
     const start = binary.initialState(MAKE)
     const { rerender } = render(<BinaryStudentView task={MAKE} state={start} onChange={onChange} />)
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     // The teacher finishes question 2 while the student is still on question 1.
     const edited = { ...start, items: { ...start.items, b: { ...start.items.b, bits: '0011' } } }
     rerender(<BinaryStudentView task={MAKE} state={edited} onChange={onChange} />)
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     expect(screen.getByText('1 of 2 done')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
@@ -142,7 +146,7 @@ describe('Binary UI', () => {
     expect(screen.getByText('Correct')).toBeInTheDocument()
     // Tutor-only picker: look at question 1 after the student has moved on.
     fireEvent.click(screen.getByRole('button', { name: 'Item 1, done' }))
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     expect(screen.queryByText('Play again')).not.toBeInTheDocument()
   })
 })
@@ -155,7 +159,7 @@ describe('Binary UI: core and bonus rounds', () => {
     expect(screen.queryByTestId('round-bonus')).not.toBeInTheDocument()
     makeFive()
     expect(screen.getByText('Done! ⭐ Bonus round')).toBeInTheDocument()
-    expect(await screen.findByText('Make the number 3', {}, MOMENT)).toBeInTheDocument()
+    expect(await screen.findByText(prompt('Make the number 3'), {}, MOMENT)).toBeInTheDocument()
     expect(screen.getByText('Bonus')).toBeInTheDocument()
     expect(screen.getByText('1 of 1 done')).toBeInTheDocument()
     // The host marks the task; the view never submits.
@@ -169,7 +173,7 @@ describe('Binary UI: core and bonus rounds', () => {
     expect(binary.grade(task, state()).passed).toBe(false)
     // A clear is never a submit: nothing is logged and the task is not un-passed by the view.
     expect(onSubmit).not.toHaveBeenCalled()
-    expect(screen.getByText('Make the number 5')).toBeInTheDocument()
+    expect(screen.getByText(prompt('Make the number 5'))).toBeInTheDocument()
     expect(screen.getByText('0 of 1 done')).toBeInTheDocument()
   })
 })

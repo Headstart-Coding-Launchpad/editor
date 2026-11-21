@@ -26,10 +26,10 @@ import BinaryBuilderEditor from './BinaryBuilderEditor.jsx'
 
 const NEW_MODES = ['overflow', 'hex', 'ascii', 'pixels']
 const BASE_NAMES = { binary: 'binary', hex: 'hex', decimal: 'decimal' }
+// The calm "big" modes (index.css "Calm Binary"): the words either side of the target tile.
+const BIG_PROMPTS = { make_number: ['Make the number', ''], to_binary: ['Write', 'in binary'] }
 
 const MODE_PROMPTS = {
-  make_number: (item) => `Make the number ${item.target}`,
-  to_binary: (item) => `Write ${item.target} in binary`,
   to_decimal: () => 'What is this binary number in decimal?',
   add: () => 'Add these two binary numbers',
   overflow: () => 'Add these two binary numbers. Did it overflow?',
@@ -119,11 +119,17 @@ function BitRow({
   testId,
   hideLast,
   nibbles,
+  big,
 }) {
   return (
     <div className="act-row" style={{ alignItems: 'flex-end' }}>
-      <span style={{ minWidth: 72, fontWeight: 600 }}>{label}</span>
-      <div className="act-bits" data-bit-row={testId} role="group" aria-label={label}>
+      {!big && <span style={{ minWidth: 72, fontWeight: 600 }}>{label}</span>}
+      <div
+        className={`act-bits${big ? ' act-bits--big' : ''}`}
+        data-bit-row={testId}
+        role="group"
+        aria-label={label}
+      >
         {[...bits].map((bit, index) => {
           const place = places[index]
           // Hex work groups the bits in fours (nibbles), counted from the right.
@@ -157,7 +163,6 @@ function BitRow({
               ) : (
                 <span
                   className={`act-bit act-bit--static${small ? ' act-bit--small' : ''}`}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label={`${place} column: ${bit}`}
                 >
                   {bit}
@@ -247,20 +252,7 @@ function AsciiTable({ format }) {
       <summary className="act-btn" style={{ display: 'inline-flex', alignItems: 'center' }}>
         ASCII table
       </summary>
-      <div
-        role="list"
-        aria-label="ASCII table"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          gap: 4,
-          maxHeight: 260,
-          overflow: 'auto',
-          fontFamily: 'var(--font-code)',
-          fontSize: '0.9rem',
-          padding: 4,
-        }}
-      >
+      <div role="list" aria-label="ASCII table" className="act-ascii-table__list">
         {asciiTable().map(({ char, code, binary }) => (
           <span role="listitem" key={code}>
             <strong>{char === ' ' ? '␣' : char}</strong> {code}
@@ -288,6 +280,7 @@ function moveInGrid(event) {
 }
 
 const CELL = 44
+const PIXEL_ROW = { alignItems: 'flex-start', gap: 16, '--act-cell': `${CELL}px` }
 
 function PixelGrid({ rows, onToggle, readOnly, label }) {
   const width = rows[0]?.length ?? 0
@@ -297,12 +290,8 @@ function PixelGrid({ rows, onToggle, readOnly, label }) {
         role="group"
         aria-label={label}
         data-pixel-grid="true"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${width}, ${CELL}px)`,
-          gap: 2,
-          width: 'max-content',
-        }}
+        className="act-pixel-grid"
+        style={{ gridTemplateColumns: `repeat(${width}, ${CELL}px)` }}
       >
         {rows.flatMap((row, r) =>
           [...row].map((bit, c) => {
@@ -328,13 +317,7 @@ function PixelGrid({ rows, onToggle, readOnly, label }) {
                 key={`${r}-${c}`}
                 role="img"
                 aria-label={`${name}: ${on ? 'filled' : 'empty'}`}
-                style={{
-                  width: CELL,
-                  height: CELL,
-                  borderRadius: 4,
-                  border: '2px solid var(--ui-border-strong)',
-                  background: on ? 'var(--colour-ink-strong)' : 'var(--ui-surface)',
-                }}
+                className={`act-pixel${on ? ' act-pixel--on' : ''}`}
               />
             )
           })
@@ -344,8 +327,15 @@ function PixelGrid({ rows, onToggle, readOnly, label }) {
   )
 }
 
+// The worked sum of the bits that are on: "4 + 1 = 5", or "all off = 0".
+function workedSum(bits, value) {
+  const places = placeValues(bits.length)
+  const on = [...bits].flatMap((bit, i) => (bit === '1' ? [places[i]] : []))
+  return `${on.length ? on.join(' + ') : 'all off'} = ${value}`
+}
+
 // One question: its prompt, the controls for the mode, and the running decimal.
-function BinaryItem({ task, item, itemState, update, readOnly }) {
+function BinaryItem({ task, item, itemState, update, readOnly, correct }) {
   const bits = task?.bits ?? DEFAULT_BITS
   const mode = task?.mode ?? 'make_number'
   const places = placeValues(bits)
@@ -356,6 +346,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
     typeof task?.showDecimal === 'boolean' ? task.showDecimal : mode === 'make_number'
   const value = fromBits(itemState.bits ?? '') ?? 0
   const codeFormat = task?.codeFormat ?? 'binary'
+  const big = BIG_PROMPTS[mode]
 
   function renderAddition() {
     return (
@@ -470,11 +461,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {[...text].map((ch, i) => (
           <label className="act-row" key={i}>
-            <span
-              className="act-bit act-bit--static act-bit--small"
-              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-              aria-hidden="true"
-            >
+            <span className="act-bit act-bit--static act-bit--small" aria-hidden="true">
               {ch === ' ' ? '␣' : ch}
             </span>
             <AnswerInput
@@ -496,7 +483,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
     const rows = Array.isArray(item.rows) ? item.rows.map(String) : []
     if (item.direction === 'encode') {
       return (
-        <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+        <div className="act-row" style={PIXEL_ROW}>
           <PixelGrid rows={rows} label="Picture" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {rows.map((row, r) => (
@@ -518,7 +505,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
     }
     // Draw: the rows of bits to draw from sit beside the grid, one per grid row.
     return (
-      <div className="act-row" style={{ alignItems: 'flex-start', gap: 16 }}>
+      <div className="act-row" style={PIXEL_ROW}>
         <PixelGrid
           rows={itemState.cells}
           label="Drawing grid"
@@ -529,17 +516,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }} data-testid="pixel-codes">
           {rows.map((row, r) => (
-            <span
-              key={r}
-              aria-label={`Row ${r + 1} bits: ${row}`}
-              style={{
-                height: CELL,
-                lineHeight: `${CELL}px`,
-                fontFamily: 'var(--font-code)',
-                fontWeight: 600,
-                letterSpacing: '0.15em',
-              }}
-            >
+            <span key={r} aria-label={`Row ${r + 1} bits: ${row}`} className="act-pixel-code">
               {row}
             </span>
           ))}
@@ -562,15 +539,13 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
             />
             <label className="act-row">
               <span style={{ fontWeight: 600 }}>Decimal</span>
-              <input
-                className="act-number-input"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
+              <AnswerInput
+                label="Your answer in decimal"
                 value={itemState.answer}
-                disabled={readOnly}
-                aria-label="Your answer in decimal"
-                onChange={(event) => update({ answer: event.target.value.replace(/[^\d]/g, '') })}
+                onValue={(answer) => update({ answer })}
+                readOnly={readOnly}
+                filter={/[^\d]/g}
+                inputMode="numeric"
               />
             </label>
           </>
@@ -609,6 +584,7 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
             onToggle={(i) => update({ bits: flip(itemState.bits, i) })}
             readOnly={readOnly}
             testId="answer"
+            big={!!big}
           />
         )
     }
@@ -616,13 +592,35 @@ function BinaryItem({ task, item, itemState, update, readOnly }) {
 
   return (
     <>
-      <p className="act-prompt">{MODE_PROMPTS[mode]?.(item) ?? 'Binary'}</p>
-
+      <p className="act-prompt" data-testid="binary-prompt">
+        {big ? (
+          <>
+            {big[0]}{' '}
+            <span className="act-binary-target" data-testid="binary-target">
+              {item.target}
+            </span>{' '}
+            {big[1]}
+          </>
+        ) : (
+          (MODE_PROMPTS[mode]?.(item) ?? 'Binary')
+        )}
+      </p>
       {renderBody()}
-
       {showDecimal && mode !== 'to_decimal' && itemState.bits != null && (
-        <p aria-live="polite" style={{ fontSize: '1.1rem' }}>
-          Your bits make <strong data-testid="live-decimal">{value}</strong>
+        // The worked sum is make_number only (in to_binary it gives the answer away); not re-read.
+        <p className="act-binary-live" aria-live="polite">
+          Your bits make{' '}
+          <strong
+            className={`act-binary-number${correct ? ' act-binary-number--right' : ''}`}
+            data-testid="live-decimal"
+          >
+            {value}
+          </strong>
+          {mode === 'make_number' && (
+            <span className="act-binary-sum" data-testid="worked-sum" aria-hidden="true">
+              {workedSum(itemState.bits, value)}
+            </span>
+          )}
         </p>
       )}
     </>
@@ -683,7 +681,10 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false, tea
   }
 
   return (
-    <div className="act-panel" data-testid="binary-activity">
+    <div
+      className={`act-panel${BIG_PROMPTS[task?.mode ?? 'make_number'] ? ' act-binary--big' : ''}`}
+      data-testid="binary-activity"
+    >
       <RoundProgress done={flow.doneCount} total={items.length} core={core} />
       {tutor && (
         <TutorItemPicker
@@ -701,6 +702,7 @@ export function BinaryStudentView({ task, state, onChange, readOnly = false, tea
         itemState={itemState}
         update={update}
         readOnly={readOnly || flow.lingering}
+        correct={result.correct}
       />
 
       {/* Marked as you go: right is a tick straight away, and until then it is just "not yet". */}
