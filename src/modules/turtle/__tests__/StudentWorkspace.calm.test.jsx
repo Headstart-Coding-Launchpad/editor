@@ -160,6 +160,20 @@ describe('Turtle calm screen: the console strip opens itself', () => {
     expect(screen.getByRole('button', { name: /Console/ })).toHaveTextContent('two')
   })
 
+  it('stays folded once the student folds it, until the next run prints', () => {
+    const cs = makeCs()
+    const { rerender } = render(ws({ cs }))
+    rerender(ws({ cs: { ...cs, runStatus: 'success', output: 'one\n' } }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Output' }))
+    // More lines from the same run: the student's fold holds.
+    rerender(ws({ cs: { ...cs, runStatus: 'success', output: 'one\ntwo\n' } }))
+    expect(screen.getByRole('button', { name: /^Console/ })).toHaveTextContent('two')
+    // A new run that prints opens it again.
+    rerender(ws({ cs: { ...cs, running: true, runStatus: 'success', output: 'one\ntwo\n' } }))
+    rerender(ws({ cs: { ...cs, runStatus: 'success', output: 'one\ntwo\n' } }))
+    expect(screen.getByRole('button', { name: 'Collapse Output' })).toBeInTheDocument()
+  })
+
   it('on a tablet (editor above the picture) the picture and the strip show, no tabs', () => {
     render(ws({ cs: makeCs(), isMobile: true }))
     expect(screen.queryByRole('tab', { name: 'Console' })).toBeNull()

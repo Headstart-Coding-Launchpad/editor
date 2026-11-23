@@ -13,6 +13,12 @@ vi.mock('../../python/PythonEditor', () => ({
 vi.mock('../ArcadePreview', () => ({
   default: ({ running }) => <div>{running ? 'game-running' : 'game-idle'}</div>,
 }))
+// Sprites or tilemaps the student drew (generatedArcadeAssets), per test.
+const made = vi.hoisted(() => ({ assets: [] }))
+vi.mock('../design', async (importOriginal) => ({
+  ...(await importOriginal()),
+  generatedArcadeAssets: () => made.assets,
+}))
 vi.mock('../ArcadeDesignStudio', () => ({ default: () => <div>arcade-design-studio</div> }))
 vi.mock('../../../shared/AssetBrowser', () => ({ default: () => <div>asset-browser</div> }))
 vi.mock('../../../shared/useLessonStorageAssets', () => ({
@@ -104,5 +110,33 @@ describe('Arcade calm screen', () => {
     fireEvent.click(chip)
     expect(screen.getByText('asset-browser')).toBeInTheDocument()
     expect(chip).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('styles the tabs with the shared tab classes, marking the open one', () => {
+    renderArcade()
+    expect(screen.getByRole('tablist', { name: 'Arcade workspace' })).toHaveClass('ui-tabs')
+    expect(screen.getByRole('tab', { name: 'Code' })).toHaveClass('ui-tab', 'is-active')
+    expect(screen.getByRole('tab', { name: 'Sprites' })).not.toHaveClass('is-active')
+  })
+
+  it('opens the assets by itself when the student has drawn sprites', () => {
+    made.assets = [{ name: 'hero.png', url: 'data:image/png;base64,' }]
+    renderArcade()
+    expect(screen.getByRole('button', { name: /Insert hero.png/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Assets/ })).toHaveAttribute('aria-expanded', 'true')
+    made.assets = []
+  })
+
+  it('the chip from another tab goes to Code with the assets open, never shut', () => {
+    made.assets = [{ name: 'hero.png', url: 'data:image/png;base64,' }]
+    renderArcade()
+    fireEvent.click(screen.getByRole('tab', { name: 'Sprites' }))
+    fireEvent.click(screen.getByRole('button', { name: /Assets/ }))
+    expect(screen.getByRole('tab', { name: 'Code' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('button', { name: /Insert hero.png/ })).toBeInTheDocument()
+    // On the Code tab the chip folds them away again.
+    fireEvent.click(screen.getByRole('button', { name: /Assets/ }))
+    expect(screen.queryByRole('button', { name: /Insert hero.png/ })).toBeNull()
+    made.assets = []
   })
 })
