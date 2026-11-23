@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import SessionEndedScreen from '../SessionEndedScreen'
 
@@ -126,13 +126,63 @@ describe('SessionEndedScreen', () => {
         ]}
       />
     )
-    const sheet = screen.getByRole('list', { name: 'My coding moments' })
-    expect(sheet).toHaveTextContent('Bug Hunter')
-    expect(sheet).toHaveTextContent('Fixed it.')
+    const strip = screen.getByRole('list', { name: 'My coding moments' })
+    expect(strip).toHaveTextContent('Bug Hunter')
+    // A smaller round-sticker strip than the lesson-complete one; the blurb is a tooltip.
+    expect(strip).toHaveClass('sv-sticker-strip', 'sv-sticker-strip--small')
+    expect(strip).not.toHaveTextContent('Fixed it.')
+    expect(within(strip).getByRole('listitem')).toHaveAttribute('title', 'Fixed it.')
   })
 
   it('shows no moments section when the student has none', () => {
     render(<SessionEndedScreen onContinueSolo={vi.fn()} />)
     expect(screen.queryByText(/your coding moments/i)).not.toBeInTheDocument()
+  })
+
+  // Calm layout (sketch OK'd by Ryan 23 Nov): the same two side-by-side buttons as the lesson
+  // complete screen, and the title never clipped however many stickers there are.
+  describe('calm layout', () => {
+    const moments = Array.from({ length: 9 }, (_, i) => ({
+      badgeId: `b${i}`,
+      badge: { emoji: '🏅', title: `Badge ${i}` },
+    }))
+
+    it('puts Go Through the Lesson Again and the Solo Challenge side by side', () => {
+      const { container } = render(
+        <SessionEndedScreen
+          onContinueSolo={vi.fn()}
+          soloCompanion={{ id: 'x' }}
+          onTrySoloChallenge={vi.fn()}
+          onOpenPlayground={vi.fn()}
+        />
+      )
+      const row = container.querySelector('.session-ended__actions')
+      expect([...row.querySelectorAll('button')].map((b) => b.textContent)).toEqual([
+        'Go Through the Lesson Again',
+        'Try the Solo Challenge',
+      ])
+      expect(screen.getByRole('button', { name: 'Go Through the Lesson Again' })).toHaveClass(
+        'lesson-complete__primary'
+      )
+      expect(screen.getByRole('button', { name: 'Try the Solo Challenge' })).toHaveClass(
+        'lesson-complete__secondary'
+      )
+      // Open Playground stays, as the quiet link under the pair.
+      const playground = screen.getByRole('button', { name: 'Open Playground' })
+      expect(playground).toHaveClass('lesson-complete__again')
+      expect(row).not.toContainElement(playground)
+    })
+
+    it('scrolls from the top with many stickers, so the title is never clipped', () => {
+      render(<SessionEndedScreen onContinueSolo={vi.fn()} moments={moments} />)
+      const scroller = screen.getByTestId('session-ended')
+      // justify-content: center pushes the top of a too-tall column out of reach; the inner
+      // column's auto margins centre it only when there is room.
+      expect(scroller.style.justifyContent).not.toBe('center')
+      expect(scroller.style.overflowY).toBe('auto')
+      const inner = scroller.firstElementChild
+      expect(inner.style.margin).toBe('auto')
+      expect(inner).toContainElement(screen.getByRole('heading', { name: 'Session ended' }))
+    })
   })
 })

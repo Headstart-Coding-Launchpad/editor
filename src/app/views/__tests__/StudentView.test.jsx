@@ -1209,6 +1209,60 @@ describe('StudentView', () => {
       expect(sheet).not.toHaveTextContent('Persistence')
     })
 
+    // Fun moment (calm lesson complete, Ryan 23 Nov): after the class, the student goes through
+    // the lesson again, reaches "Lesson complete!" and sees their coding moments as stickers; a
+    // badge the tutor awards meanwhile drops into the strip live.
+    it('shows the coding moments on the lesson complete screen, live', async () => {
+      const user = userEvent.setup()
+      const ended = (badges) =>
+        mkLiveSession({ state: 'ended', endedAt: Date.now(), students: null, badges })
+      mocks.useSession.mockReturnValue(ended({ 'student-1': { bug_hunter: award() } }))
+      const { rerender } = render(<StudentView lessonId="python-1-1" />)
+      await screen.findByText('Session ended')
+      await user.click(screen.getByRole('button', { name: 'Go Through the Lesson Again' }))
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+
+      expect(screen.getByText('Your coding moments')).toBeInTheDocument()
+      const strip = screen.getByRole('list', { name: 'My coding moments' })
+      expect(strip).toHaveTextContent('Bug Hunter')
+
+      mocks.useSession.mockReturnValue(
+        ended({
+          'student-1': { bug_hunter: award(), code_fixer: award({ decidedAt: 300 }) },
+        })
+      )
+      rerender(<StudentView lessonId="python-1-1" />)
+      await waitFor(() =>
+        expect(screen.getByRole('list', { name: 'My coding moments' })).toHaveTextContent(
+          'Code Fixer'
+        )
+      )
+      // The header's Previous/Next stay on the completion screen.
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument()
+    })
+
+    it('shows no moments strip on the lesson complete screen without a live session', async () => {
+      const user = userEvent.setup()
+      render(
+        <StudentView
+          lessonId="python-solo-strip"
+          forceSolo
+          lesson={{
+            id: 'python-solo-strip',
+            title: 'Solo strip',
+            type: 'python',
+            tasks: [{ id: 1, title: 'Only', starterCode: 'print(1)' }],
+          }}
+        />
+      )
+      await waitFor(() => expect(screen.getByLabelText('code')).toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Next' }))
+      await screen.findByText('Lesson complete!')
+      expect(screen.queryByText('Your coding moments')).not.toBeInTheDocument()
+    })
+
     it('shows the moments again when the student reloads the end screen', async () => {
       mocks.useSession.mockReturnValue(
         mkLiveSession({
@@ -1751,7 +1805,7 @@ describe('StudentView', () => {
       await user.click(screen.getByRole('button', { name: 'Next' }))
       await screen.findByText('Lesson complete!')
 
-      await user.click(screen.getByRole('button', { name: 'Go Through the Lesson Again' }))
+      await user.click(screen.getByRole('button', { name: 'Go through the lesson again' }))
 
       await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('print("one")'))
       expect(screen.queryByText('Lesson complete!')).not.toBeInTheDocument()
