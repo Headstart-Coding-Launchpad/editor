@@ -170,7 +170,6 @@ export default function LessonTaskContent({
   soloCompanion,
   onTrySoloChallenge,
   onReplayLesson,
-  // The student's coding moments for the Lesson complete sticker strip (StudentView).
   completionMoments,
   isCodeArrangeTask,
   displayCode,

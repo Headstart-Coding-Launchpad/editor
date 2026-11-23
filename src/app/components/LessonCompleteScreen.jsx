@@ -1,4 +1,4 @@
-import React, { useId } from 'react'
+import React from 'react'
 import { firstViewKey, useFirstView } from '../../shared/motion'
 import BadgeStickerSheet from './badges/BadgeStickerSheet'
 
@@ -37,18 +37,11 @@ const CONFETTI = (() => {
   return pieces
 })()
 
-// The most stickers the strip shows (the newest, so a fresh award is always seen).
-export const LESSON_COMPLETE_MAX_STICKERS = 6
-
 // Reuses the "introduction" information-task look (full-bleed primary-colour hero) —
 // see .information-task--introduction in index.css — rather than inventing new styles.
-// The calm layout (sketch OK'd by Ryan 23 Nov) is four groups: the title and message; the
-// student's coding moments as a strip of round stickers (hidden when they have none); Open
-// Playground (big, amber) beside an outlined Try the Solo Challenge; and a quiet "Go through the
-// lesson again" link. With neither button on offer, going through again becomes the button.
-// The party (option C): the title bounces in letter by letter and confetti shoots from both
-// bottom corners, once per lesson on this screen (useFirstView); after that, and under reduced
-// motion, it is the same still picture. CSS: `.lesson-complete` in index.css.
+// Calm layout (Ryan, 23 Nov): title, moments strip (newest 6, none: hidden), Open Playground +
+// Solo Challenge (with neither, replay is the button), quiet replay link. The party (option C)
+// plays once per lesson here (useFirstView), else a still picture. CSS: `.lesson-complete`.
 export default function LessonCompleteScreen({
   lessonId,
   lessonTitle,
@@ -58,7 +51,6 @@ export default function LessonCompleteScreen({
   onReplayLesson,
   moments = [],
 }) {
-  const momentsHeadingId = useId()
   const celebrate = useFirstView(firstViewKey('lesson-complete', lessonId ?? lessonTitle))
   const choices = [
     onOpenPlayground && { label: 'Open Playground', onClick: onOpenPlayground },
@@ -109,16 +101,9 @@ export default function LessonCompleteScreen({
         </h1>
         <p>Well done finishing {lessonTitle ?? 'this lesson'}.</p>
         {moments.length > 0 && (
-          <section className="lesson-complete__moments" aria-labelledby={momentsHeadingId}>
-            <h2 id={momentsHeadingId} className="lesson-complete__moments-label">
-              Your coding moments
-            </h2>
-            <BadgeStickerSheet
-              variant="strip"
-              moments={moments}
-              max={LESSON_COMPLETE_MAX_STICKERS}
-              animate={celebrate}
-            />
+          <section className="lesson-complete__moments" aria-label="Your coding moments">
+            <h2 className="lesson-complete__moments-label">Your coding moments</h2>
+            <BadgeStickerSheet variant="strip" moments={moments} max={6} animate={celebrate} />
           </section>
         )}
         {choices.length > 0 && (
