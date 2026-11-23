@@ -2,20 +2,21 @@
    the 🎨 Assets chip, and the assets panel the chip opens under the editor. 44px touch targets. */
 .arcade-tabs {
   flex-shrink: 0;
-  gap: 3px !important;
-  padding: 6px 8px !important;
+  flex-wrap: wrap;
+  gap: 2px !important;
+  padding: 4px !important;
 }
 
 .arcade-tab {
   min-height: 44px;
-  padding: 0 14px !important;
+  padding: 0 8px !important;
   font-size: 13px !important;
 }
 
 .arcade-assets-chip {
   margin-left: auto;
   min-height: 44px;
-  padding: 0 12px !important;
+  padding: 0 8px !important;
   font-size: 13px !important;
   font-weight: 700 !important;
 }

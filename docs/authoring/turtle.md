@@ -686,7 +686,7 @@ write the code that drives it. Grid courses only.
 - **With `maps`** (several authored maps): code that sets its own map runs **once, on that map**
   (no "Map 1 of 3" headings; the checks see one map). Code that doesn't call `course_map()` drives
   every authored map as usual.
-- **Map editor:** a **Map editor** button (🧱) beside Run opens a tap-to-paint grid with Wall,
+- **Map editor:** **More → 🧱 Map editor** (beside the big **▶ Draw**) opens a tap-to-paint grid with Wall,
   Road, Goal, Star and Start tools. Squares are at least 44 px, so it works on a tablet, where
   typing a maze is fiddly. It opens on the map in the student's code (or the task's map), keeps
   exactly one start (tapping the start again turns it), and has Rows and Columns buttons (3 to
@@ -822,9 +822,14 @@ the run (every map of a course). The Arrange form doesn't edit `course`, `slowMo
 - The turtle drawing itself is **not persisted** between sessions or page
   reloads — re-running the code regenerates the same drawing from the same
   script.
-- `print()` output still works and appears in a collapsible Output panel
-  under the canvas. It opens automatically on Run, and collapses to a slim
-  bar.
+- `print()` output still works. The console sits under the canvas as a one-line strip
+  (the last line printed) and opens by itself when the program prints or crashes, so an error is
+  never missed; the student can fold it back to the strip. A task with name tags (`showVariables`)
+  on a tablet keeps the Picture · Tags · Console tabs instead.
+- The calm Turtle screen (23 Nov 2026): the student's run button is one big **▶ Draw** (it was
+  **Run**); Reset code, Map editor, Slow-mo (a `separateButton` slow-mo task) and Topic library
+  sit behind one **More** menu. Hints and text that say "press **Run**" still make sense but read
+  better as "tap **Draw**".
 
 ## Teacher live view
 

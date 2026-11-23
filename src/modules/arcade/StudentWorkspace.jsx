@@ -24,6 +24,7 @@ import CalmCodeRow from '../../shared/calmCode/CalmCodeRow.jsx'
 import { taskKeyCode } from '../python/keyRow.js'
 import './arcade.css'
 
+const wideScreen = () => typeof window === 'undefined' || window.innerWidth >= 1024
 const WORKSPACE_TABS = [
   ['code', 'Code'],
   ['sprites', 'Sprites'],
@@ -334,7 +335,13 @@ export default function StudentWorkspace({
       {preview}
     </div>
   ) : (
-    <SplitPane style={s.split} defaultSplit={46} left={editor} right={preview} />
+    // The game gets the room on a desktop; a tablet keeps the editor wide enough for its rows.
+    <SplitPane
+      style={s.split}
+      defaultSplit={wideScreen() ? 46 : 56}
+      left={editor}
+      right={preview}
+    />
   )
 }
 

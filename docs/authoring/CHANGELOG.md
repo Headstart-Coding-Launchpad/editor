@@ -37,6 +37,20 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-23
+
+- **Calm Turtle and Arcade screens: Run is now ▶ Draw / ▶ Play.** Turtle's run button is one big
+  **▶ Draw** and Arcade's **Run game** is one big **▶ Play**; Reset code, the Map editor, Slow-mo
+  and the Topic library move behind one **More** menu (Arcade: Reset code, Topic library), and
+  Arcade's assets open from a **🎨 Assets** chip. Turtle's console is a one-line strip under the
+  picture that opens by itself on a print or an error. Both now dock the hint beside the task
+  ("Have a go, then tap Draw / Play") and fold the Type this out box after a passing run, as the
+  calm Python screen does. No fields change. See [turtle.md](turtle.md) and
+  [arcade.md](arcade.md).
+- Affects: turtle, arcade · Existing lessons: no changes needed (hints or explainers that say
+  "press Run" / "Run game" read better as "tap Draw" / "tap Play") · Resolves: none (calm-screen
+  sketch, Ryan 23 Nov 2026)
+
 ## 2026-11-21
 
 - **Word quiz answers re-lay-out: no orphan tile, no stretched tile.** Multiple-choice and poll

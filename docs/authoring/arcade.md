@@ -71,7 +71,9 @@ tasks:
           game.run()
 ```
 
-Students start a game with **Run game**. Editing or resetting code stops it;
+Students start a game with the big **▶ Play** button (it was **Run game** before 23 Nov 2026);
+Reset code and the Topic library sit behind **More**, and the assets behind the **🎨 Assets** chip
+beside the Code / Sprites / Tilemaps tabs. Editing or resetting code stops it;
 there is no automatic run on opening a task or while typing.
 
 ## `headstart_arcade` API
@@ -433,5 +435,5 @@ the validator warns about it. Full reference:
         game.run()
   check:
     type: run_attempted
-    hint: Press **Run game**, then try the arrow keys.
+    hint: Press **Play**, then try the arrow keys.
 ```
