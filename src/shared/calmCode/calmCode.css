@@ -26,6 +26,51 @@
   flex: 1 1 auto;
 }
 
+/* A 44px outlined control in a calm code row (Blocks, More; Python's Reset Code). */
+.calm-row-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--colour-primary);
+  background: #fff;
+  border: 1px solid #cdbdec;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.calm-row-btn[aria-pressed='true'] {
+  background: #f0eafa;
+  border-color: #d8c4f5;
+}
+
+.calm-row-btn .calm-blocks-icon {
+  font-family: 'JetBrains Mono', monospace;
+  color: #7c3aed;
+  font-weight: 700;
+}
+
+/* Python's Topic library chip in its calm code row. */
+.calm-library-chip {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid #ded1f3;
+  background: #f7f2ff;
+  color: var(--colour-primary);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* The one big primary action: btn-primary, larger. */
 .btn-primary--big {
   min-height: 56px;

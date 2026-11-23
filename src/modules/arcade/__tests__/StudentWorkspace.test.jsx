@@ -74,6 +74,7 @@ describe('Arcade StudentWorkspace asset filtering', () => {
       />
     )
 
+    fireEvent.click(screen.getByRole('button', { name: /Assets/ }))
     const assetBrowserText = screen.getByText(/^asset-browser:/).textContent
     expect(assetBrowserText).toContain('shown.png')
     expect(assetBrowserText).toContain('shared-shown.png')
@@ -110,7 +111,7 @@ describe('Arcade StudentWorkspace onVisiblePanesChange reporting (teacher live-s
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['sprites'])
 
     fireEvent.click(screen.getByText('Code'))
-    fireEvent.click(screen.getByText('Run game'))
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }))
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'running'])
 
     fireEvent.click(screen.getByText('Stop'))
@@ -171,7 +172,7 @@ describe('Arcade StudentWorkspace copy code panel', () => {
 })
 
 describe('Arcade StudentWorkspace code checks', () => {
-  it('evaluates the task checks against the code each time Run game is pressed', () => {
+  it('evaluates the task checks against the code each time Play is pressed', () => {
     const handleArcadeRun = vi.fn()
     render(
       <StudentWorkspace
@@ -186,7 +187,7 @@ describe('Arcade StudentWorkspace code checks', () => {
       />
     )
 
-    fireEvent.click(screen.getByText('Run game'))
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }))
     expect(handleArcadeRun).toHaveBeenCalledWith('game.run()')
   })
 })

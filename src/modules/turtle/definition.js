@@ -71,6 +71,8 @@ export default defineModule({
     language: 'python',
     playground: true,
     surfaceLabels: { stageReference: 'Python' },
+    // The calm screen's big primary button (CalmCodeRow) and the docked hint's "then tap …".
+    runWord: 'Draw',
   },
   capabilities: {
     // Saved to a matched student's class roster on Run / submission (src/shared/roster/).
@@ -88,6 +90,8 @@ export default defineModule({
     typingStats: true,
     fixedExplainer: false,
     topicLibrary: true,
+    // The calm code screen (LessonTaskContent; CalmCodeRow in the workspace).
+    calmCodeScreen: true,
     studentMirror: 'view',
     cardSummary: 'drawing',
     teacherEditor: { surface: 'code' },

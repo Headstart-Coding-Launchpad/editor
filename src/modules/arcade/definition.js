@@ -87,6 +87,8 @@ export default defineModule({
     language: 'python',
     playground: true,
     surfaceLabels: { stageReference: 'Python' },
+    // The calm screen's big primary button (CalmCodeRow) and the docked hint's "then tap …".
+    runWord: 'Play',
   },
   capabilities: {
     // Controls a tutor or a task's `highlight` field can pulse (src/shared/controlHighlight.js).
@@ -101,6 +103,8 @@ export default defineModule({
     downloadCode: false,
     fixedExplainer: false,
     topicLibrary: true,
+    // The calm code screen (LessonTaskContent; CalmCodeRow in the workspace).
+    calmCodeScreen: true,
     studentMirror: 'view',
     cardSummary: 'output',
     teacherEditor: { surface: 'view', workspace: 'code', design: true },

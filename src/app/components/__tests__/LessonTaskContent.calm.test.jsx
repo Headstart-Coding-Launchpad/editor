@@ -283,13 +283,23 @@ describe('Calm code screen: Topic library', () => {
   })
 })
 
-describe('Other modules keep the check popup', () => {
-  it('a Turtle task still shows the popup and no docked hint', () => {
+describe('The calm Turtle and Arcade screens (23 Nov 2026)', () => {
+  it('a Turtle task docks the hint, which says to tap Draw', () => {
     getLessonModule.mockReturnValue(TURTLE_MODULE)
+    render(<LessonTaskContent {...baseProps} lesson={{ type: 'turtle' }} cs={csAt()} />)
+    expect(document.querySelector('.check-feedback-popup')).toBeNull()
+    expect(screen.getByTestId('task-hint')).toHaveTextContent('then tap Draw')
+    expect(lastWorkspaceProps().whatToChange).toBeDefined()
+  })
+})
+
+describe('Other modules keep the check popup', () => {
+  it('an HTML task still shows the popup and no docked hint', () => {
+    getLessonModule.mockReturnValue({ ...TURTLE_MODULE, type: 'html' })
     render(
       <LessonTaskContent
         {...baseProps}
-        lesson={{ type: 'turtle' }}
+        lesson={{ type: 'html' }}
         cs={csAt({ completePreviewShown: false })}
         displayCheckAttempted
         displayCheckPassed={false}

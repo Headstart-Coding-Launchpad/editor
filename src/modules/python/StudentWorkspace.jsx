@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from './PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { BlocksButton, EmojiButton } from './EditorToolButtons'
+import '../../shared/calmCode/calmCode.css'
 import { taskKeyCode } from './keyRow.js'
 import { getTaskLineHintSets } from '../../shared/lineHints'
 import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
@@ -462,7 +463,7 @@ export default function StudentWorkspace({
           {calm && onOpenTopicLibrary && (
             <button
               type="button"
-              style={s.libraryChip}
+              className="calm-library-chip"
               onClick={onOpenTopicLibrary}
               aria-label="Topic library"
             >
@@ -472,16 +473,11 @@ export default function StudentWorkspace({
           )}
           <div style={s.editorActions}>
             {calm && showBlocks && (
-              <BlocksButton
-                style={s.rowBtn}
-                onStyle={s.rowBtnOn}
-                iconStyle={s.blocksIcon}
-                showLabel={!codeRowCompact}
-              />
+              <BlocksButton className="calm-row-btn" showLabel={!codeRowCompact} />
             )}
             <button
               type="button"
-              style={s.rowBtn}
+              className="calm-row-btn"
               onClick={cs.handleResetCode}
               disabled={cs.running}
               title={
@@ -948,41 +944,7 @@ const s = {
     minWidth: 0,
   },
   primaryBtn: { padding: '0 18px', fontSize: 16, flexShrink: 0, minHeight: 44, minWidth: 84 },
-  rowBtn: {
-    minHeight: 44,
-    padding: '0 12px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontFamily: 'var(--font-body)',
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--colour-primary)',
-    background: '#fff',
-    border: '1px solid #cdbdec',
-    borderRadius: 8,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
-  rowBtnOn: { background: '#f0eafa', borderColor: '#d8c4f5' },
-  blocksIcon: {
-    fontFamily: "'JetBrains Mono', monospace",
-    color: '#7c3aed',
-    fontWeight: 700,
-  },
-  libraryChip: {
-    minHeight: 44,
-    padding: '0 14px',
-    borderRadius: 999,
-    border: '1px solid #ded1f3',
-    background: '#f7f2ff',
-    color: 'var(--colour-primary)',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: 13,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
+
   submitBanner: {
     display: 'flex',
     alignItems: 'center',

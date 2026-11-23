@@ -20,6 +20,15 @@ import {
   mapToPythonSnippet,
 } from './design'
 import { selectPythonTaskCode } from '../../app/studentTaskContent'
+import CalmCodeRow from '../../shared/calmCode/CalmCodeRow.jsx'
+import { taskKeyCode } from '../python/keyRow.js'
+import './arcade.css'
+
+const WORKSPACE_TABS = [
+  ['code', 'Code'],
+  ['sprites', 'Sprites'],
+  ['tilemaps', 'Tilemaps'],
+]
 
 export default function StudentWorkspace({
   task,
@@ -38,8 +47,15 @@ export default function StudentWorkspace({
   teacherLiveArcadeDesign,
   teacherLiveWorkspace,
   onVisiblePanesChange,
+  // The calm host (LessonTaskContent, capabilities.calmCodeScreen): the "What to change" fold, and
+  // the Topic library (a More item) when the code row holds it.
+  whatToChange = null,
+  onOpenTopicLibrary,
 }) {
   const [runId, setRunId] = useState(0)
+  const [assetsOpen, setAssetsOpen] = useState(false)
+  const editorApiRef = useRef(null)
+  const keyCode = useMemo(() => taskKeyCode(task), [task])
   const [runCode, setRunCode] = useState('')
   const [running, setRunning] = useState(false)
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('code')
@@ -100,8 +116,6 @@ export default function StudentWorkspace({
     () => [...staticAssets, ...storageAssets, ...typeStorageAssets, ...generatedAssets],
     [staticAssets, storageAssets, typeStorageAssets, generatedAssets]
   )
-  const canDrawSprites = allowsArcadeTool(task, 'sprites')
-  const canDrawMaps = allowsArcadeTool(task, 'tilemaps')
   const standardAssets = useMemo(
     () => [...staticAssets, ...storageAssets, ...typeStorageAssets],
     [staticAssets, storageAssets, typeStorageAssets]
@@ -110,7 +124,8 @@ export default function StudentWorkspace({
     !isSandbox &&
     !cs.inPersonalSandbox &&
     typeof task?.copyCode === 'string' &&
-    !!task.copyCode.trim()
+    !!task.copyCode.trim() &&
+    !whatToChange?.hideCopyCode
 
   function run() {
     setRunCode(code)
@@ -153,9 +168,10 @@ export default function StudentWorkspace({
     }
   }, [code])
   useEffect(() => {
-    if (activeWorkspaceTab === 'sprites' && !canDrawSprites) setActiveWorkspaceTab('code')
-    if (activeWorkspaceTab === 'tilemaps' && !canDrawMaps) setActiveWorkspaceTab('code')
-  }, [activeWorkspaceTab, canDrawMaps, canDrawSprites])
+    if (activeWorkspaceTab !== 'code' && !allowsArcadeTool(task, activeWorkspaceTab)) {
+      setActiveWorkspaceTab('code')
+    }
+  }, [activeWorkspaceTab, task])
   useEffect(() => {
     onVisiblePanesChange?.([workspaceTab, ...(running ? ['running'] : [])])
   }, [workspaceTab, running, onVisiblePanesChange])
@@ -163,84 +179,72 @@ export default function StudentWorkspace({
   const editor = (
     <div style={s.editor}>
       {!readOnly && (
-        <div style={s.workspaceTabs} role="tablist" aria-label="Arcade workspace">
+        <div className="arcade-tabs" role="tablist" aria-label="Arcade workspace">
+          {WORKSPACE_TABS.filter(([id]) => id === 'code' || allowsArcadeTool(task, id)).map(
+            ([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                className="arcade-tab"
+                aria-selected={activeWorkspaceTab === id}
+                onClick={() => setActiveWorkspaceTab(id)}
+                // Play and Stop live on the Code tab: a highlight points here from the others.
+                data-highlight-reveal={id === 'code' ? 'run stop' : undefined}
+              >
+                {label}
+              </button>
+            )
+          )}
           <button
             type="button"
-            role="tab"
-            aria-selected={activeWorkspaceTab === 'code'}
-            onClick={() => setActiveWorkspaceTab('code')}
-            // Run and Stop live on the Code tab: a highlight points here from Sprites/Tilemaps.
-            data-highlight-reveal="run stop"
-            style={{
-              ...s.workspaceTab,
-              ...(activeWorkspaceTab === 'code' ? s.workspaceTabActive : {}),
+            className="btn-ghost-outline arcade-assets-chip"
+            aria-expanded={assetsOpen}
+            onClick={() => {
+              setActiveWorkspaceTab('code')
+              setAssetsOpen((open) => !open)
             }}
           >
-            Code
+            <span aria-hidden="true">🎨 </span>Assets
           </button>
-          {canDrawSprites && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeWorkspaceTab === 'sprites'}
-              onClick={() => setActiveWorkspaceTab('sprites')}
-              style={{
-                ...s.workspaceTab,
-                ...(activeWorkspaceTab === 'sprites' ? s.workspaceTabActive : {}),
-              }}
-            >
-              Sprites
-            </button>
-          )}
-          {canDrawMaps && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeWorkspaceTab === 'tilemaps'}
-              onClick={() => setActiveWorkspaceTab('tilemaps')}
-              style={{
-                ...s.workspaceTab,
-                ...(activeWorkspaceTab === 'tilemaps' ? s.workspaceTabActive : {}),
-              }}
-            >
-              Tilemaps
-            </button>
-          )}
         </div>
       )}
       {workspaceTab === 'code' && (
         <>
           {!readOnly && (
-            <div style={s.toolbar}>
-              <strong>game.py</strong>
-              <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b' }}>
-                Click the game to use the arrow keys.
-              </span>
-              <button
-                className={running ? 'btn-danger' : 'btn-primary'}
-                style={s.runButton}
-                data-highlight-target="run stop"
-                onClick={running ? stop : run}
-              >
-                {running ? 'Stop' : 'Run game'}
-              </button>
-              <button className="btn-ghost-outline" style={s.button} onClick={handleResetCode}>
-                Reset
-              </button>
-            </div>
+            <CalmCodeRow
+              onEmoji={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
+              showBlocks={taskShowsBlocks(task)}
+              run={{ word: 'Play', stop: running, onClick: running ? stop : run }}
+              more={[
+                { id: 'reset', icon: '↺', label: 'Reset code', onClick: handleResetCode },
+                onOpenTopicLibrary && {
+                  id: 'topics',
+                  icon: '📚',
+                  label: 'Topic library',
+                  onClick: onOpenTopicLibrary,
+                },
+              ]}
+            />
           )}
           {showCopyCode && (
-            <div style={s.copyCode}>
+            <div className="arcade-copy-code">
               <CopyCodePanel
                 code={task.copyCode}
                 language="python"
                 after={task.copyAfter}
                 before={task.copyBefore}
                 starter={starterCodeOf(task)}
+                calm={!!whatToChange}
+                folded={!!whatToChange?.folded}
+                onToggleFolded={whatToChange?.onToggle}
               />
             </div>
           )}
           <PythonEditor
+            calm
+            keyCode={keyCode}
+            editorApiRef={editorApiRef}
             code={code}
             readOnly={readOnly}
             onChange={readOnly ? undefined : handleCodeChange}
@@ -248,42 +252,38 @@ export default function StudentWorkspace({
             onRunShortcut={readOnly ? undefined : running ? stop : run}
             showBlocks={taskShowsBlocks(task)}
           />
-          {!readOnly && (
-            <details
-              style={s.assets}
-              open={generatedAssets.length > 0 || generatedTilemaps.length > 0}
-            >
-              <summary style={s.assetsSummary}>Assets</summary>
-              <div style={s.assetBar}>
+          {!readOnly && assetsOpen && (
+            <div className="arcade-assets" role="region" aria-label="Assets">
+              <div className="arcade-assets__row">
                 <span>
                   Select an asset to insert <code>Sprite("...")</code>, or copy a name into{' '}
                   <code>game.sound("...")</code>.
                 </span>
               </div>
               {generatedAssets.length > 0 && (
-                <div style={s.generatedAssets}>
+                <div className="arcade-assets__row">
                   {generatedAssets.map((asset) => (
                     <button
                       key={asset.name}
                       type="button"
                       title={`Insert ${asset.name}`}
-                      style={s.generatedAssetButton}
+                      className="arcade-asset-btn"
                       onClick={() => insertCode(`Sprite(${JSON.stringify(asset.name)})`)}
                     >
-                      <img src={asset.url} alt="" style={s.generatedAssetThumb} />
+                      <img src={asset.url} alt="" className="arcade-asset-btn__thumb" />
                       {asset.name} <small>made here</small>
                     </button>
                   ))}
                 </div>
               )}
               {generatedTilemaps.length > 0 && (
-                <div style={s.generatedTilemaps}>
+                <div className="arcade-assets__row">
                   {generatedTilemaps.map((tilemap, index) => (
                     <button
                       key={tilemap.name}
                       type="button"
                       title={`Insert ${tilemap.name}`}
-                      style={s.generatedTilemapButton}
+                      className="arcade-asset-btn arcade-asset-btn--map"
                       onClick={() => insertCode(mapToPythonSnippet(cs.arcadeDesign.maps[index]))}
                     >
                       {tilemap.name}
@@ -295,33 +295,21 @@ export default function StudentWorkspace({
                 assetsPath={lesson?.assetsPath ? resolveAssetsPath(lesson.assetsPath) : ''}
                 assets={lesson?.assets ?? []}
                 storageAssets={[...storageAssets, ...typeStorageAssets]}
-                style={{ borderRadius: 0 }}
+                style={s.flat}
               />
-            </details>
+            </div>
           )}
         </>
       )}
-      {workspaceTab === 'sprites' && canDrawSprites && (
-        <div style={s.designer}>
+      {workspaceTab !== 'code' && allowsArcadeTool(task, workspaceTab) && (
+        <div className="arcade-designer">
           <ArcadeDesignStudio
-            task={{ ...task, arcadeTools: 'sprites' }}
+            task={{ ...task, arcadeTools: workspaceTab }}
             design={design}
             readOnly={readOnly}
             onChange={readOnly ? undefined : handleDesignChange}
             availableAssets={standardAssets}
-            title="Your sprites"
-          />
-        </div>
-      )}
-      {workspaceTab === 'tilemaps' && canDrawMaps && (
-        <div style={s.designer}>
-          <ArcadeDesignStudio
-            task={{ ...task, arcadeTools: 'tilemaps' }}
-            design={design}
-            readOnly={readOnly}
-            onChange={readOnly ? undefined : handleDesignChange}
-            availableAssets={standardAssets}
-            title="Your tilemaps"
+            title={workspaceTab === 'sprites' ? 'Your sprites' : 'Your tilemaps'}
           />
         </div>
       )}
@@ -360,121 +348,5 @@ const s = {
     height: '100%',
     overflow: 'hidden',
   },
-  workspaceTabs: {
-    display: 'flex',
-    flexShrink: 0,
-    gap: 3,
-    padding: '6px 8px 0',
-    background: '#f8fafc',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  workspaceTab: {
-    padding: '7px 12px',
-    border: '1px solid transparent',
-    borderBottom: 0,
-    borderRadius: '7px 7px 0 0',
-    background: 'transparent',
-    color: '#64748b',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: 12,
-    cursor: 'pointer',
-  },
-  workspaceTabActive: {
-    background: '#fff',
-    borderColor: '#c4b5fd',
-    color: '#5b21b6',
-    marginBottom: -1,
-  },
-  toolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '7px 10px',
-    color: 'var(--colour-primary)',
-    fontFamily: 'var(--font-body)',
-    fontSize: 13,
-    background: '#f8fafc',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  copyCode: { display: 'flex', flexDirection: 'column', flexShrink: 0, padding: '8px 8px 0' },
-  runButton: { padding: '7px 14px', fontSize: 13 },
-  button: { padding: '6px 10px', fontSize: 12 },
-  assets: {
-    flexShrink: 0,
-    borderTop: '1px solid #e5e7eb',
-    background: '#f8fafc',
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-  },
-  designer: {
-    flex: '1 1 auto',
-    minHeight: 0,
-    overflow: 'auto',
-    padding: 10,
-    background: '#fff',
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-  },
-  assetsSummary: {
-    cursor: 'pointer',
-    padding: '8px 10px',
-    color: 'var(--colour-primary)',
-    fontWeight: 700,
-  },
-  assetBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '7px 10px',
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-    background: '#f8fafc',
-    borderTop: '1px solid #e5e7eb',
-  },
-  generatedAssets: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    padding: '7px 10px',
-    borderTop: '1px solid #e5e7eb',
-    background: '#f8fafc',
-  },
-  generatedTilemaps: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    padding: '0 10px 7px',
-    background: '#f8fafc',
-  },
-  generatedAssetButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 5,
-    padding: '4px 7px',
-    fontSize: 11,
-    color: '#312e81',
-    background: '#fff',
-    border: '1px solid #a5b4fc',
-    borderRadius: 7,
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  generatedTilemapButton: {
-    padding: '4px 7px',
-    fontSize: 11,
-    color: '#075985',
-    background: '#f0f9ff',
-    border: '1px solid #7dd3fc',
-    borderRadius: 7,
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  generatedAssetThumb: {
-    width: 18,
-    height: 18,
-    imageRendering: 'pixelated',
-    background: '#e0e7ff',
-    borderRadius: 2,
-  },
+  flat: { borderRadius: 0 },
 }

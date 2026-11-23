@@ -37,13 +37,13 @@ export default function CalmCodeRow({ onEmoji, showBlocks = true, more = [], run
           Code
         </span>
         <EmojiButton size={44} insert={onEmoji} />
-        {showBlocks && <BlocksButton style={s.rowBtn} onStyle={s.rowBtnOn} iconStyle={s.icon} />}
+        {showBlocks && <BlocksButton className="calm-row-btn" />}
         <span className="calm-code-row__gap" />
         {items.length > 0 && (
           <div ref={menuRef} className="calm-more">
             <button
               type="button"
-              style={s.rowBtn}
+              className="calm-row-btn"
               aria-haspopup="menu"
               aria-expanded={open}
               data-highlight-reveal={reveal.length ? reveal.join(' ') : undefined}
@@ -116,26 +116,4 @@ export function ConsoleStrip({ output, onOpen }) {
       <span aria-hidden="true">▴</span>
     </button>
   )
-}
-
-const s = {
-  rowBtn: {
-    minHeight: 44,
-    padding: '0 12px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontFamily: 'var(--font-body)',
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--colour-primary)',
-    background: '#fff',
-    border: '1px solid #cdbdec',
-    borderRadius: 8,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-  },
-  rowBtnOn: { background: '#f0eafa', borderColor: '#d8c4f5' },
-  icon: { fontFamily: "'JetBrains Mono', monospace", color: '#7c3aed', fontWeight: 700 },
 }

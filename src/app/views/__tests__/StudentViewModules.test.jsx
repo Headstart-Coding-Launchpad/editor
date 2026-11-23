@@ -321,7 +321,7 @@ const CLICK_THROUGH = {
     await runThenStop({
       user,
       session,
-      runLabel: 'Run',
+      runLabel: 'Draw',
       stopLabel: 'Stop',
       expectedRun: {
         code: 'import turtle\nturtle.forward(50)',
@@ -365,7 +365,7 @@ const CLICK_THROUGH = {
   },
 
   arcade: async () => {
-    // Arcade has no runtime in the registry: "Run game" starts ArcadePreview's iframe and
+    // Arcade has no runtime in the registry: "Play" starts ArcadePreview's iframe and
     // evaluates code checks via handleArcadeRun; Stop only tears the iframe down.
     const { user, session } = renderLesson({
       id: 'arcade-click',
@@ -380,7 +380,7 @@ const CLICK_THROUGH = {
         },
       ],
     })
-    await user.click(await screen.findByRole('button', { name: 'Run game' }))
+    await user.click(await screen.findByRole('button', { name: 'Play' }))
     await waitFor(() => expect(session.writeStudentRun).toHaveBeenCalledTimes(1))
     expect(session.writeStudentRun).toHaveBeenCalledWith('student-1', {
       code: 'from headstart_arcade import game\ngame.run()',
@@ -390,7 +390,7 @@ const CLICK_THROUGH = {
     })
     expect(screen.getByTitle('Arcade game')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Stop' }))
-    await screen.findByRole('button', { name: 'Run game' })
+    await screen.findByRole('button', { name: 'Play' })
     expect(screen.queryByTitle('Arcade game')).not.toBeInTheDocument()
     expect(mocks.runPython).not.toHaveBeenCalled()
   },

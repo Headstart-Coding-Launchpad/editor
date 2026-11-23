@@ -79,7 +79,7 @@ export default function ArcadePreview({
         ) : (
           <div style={s.idle}>
             <strong>Ready to play</strong>
-            <span>Run game to start your Arcade Kit project.</span>
+            <span>Press Play to start your game.</span>
           </div>
         )}
       </div>

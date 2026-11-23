@@ -275,7 +275,7 @@ export default function LessonTaskContent({
   // through the dedicated scratchCodePanes state below, beside 'instructions' for the explainer
   // card. The card itself sits in the calm column (capabilities.calmScratch) and never tabs away.
   const isFixedExplainerLesson = !!moduleCaps?.fixedExplainer
-  // The calm code screen (capabilities.calmCodeScreen; Python): one "What to change" box that
+  // The calm code screen (capabilities.calmCodeScreen; Python, Turtle, Arcade): one "What to change" box that
   // folds after a passing Run, the hint docked beside the task, and the Topic library chip in the
   // workspace's code row. Other modules keep the check popup and their own panels.
   const calmScreen = !!moduleCaps?.calmCodeScreen
@@ -900,13 +900,14 @@ export default function LessonTaskContent({
   const hintTone = failSettled ? 'nudge' : hintToneNow
   const hasGreenLine =
     anyChangeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
+  const runWord = getModuleDefinition(lessonMod?.type ?? lesson.type)?.meta?.runWord ?? 'Run'
   const hintNudge = calmScratch
     ? 'Have a go, then tap the green flag to see what happens.'
     : task?.interactionMode === 'submit'
       ? 'Have a go, then tap Submit.'
       : hasGreenLine
-        ? 'Stuck? Look at the green line, then tap Run to try it.'
-        : 'Have a go, then tap Run to see what happens.'
+        ? `Stuck? Look at the green line, then tap ${runWord} to try it.`
+        : `Have a go, then tap ${runWord} to see what happens.`
   const hintBox = calmHintDocked ? (
     <TaskHintBox
       banner={feedbackBanner}

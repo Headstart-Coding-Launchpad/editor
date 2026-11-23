@@ -1901,11 +1901,11 @@ describe('StudentView', () => {
       )
 
       await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
-      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await user.click(screen.getByRole('button', { name: 'Draw' }))
 
       await waitFor(() => expect(runPython).toHaveBeenCalledTimes(1))
       // The bug threw synchronously inside handleRun before this point was ever reached.
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Draw' })).toBeInTheDocument())
     })
 
     it('stops a still-running turtle execution without an unhandled rejection', async () => {
@@ -1933,13 +1933,13 @@ describe('StudentView', () => {
       )
 
       await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
-      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await user.click(screen.getByRole('button', { name: 'Draw' }))
       await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument())
 
       await user.click(screen.getByRole('button', { name: 'Stop' }))
 
       expect(stopPython).toHaveBeenCalledTimes(1)
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Draw' })).toBeInTheDocument())
     })
 
     it('evaluates code checks alongside turtle checks after a run', async () => {
@@ -1980,7 +1980,7 @@ describe('StudentView', () => {
       )
 
       await waitFor(() => expect(screen.getByLabelText('code')).toHaveValue('turtle.forward(100)'))
-      await user.click(screen.getByRole('button', { name: 'Run' }))
+      await user.click(screen.getByRole('button', { name: 'Draw' }))
 
       // The drawing passes, but the code has no loop — so the code check fails the task.
       await waitFor(() =>
@@ -2010,7 +2010,7 @@ describe('StudentView', () => {
       ],
     })
 
-    it('passes the task when Run game is pressed with code that satisfies the checks', async () => {
+    it('passes the task when Play is pressed with code that satisfies the checks', async () => {
       const user = userEvent.setup()
       const lesson = arcadeLesson('from headstart_arcade import game\ngame.run()\n')
       render(<StudentView lessonId={lesson.id} forceSolo lesson={lesson} />)
@@ -2018,7 +2018,7 @@ describe('StudentView', () => {
       await waitFor(() =>
         expect(screen.getByLabelText('code')).toHaveValue(lesson.tasks[0].starterCode)
       )
-      await user.click(screen.getByRole('button', { name: 'Run game' }))
+      await user.click(screen.getByRole('button', { name: 'Play' }))
 
       await waitFor(() =>
         expect(screen.getByTestId('check-feedback')).toHaveAttribute('data-passed', 'true')
@@ -2033,7 +2033,7 @@ describe('StudentView', () => {
       await waitFor(() =>
         expect(screen.getByLabelText('code')).toHaveValue(lesson.tasks[0].starterCode)
       )
-      await user.click(screen.getByRole('button', { name: 'Run game' }))
+      await user.click(screen.getByRole('button', { name: 'Play' }))
 
       await waitFor(() =>
         expect(screen.getByTestId('check-feedback')).toHaveAttribute(

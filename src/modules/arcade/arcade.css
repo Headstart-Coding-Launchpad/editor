@@ -1,0 +1,85 @@
+/* The Arcade student workspace (StudentWorkspace.jsx): the Code / Sprites / Tilemaps tabs with
+   the 🎨 Assets chip, and the assets panel the chip opens under the editor. 44px touch targets. */
+.arcade-tabs {
+  flex-shrink: 0;
+  gap: 3px !important;
+  padding: 6px 8px !important;
+}
+
+.arcade-tab {
+  min-height: 44px;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+}
+
+.arcade-assets-chip {
+  margin-left: auto;
+  min-height: 44px;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.arcade-copy-code {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 8px 8px 0;
+}
+
+.arcade-assets {
+  flex-shrink: 0;
+  max-height: 45%;
+  overflow: auto;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.arcade-assets__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+}
+
+.arcade-asset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #312e81;
+  background: #fff;
+  border: 1px solid #a5b4fc !important;
+  border-radius: 7px !important;
+  cursor: pointer;
+}
+
+.arcade-asset-btn--map {
+  color: #075985;
+  background: #f0f9ff;
+  border-color: #7dd3fc !important;
+}
+
+.arcade-asset-btn__thumb {
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+  background: #e0e7ff;
+  border-radius: 2px;
+}
+
+.arcade-designer {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: #fff;
+  font-family: var(--font-body);
+  font-size: 12px;
+}

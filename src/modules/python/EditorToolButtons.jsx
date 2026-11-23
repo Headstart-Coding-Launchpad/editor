@@ -12,20 +12,22 @@ const BLOCKS_TITLE_OFF = 'Show coloured brackets for which lines belong to each 
 /**
  * Turns this device's block brackets on and off (useBlockGuidesOn, shared by every editor).
  * `showLabel: false` leaves only the bracket (a narrow code row); its name is still "Blocks".
- * Styles come from the host: `style`, `onStyle` while on, `iconStyle` for the bracket.
+ * Styles come from the host: `className` (the calm rows: `calm-row-btn`, src/shared/calmCode/
+ * calmCode.css), or `style`, `onStyle` while on, `iconStyle` for the bracket.
  */
-export function BlocksButton({ style, onStyle, iconStyle, showLabel = true }) {
+export function BlocksButton({ className, style, onStyle, iconStyle, showLabel = true }) {
   const [on, setOn] = useBlockGuidesOn()
   return (
     <button
       type="button"
+      className={className}
       style={{ ...style, ...(on ? onStyle : null) }}
       aria-pressed={on}
       aria-label="Blocks"
       title={on ? BLOCKS_TITLE_ON : BLOCKS_TITLE_OFF}
       onClick={() => setOn(!on)}
     >
-      <span aria-hidden="true" style={iconStyle}>
+      <span aria-hidden="true" className="calm-blocks-icon" style={iconStyle}>
         ⎣
       </span>
       {showLabel && 'Blocks'}
