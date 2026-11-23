@@ -27,7 +27,7 @@ tokens, classes and hooks in [motion-system.md](motion-system.md).
 |---|---|---|
 | All checks passed | `CheckFeedbackBanner` | One shine sweep across the pass banner the first time a task's checks all pass. Not repeated on later re-runs. |
 | First successful run | Python / Turtle / HTML output | A brief glow on the output panel's edge the first time a student's code runs without an error in a lesson. |
-| Lesson complete | Solo lesson-complete screen | Built (option C: bouncing title, three stars, corner confetti; see motion-system.md). Still open: the sticker-sheet flip-in for the student's moments. |
+| Lesson complete | Solo lesson-complete screen | Built (option C: bouncing title, corner confetti; see motion-system.md). The student's moments pop in as a round-sticker strip (calm layout, 23 Nov). |
 | Session end | `SessionEndedScreen` | Already flips the moments in. Could stagger a short "you made N things today" line, with no totals compared to anyone else. |
 | Task group finished | Task progress dots | The group's dot fills with a small pulse when its last subtask passes. |
 | Shared work approved | Student who shared | A small card like the badge card, "Your work is on the class screen", instead of silence. |
