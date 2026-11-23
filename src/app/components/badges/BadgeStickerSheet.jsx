@@ -26,9 +26,23 @@ function StickerBody({ badgeId, badge }) {
   )
 }
 
+/** One round strip sticker: the emoji in a ringed circle, the name under it, the blurb a tooltip. */
+function StripSticker({ badgeId, badge, initialMotion }) {
+  const [motion] = useState(initialMotion)
+  return (
+    <li className={motion.className} style={motion.style} title={badge?.blurb || undefined}>
+      <span className="sv-sticker-strip__face" aria-hidden="true">
+        {badge?.emoji ?? '🏅'}
+      </span>
+      <span className="sv-sticker-strip__name">{badge?.title ?? badgeId}</span>
+    </li>
+  )
+}
+
 /**
- * A student's coding moments as a sheet of stickers: the session-end screen, the coding-moments
- * pill and the Badge Summary task use it.
+ * A student's coding moments as a sheet of stickers: the coding-moments pill and the Badge
+ * Summary task use it; `variant="strip"` is the row of round stickers on the Lesson complete and
+ * Session ended screens.
  *
  * @param {object} props
  * @param {{ badgeId: string, badge: object }[]} props.moments From `listMyMoments`
@@ -41,6 +55,11 @@ function StickerBody({ badgeId, badge }) {
  *   mounted (a live award) drops in plainly with no delay, whether or not `animate` is set.
  * @param {number} [props.staggerMs] The delay between stickers when animating.
  * @param {string} [props.label] The list's accessible name.
+ * @param {'sheet'|'strip'} [props.variant] `strip`: a centred, wrapping row of round stickers
+ *   with names only (the blurb is the tooltip). With `animate` they pop in one by one; a sticker
+ *   that arrives later (a live award) drops in plainly.
+ * @param {boolean} [props.small] The strip's smaller size (the Session ended screen).
+ * @param {number} [props.max] Show only the newest `max` moments (`moments` is oldest first).
  */
 export default function BadgeStickerSheet({
   moments = [],
@@ -48,6 +67,9 @@ export default function BadgeStickerSheet({
   entrance = 'flip',
   staggerMs = 180,
   label = 'My coding moments',
+  variant = 'sheet',
+  small = false,
+  max,
 }) {
   // False while the sheet renders for the first time: stickers mounting then are its entrance.
   const mounted = useRef(false)
@@ -56,6 +78,34 @@ export default function BadgeStickerSheet({
   }, [])
 
   if (moments.length === 0) return null
+
+  if (variant === 'strip') {
+    const shown = max > 0 ? moments.slice(-max) : moments
+    const motionFor = (index) => {
+      if (mounted.current)
+        return { className: 'sv-sticker-strip__item motion-drop-in motion-now', style: undefined }
+      if (!animate) return { className: 'sv-sticker-strip__item', style: undefined }
+      return {
+        className: 'sv-sticker-strip__item sv-sticker-strip__item--pop',
+        style: { '--sv-sticker-delay': `${Math.min(index, MOTION_STAGGER_CAP) * staggerMs}ms` },
+      }
+    }
+    return (
+      <ul
+        className={`sv-sticker-strip${small ? ' sv-sticker-strip--small' : ''}`}
+        aria-label={label}
+      >
+        {shown.map(({ badgeId, badge }, index) => (
+          <StripSticker
+            key={badgeId}
+            badgeId={badgeId}
+            badge={badge}
+            initialMotion={() => motionFor(index)}
+          />
+        ))}
+      </ul>
+    )
+  }
 
   if (entrance === 'tumble') {
     const motionFor = (index) => {

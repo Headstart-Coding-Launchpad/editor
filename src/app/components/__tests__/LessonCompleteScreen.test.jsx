@@ -258,9 +258,9 @@ describe('LessonCompleteScreen calm layout: coding moments and two choices', () 
     ].map((sel) => content.querySelector(sel))
     order.forEach((el) => expect(el).not.toBeNull())
     for (let i = 1; i < order.length; i++) {
-      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING
-      )
+      expect(
+        order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     }
   })
 })

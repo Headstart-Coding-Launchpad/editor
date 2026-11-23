@@ -2187,11 +2187,14 @@ select {
   }
 }
 
-/* Lesson complete (LessonCompleteScreen.jsx, option C): the intro hero with a still party
-   picture (stars, confetti, two poppers). With `--celebrate`, the first time on this screen, it
-   plays once: the title bounces in letter by letter, the stars pop and the confetti shoots from
-   the bottom corners. Everything has landed by 1.5s (MOTION_MS.celebrate)
-   after the task slide; the buttons never wait. Reduced motion: the block after this one. */
+/* Lesson complete (LessonCompleteScreen.jsx): the intro hero, calm layout (Ryan, 23 Nov) in
+   four groups: title and message, the coding-moments sticker strip, Open Playground (big amber)
+   beside an outlined Solo Challenge, and a quiet "Go through the lesson again" link. A still
+   party picture (confetti, two poppers) sits behind. With `--celebrate`, the first time on this
+   screen, it plays once: the title bounces in letter by letter, the confetti shoots from the
+   bottom corners and the stickers pop in. Everything has landed by about 1.5s
+   (MOTION_MS.celebrate) after the task slide; the buttons never wait. Reduced motion: the block
+   after this one. */
 .lesson-complete {
   position: relative;
   /* Keeps the hero's overflow: auto, so a short panel can still scroll to the buttons; `safe`
@@ -2205,8 +2208,15 @@ select {
   z-index: 1;
 }
 
+.lesson-complete__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .lesson-complete__content p {
-  margin: 14px auto 0;
+  margin: 12px auto 0;
+  font-size: 1.25rem;
 }
 
 .lesson-complete__party {
@@ -2251,26 +2261,28 @@ select {
   transform: scaleX(-1);
 }
 
-.lesson-complete__stars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  font-size: clamp(2.6rem, 6vh, 3.6rem);
-  line-height: 1;
-}
-
-.lesson-complete__star {
-  display: inline-block;
-}
-
-.lesson-complete__star--big {
-  font-size: 1.3em;
-}
-
 .information-intro__content h1.lesson-complete__title {
   margin: 0;
+  font-size: clamp(2.2rem, 4.2vw, 3.6rem);
+}
+
+.lesson-complete__moments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+/* "Your coding moments": a small capitals label over the strip (both end screens). */
+.lesson-complete__moments-label {
+  margin: 0;
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.9;
 }
 
 .lesson-complete__word {
@@ -2282,19 +2294,108 @@ select {
   display: inline-block;
 }
 
-/* Gaps between the choices (no touching borders); Open Playground is the big one. */
+/* Two choices side by side: the big amber primary (Open Playground; Go Through the Lesson Again
+   on Session ended) and the outlined secondary (the Solo Challenge). */
 .lesson-complete__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 28px;
+  gap: 18px;
+  margin-top: 22px;
 }
 
-.lesson-complete__actions .lesson-complete__primary {
-  padding: 13px 30px;
+.lesson-complete__primary,
+.lesson-complete__secondary {
+  border-radius: 14px;
+  font-family: var(--font-title);
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.lesson-complete__primary {
+  padding: 18px 48px;
+  border: 0;
+  background: #ffb020;
+  color: #2a1250;
+  font-size: 1.55rem;
+  box-shadow: 0 6px 0 #b86f00;
+}
+
+.lesson-complete__primary:hover {
+  background: #ffbe45;
+}
+
+.lesson-complete__secondary {
+  padding: 15px 32px;
+  border: 3px solid #fff;
+  background: transparent;
+  color: #fff;
+  font-size: 1.3rem;
+}
+
+.lesson-complete__secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lesson-complete__again {
+  margin-top: 14px;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.lesson-complete__again:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* A tablet keeps the two choices side by side. */
+@media (max-width: 900px) {
+  .lesson-complete__primary {
+    padding: 16px 32px;
+    font-size: 1.35rem;
+  }
+
+  .lesson-complete__secondary {
+    padding: 13px 22px;
+    font-size: 1.15rem;
+  }
+}
+
+/* Session ended (SessionEndedScreen.jsx) uses the same buttons on its light page: a little
+   smaller, the outline and the quiet link in brand purple. */
+.session-ended .lesson-complete__actions {
+  margin-top: 4px;
+}
+
+.session-ended .lesson-complete__primary {
+  padding: 15px 40px;
+  font-size: 1.3rem;
+}
+
+.session-ended .lesson-complete__secondary {
+  padding: 12px 26px;
   font-size: 1.1rem;
+  border-color: var(--colour-primary);
+  color: var(--colour-primary);
+}
+
+.session-ended .lesson-complete__secondary:hover {
+  background: var(--ui-surface-tint);
+}
+
+.session-ended .lesson-complete__again {
+  margin-top: 0;
+  color: var(--colour-primary);
 }
 
 .lesson-complete--celebrate .lesson-complete__popper {
@@ -2321,17 +2422,10 @@ select {
     calc(var(--motion-entrance-delay, 0ms) + var(--i) * 35ms) backwards;
 }
 
-.lesson-complete--celebrate .lesson-complete__star {
-  animation: lesson-complete-star 480ms var(--motion-ease-spring)
-    calc(var(--motion-entrance-delay, 0ms) + 600ms) backwards;
-}
-
-.lesson-complete--celebrate .lesson-complete__star--big {
-  animation-delay: calc(var(--motion-entrance-delay, 0ms) + 720ms);
-}
-
-.lesson-complete--celebrate .lesson-complete__star:last-child {
-  animation-delay: calc(var(--motion-entrance-delay, 0ms) + 840ms);
+/* The stickers pop in one by one once the title has landed (BadgeStickerSheet `animate`). */
+.lesson-complete--celebrate .sv-sticker-strip__item--pop {
+  animation: motion-pop-in 320ms var(--motion-ease-spring)
+    calc(var(--motion-entrance-delay, 0ms) + 600ms + var(--sv-sticker-delay, 0ms)) backwards;
 }
 
 @keyframes lesson-complete-burst {
@@ -2368,17 +2462,6 @@ select {
   }
 }
 
-@keyframes lesson-complete-star {
-  from {
-    opacity: 0;
-    transform: scale(0.3) rotate(-30deg);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @keyframes lesson-complete-popper-right {
   from {
     opacity: 0;
@@ -2396,7 +2479,8 @@ select {
   .lesson-complete--celebrate .lesson-complete__confetti,
   .lesson-complete--celebrate .lesson-complete__confetti::before,
   .lesson-complete--celebrate .lesson-complete__letter,
-  .lesson-complete--celebrate .lesson-complete__star {
+  .lesson-complete--celebrate .sv-sticker-strip__item--pop,
+  .session-ended .sv-sticker-strip__item--pop {
     animation: none;
   }
 }
@@ -7316,6 +7400,65 @@ label.te-backdrop-tag,
   font-size: 0.78rem;
   line-height: 1.35;
   color: var(--colour-muted);
+}
+
+/* Sticker strip (`variant="strip"`): the round stickers on the Lesson complete hero (white
+   names on purple) and, `--small`, on the Session ended page (dark names). */
+.sv-sticker-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 900px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sv-sticker-strip__item {
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.sv-sticker-strip__face {
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 2.5rem;
+  line-height: 1;
+  box-shadow:
+    0 0 0 4px #ffc533,
+    0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+.sv-sticker-strip--small .sv-sticker-strip__item {
+  width: 104px;
+  color: var(--colour-ink-strong);
+}
+
+.sv-sticker-strip--small .sv-sticker-strip__face {
+  width: 60px;
+  height: 60px;
+  font-size: 1.9rem;
+  box-shadow:
+    0 0 0 3px #ffc533,
+    0 3px 8px rgba(0, 0, 0, 0.18);
+}
+
+.sv-sticker-strip--small .sv-sticker-strip__item--pop {
+  animation: motion-pop-in 320ms var(--motion-ease-spring) var(--sv-sticker-delay, 0ms) backwards;
 }
 
 /* Badge Summary task ("Today's Coding Moments"): the class wall, grouped by badge. The teacher

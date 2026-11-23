@@ -14,134 +14,124 @@ export default function SessionEndedScreen({
   const workedOnCount = savedCodeTaskCount + savedOtherTaskCount
   const momentCount = moments.length
   return (
-    <div style={s.centreScreen}>
-      <h2 style={s.title}>Session ended</h2>
-      {/* A small celebration first: what they did today, before any housekeeping. */}
-      <section style={s.celebration} aria-label="What you did today">
-        <span style={s.celebrationIcon} aria-hidden="true">
-          🎉
-        </span>
-        <p style={s.celebrationTitle}>Great work today!</p>
-        {(workedOnCount > 0 || momentCount > 0) && (
+    // The scroller never centres with justify-content (that clips the top of a column taller
+    // than the screen); the inner column's auto margins centre it only when there is room.
+    <div className="session-ended" data-testid="session-ended" style={s.scroller}>
+      <div style={s.column}>
+        <h2 style={s.title}>Session ended</h2>
+        {/* A small celebration first: what they did today, before any housekeeping. */}
+        <section style={s.celebration} aria-label="What you did today">
           <p style={s.celebrationText}>
-            {workedOnCount > 0 && (
-              <>
-                You worked on <strong>{workedOnCount}</strong>{' '}
-                {workedOnCount === 1 ? 'task' : 'tasks'}
-              </>
+            <span aria-hidden="true">🎉</span>{' '}
+            <span style={s.celebrationTitle}>Great work today!</span>
+            {(workedOnCount > 0 || momentCount > 0) && (
+              <span>
+                {' '}
+                {workedOnCount > 0 && (
+                  <>
+                    You worked on <strong>{workedOnCount}</strong>{' '}
+                    {workedOnCount === 1 ? 'task' : 'tasks'}
+                  </>
+                )}
+                {workedOnCount > 0 && momentCount > 0 && ' and earned '}
+                {workedOnCount === 0 && momentCount > 0 && 'You earned '}
+                {momentCount > 0 && (
+                  <>
+                    <strong>{momentCount}</strong> coding {momentCount === 1 ? 'moment' : 'moments'}
+                  </>
+                )}
+                .
+              </span>
             )}
-            {workedOnCount > 0 && momentCount > 0 && ' and earned '}
-            {workedOnCount === 0 && momentCount > 0 && 'You earned '}
-            {momentCount > 0 && (
-              <>
-                <strong>{momentCount}</strong> coding {momentCount === 1 ? 'moment' : 'moments'}
-              </>
-            )}
-            .
           </p>
-        )}
-      </section>
-      {moments.length > 0 && (
-        <section style={s.moments} aria-label="Your coding moments">
-          <h3 style={s.momentsTitle}>
-            <span aria-hidden="true">🎖️</span> Your coding moments
-          </h3>
-          <BadgeStickerSheet moments={moments} animate />
         </section>
-      )}
-      {workedOnCount > 0 && (
-        // One notice for all saved work (there used to be two near-identical yellow boxes).
-        <div style={s.backupNotice}>
-          <strong>Saved only on this device.</strong>
-          <span>
-            Your work is kept in this browser, which can be cleared, or lost if you change device.
-            {savedCodeTaskCount > 0 &&
-              ` Download your ${
-                savedCodeTaskCount === 1 ? 'Python code' : `${savedCodeTaskCount} Python code tasks`
-              } to keep a copy.`}
-            {savedOtherTaskCount > 0 &&
-              (savedCodeTaskCount > 0
-                ? ` Your work in ${
-                    savedOtherTaskCount === 1
-                      ? 'one other task'
-                      : `${savedOtherTaskCount} other tasks`
-                  } can't be downloaded yet.`
-                : ` It can't be downloaded yet.`)}
-          </span>
-          {savedCodeTaskCount > 0 && (
-            <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
-              Download all my code
+        {moments.length > 0 && (
+          <section style={s.moments} aria-label="Your coding moments">
+            <h3 className="lesson-complete__moments-label" style={s.momentsTitle}>
+              Your coding moments
+            </h3>
+            <BadgeStickerSheet variant="strip" small moments={moments} animate />
+          </section>
+        )}
+        {workedOnCount > 0 && (
+          // One notice for all saved work (there used to be two near-identical yellow boxes).
+          <div style={s.backupNotice}>
+            <strong>Saved only on this device.</strong>
+            <span>
+              Your work is kept in this browser, which can be cleared, or lost if you change device.
+              {savedCodeTaskCount > 0 &&
+                ` Download your ${
+                  savedCodeTaskCount === 1
+                    ? 'Python code'
+                    : `${savedCodeTaskCount} Python code tasks`
+                } to keep a copy.`}
+              {savedOtherTaskCount > 0 &&
+                (savedCodeTaskCount > 0
+                  ? ` Your work in ${
+                      savedOtherTaskCount === 1
+                        ? 'one other task'
+                        : `${savedOtherTaskCount} other tasks`
+                    } can't be downloaded yet.`
+                  : ` It can't be downloaded yet.`)}
+            </span>
+            {savedCodeTaskCount > 0 && (
+              <button className="btn-primary" style={s.downloadButton} onClick={onDownloadAllCode}>
+                Download all my code
+              </button>
+            )}
+          </div>
+        )}
+        {/* The same two side-by-side buttons as the Lesson complete screen. */}
+        <div className="lesson-complete__actions session-ended__actions">
+          <button type="button" className="lesson-complete__primary" onClick={onContinueSolo}>
+            Go Through the Lesson Again
+          </button>
+          {soloCompanion && onTrySoloChallenge && (
+            <button
+              type="button"
+              className="lesson-complete__secondary"
+              onClick={onTrySoloChallenge}
+            >
+              Try the Solo Challenge
             </button>
           )}
         </div>
-      )}
-      <p
-        style={{
-          color: 'var(--colour-muted)',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.95rem',
-          margin: 0,
-        }}
-      >
-        What would you like to do next?
-      </p>
-      <button
-        className="btn-primary"
-        style={{ padding: '12px 32px', fontSize: 15 }}
-        onClick={onContinueSolo}
-      >
-        Go Through the Lesson Again
-      </button>
-      {soloCompanion && onTrySoloChallenge && (
-        <button
-          className="btn-ghost-outline"
-          style={s.secondaryButton}
-          onClick={onTrySoloChallenge}
-        >
-          Try the Solo Challenge
-        </button>
-      )}
-      {onOpenPlayground && (
-        <button className="btn-ghost-outline" style={s.secondaryButton} onClick={onOpenPlayground}>
-          Open Playground
-        </button>
-      )}
+        {onOpenPlayground && (
+          <button type="button" className="lesson-complete__again" onClick={onOpenPlayground}>
+            Open Playground
+          </button>
+        )}
+      </div>
     </div>
   )
 }
 
 const s = {
-  centreScreen: {
+  scroller: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
     height: '100%',
-    gap: 16,
-    padding: 32,
-    textAlign: 'center',
+    padding: '24px 32px',
     overflowY: 'auto',
   },
-  title: {
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1.5rem',
-    color: 'var(--colour-primary)',
-  },
-  celebration: {
+  column: {
+    margin: 'auto',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 4,
+    gap: 14,
+    maxWidth: '100%',
+    textAlign: 'center',
   },
-  celebrationIcon: { fontSize: '2.6rem', lineHeight: 1 },
-  celebrationTitle: {
+  title: {
     margin: 0,
     fontFamily: 'var(--font-title)',
     fontWeight: 700,
-    fontSize: '1.2rem',
-    color: 'var(--colour-text)',
+    fontSize: '1.6rem',
+    color: 'var(--colour-primary)',
   },
+  celebration: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  celebrationTitle: { fontWeight: 700 },
   celebrationText: {
     margin: 0,
     fontFamily: 'var(--font-body)',
@@ -152,8 +142,8 @@ const s = {
     maxWidth: 500,
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
-    padding: '14px 16px',
+    gap: 8,
+    padding: '12px 16px',
     border: '1px solid #fde047',
     borderRadius: 'var(--ui-radius)',
     background: '#fef9c3',
@@ -163,18 +153,11 @@ const s = {
     lineHeight: 1.5,
   },
   moments: {
-    width: 'min(560px, 100%)',
     display: 'flex',
     flexDirection: 'column',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
   },
-  momentsTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-title)',
-    fontWeight: 700,
-    fontSize: '1rem',
-    color: 'var(--colour-primary)',
-  },
-  downloadButton: { alignSelf: 'center', padding: '10px 20px', fontSize: 14 },
-  secondaryButton: { padding: '12px 32px', fontSize: 15 },
+  momentsTitle: { color: 'var(--colour-primary)' },
+  downloadButton: { alignSelf: 'center', padding: '8px 18px', fontSize: 14 },
 }

@@ -560,12 +560,14 @@ export default function StudentView({
     },
   }
   // The session-end screen reads the kept `badges` node, so it survives a reload of that screen.
+  // The solo Lesson complete screen shows the same moments (going through the lesson again after
+  // class keeps the session), live: a badge the tutor awards meanwhile joins the strip.
   const endScreenMoments = useMemo(
     () =>
-      phase === 'ended' && !teacherPresentation
+      (phase === 'ended' || phase === 'solo') && !teacherPresentation && !previewMode
         ? listMyMoments(session?.badges, identity?.anonymousId)
         : [],
-    [phase, teacherPresentation, session?.badges, identity?.anonymousId]
+    [phase, teacherPresentation, previewMode, session?.badges, identity?.anonymousId]
   )
   // The Badge Summary task's wall in a live session: the student's own moments then the class,
   // or the class only on the presentation window. Solo skips the task; a preview shows its note.
@@ -2207,6 +2209,7 @@ export default function StudentView({
                   soloCompanion={soloCompanion}
                   onTrySoloChallenge={soloCompanion ? handleTrySoloChallenge : undefined}
                   onReplayLesson={handleReplayLesson}
+                  completionMoments={endScreenMoments}
                   isCodeArrangeTask={isCodeArrangeTask}
                   displayCode={displayCode}
                   displayArcadeDesign={displayArcadeDesign}

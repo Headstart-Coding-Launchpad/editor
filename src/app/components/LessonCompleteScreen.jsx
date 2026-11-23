@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useId } from 'react'
 import { firstViewKey, useFirstView } from '../../shared/motion'
+import BadgeStickerSheet from './badges/BadgeStickerSheet'
 
 const TITLE_WORDS = ['Lesson', 'complete!']
 const CONFETTI_COLOURS = ['#fba504', '#ffffff', '#ff6b9d', '#4ade80', '#38bdf8', '#ffd84d']
@@ -36,11 +37,18 @@ const CONFETTI = (() => {
   return pieces
 })()
 
+// The most stickers the strip shows (the newest, so a fresh award is always seen).
+export const LESSON_COMPLETE_MAX_STICKERS = 6
+
 // Reuses the "introduction" information-task look (full-bleed primary-colour hero) —
 // see .information-task--introduction in index.css — rather than inventing new styles.
-// The party (option C): the title bounces in letter by letter, three stars pop in and confetti
-// shoots from both bottom corners, once per lesson on this screen (useFirstView); after that,
-// and under reduced motion, it is the same still picture. CSS: `.lesson-complete` in index.css.
+// The calm layout (sketch OK'd by Ryan 23 Nov) is four groups: the title and message; the
+// student's coding moments as a strip of round stickers (hidden when they have none); Open
+// Playground (big, amber) beside an outlined Try the Solo Challenge; and a quiet "Go through the
+// lesson again" link. With neither button on offer, going through again becomes the button.
+// The party (option C): the title bounces in letter by letter and confetti shoots from both
+// bottom corners, once per lesson on this screen (useFirstView); after that, and under reduced
+// motion, it is the same still picture. CSS: `.lesson-complete` in index.css.
 export default function LessonCompleteScreen({
   lessonId,
   lessonTitle,
@@ -48,8 +56,18 @@ export default function LessonCompleteScreen({
   soloCompanion,
   onTrySoloChallenge,
   onReplayLesson,
+  moments = [],
 }) {
+  const momentsHeadingId = useId()
   const celebrate = useFirstView(firstViewKey('lesson-complete', lessonId ?? lessonTitle))
+  const choices = [
+    onOpenPlayground && { label: 'Open Playground', onClick: onOpenPlayground },
+    soloCompanion &&
+      onTrySoloChallenge && { label: 'Try the Solo Challenge', onClick: onTrySoloChallenge },
+  ].filter(Boolean)
+  const replayIsChoice = choices.length === 0 && !!onReplayLesson
+  if (replayIsChoice)
+    choices.push({ label: 'Go through the lesson again', onClick: onReplayLesson })
   let letterIndex = 0
   return (
     <div
@@ -68,17 +86,6 @@ export default function LessonCompleteScreen({
         <span className="lesson-complete__popper lesson-complete__popper--right">🎉</span>
       </div>
       <div className="information-intro__content lesson-complete__content">
-        <div className="lesson-complete__stars" aria-hidden="true">
-          {['', 'lesson-complete__star--big', ''].map((size, i) => (
-            <span
-              key={i}
-              data-testid="lesson-complete-star"
-              className={`lesson-complete__star ${size}`}
-            >
-              ⭐
-            </span>
-          ))}
-        </div>
         <h1 className="lesson-complete__title">
           <span className="act-sr-only">Lesson complete!</span>
           <span aria-hidden="true">
@@ -101,28 +108,38 @@ export default function LessonCompleteScreen({
           </span>
         </h1>
         <p>Well done finishing {lessonTitle ?? 'this lesson'}.</p>
-        <p>What would you like to do next?</p>
-        <div className="lesson-complete__actions">
-          {onReplayLesson && (
-            <button type="button" className="btn-ghost-outline" onClick={onReplayLesson}>
-              Go Through the Lesson Again
-            </button>
-          )}
-          {soloCompanion && onTrySoloChallenge && (
-            <button type="button" className="btn-ghost-outline" onClick={onTrySoloChallenge}>
-              Try the Solo Challenge
-            </button>
-          )}
-          {onOpenPlayground && (
-            <button
-              type="button"
-              className="btn-primary lesson-complete__primary"
-              onClick={onOpenPlayground}
-            >
-              Open Playground
-            </button>
-          )}
-        </div>
+        {moments.length > 0 && (
+          <section className="lesson-complete__moments" aria-labelledby={momentsHeadingId}>
+            <h2 id={momentsHeadingId} className="lesson-complete__moments-label">
+              Your coding moments
+            </h2>
+            <BadgeStickerSheet
+              variant="strip"
+              moments={moments}
+              max={LESSON_COMPLETE_MAX_STICKERS}
+              animate={celebrate}
+            />
+          </section>
+        )}
+        {choices.length > 0 && (
+          <div className="lesson-complete__actions">
+            {choices.map(({ label, onClick }, i) => (
+              <button
+                key={label}
+                type="button"
+                className={i === 0 ? 'lesson-complete__primary' : 'lesson-complete__secondary'}
+                onClick={onClick}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {onReplayLesson && !replayIsChoice && (
+          <button type="button" className="lesson-complete__again" onClick={onReplayLesson}>
+            Go through the lesson again
+          </button>
+        )}
       </div>
     </div>
   )
