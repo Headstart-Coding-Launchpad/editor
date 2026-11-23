@@ -10,9 +10,10 @@ import './calmCode.css'
 
 /**
  * `run`: { word, stop, busyLabel, onClick, disabled, title, describedBy }. `more`: menu items
- * { id, icon, label, onClick, disabled, title, highlight } (falsy entries are skipped).
+ * { id, icon, label, onClick, disabled, title, highlight } (falsy entries are skipped). `title`:
+ * the row's "Code" word (off where a Code tab already names it, Arcade).
  */
-export default function CalmCodeRow({ onEmoji, showBlocks = true, more = [], run }) {
+export default function CalmCodeRow({ onEmoji, showBlocks = true, more = [], run, title = true }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
   const items = more.filter(Boolean)
@@ -33,9 +34,11 @@ export default function CalmCodeRow({ onEmoji, showBlocks = true, more = [], run
   return (
     <div className="calm-code-row-host">
       <div className="calm-code-row" role="group" aria-label="Code">
-        <span className="calm-code-row__title" aria-hidden="true">
-          Code
-        </span>
+        {title && (
+          <span className="calm-code-row__title" aria-hidden="true">
+            Code
+          </span>
+        )}
         <EmojiButton size={44} insert={onEmoji} />
         {showBlocks && <BlocksButton className="calm-row-btn" />}
         <span className="calm-code-row__gap" />

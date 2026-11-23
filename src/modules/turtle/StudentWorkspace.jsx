@@ -40,8 +40,8 @@ import { getRunCountWidgets } from '../../shared/runCounts.js'
 import { useResultPane, useRunFinishedToken } from '../../shared/resultPane/useResultPane.js'
 import { useWorkspaceLayout } from '../../shared/resultPane/useWorkspaceLayout.js'
 
-// The editor's share of the width when side by side (percent).
-const TURTLE_SPLIT = 50
+// The editor's share of the width when side by side (percent): the picture gets the room.
+const TURTLE_SPLIT = 45
 
 export default function StudentWorkspace({
   task,

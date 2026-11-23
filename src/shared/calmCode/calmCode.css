@@ -83,7 +83,17 @@
   white-space: nowrap;
 }
 
-@container calm-code-row (max-width: 520px) {
+/* A portrait tablet (and any row too narrow for it): the big button on its own line on top. */
+@media (max-width: 1023px) {
+  .calm-code-row {
+    flex-wrap: wrap;
+  }
+  .calm-code-row .btn-primary--big {
+    order: -1;
+    flex: 1 1 100%;
+  }
+}
+@container calm-code-row (max-width: 400px) {
   .calm-code-row {
     flex-wrap: wrap;
   }

@@ -215,6 +215,7 @@ export default function StudentWorkspace({
             <CalmCodeRow
               onEmoji={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
               showBlocks={taskShowsBlocks(task)}
+              title={false}
               run={{ word: 'Play', stop: running, onClick: running ? stop : run }}
               more={[
                 { id: 'reset', icon: '↺', label: 'Reset code', onClick: handleResetCode },
@@ -333,7 +334,7 @@ export default function StudentWorkspace({
       {preview}
     </div>
   ) : (
-    <SplitPane style={s.split} defaultSplit={56} left={editor} right={preview} />
+    <SplitPane style={s.split} defaultSplit={46} left={editor} right={preview} />
   )
 }
 
