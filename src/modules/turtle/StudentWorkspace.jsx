@@ -188,11 +188,12 @@ export default function StudentWorkspace({
     output: shownOutput,
   })
 
-  // The console strip opens by itself when a run prints or crashes, so an error is never missed.
+  // The console strip opens by itself when a run prints or crashes, so an error is never missed:
+  // once as the output appears, and again after each finished run; a fold in between holds.
   const shouldOpenConsole = !!shownOutput?.trim() || cs.runStatus === 'error'
   useEffect(() => {
     if (shouldOpenConsole) setOutputCollapsed(false)
-  }, [shouldOpenConsole, shownOutput])
+  }, [shouldOpenConsole, runToken])
 
   // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
   const stackedIds = ['picture', 'tags']

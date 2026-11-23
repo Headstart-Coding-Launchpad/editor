@@ -54,7 +54,8 @@ export default function StudentWorkspace({
   onOpenTopicLibrary,
 }) {
   const [runId, setRunId] = useState(0)
-  const [assetsOpen, setAssetsOpen] = useState(false)
+  // The assets panel: null follows the default (open while the student has drawn sprites or maps).
+  const [assetsChoice, setAssetsChoice] = useState(null)
   const editorApiRef = useRef(null)
   const keyCode = useMemo(() => taskKeyCode(task), [task])
   const [runCode, setRunCode] = useState('')
@@ -113,6 +114,7 @@ export default function StudentWorkspace({
   )
   const generatedAssets = useMemo(() => generatedArcadeAssets(design), [design])
   const generatedTilemaps = useMemo(() => generatedArcadeTilemaps(design), [design])
+  const assetsOpen = assetsChoice ?? generatedAssets.length + generatedTilemaps.length > 0
   const assets = useMemo(
     () => [...staticAssets, ...storageAssets, ...typeStorageAssets, ...generatedAssets],
     [staticAssets, storageAssets, typeStorageAssets, generatedAssets]
@@ -180,14 +182,14 @@ export default function StudentWorkspace({
   const editor = (
     <div style={s.editor}>
       {!readOnly && (
-        <div className="arcade-tabs" role="tablist" aria-label="Arcade workspace">
+        <div className="ui-tabs arcade-tabs" role="tablist" aria-label="Arcade workspace">
           {WORKSPACE_TABS.filter(([id]) => id === 'code' || allowsArcadeTool(task, id)).map(
             ([id, label]) => (
               <button
                 key={id}
                 type="button"
                 role="tab"
-                className="arcade-tab"
+                className={`ui-tab arcade-tab${activeWorkspaceTab === id ? ' is-active' : ''}`}
                 aria-selected={activeWorkspaceTab === id}
                 onClick={() => setActiveWorkspaceTab(id)}
                 // Play and Stop live on the Code tab: a highlight points here from the others.
@@ -202,8 +204,9 @@ export default function StudentWorkspace({
             className="btn-ghost-outline arcade-assets-chip"
             aria-expanded={assetsOpen}
             onClick={() => {
+              // From Sprites or Tilemaps: to Code with the assets open; on Code: fold or open.
+              setAssetsChoice(activeWorkspaceTab !== 'code' || !assetsOpen)
               setActiveWorkspaceTab('code')
-              setAssetsOpen((open) => !open)
             }}
           >
             <span aria-hidden="true">🎨 </span>Assets

@@ -122,7 +122,7 @@ describe('Arcade calm screen', () => {
   it('opens the assets by itself when the student has drawn sprites', () => {
     made.assets = [{ name: 'hero.png', url: 'data:image/png;base64,' }]
     renderArcade()
-    expect(screen.getByRole('button', { name: /Insert hero.png/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /hero.png made here/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Assets/ })).toHaveAttribute('aria-expanded', 'true')
     made.assets = []
   })
@@ -133,10 +133,10 @@ describe('Arcade calm screen', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Sprites' }))
     fireEvent.click(screen.getByRole('button', { name: /Assets/ }))
     expect(screen.getByRole('tab', { name: 'Code' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('button', { name: /Insert hero.png/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /hero.png made here/ })).toBeInTheDocument()
     // On the Code tab the chip folds them away again.
     fireEvent.click(screen.getByRole('button', { name: /Assets/ }))
-    expect(screen.queryByRole('button', { name: /Insert hero.png/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /hero.png made here/ })).toBeNull()
     made.assets = []
   })
 })
