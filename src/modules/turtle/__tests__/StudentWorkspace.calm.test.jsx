@@ -16,6 +16,12 @@ vi.mock('../../python/PythonEditor', () => ({
   default: ({ code, calm }) => <div data-calm={String(!!calm)}>python-editor:{code}</div>,
 }))
 
+vi.mock('../draw.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  drawTurtleCommands: () => {},
+  sizeCanvasToDisplay: () => false,
+}))
+
 vi.mock('../../../shared/resultPane/useWorkspaceLayout.js', () => ({
   useWorkspaceLayout: ({ isMobile }) => ({
     ref: () => {},

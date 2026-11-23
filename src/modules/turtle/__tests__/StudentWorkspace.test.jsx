@@ -53,10 +53,10 @@ function makeCs(overrides = {}) {
 }
 
 describe('Turtle StudentWorkspace', () => {
-  it('shows the Run button and starts a run on click', () => {
+  it('shows the big Draw button and starts a run on click', () => {
     const cs = makeCs()
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} />)
-    fireEvent.click(screen.getByText('Run'))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw' }))
     expect(cs.handleRun).toHaveBeenCalledTimes(1)
   })
 
@@ -155,16 +155,12 @@ describe('Turtle StudentWorkspace', () => {
     )
   })
 
-  it('collapses Output into a slim horizontal bar under the canvas and reopens it', () => {
+  it('folds Output into the one-line console strip under the canvas and reopens it', () => {
     render(<StudentWorkspace task={{}} cs={makeCs()} isMobile={false} />)
-    const rail = screen.getByRole('button', { name: 'Show Output' })
-    // The vertical rail is height: 100%, which swallowed half the pane under the canvas.
-    expect(rail.style.height).toBe('auto')
-    expect(rail.style.flexDirection).toBe('row')
-    fireEvent.click(rail)
+    fireEvent.click(screen.getByRole('button', { name: /^Console/ }))
     expect(screen.getByRole('button', { name: 'Collapse Output' }).textContent).toBe('v')
     fireEvent.click(screen.getByRole('button', { name: 'Collapse Output' }))
-    expect(screen.getByRole('button', { name: 'Show Output' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Console/ })).toBeTruthy()
   })
 
   it('redraws onto the new canvas when switching between the mobile and split layouts', () => {
@@ -185,7 +181,7 @@ describe('Turtle StudentWorkspace', () => {
     const cs = makeCs({ readSavedTaskCode: vi.fn(() => ({ code: 'turtle.left(90)' })) })
     render(<StudentWorkspace task={{}} cs={cs} isMobile={false} isViewingPrev viewingTaskId="t1" />)
     expect(screen.getByText('python-editor:turtle.left(90)')).toBeTruthy()
-    expect(screen.queryByText('Run')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Draw' })).toBeNull()
   })
 })
 
@@ -195,26 +191,28 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
   })
 
   const LINE = { type: 'line', x1: 0, y1: 0, x2: 10, y2: 0, color: 'black' }
+  // Tabs come with the name tags; without them the calm screen keeps the picture and the strip.
+  const TAGS_TASK = { id: 1, showVariables: {} }
 
-  it('shows Picture and Console tabs beside the editor, opening on the Picture', () => {
+  it('shows Picture, Tags and Console tabs beside the editor, opening on the Picture', () => {
     layoutState.layout = 'tabs'
     const onVisiblePanesChange = vi.fn()
     const { container } = render(
       <StudentWorkspace
-        task={{ id: 1 }}
+        task={TAGS_TASK}
         cs={makeCs()}
         isMobile={false}
         onVisiblePanesChange={onVisiblePanesChange}
       />
     )
     expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('tab', { name: 'Tags' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'Tags' })).toBeInTheDocument()
     expect(container.querySelector('canvas')).toBeVisible()
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas'])
-    // The Console is its own tab, so there is no collapse rail.
-    expect(screen.queryByRole('button', { name: 'Show Output' })).toBeNull()
+    // The Console is its own tab, so there is no console strip.
+    expect(screen.queryByRole('button', { name: /^Console/ })).toBeNull()
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Picture' }), { key: 'ArrowRight' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Console' }))
     expect(screen.getByRole('tab', { name: 'Console' })).toHaveAttribute('aria-selected', 'true')
     expect(container.querySelector('canvas')).not.toBeVisible()
     // Hidden, not unmounted: the drawing keeps its canvas.
@@ -234,7 +232,7 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
       />
     )
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas'])
-    fireEvent.click(screen.getByRole('button', { name: 'Show Output' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Console/ }))
     expect(onVisiblePanesChange).toHaveBeenLastCalledWith(['code', 'canvas', 'console'])
   })
 
@@ -252,7 +250,7 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
 
   it('goes back to the Picture after a Run and badges the Console lines it printed', () => {
     layoutState.layout = 'tabs'
-    const task = { id: 1 }
+    const task = TAGS_TASK
     const cs = makeCs()
     const { rerender } = render(<StudentWorkspace task={task} cs={cs} isMobile={false} />)
     fireEvent.click(screen.getByRole('tab', { name: 'Console' }))
@@ -276,7 +274,7 @@ describe('Turtle StudentWorkspace result tabs on smaller screens (P6-12)', () =>
   })
 
   it('stacks the editor above the tabs on a phone', () => {
-    const { container } = render(<StudentWorkspace task={{ id: 1 }} cs={makeCs()} isMobile />)
+    const { container } = render(<StudentWorkspace task={TAGS_TASK} cs={makeCs()} isMobile />)
     expect(container.querySelector('[data-layout="below"]')).toBeTruthy()
     expect(screen.getByRole('tablist', { name: 'Result panes' })).toBeInTheDocument()
   })
@@ -289,7 +287,8 @@ describe('Turtle StudentWorkspace map editor (course.studentMap, P6-16)', () => 
   it('opens the map editor and writes the map into the code', () => {
     const cs = makeCs({ code: 'import turtle\nturtle.forward(2)' })
     render(<StudentWorkspace task={ownTask} cs={cs} isMobile={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Map editor/ }))
+    fireEvent.click(screen.getByRole('button', { name: /More/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Map editor/ }))
     expect(screen.getByRole('dialog', { name: 'Map editor' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Use this map' }))
     expect(cs.handleCodeChange).toHaveBeenCalledWith(
@@ -347,7 +346,7 @@ describe('Turtle StudentWorkspace hosting a Code Arrange board (P6-15)', () => {
     layoutState.layout = 'tabs'
     render(
       <StudentWorkspace
-        task={{ id: 1 }}
+        task={{ id: 1, showVariables: {} }}
         cs={makeCs()}
         isMobile={false}
         arrangeBoard={() => <div>the-board</div>}

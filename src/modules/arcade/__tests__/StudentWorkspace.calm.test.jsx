@@ -18,7 +18,9 @@ vi.mock('../../../shared/AssetBrowser', () => ({ default: () => <div>asset-brows
 vi.mock('../../../shared/useLessonStorageAssets', () => ({
   useLessonStorageAssets: () => ({ storageAssets: [] }),
 }))
-vi.mock('../../../shared/useTypeAssets', () => ({ useTypeAssets: () => ({ typeStorageAssets: [] }) }))
+vi.mock('../../../shared/useTypeAssets', () => ({
+  useTypeAssets: () => ({ typeStorageAssets: [] }),
+}))
 
 const lesson = { id: 'lesson-1', tasks: [], storageAssets: [] }
 const makeCs = () => ({
@@ -65,11 +67,11 @@ describe('Arcade calm screen', () => {
   it('keeps the Code, Sprites and Tilemaps tabs, Emoji, Blocks and the calm key row', () => {
     renderArcade()
     const tabs = screen.getByRole('tablist', { name: 'Arcade workspace' })
-    expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'Code',
-      'Sprites',
-      'Tilemaps',
-    ])
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent)
+    ).toEqual(['Code', 'Sprites', 'Tilemaps'])
     const row = screen.getByRole('group', { name: 'Code' })
     expect(within(row).getByRole('button', { name: 'Insert emoji' })).toBeInTheDocument()
     expect(within(row).getByRole('button', { name: 'Blocks' })).toBeInTheDocument()
@@ -82,10 +84,11 @@ describe('Arcade calm screen', () => {
     expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /More/ }))
     const menu = screen.getByRole('menu', { name: 'More' })
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      '↺ Reset code',
-      '📚 Topic library',
-    ])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+    ).toEqual(['↺ Reset code', '📚 Topic library'])
     fireEvent.click(within(menu).getByRole('menuitem', { name: /Topic library/ }))
     expect(onOpenTopicLibrary).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: /More/ }))

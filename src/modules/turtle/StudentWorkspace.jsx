@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import PythonEditor from '../python/PythonEditor'
 import { taskShowsBlocks } from '../../shared/blockGuides'
 import { getTaskLineHintSets } from '../../shared/lineHints'
@@ -6,10 +6,9 @@ import { freezeValueLocks, getTaskLockSets } from '../../shared/lockedLines'
 import OutputPanel from '../../app/components/OutputPanel'
 import { useRemoteRunTrigger } from '../../shared/useRemoteRunTrigger'
 import SplitPane from '../../shared/SplitPane'
-import {
-  CollapsedPanelRail,
-  CollapseTabButton,
-} from '../../app/components/CollapsiblePanelControls'
+import { CollapseTabButton } from '../../app/components/CollapsiblePanelControls'
+import CalmCodeRow, { ConsoleStrip } from '../../shared/calmCode/CalmCodeRow.jsx'
+import { taskKeyCode } from '../python/keyRow.js'
 import CopyCodePanel from '../../app/components/CopyCodePanel'
 import { starterCodeOf } from '../moduleContract'
 // A course task (task.course) shows its map and vehicle; any other task the plain picture.
@@ -66,6 +65,11 @@ export default function StudentWorkspace({
   // are this workspace's own.
   arrangeBoard = null,
   arrangeReady = true,
+  // The calm host (LessonTaskContent, capabilities.calmCodeScreen): the "What to change" fold
+  // `{ folded, onToggle, hideCopyCode }`, and the Topic library (a More item) when the code row
+  // holds it.
+  whatToChange = null,
+  onOpenTopicLibrary,
 }) {
   const [outputCollapsed, setOutputCollapsed] = useState(true)
   const [mapEditorOpen, setMapEditorOpen] = useState(false)
@@ -161,7 +165,8 @@ export default function StudentWorkspace({
     layout,
     inset,
   } = useWorkspaceLayout({ isMobile, split: TURTLE_SPLIT, paneCount: resultPanes.length })
-  const tabbed = layout !== 'side'
+  // Tabs only for the name tags; otherwise the picture keeps the room, the console a strip under it.
+  const tabbed = layout !== 'side' && tagsAvailable
   const runToken = useRunFinishedToken({
     running: !readOnly && cs.running,
     // A Go Live viewer: each new broadcast run of the presenter's drawing.
@@ -182,6 +187,12 @@ export default function StudentWorkspace({
     error: cs.runStatus === 'error',
     output: shownOutput,
   })
+
+  // The console strip opens by itself when a run prints or crashes, so an error is never missed.
+  const shouldOpenConsole = !!shownOutput?.trim() || cs.runStatus === 'error'
+  useEffect(() => {
+    if (shouldOpenConsole) setOutputCollapsed(false)
+  }, [shouldOpenConsole, shownOutput])
 
   // What's on screen, for the tutor's student card ('canvas' is the Picture tab).
   const stackedIds = ['picture', 'tags']
@@ -206,7 +217,13 @@ export default function StudentWorkspace({
   const mapEditorAvailable = !readOnly && !inFreePlay && !!taskCourse?.studentMap
 
   const showCopyCode =
-    !cs.inPersonalSandbox && typeof task?.copyCode === 'string' && !!task.copyCode.trim()
+    !cs.inPersonalSandbox &&
+    typeof task?.copyCode === 'string' &&
+    !!task.copyCode.trim() &&
+    !whatToChange?.hideCopyCode
+  // The code row's Emoji button types into the editor; the key row is chosen from the task's code.
+  const editorApiRef = useRef(null)
+  const keyCode = useMemo(() => taskKeyCode(task), [task])
 
   // Predict mode's Run lock (cs.predictRunLock, showVariables.lockRun): Run, slow-mo and the
   // run shortcut wait for every prediction, until the first Run. Never on a read-only view.
@@ -223,7 +240,6 @@ export default function StudentWorkspace({
       return
     }
     if (runLock) return
-    setOutputCollapsed(false)
     if (runIsSlowMo) slowMo.run()
     else cs.handleRun()
   }
@@ -263,71 +279,71 @@ export default function StudentWorkspace({
           after={task.copyAfter}
           before={task.copyBefore}
           starter={starterCodeOf(task)}
+          calm={!!whatToChange}
+          folded={!!whatToChange?.folded}
+          onToggleFolded={whatToChange?.onToggle}
         />
       )}
       {!readOnly && (
-        <div style={s.editorHeader} className="ui-tabs ui-tabs--editor">
-          <span style={s.editorTitle}>Code</span>
-          <div style={s.editorActions}>
-            <button
-              className={cs.running ? 'btn-danger' : 'btn-primary'}
-              style={s.primaryBtn}
-              data-highlight-target="run stop"
-              onClick={handleRunClick}
-              disabled={!cs.running && (pythonNotReady || !!runLock)}
-              title={
-                !cs.running && runLock
-                  ? runLock.message
-                  : runIsSlowMo && !cs.running
-                    ? PYTHON_SLOW_MO_RUN_TITLE
-                    : undefined
-              }
-              aria-describedby={!cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined}
-            >
-              {cs.running ? (
-                'Stop'
-              ) : cs.pyodideStatus === 'loading' ? (
-                'Getting Python ready...'
-              ) : runIsSlowMo ? (
-                <SlowMoRunLabel />
-              ) : (
-                'Run'
-              )}
-            </button>
-            {!cs.running && (
-              <PredictRunLockNote
-                lock={runLock}
-                // To the first empty tag: with tabs, open the Tags tab first.
-                onReveal={() => {
-                  if (tabbed && resultPanes.includes('tags')) result.select('tags')
-                }}
-              />
-            )}
-            <button
-              className="btn-ghost-outline"
-              style={s.resetBtn}
-              onClick={cs.handleResetCode}
-              disabled={cs.running}
-              title="Reset code to the starter code for this task"
-            >
-              Reset Code
-            </button>
-            {mapEditorAvailable && (
-              <button
-                type="button"
-                className="btn-ghost-outline"
-                style={s.resetBtn}
-                onClick={() => setMapEditorOpen(true)}
-                disabled={cs.running}
-                title="Draw your map by tapping squares"
-              >
-                <span aria-hidden="true">🧱</span> Map editor
-              </button>
-            )}
-          </div>
-        </div>
+        <CalmCodeRow
+          onEmoji={(emoji) => editorApiRef.current?.insertAtCursor(emoji)}
+          showBlocks={taskShowsBlocks(task)}
+          run={{
+            word: runIsSlowMo ? 'Draw (slow-mo)' : 'Draw',
+            stop: cs.running,
+            busyLabel: cs.pyodideStatus === 'loading' ? 'Getting Python ready...' : undefined,
+            onClick: handleRunClick,
+            disabled: !cs.running && (pythonNotReady || !!runLock),
+            title:
+              !cs.running && runLock
+                ? runLock.message
+                : runIsSlowMo && !cs.running
+                  ? PYTHON_SLOW_MO_RUN_TITLE
+                  : undefined,
+            describedBy: !cs.running && runLock ? PREDICT_RUN_LOCK_NOTE_ID : undefined,
+          }}
+          more={[
+            {
+              id: 'reset',
+              icon: '↺',
+              label: 'Reset code',
+              onClick: cs.handleResetCode,
+              disabled: cs.running,
+            },
+            mapEditorAvailable && {
+              id: 'map',
+              icon: '🧱',
+              label: 'Map editor',
+              onClick: () => setMapEditorOpen(true),
+              disabled: cs.running,
+            },
+            slowMoShown &&
+              slowMo.config &&
+              !slowMo.throughRun && {
+                id: 'slowmo',
+                icon: '🐢',
+                label: 'Slow-mo',
+                onClick: slowMoControls.slowMo,
+                disabled: cs.running || pythonNotReady || !!runLock,
+              },
+            onOpenTopicLibrary && {
+              id: 'topics',
+              icon: '📚',
+              label: 'Topic library',
+              onClick: onOpenTopicLibrary,
+            },
+          ]}
+        />
       )}
-      {slowMoShown && (!readOnly || slowMoView) && (
+      {!readOnly && !cs.running && runLock && (
+        <PredictRunLockNote
+          lock={runLock}
+          // To the first empty tag: with tabs, open the Tags tab first.
+          onReveal={() => tabbed && result.select('tags')}
+        />
+      )}
+      {/* Slow-mo's controls once a recording plays (Draw or More's Slow-mo starts one). */}
+      {slowMoShown && (slowMoView || slowMo.pending) && (
         <SlowMoBar
           slowMo={slowMoControls}
           runDisabled={cs.running || pythonNotReady || !!runLock}
@@ -339,6 +355,9 @@ export default function StudentWorkspace({
       )}
       <ScrubOpenedCue show={!readOnly && cs.scrubJustOpened} />
       <PythonEditor
+        calm
+        keyCode={keyCode}
+        editorApiRef={editorApiRef}
         code={code}
         readOnly={readOnly}
         onChange={readOnly ? undefined : cs.handleCodeChange}
@@ -457,17 +476,7 @@ export default function StudentWorkspace({
       {variablesPanel}
       {!outputCollapsed && <div style={s.outputPane}>{outputPanel}</div>}
       {outputCollapsed && (
-        // Output sits *below* the canvas here (not beside it like Python), so it must use
-        // the horizontal rail — the vertical one is height: 100% and swallows the pane.
-        <CollapsedPanelRail
-          onClick={() => setOutputCollapsed(false)}
-          label="Output"
-          direction="up"
-          orientation="horizontal"
-          title="Show Output"
-          ariaLabel="Show Output"
-          style={s.outputRail}
-        />
+        <ConsoleStrip output={shownOutput} onOpen={() => setOutputCollapsed(false)} />
       )}
     </div>
   )
@@ -494,14 +503,14 @@ export default function StudentWorkspace({
       // Phones and portrait screens: the editor above, the result pane below.
       <div style={s.belowStack}>
         <div style={s.belowEditor}>{editor}</div>
-        <div style={s.belowResult}>{resultPane}</div>
+        <div style={s.belowResult}>{tabbed ? resultPane : canvasAndOutput}</div>
       </div>
     ) : (
       <SplitPane
         style={s.splitPane}
         defaultSplit={TURTLE_SPLIT}
         left={editor}
-        right={layout === 'tabs' ? resultPane : canvasAndOutput}
+        right={tabbed ? resultPane : canvasAndOutput}
       />
     )
 
@@ -601,35 +610,5 @@ const s = {
     flex: '0 0 35%',
     minHeight: 120,
     overflow: 'hidden',
-  },
-  outputRail: { flexShrink: 0, padding: '6px 12px' },
-  editorHeader: { flexShrink: 0 },
-  editorTitle: {
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.86rem',
-    color: 'var(--colour-primary)',
-    padding: '0 10px',
-  },
-  editorActions: {
-    marginLeft: 'auto',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 8,
-    flexWrap: 'wrap',
-  },
-  primaryBtn: { padding: '10px 28px', fontSize: 16, flexShrink: 0, minHeight: 44 },
-  resetBtn: {
-    fontSize: 12,
-    padding: '5px 10px',
-    marginLeft: 16,
-    color: '#6b7280',
-    border: '1px solid #d1d5db',
-    borderRadius: 8,
-    background: '#fff',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 600,
   },
 }

@@ -1,0 +1,129 @@
+/* The calm code row of the picture modules (CalmCodeRow.jsx; Turtle, Arcade): Code · Emoji ·
+   Blocks ... More · the big ▶ Draw / ▶ Play. On a narrow row (a portrait tablet) the big button
+   takes its own full-width line at the top. */
+.calm-code-row-host {
+  container: calm-code-row / inline-size;
+  flex-shrink: 0;
+}
+
+.calm-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 6px 0;
+  min-width: 0;
+}
+
+.calm-code-row__title {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--colour-primary);
+  padding: 0 2px 0 8px;
+}
+
+.calm-code-row__gap {
+  flex: 1 1 auto;
+}
+
+/* The one big primary action: btn-primary, larger. */
+.btn-primary--big {
+  min-height: 56px;
+  min-width: 132px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@container calm-code-row (max-width: 520px) {
+  .calm-code-row {
+    flex-wrap: wrap;
+  }
+  .calm-code-row .btn-primary--big {
+    order: -1;
+    flex: 1 1 100%;
+  }
+}
+
+.calm-more {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.calm-more__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+}
+
+.calm-more__item {
+  min-height: 44px;
+  padding: 0 12px !important;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--colour-primary);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.calm-more__item:hover:not(:disabled),
+.calm-more__item:focus-visible {
+  background: var(--ui-surface-tint);
+}
+
+.calm-more__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The console folded to one line under the picture (Turtle). */
+.calm-console-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 44px;
+  width: 100%;
+  padding: 0 14px !important;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-surface-tint);
+  color: var(--colour-primary);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calm-console-strip__title {
+  font-family: var(--font-title);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.calm-console-strip__line {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  opacity: 0.85;
+}
