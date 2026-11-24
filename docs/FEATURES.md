@@ -205,6 +205,7 @@ Student screens are made for 9-year-olds: big buttons, few words, fixed choices 
 - Lesson title, level badge, "Lesson N" (when the lesson has a `lessonNumber`), and mode indicator (solo / live / sandbox)
 - Task progress dots — clickable for past tasks, locked for future tasks, current highlighted
 - Collapsible explainer panel with Markdown formatting, inline topic definitions (not on Scratch lessons — the topic library is disabled there), and Scratch block visualisation
+- Numbered code blocks with marked lines (` ```python {lines=3} `, `{numbered}`): app-drawn line numbers, a band, bar and arrow on the marked line, plain copy; in explainers, quiz questions, tutor views and Builder preview
 - Explainer text is not selectable/copyable for students (teacher and builder previews are unaffected)
 - First-view entrances: when a task first appears the explainer drops in, its bullets (and an information task's) slide in one after another, and quiz answers rise in one by one. They play once per task on each screen (student, presentation window, teacher view, Builder preview), never on a revisit, a ▲/▼ toggle or a Builder edit, and become a short fade under reduced motion
 - Retro typing animation on Python output

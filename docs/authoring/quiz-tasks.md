@@ -69,6 +69,33 @@ A multiple-choice quiz takes exactly one `answer_equals` check (or the `answer:`
 | `options[].hint` | No | Older name for `feedback`, still read when `feedback` is missing. Use `feedback`. |
 | `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}`. Option text is mapped to its id. |
 
+**"What is this line for?"** Put the program in the `explainer` as a fenced block with a marked
+line, ```` ```python {lines=3} ````, and ask about "the marked line"; the options stay ordinary
+words. No `# <-- this line` comments and no hand-written line numbers. See
+[Line numbers and marked lines](markdown-renderer.md#line-numbers-and-marked-lines).
+
+```yaml
+- type: quiz
+  title: What is this line for?
+  explainer: |
+    Look at this program. What is the **marked line** for?
+
+    ```python {lines=3}
+    name = input("Your name? ")
+    score = 0
+    for i in range(3):
+        score = score + 10
+    print(name, score)
+    ```
+  options:
+    - id: a
+      text: It repeats the lines below it 3 times
+    - id: b
+      text: It prints the score
+      feedback: Look for the line that starts with `print`. Is that the marked one?
+  answer: a
+```
+
 **Word answer layout** (no orphan tile, none stretched): 2 options sit side by side, 3 in one row
 (stacked as bars on a screen under about 900px wide, when the quiz frame itself is under about
 600px wide, as in a tutor's small student window, or when any answer is over about 40 characters), 4 make a 2x2 grid, 5 are one column of bars, and 6 make 3x2 (2x3 when narrow). The

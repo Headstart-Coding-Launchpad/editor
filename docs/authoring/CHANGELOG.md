@@ -37,6 +37,20 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-24
+
+- **Numbered code blocks with marked lines.** A fence attribute after the language, such as
+  ```` ```python {lines=3} ````, `{lines=3,5-6}` or `{numbered}`, draws the block with line numbers
+  and marks those lines (yellow band, amber bar, ▶ arrow; screen readers hear "Line 3 is
+  marked."). Use it for "What is this line for?" quizzes in place of `# <-- the marked line`
+  comments and hand-numbered lines. Copying the block copies only the code. Validation warns
+  about unknown words inside `{…}` and marks past the block's end. It is Markdown, so no field
+  changes. See [markdown-renderer.md](markdown-renderer.md#line-numbers-and-marked-lines) and
+  [quiz-tasks.md](quiz-tasks.md#multiple-choice).
+- Affects: markdown, quiz_multiple_choice, all explainers · Existing lessons: no changes needed
+  (fences without `{…}` render as before; quizzes that mark a line with a comment can move to
+  `{lines=N}`) · Resolves: none (marked-line quiz sketch, Ryan 24 Nov 2026)
+
 ## 2026-11-23
 
 - **Calm Turtle and Arcade screens: Run is now ▶ Draw / ▶ Play.** Turtle's run button is one big

@@ -88,6 +88,43 @@ print("Adventure awaits!")
 
 This mistake surfaces specifically when the code being fenced happens to be one line long — a multi-line snippet is much less likely to get collapsed this way, since collapsing it as one line would visibly overrun the block. Check one-line-of-code fenced blocks in particular, e.g. wherever the Quiz Guide's "always fence, never inline, for this quiz type" rule applies to a single line of code.
 
+### Line numbers and marked lines
+
+Add a `{…}` attribute after the language to number a block's lines and mark some of them. Use it
+for "What is this line for?" questions instead of `# <-- this line` comments or hand-written
+numbers: the numbers are drawn by the app, so they never drift from the code, and nothing extra is
+in the code a student might copy.
+
+````
+```python {lines=3}
+name = input("Your name? ")
+score = 0
+for i in range(3):
+    score = score + 10
+print(name, score)
+```
+````
+
+| Attribute | Effect |
+|---|---|
+| `{lines=3}` | Numbers every line; line 3 is marked |
+| `{lines=3,5-6}` | Several marked lines: single numbers and ranges, comma-separated, no spaces |
+| `{numbered}` | Numbers every line, nothing marked |
+| `{numbered lines=2}` | Same as `{lines=2}` (words inside `{…}` are separated by spaces) |
+| *(no attribute)* | The ordinary block, exactly as before |
+
+- Lines count from 1, the first line of code after the opening fence. Blank lines count.
+- A marked line gets a soft yellow band, an amber bar and a ▶ arrow at its left edge (never colour
+  alone), and screen readers hear "Line 3 is marked." Write the question to match, for example
+  "What does the **marked line** do?"
+- The language can be left out (```` ``` {lines=2} ````): the block is numbered but not coloured.
+- Copying the block copies the plain program: no numbers, arrows or marks.
+- Works anywhere Markdown is: explainers, quiz questions (the `explainer`), information tasks,
+  multiple-choice options, and the tutor's student window, Builder preview and Presentation.
+- Lesson validation warns (never errors) about a word it does not know inside `{…}` (the block
+  then renders unnumbered) and about a marked line past the end of the block (that mark is
+  ignored). Not on ```` ```scratch ```` or ```` ```example ```` fences.
+
 ---
 
 ## Scratch Blocks (fenced)
