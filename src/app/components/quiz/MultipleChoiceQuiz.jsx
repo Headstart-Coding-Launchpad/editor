@@ -107,8 +107,18 @@ export default function MultipleChoiceQuiz({
         content.dataset.quizWide = String(layout.wide)
         content.dataset.quizCols = String(layout.cols)
         content.style.setProperty('--quiz-cols', String(layout.cols))
-        if (layout.rowMax) content.style.setProperty('--quiz-row-max', `${layout.rowMax}px`)
-        else content.style.removeProperty('--quiz-row-max')
+        // The row cap also follows the fit scale (--quiz-row-cap), else rows stay 250px tall
+        // however far the shrink loop goes and the last tiles are cut off (24 Nov 2026).
+        if (layout.rowMax) {
+          content.style.setProperty('--quiz-row-max', `${layout.rowMax}px`)
+          content.style.setProperty(
+            '--quiz-row-cap',
+            `calc(${layout.rowMax}px * var(--quiz-option-scale, 1))`
+          )
+        } else {
+          content.style.removeProperty('--quiz-row-max')
+          content.style.removeProperty('--quiz-row-cap')
+        }
       }
       const options = Array.from(content.children)
       options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))

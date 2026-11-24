@@ -2001,14 +2001,14 @@ select {
 /* ── Calm screens: word answer tiles (MultipleChoiceQuiz, 21 Nov 2026) ──
    No orphan tile and no stretched tile. MultipleChoiceQuiz sets --quiz-cols (2 side by side;
    3 in a row, or bars on a screen under 900px or a quiz frame under ~600px; 4 as 2x2; 5 as
-   bars) and --quiz-row-max (320px for one row, 250px for two, 110px or 76px for bars) from the
+   bars) and --quiz-row-max (320px for one row, 180px for two, 110px or 76px for bars) from the
    widths before the shrink-to-fit step (quizUtils quizWordLayout). The tile and badge base
    styles are classes, not inline: no rule in this file but the global `button` (a lower
    specificity) touches these selectors (tested in QuizTileLayout.test.jsx). Rows grow into the frame up to the cap, then stop; the
    tiles sit at the top. */
 .quiz-word-grid {
   grid-template-columns: repeat(var(--quiz-cols, 2), minmax(0, 1fr));
-  grid-auto-rows: minmax(min-content, var(--quiz-row-max, 1fr));
+  grid-auto-rows: minmax(min-content, var(--quiz-row-cap, var(--quiz-row-max, 1fr)));
   align-content: start;
 }
 
