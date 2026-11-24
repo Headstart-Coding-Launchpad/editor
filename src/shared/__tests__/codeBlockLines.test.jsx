@@ -179,7 +179,7 @@ describe('lesson validation', () => {
     expect(errors).toEqual([])
     expect(warnings).toEqual(
       expect.arrayContaining([
-        'Task 1 explainer code block 1 has unrecognised words in its {...}: big (use lines=3,5-6 or numbered)',
+        'Task 1 explainer code block 1 has unknown words in its {...}: big',
         'Task 1 explainer code block 1 marks lines past its end: 9 (the block has 5 lines)',
       ])
     )

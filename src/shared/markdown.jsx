@@ -559,13 +559,11 @@ const components = {
   h4: Heading4,
   code: MarkdownCode,
   pre: MarkdownPre,
-  p({ children, ...props }) {
-    return (
-      <p {...anchorProps(props)} style={{ margin: '6px 0', lineHeight: 1.65 }}>
-        {children}
-      </p>
-    )
-  },
+  p: ({ children, ...props }) => (
+    <p {...anchorProps(props)} style={{ margin: '6px 0', lineHeight: 1.65 }}>
+      {children}
+    </p>
+  ),
   ul: MarkdownUnorderedList,
   ol: MarkdownOrderedList,
   li: MarkdownListItem,
@@ -592,9 +590,7 @@ const components = {
       </blockquote>
     )
   },
-  em({ children }) {
-    return <em>{children}</em>
-  },
+  em: ({ children }) => <em>{children}</em>,
   strong: MarkdownStrong,
   img: MarkdownImage,
 }
