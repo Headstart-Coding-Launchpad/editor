@@ -251,6 +251,7 @@ export default function TeacherEditorPanel({
           found={studentViewStage}
           definition={mod}
           task={task}
+          lessonTasks={lesson?.tasks}
           action={sendButton}
           // The Answer tab keeps its target picture and expected output under the student view.
           extra={

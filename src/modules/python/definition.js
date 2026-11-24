@@ -108,8 +108,8 @@ export default defineModule({
     peerHelp: { anchors: 'lines', hints: 'python' },
     // A passed task's side-quests run in a throwaway Python workspace (src/shared/sideQuests.js).
     sideQuests: true,
-    // A Complete or Support stage's `show: 'change'` shows only the changes
-    // (src/shared/stageChange.js; a Support stage is read as an excerpt).
+    // A Complete stage (unless `show: 'full'`) or a Support stage with `show: 'change'` shows only
+    // the change from the lesson's step before (src/shared/stageChange.js; Support is an excerpt).
     stageChangeView: true,
     // The calm code screen: one "What to change" box, the hint docked beside the task, the
     // Topic library chip in the code row (LessonTaskContent, StudentWorkspace).
@@ -175,7 +175,13 @@ export default defineModule({
         values: ['full', 'change'],
         authored: true,
         description:
-          "Complete and Support stages: 'change' shows only what changes from the student's code (default 'full'); a Support stage is read as an excerpt.",
+          "Complete stages show only what changes from the lesson's step before (default; 'full' shows the whole program); a Support stage with 'change' does too, read as an excerpt.",
+      },
+      {
+        name: 'changeNote',
+        type: 'string',
+        authored: true,
+        description: 'One plain sentence (120 characters or fewer) above the change view.',
       },
     ]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },

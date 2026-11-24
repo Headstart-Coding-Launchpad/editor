@@ -43,7 +43,12 @@ describe('validateStageChange', () => {
   })
 
   it('accepts a short changeNote, and flags a non-string or over-long one', () => {
-    const complete = (changeNote) => ({ label: 'Complete', role: 'complete', code: 'x', changeNote })
+    const complete = (changeNote) => ({
+      label: 'Complete',
+      role: 'complete',
+      code: 'x',
+      changeNote,
+    })
     expect(run({ codeStages: [complete('Add a turn line inside the loop.')] })).toEqual({
       errors: [],
       warnings: [],

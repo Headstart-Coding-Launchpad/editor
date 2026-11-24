@@ -3,8 +3,9 @@
 // and re-indent, each change anchored by the TEXT of an unchanged line beside it ("after this
 // line" / "before this line"). Never line numbers: students add lines, so numbers shift.
 //
-// Worked out when the stage opens, against the student's own editor code (chooseChangeBase), and
-// never stored. Pure and Node-safe apart from taskStages.js (no imports of its own).
+// Worked out against the lesson's step before the stage (stageChangeBases), never the student's
+// code, so every student sees the same change; never stored. Pure and Node-safe apart from
+// taskStages.js (no imports of its own).
 //
 // The steps: clean both sides (drop #@lock / #@slot / #> marker lines, trim trailing whitespace),
 // ignore blank lines, line-diff the trimmed text (LCS), then call a line whose text matches but
@@ -13,7 +14,7 @@
 // re-indents lines is found by those lines themselves. Too much change falls back to the whole
 // program with every changed line marked (`fullRows`), so no line a child must type is hidden.
 
-import { getStageRole } from './taskStages.js'
+import { getCompleteStage, getStageRole, getStarterStage } from './taskStages.js'
 
 export const CHANGE_LIMITS = {
   // More than this share of the Complete's lines new or re-indented: show the whole program.
@@ -69,24 +70,53 @@ function indentWidth(line) {
   return width
 }
 
-/** The code the change view compares with: the student's editor code, else the starter. */
-export function chooseChangeBase(editorCode, starterCode) {
-  if (cleanCodeLines(editorCode).some((line) => line.trim())) return editorCode
-  return typeof starterCode === 'string' ? starterCode : ''
+/**
+ * The code a stage's change view compares with, nearest first: the lesson's step before it, so
+ * every student sees the same change, never one worked out from their own code. The task's
+ * earlier Complete stages and whole-program Support stages (not an excerpt, `show: 'change'`),
+ * then its starter, else the Complete of the task it carries from (`lessonTasks`, groups too).
+ */
+export function stageChangeBases(task, stage, lessonTasks = []) {
+  const stages = task?.codeStages ?? []
+  const earlier = stages
+    .slice(0, Math.max(stages.indexOf(stage), 0))
+    .reverse()
+    .filter((s) => typeof s?.code === 'string' && getStageRole(s) !== 'starter')
+    .filter((s) => getStageRole(s) === 'complete' || s.show !== 'change')
+  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
+  const carried = (lessonTasks ?? [])
+    .flatMap((t) => (t?.type === 'group' ? (t.subtasks ?? []) : [t]))
+    .find((t) => task?.carryCodeFrom != null && t?.id === task.carryCodeFrom)
+  const hasStarter = cleanCodeLines(starter).some((line) => line.trim())
+  const from = hasStarter ? starter : (getCompleteStage(carried)?.stage?.code ?? starter)
+  return [...earlier.map((s) => s.code), ...(typeof from === 'string' ? [from] : [])]
 }
 
 /**
- * Whether a stage asks for the change view: a Complete or Support code stage with
- * `show: 'change'`. A Support stage is an excerpt (stageChangeIsExcerpt).
+ * The change view from the first of `bases` (stageChangeBases) it reads as a small change (an
+ * earlier hint excerpt is skipped that way), else the nearest that differs (a fall-back, the whole
+ * stage marked), else the whole stage unmarked (kind 'fallback', reason 'same').
+ */
+export function pickStageChange(bases, targetCode, options) {
+  const results = []
+  for (const base of bases.length ? bases : ['']) {
+    const change = computeStageChange(base, targetCode, options)
+    if (change.kind === 'changes') return change
+    results.push(change)
+  }
+  const same = { ...results[0], kind: 'fallback', reason: 'same' }
+  return results.find((r) => r.kind !== 'same') ?? same
+}
+
+/**
+ * Whether a stage shows the change view: a Complete code stage unless `show: 'full'`, or a
+ * Support code stage with `show: 'change'` (an excerpt, stageChangeIsExcerpt).
  */
 export function stageShowsChange(stage) {
   const role = getStageRole(stage)
-  return (
-    !!stage &&
-    (role === 'complete' || role === 'support') &&
-    stage.show === 'change' &&
-    typeof stage.code === 'string'
-  )
+  const wanted =
+    role === 'complete' ? stage?.show !== 'full' : role === 'support' && stage?.show === 'change'
+  return !!stage && wanted && typeof stage.code === 'string'
 }
 
 /** A Support stage's code is an excerpt of the program, not all of it (computeStageChange). */
@@ -191,8 +221,8 @@ function indentNote(lines) {
 }
 
 /**
- * The change from `baseCode` (the student's code) to `targetCode` (the Complete stage):
- * - kind 'same': nothing to do ("Your code already matches this step").
+ * The change from `baseCode` (the step before, stageChangeBases) to `targetCode` (the stage):
+ * - kind 'same': nothing changes (pickStageChange shows the whole stage, unmarked).
  * - kind 'changes': `hunks`, each { anchor: { lines, position: 'after'|'before' } | null,
  *   rows: [{ type: 'add'|'remove', text }], indent: { lines, direction, spaces } | null }.
  * - kind 'fallback' (with `reason`: 'most' | 'many' | 'big-add' | 'no-anchor'): show the whole

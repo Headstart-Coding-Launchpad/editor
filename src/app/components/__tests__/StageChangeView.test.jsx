@@ -102,22 +102,22 @@ describe('Complete stage change view', () => {
     expect(within(panel).getByLabelText('added: print(size)')).toBeInTheDocument()
   })
 
-  it('says so when the code already matches', () => {
+  it('shows the whole stage, unmarked and with no note, when the step before is the same', () => {
     renderPanel({ changeBase: COMPLETE })
-    expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
+    const view = screen.getByTestId('stage-change-view')
+    expect(view).toHaveTextContent('turn += 10')
+    expect(within(view).queryByLabelText(/^added/)).not.toBeInTheDocument()
+    expect(view).not.toHaveTextContent('A lot changed')
   })
 
-  it('compares with the code from when the stage opened, not each new keystroke', () => {
-    const { rerender } = renderPanel()
-    rerender(
-      <SupportStagePanel
-        stage={completeStage()}
-        lessonType="python"
-        revealed
-        changeBase={COMPLETE}
-      />
-    )
+  it('takes the first of several bases it reads as a small change, and shows the changeNote', () => {
+    renderPanel({
+      changeBase: ['turn += 10', STARTER],
+      stage: completeStage({ changeNote: '  Turn a bit more each time.  ' }),
+    })
+    expect(screen.getByText('Turn a bit more each time.')).toBeInTheDocument()
     expect(screen.getByLabelText('added: turn += 10')).toBeInTheDocument()
+    expect(screen.queryByText(/A lot changed/)).not.toBeInTheDocument()
   })
 
   it('tells its parent while the change view shows', async () => {
@@ -129,8 +129,11 @@ describe('Complete stage change view', () => {
     expect(onChangeViewShown).toHaveBeenLastCalledWith(false)
   })
 
-  it('a stage without show: change looks exactly as today', () => {
-    renderPanel({ stage: completeStage({ show: undefined }) })
+  it('a Complete stage with no show field shows the change view; show: full looks as before', () => {
+    const { unmount } = renderPanel({ stage: completeStage({ show: undefined }) })
+    expect(screen.getByLabelText('added: turn += 10')).toBeInTheDocument()
+    unmount()
+    renderPanel({ stage: completeStage({ show: 'full' }) })
     const panel = screen.getByLabelText('Complete solution stage reference')
     expect(panel.querySelector('code').textContent).toBe(COMPLETE)
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
@@ -169,28 +172,6 @@ describe('Complete stage change view', () => {
       expect(screen.queryByTestId('stage-change-view')).not.toBeInTheDocument()
       unmount()
     }
-  })
-
-  it('compares with the code from when the stage is revealed, not when the panel mounted', () => {
-    const { rerender } = renderPanel({ revealed: false })
-    // The student finishes the step before the stage is revealed.
-    rerender(
-      <SupportStagePanel
-        stage={completeStage()}
-        lessonType="python"
-        revealed={false}
-        changeBase={COMPLETE}
-      />
-    )
-    rerender(
-      <SupportStagePanel
-        stage={completeStage()}
-        lessonType="python"
-        revealed
-        changeBase={COMPLETE}
-      />
-    )
-    expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
   })
 
   it('"Show all the code" keeps the locked-line tags and the author\'s line hints', async () => {
@@ -297,9 +278,11 @@ describe('Support stage change view', () => {
     expect(within(panel).getByLabelText('added: text("Hi!", 200, 250)')).toBeInTheDocument()
   })
 
-  it('says so when their code already has every line of the hint', () => {
+  it('shows the whole hint unmarked when the step before already has every line of it', () => {
     renderSupport({ stage: supportStage({ code: 'def draw():\n    circle(200, 150, 50)' }) })
-    expect(screen.getByText('Your code already matches this step')).toBeInTheDocument()
+    const view = screen.getByTestId('stage-change-view')
+    expect(view).toHaveTextContent('circle(200, 150, 50)')
+    expect(within(view).queryByLabelText(/^added/)).not.toBeInTheDocument()
   })
 
   it('shows in the calm "What to change" box like a Complete stage', () => {

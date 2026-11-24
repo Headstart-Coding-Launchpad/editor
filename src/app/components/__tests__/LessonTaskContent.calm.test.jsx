@@ -656,6 +656,6 @@ describe('Calm code screen: the change view is the lesson step, the same for eve
     const big = stepTask({ code: 'a = 1\nb = 2\nc = 3\nprint(a, b, c)\n' })
     const { text } = rowsFor(START, big)
     expect(text).toContain('A lot changed in this step')
-    expect(text).toContain('print(a, b, c)')
+    expect(text).toContain('c = 3')
   })
 })

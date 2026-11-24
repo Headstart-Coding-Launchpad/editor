@@ -987,8 +987,8 @@ describe('LessonTaskContent Topic library chip', () => {
   })
 })
 
-// Platform request 134: an opted-in Complete stage shows only its changes against the student's
-// own code, on every path that opens it (Solo's "See complete code", the tutor's send stage, a
+// Platform request 134: a Complete stage shows only its changes from the lesson's step before it
+// (never the student's own code), on every path that opens it (Solo's "See complete code", the tutor's send stage, a
 // targeted preview), and the load button says what it does.
 describe('LessonTaskContent Complete stage change view', () => {
   const task = {
@@ -1019,7 +1019,7 @@ describe('LessonTaskContent Complete stage change view', () => {
     isTeacherEditing: false,
   }
 
-  it("opens the Complete (Solo self-reveal or the tutor's send stage) as the change view against the student's code", () => {
+  it("opens the Complete (Solo self-reveal or the tutor's send stage) as the lesson's change, whatever the student typed", () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
     render(
       <LessonTaskContent
@@ -1029,7 +1029,8 @@ describe('LessonTaskContent Complete stage change view', () => {
       />
     )
     const panel = screen.getByLabelText('Complete stage reference')
-    expect(within(panel).getByLabelText('unchanged anchor: turn += 10')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('unchanged anchor: size -= 5')).toBeInTheDocument()
+    expect(within(panel).getByLabelText('added: turn += 10')).toBeInTheDocument()
     expect(within(panel).getByLabelText('added: print(size)')).toBeInTheDocument()
     expect(panel).not.toHaveTextContent('size = 100')
   })
@@ -1067,7 +1068,7 @@ describe('LessonTaskContent Complete stage change view', () => {
     expect(screen.getByRole('button', { name: 'Replace my code with this' })).toBeInTheDocument()
   })
 
-  it('after "Replace my code with this" the view compares with the replaced code', async () => {
+  it('after "Replace my code with this" the view still shows the lesson step', async () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
     const user = userEvent.setup()
     function Harness() {
@@ -1090,9 +1091,7 @@ describe('LessonTaskContent Complete stage change view', () => {
     render(<Harness />)
     await user.click(screen.getByRole('button', { name: 'Replace my code with this' }))
     expect(
-      within(screen.getByLabelText('Complete stage reference')).getByText(
-        'Your code already matches this step'
-      )
+      within(screen.getByLabelText('Complete stage reference')).getByLabelText('added: turn += 10')
     ).toBeInTheDocument()
   })
 
@@ -1129,11 +1128,11 @@ describe('LessonTaskContent Complete stage change view', () => {
     ).toBeInTheDocument()
   })
 
-  it('a Complete stage without show: change shows the whole program as before', () => {
+  it('a Complete stage with show: full shows the whole program as before', () => {
     getLessonModule.mockReturnValue(PYTHON_MODULE)
     const fullTask = {
       ...task,
-      codeStages: [task.codeStages[0], { ...task.codeStages[1], show: undefined }],
+      codeStages: [task.codeStages[0], { ...task.codeStages[1], show: 'full' }],
     }
     render(
       <LessonTaskContent

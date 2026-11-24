@@ -2,21 +2,24 @@
 // task's `copyAfter` / `copyBefore`. Shared by the Builder and the CLI through the python, turtle
 // and arcade module definitions' validateTask. Messages are in docs/authoring/validation-errors.md.
 import { getStageRole, getStarterStage } from './taskStages.js'
-import { cleanCodeLines } from './stageChange.js'
+import { cleanCodeLines, stageShowsChange } from './stageChange.js'
 
 export const STAGE_SHOW_VALUES = ['full', 'change']
+// A stage's `changeNote`: one plain sentence above its change view.
+export const CHANGE_NOTE_MAX = 120
 
 const COPY_ANCHOR_FIELDS = ['copyAfter', 'copyBefore']
 
 /**
  * `changeView`: whether this module shows a Complete or Support stage's change view (Python).
- * Elsewhere `show: 'change'` is ignored, with a warning.
+ * Elsewhere `show: 'change'` and `changeNote` are ignored, with a warning.
  */
 export function validateStageChange(task, n, errors, warnings, { changeView = false } = {}) {
   const starterLines = starterLineSet(task)
   ;(Array.isArray(task?.codeStages) ? task.codeStages : []).forEach((stage, index) => {
-    if (stage?.show == null) return
     const where = `Task ${n} stage ${index + 1}`
+    validateChangeNote(stage, where, errors, warnings, changeView)
+    if (stage?.show == null) return
     if (!STAGE_SHOW_VALUES.includes(stage.show)) {
       errors.push(`${where} show must be "full" or "change"`)
       return
@@ -65,6 +68,20 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
         `Task ${n} ${field} "${text}" is not a line of the starter code, so students may not find it`
       )
     }
+  }
+}
+
+function validateChangeNote(stage, where, errors, warnings, changeView) {
+  const note = stage?.changeNote
+  if (note == null || note === '') return
+  if (typeof note !== 'string') {
+    errors.push(`${where} changeNote must be one plain sentence (text)`)
+  } else if (!changeView || !stageShowsChange(stage)) {
+    warnings.push(`${where} changeNote shows only above a change view; it is ignored here`)
+  } else if (note.trim().length > CHANGE_NOTE_MAX) {
+    warnings.push(
+      `${where} changeNote is ${note.trim().length} characters; keep it to one sentence of ${CHANGE_NOTE_MAX} or fewer`
+    )
   }
 }
 

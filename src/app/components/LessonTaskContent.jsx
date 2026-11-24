@@ -26,9 +26,8 @@ import {
   getEffectiveTaskMode,
   getRevealableStages,
   getStageRole,
-  getStarterStage,
 } from '../../shared/taskUtils'
-import { chooseChangeBase, stageShowsChange } from '../../shared/stageChange'
+import { stageChangeBases, stageShowsChange } from '../../shared/stageChange'
 import { getStageLineHints } from '../../shared/lineHints'
 import { getTaskLockSets } from '../../shared/lockedLines'
 import {
@@ -958,13 +957,10 @@ export default function LessonTaskContent({
           const changeViewKey = `${task?.id ?? ''}:${referenceStageIndex}`
           return (
             <SupportStagePanel
-              // One panel per task and stage, and a new one after "Load complete code": the change
-              // view reads the student's code when the stage is revealed.
+              // One panel per task and stage, and a new one after "Load complete code".
               key={`${changeViewKey}:${shownReference.kind === 'live' ? 'live' : 'stage'}:${completeLoads}`}
-              changeBase={chooseChangeBase(
-                displayCode,
-                getStarterStage(task)?.stage?.code ?? task?.starterCode
-              )}
+              // The lesson's step before this stage: the same change for every student.
+              changeBase={stageChangeBases(task, referenceStage, lesson.tasks)}
               // Each panel sets or clears only its own key, so a panel unmounting after a newer
               // one has opened leaves the newer one's value alone.
               onChangeViewShown={(shown) =>
