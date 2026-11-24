@@ -37,6 +37,8 @@ export default function MultipleChoiceQuiz({
   showCorrectAnswer,
   // Extra content under the options (a poll's "you can change your vote" line).
   footer = null,
+  // Poll only: (option, colour) => content under a word tile's words (the class's vote share).
+  optionExtra = null,
   // Poll only: tick any number of options; selectedAnswer is then a JSON array string.
   multiple = false,
 }) {
@@ -323,6 +325,7 @@ export default function MultipleChoiceQuiz({
               )
             }
 
+            const extra = optionExtra?.(option, textColour === '#fff' ? '#fff' : colour.active)
             return (
               <div
                 key={option.id}
@@ -330,7 +333,13 @@ export default function MultipleChoiceQuiz({
                 aria-checked={active}
                 aria-disabled={locked || undefined}
                 tabIndex={locked ? -1 : 0}
-                className={['quiz-word-option', optionEntrance.className].filter(Boolean).join(' ')}
+                className={[
+                  'quiz-word-option',
+                  extra && 'quiz-word-option--extra',
+                  optionEntrance.className,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 style={{
                   background: bg,
                   borderColor: border,
@@ -380,6 +389,7 @@ export default function MultipleChoiceQuiz({
                     </span>
                   )}
                 </div>
+                {extra}
               </div>
             )
           })}
