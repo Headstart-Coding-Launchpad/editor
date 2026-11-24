@@ -41,9 +41,11 @@ const CODE_FONT_STYLE = {
 }
 
 const escapeHtml = (code) => code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-const hljsName = (lang) => (Object.hasOwn(INLINE_LANG_MAP, lang) ? INLINE_LANG_MAP[lang] : lang)
+export const hljsName = (lang) =>
+  Object.hasOwn(INLINE_LANG_MAP, lang) ? INLINE_LANG_MAP[lang] : lang
 // highlight.js HTML for code in an hljs language; when that fails, the code escaped (or null).
-function highlightHtml(code, hljsLang, escapeOnFail = true) {
+// Also the click-the-line quiz's rows (src/app/components/quiz/CodeLinesQuiz.jsx).
+export function highlightHtml(code, hljsLang, escapeOnFail = true) {
   try {
     return hljs.highlight(code, { language: hljsLang }).value
   } catch {

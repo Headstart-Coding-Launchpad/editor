@@ -13,6 +13,7 @@ import quizFillBlankUi from './quiz_fill_blank/ui.jsx'
 import quizShortAnswerUi from './quiz_short_answer/ui.jsx'
 import quizConfidenceUi from './quiz_confidence/ui.jsx'
 import quizPollUi from './quiz_poll/ui.jsx'
+import quizCodeLinesUi from './quiz_code_lines/ui.jsx'
 import codeArrangeUi from './code_arrange/ui.jsx'
 import realOrAiUi from './real_or_ai/ui.jsx'
 import nextWordUi from './next_word/ui.jsx'
@@ -34,6 +35,7 @@ export const ACTIVITY_UIS = Object.freeze({
   quiz_short_answer: quizShortAnswerUi,
   quiz_confidence: quizConfidenceUi,
   quiz_poll: quizPollUi,
+  quiz_code_lines: quizCodeLinesUi,
   code_arrange: codeArrangeUi,
   real_or_ai: realOrAiUi,
   next_word: nextWordUi,

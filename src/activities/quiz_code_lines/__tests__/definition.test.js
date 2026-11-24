@@ -45,7 +45,8 @@ describe('code_lines definition', () => {
   it('keeps only real line numbers when reading a stored answer', () => {
     expect(definition.deserialize('2', TASK)).toBe('2')
     expect(definition.deserialize('9', TASK)).toBe('')
-    expect(definition.deserialize('[1,9]', { ...TASK, correctLines: [1, 2] })).toBe('[1]')
+    expect(definition.deserialize('[1,9]', { ...TASK, correctLines: [1, 2] })).toBe('1')
+    expect(definition.deserialize('[3,1]', { ...TASK, correctLines: [1, 3] })).toBe('[3,1]')
     expect(definition.deserialize('{oops', TASK)).toBe('')
   })
 

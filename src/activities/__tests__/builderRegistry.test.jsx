@@ -24,6 +24,7 @@ describe('registry helpers for the Builder (plan 2.4)', () => {
       'short_answer',
       'confidence',
       'poll',
+      'code_lines',
     ])
     expect(getGalleryActivityDefinitions().map((d) => d.id)).toEqual([
       'binary',

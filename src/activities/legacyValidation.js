@@ -26,6 +26,7 @@ import {
   optionHasPicture,
   quizHasPictureOptions,
 } from '../shared/quizPictureOptions.js'
+import { correctLinesOf, validateCodeLinesTask } from './quiz_code_lines/lines.js'
 
 // Module types a code-arrange task can run in. Python first: the Builder's default.
 export const CODE_ARRANGE_MODULE_TYPES = Object.freeze(['python', 'html', 'turtle'])
@@ -157,6 +158,8 @@ export function validateQuizTask(task, { n, errors, warnings = [] }) {
     }
     if (task.anonymiseResponses != null && typeof task.anonymiseResponses !== 'boolean')
       errors.push(`Task ${n} is a short-answer quiz but anonymiseResponses is not true or false`)
+  } else if (quizType === 'code_lines') {
+    validateCodeLinesTask(task, { n, errors, warnings })
   } else if (quizType === 'confidence') {
     // Every confidence check is rated 1 to 10 (src/shared/confidenceScale.js); a `scale` field
     // (proposed by the 2026-10-09 request, never built) changes nothing.
@@ -433,6 +436,7 @@ export function quizHasStarter(task) {
   if (quizType === 'short_answer') return !!task.explainer?.trim()
   if (quizType === 'confidence') return !!task.explainer?.trim()
   if (quizType === 'poll') return task.options?.some((option) => option.text?.trim())
+  if (quizType === 'code_lines') return !!task.code?.trim()
   return false
 }
 
@@ -446,6 +450,7 @@ export function quizHasCheckValue(task) {
   if (quizType === 'fill_blank')
     return task.blanks?.length > 0 && task.blanks.every((blank) => blank.answer?.trim())
   if (quizType === 'confidence' || quizType === 'poll') return true
+  if (quizType === 'code_lines') return correctLinesOf(task).length > 0
   return !!task.check?.value
 }
 

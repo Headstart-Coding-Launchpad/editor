@@ -27,6 +27,7 @@ export const QUIZ_TYPES = Object.freeze([
   'short_answer',
   'confidence',
   'poll',
+  'code_lines',
 ])
 
 function quizTypeOf(task) {
