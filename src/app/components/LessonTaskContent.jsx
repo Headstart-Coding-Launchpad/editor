@@ -959,7 +959,6 @@ export default function LessonTaskContent({
             <SupportStagePanel
               // One panel per task and stage, and a new one after "Load complete code".
               key={`${changeViewKey}:${shownReference.kind === 'live' ? 'live' : 'stage'}:${completeLoads}`}
-              // The lesson's step before this stage: the same change for every student.
               changeBase={stageChangeBases(task, shownStageIndex, lesson.tasks)}
               // Each panel sets or clears only its own key, so a panel unmounting after a newer
               // one has opened leaves the newer one's value alone.

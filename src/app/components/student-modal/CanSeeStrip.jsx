@@ -27,8 +27,7 @@ function itemText(item) {
   return item.on ? { main: 'Complete', detail } : { main: 'Complete: closed' }
 }
 
-// The preview's foot: who opened it and when (the log can't say it is still open), and, for a
-// change view, that it is the lesson's step (the same for every student).
+// The preview's foot: who opened it and when (the log can't say it is still open).
 function previewFoot(item, changeView) {
   if (item.key === 'copy') return 'Same view the student has. Esc closes.'
   const { detail } = itemText(item)

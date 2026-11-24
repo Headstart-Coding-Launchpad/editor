@@ -307,8 +307,7 @@ const STAGE_ROLE_HINTS = {
   complete: 'The read-only solution, which students can choose to apply',
 }
 
-// `showChangeOption`: the change view (Python): a Complete stage unless `show: 'full'`, a Support
-// stage with `show: 'change'`; then a `changeNote` (empty is stored as no field).
+// `showChangeOption`: Python's change view (stageShowsChange), with a `changeNote` (none if empty).
 function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
   function update(updates) {
     onChange({

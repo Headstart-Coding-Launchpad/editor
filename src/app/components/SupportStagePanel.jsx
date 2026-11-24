@@ -113,7 +113,6 @@ export default function SupportStagePanel({
   onToggleFolded,
 }) {
   const text = stageToText(stage, lessonType)
-  // One key for the bases, so a caller's new array each render reuses the worked-out change.
   const basesKey = changeBase == null ? null : [].concat(changeBase).join('\u0000')
   const showsChange =
     revealed &&
@@ -153,21 +152,18 @@ export default function SupportStagePanel({
   const changeRows = change ? (
     <>
       {changeNote && <p style={s.changeNote}>{changeNote}</p>}
+      {change.kind === 'fallback' && change.reason !== 'same' && (
+        <p style={s.changeNote}>
+          {excerpt ? CHANGE_VIEW_TEXT.excerptFallback : CHANGE_VIEW_TEXT.fallback}
+        </p>
+      )}
+      {/* The changes alone carry no lock tags or line hints; "Show all the code" has both. */}
       {changeViewShown ? (
-        // The changes on their own carry no lock tags or line hints (they name lines by
-        // text); "Show all the code" has both.
         change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
       ) : (
-        <>
-          {change.kind === 'fallback' && change.reason !== 'same' && (
-            <p style={s.changeNote}>
-              {excerpt ? CHANGE_VIEW_TEXT.excerptFallback : CHANGE_VIEW_TEXT.fallback}
-            </p>
-          )}
-          <FullChangeRows
-            rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
-          />
-        </>
+        <FullChangeRows
+          rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
+        />
       )}
     </>
   ) : null

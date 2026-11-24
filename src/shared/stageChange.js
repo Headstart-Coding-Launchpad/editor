@@ -73,10 +73,9 @@ function indentWidth(line) {
 export const CHANGE_NOTE_MAX = 120
 const codeKeys = (code) => cleanCodeLines(code).flatMap((l) => (l.trim() ? [l.trim()] : []))
 
-// The code the stage at `at` compares with, nearest first: the lesson's step before it (never the
-// student's code): earlier Complete stages and whole-program Support stages (as long as the code
-// the task starts from, holding half its lines: never a short hint), then the carried task's
-// Complete (`lessonTasks`, groups too), else the starter.
+// The code the stage at `at` compares with, nearest first (never the student's code): earlier
+// Complete stages and whole-program Support stages (as long as the code the task starts from and
+// holding half its lines), then the carried task's Complete (`lessonTasks`), else the starter.
 export function stageChangeBases(task, at, lessonTasks = []) {
   const carried = (lessonTasks ?? [])
     .flatMap((t) => (t?.type === 'group' ? (t.subtasks ?? []) : [t]))
@@ -84,16 +83,14 @@ export function stageChangeBases(task, at, lessonTasks = []) {
   const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
   const from = getCompleteStage(carried)?.stage?.code ?? carried?.completeCode ?? starter
   const fromKeys = codeKeys(from)
-  const whole = (s) => {
-    const keys = new Set(codeKeys(s.code))
+  const isBase = (s) => {
+    const keys = new Set(codeKeys(s?.code))
     const shared = fromKeys.filter((k) => keys.has(k)).length
-    return fromKeys.length > 0 && keys.size >= fromKeys.length && shared * 2 >= fromKeys.length
+    const whole = fromKeys.length && keys.size >= fromKeys.length && shared * 2 >= fromKeys.length
+    const ok = getStageRole(s) === 'complete' || (isSupport(s) && whole)
+    return typeof s?.code === 'string' && ok
   }
-  const earlier = (task?.codeStages ?? [])
-    .slice(0, Math.max(at, 0))
-    .reverse()
-    .filter((s) => typeof s?.code === 'string')
-    .filter((s) => getStageRole(s) === 'complete' || (isSupport(s) && whole(s)))
+  const earlier = (task?.codeStages ?? []).slice(0, Math.max(at, 0)).filter(isBase).reverse()
   return [...earlier.map((s) => s.code), ...(typeof from === 'string' ? [from] : [])]
 }
 const isSupport = (s) => getStageRole(s) === 'support' && s.show !== 'change'
