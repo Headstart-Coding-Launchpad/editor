@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import definition from '../definition.js'
+import { linesLabel, parseLinePicks } from '../lines.js'
+import { switchQuizType } from '../../quiz/quizBuilder.js'
 import { getTaskActivity } from '../../registry.pure.js'
 import { validateLessonCore } from '../../../shared/lessonValidation.js'
 import { lessonToYamlText, parseYamlLesson } from '../../../../cli/yaml-converter.mjs'
@@ -48,6 +50,29 @@ describe('code_lines definition', () => {
     expect(definition.deserialize('[1,9]', { ...TASK, correctLines: [1, 2] })).toBe('1')
     expect(definition.deserialize('[3,1]', { ...TASK, correctLines: [1, 3] })).toBe('[3,1]')
     expect(definition.deserialize('{oops', TASK)).toBe('')
+  })
+
+  it('names no pick plainly, drops repeats and lines the code no longer has', () => {
+    expect(linesLabel([])).toBe('')
+    expect(definition.summarize(TASK, '').text).toBe('No line picked')
+    expect(definition.summarize(TASK, '[7,8]').text).toBe('No line picked')
+    expect(definition.summarize(TASK, '[1,9]').text).toBe('Line 1')
+    expect(parseLinePicks('[2,2,3]')).toEqual([2, 3])
+    expect(definition.deserialize('[2,2]', TASK)).toBe('2')
+  })
+
+  it('never reads lineFeedback for a missing wrong pick', () => {
+    const task = { ...TASK, correctLines: [1, 2], lineFeedback: { undefined: 'oops' } }
+    expect(definition.grade(task, '1').suggestion).toBe('')
+    expect(definition.grade({ ...task, feedback: 'Pick two.' }, '1').suggestion).toBe('Pick two.')
+  })
+
+  it('switching another quiz to it (Builder) gives a valid task, keeping its own code', () => {
+    const mc = { id: 't9', title: 'Q', taskType: 'quiz', options: [{ id: 'a', text: 'A' }] }
+    const switched = switchQuizType(mc, 'code_lines')
+    expect(switched).toMatchObject({ quizType: 'code_lines', options: undefined, check: null })
+    expect(validate(switched).errors).toEqual([])
+    expect(switchQuizType({ ...TASK, quizType: 'poll' }, 'code_lines').code).toBe(TASK.code)
   })
 
   it('summarises the pick for the tutor card and report', () => {

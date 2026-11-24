@@ -1,6 +1,7 @@
 import React from 'react'
 import { Field } from '../ui/BuilderField.jsx'
 import { QuizActivityStudentView, makeItemsCardSummary } from '../quiz/QuizActivityViews.jsx'
+import { switchQuizType } from '../quiz/quizBuilder.js'
 import definition from './definition.js'
 import { codeRows, correctLinesOf } from './lines.js'
 
@@ -73,8 +74,7 @@ export function CodeLinesBuilder({ task, onUpdate }) {
   )
 }
 
-// The quiz itself is CodeLinesQuiz (via QuizTask); the card names the picked line(s). Switching
-// another quiz to this one keeps its fields; with no code it gets the example program and answer.
+// The quiz itself is CodeLinesQuiz (via QuizTask); the card names the picked line(s).
 export default {
   StudentView: QuizActivityStudentView,
   CardSummary: makeItemsCardSummary(definition),
@@ -94,11 +94,5 @@ export default {
     </svg>
   ),
   builderHint: 'Tap the line',
-  builderConvert: ({ options: _o, pairs: _p, blanks: _b, text: _t, ...task }) => ({
-    ...task,
-    quizType: 'code_lines',
-    ...(String(task.code ?? '').trim() ? {} : definition.defaultTask(task)),
-    taskType: 'quiz',
-    check: null,
-  }),
+  builderConvert: (task) => switchQuizType(task, 'code_lines'),
 }

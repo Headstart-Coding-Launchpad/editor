@@ -142,6 +142,19 @@ describe('Click-the-line quiz: the fun moment', () => {
     expect(line(3)).toHaveAttribute('aria-selected', 'false')
   })
 
+  it('Home and End jump to the first and last line, and Tab lands on the row last focused', () => {
+    render(<Host task={TASK} />)
+    line(1).focus()
+    fireEvent.keyDown(line(1), { key: 'End' })
+    expect(line(5)).toHaveFocus()
+    expect(line(5)).toHaveAttribute('tabindex', '0')
+    expect(line(1)).toHaveAttribute('tabindex', '-1')
+    fireEvent.keyDown(line(5), { key: 'Home' })
+    expect(line(1)).toHaveFocus()
+    fireEvent.keyDown(line(1), { key: 'ArrowDown' })
+    expect(line(2)).toHaveAttribute('tabindex', '0')
+  })
+
   it('every pick reaches the tutor as the answer payload ("3", or "[4,5]" for two lines)', async () => {
     const user = userEvent.setup()
     const sent = []
@@ -162,6 +175,33 @@ describe('Click-the-line quiz: what the tutor sees', () => {
     render(<ActivityView task={TASK} state="3" readOnly teacher result={null} />)
     expect(line(3)).toHaveAttribute('aria-selected', 'true')
     expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
+  })
+
+  it('the tutor sees the answer line marked and the pick as "not checked yet"', () => {
+    render(<ActivityView task={TASK} state="4" readOnly teacher result={null} />)
+    expect(line(3)).toHaveAttribute('data-answer')
+    expect(within(line(3)).getByText('answer')).toBeInTheDocument()
+    expect(line(4)).not.toHaveAttribute('data-verdict')
+    expect(screen.getByRole('status')).toHaveTextContent('Picked line 4 (not checked yet)')
+  })
+
+  it('after Try again the host clears submitted, so a new pick is a draft on the tutor screen', () => {
+    // A wrong Check of line 4, then Try again and line 2: useActivityState (retryClearsCheck)
+    // clears the run status, so the mirrored result is no longer submitted.
+    const { rerender } = render(
+      <ActivityView
+        task={TASK}
+        state="4"
+        readOnly
+        teacher
+        result={{ submitted: true, passed: false }}
+      />
+    )
+    expect(line(4)).toHaveAttribute('data-verdict', 'wrong')
+    rerender(<ActivityView task={TASK} state="2" readOnly teacher result={null} />)
+    expect(line(2)).not.toHaveAttribute('data-verdict')
+    expect(line(3)).not.toHaveAttribute('data-verdict')
+    expect(screen.getByRole('status')).toHaveTextContent('Picked line 2 (not checked yet)')
   })
 
   it('the tutor view marks a checked answer right or wrong', () => {

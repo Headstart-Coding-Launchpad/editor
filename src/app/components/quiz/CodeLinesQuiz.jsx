@@ -9,16 +9,20 @@ import { baseStyles as s } from './quizUtils'
 // Check marks it here: the right line(s) green, a wrong pick amber, one line saying why, and Try
 // again. A pick is an in-progress answer (onSelectAnswer(answer, null): mirrored to the tutor as
 // currentAnswer); Check is the final one, with its pass or fail for the Builder preview. On the
-// tutor's screens (disabled) the rows show the student's pick, and the verdict once checked.
+// tutor's screens (disabled) the rows show the student's pick, the answer line(s) dashed green
+// (showCorrectAnswer) and the verdict once checked; a pick after Try again is a draft again (the
+// host clears `submitted`, retryClearsCheck).
 export default function CodeLinesQuiz(props) {
   const { task, selectedAnswer: answer, onSelectAnswer: send, submitted, disabled } = props
   const rows = L.codeRows(task)
   const lang = hljsName(task?.language || 'python')
   const html = splitHighlightedLines(highlightHtml(rows.join('\n'), lang))
-  const picks = L.parseLinePicks(answer)
+  const picks = L.parseLinePicks(answer, task)
   const need = L.pickCountOf(task)
   const right = L.correctLinesOf(task)
+  const showAnswer = disabled && props.showCorrectAnswer
   const [retrying, setRetrying] = React.useState(false)
+  const [focus, setFocus] = React.useState(Math.max(0, (picks[0] ?? 1) - 1))
   const listRef = React.useRef(null)
   const id = React.useId()
   const full = picks.length === need
@@ -32,11 +36,17 @@ export default function CodeLinesQuiz(props) {
     const next = kept.length < picks.length ? kept : need === 1 ? [n] : [...picks, n].slice(-need)
     send?.(L.encodeLinePicks(next), null)
   }
+  // Roving focus: arrows move one row, Home / End to the first / last; Space or Enter picks.
   function onKeyDown(event, index) {
-    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key]
-    if (step) listRef.current?.children[index + step]?.focus()
-    else if (event.key === ' ' || event.key === 'Enter') toggle(index + 1)
-    else return
+    const last = rows.length - 1
+    const moves = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }
+    const to =
+      event.key === 'Home' ? 0 : event.key === 'End' ? last : index + (moves[event.key] ?? NaN)
+    if (to >= 0 && to <= last) {
+      setFocus(to)
+      listRef.current?.children[to]?.focus()
+    } else if (event.key === ' ' || event.key === 'Enter') toggle(index + 1)
+    else if (!(event.key in moves)) return
     event.preventDefault()
   }
   // [verdict mark, tag words] for line n: the tag means colour is never the only cue.
@@ -45,19 +55,23 @@ export default function CodeLinesQuiz(props) {
       ? ['right', picked ? '✓ Yes!' : '✓ This is the one']
       : verdict && picked
         ? ['wrong', 'Your pick']
-        : [undefined, picked ? '✓ picked' : '']
+        : [undefined, picked ? '✓ picked' : showAnswer && right.includes(n) ? 'answer' : '']
   const one = need === 1
   const status = verdict
     ? verdict.passed
       ? `Yes! ${task?.explanation ?? ''}`
       : `Not quite. ${verdict.suggestion}`
-    : !picks.length
-      ? one
-        ? 'Tap a line to pick it.'
-        : `Tap ${need} lines to pick them.`
-      : one
-        ? `You picked line ${picks[0]}.`
-        : `${picks.length} of ${need} lines picked`
+    : disabled
+      ? picks.length
+        ? `Picked ${L.linesLabel(picks).toLowerCase()} (not checked yet)`
+        : 'No line picked yet'
+      : !picks.length
+        ? one
+          ? 'Tap a line to pick it.'
+          : `Tap ${need} lines to pick them.`
+        : one
+          ? `You picked line ${picks[0]}.`
+          : `${picks.length} of ${need} lines picked`
   const retry = verdict && !verdict.passed
 
   return (
@@ -87,11 +101,13 @@ export default function CodeLinesQuiz(props) {
                   aria-selected={picked}
                   aria-label={`Line ${n}: ${code}`}
                   aria-describedby={tag ? `${id}-${n}` : undefined}
-                  tabIndex={n === (picks[0] ?? 1) ? 0 : -1}
+                  tabIndex={index === focus ? 0 : -1}
                   className="cl-quiz__row"
                   data-line={n}
                   data-picked={picked || undefined}
                   data-verdict={mark}
+                  data-answer={(showAnswer && right.includes(n)) || undefined}
+                  onFocus={() => setFocus(index)}
                   onClick={() => toggle(n)}
                   onKeyDown={(event) => onKeyDown(event, index)}
                 >
@@ -108,13 +124,15 @@ export default function CodeLinesQuiz(props) {
         </div>
       </div>
       <div className="cl-quiz__footer">
-        <p
-          role="status"
-          className="cl-quiz__status"
-          data-verdict={verdict && (retry ? 'wrong' : 'right')}
-        >
-          {status}
-        </p>
+        {(!disabled || props.showResult) && (
+          <p
+            role="status"
+            className="cl-quiz__status"
+            data-verdict={verdict && (retry ? 'wrong' : 'right')}
+          >
+            {status}
+          </p>
+        )}
         {!disabled && (!verdict || retry) && (
           <button
             type="button"

@@ -45,13 +45,12 @@ export default defineQuizActivity('code_lines', {
   solutionState: (task) => lines.encodeLinePicks(lines.correctLinesOf(task)),
   serialize: (state) => (typeof state === 'string' ? state : ''),
   // Only lines the code still has are an answer (a block shortened since drops the rest).
-  deserialize: (raw, task) =>
-    lines.encodeLinePicks(
-      lines.parseLinePicks(raw).filter((n) => n <= lines.codeRows(task).length)
-    ),
+  deserialize: (raw, task) => lines.encodeLinePicks(lines.parseLinePicks(raw, task)),
   grade: lines.gradeLinePicks,
+  // Try again turns a checked answer back into a draft (the tutor stops seeing a verdict).
+  retryClearsCheck: true,
   summarize: (task, state) => ({
-    text: lines.linesLabel(lines.parseLinePicks(state)),
+    text: lines.linesLabel(lines.parseLinePicks(state, task)) || 'No line picked',
     tone: 'neutral',
   }),
   printHtml: (task, { esc }) => {

@@ -168,7 +168,10 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
   or a JSON array `"[2,3]"` (pick order) for a two-line question; each tap is a discrete change,
   Check is the final answer (`on_submit`, graded against `correctLines` in any order). Its UI is
   `src/app/components/quiz/CodeLinesQuiz.jsx` (via `QuizTask`); its lesson rules live in
-  `quiz_code_lines/lines.js`, called by `legacyValidation.js`.
+  `quiz_code_lines/lines.js`, called by `legacyValidation.js`. Its definition sets
+  `retryClearsCheck`: the first change after a Check (Try again) makes the answer a draft again,
+  so `useActivityState` clears the run status and check (`writeStudentRun` with `status: null`,
+  `checkPassed: null`, one write) and the tutor's view stops marking the new pick.
 - Quiz-only rules kept via `isLegacyQuizTask`: the feedback banner shows only for a quiz with a
   `check` or an auto-marked match / fill-in-the-gaps; the StudentModal hides the stage dropdown
   and Edit Code on quizzes.

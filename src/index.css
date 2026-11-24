@@ -2665,6 +2665,13 @@ select {
   border-color: #f59e0b;
   background: #fef3c7;
 }
+.cl-quiz__row[data-answer]:not([data-verdict]) {
+  border-style: dashed;
+  border-color: #16a34a;
+}
+.cl-quiz__row[data-answer]:not([data-verdict]) .cl-quiz__tag {
+  color: #15803d;
+}
 .cl-quiz__lines[aria-disabled='true'] .cl-quiz__row {
   cursor: default;
 }

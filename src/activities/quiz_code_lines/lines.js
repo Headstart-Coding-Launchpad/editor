@@ -6,8 +6,9 @@ export const codeRows = (task) => String(task?.code ?? '').split(/\r\n?|\n/)
 export const correctLinesOf = (task) => (Array.isArray(task?.correctLines) ? task.correctLines : [])
 export const pickCountOf = (task) => task?.pick ?? Math.max(1, correctLinesOf(task).length)
 
-/** The picked line numbers in a stored answer ("3" or "[4,5]"); [] for anything else. */
-export function parseLinePicks(raw) {
+/** The picked line numbers in a stored answer ("3" or "[4,5]"), each once; [] for anything else.
+ * With `task`, only lines its code has (an answer saved before the code was shortened). */
+export function parseLinePicks(raw, task = null) {
   let value = raw
   try {
     value = typeof raw === 'string' && raw.startsWith('[') ? JSON.parse(raw) : raw
@@ -15,25 +16,30 @@ export function parseLinePicks(raw) {
     return []
   }
   const list = Array.isArray(value) ? value : String(value ?? '').trim() ? [Number(value)] : []
-  return list.filter((n) => Number.isInteger(n) && n > 0)
+  const max = task ? codeRows(task).length : Infinity
+  return [...new Set(list.filter((n) => Number.isInteger(n) && n > 0 && n <= max))]
 }
 
 export const encodeLinePicks = (picks) =>
   picks.length === 0 ? '' : picks.length === 1 ? String(picks[0]) : JSON.stringify(picks)
 
+/** "Line 3", "Lines 4 and 5"; '' for no pick. */
 export const linesLabel = (picks) =>
-  picks.length === 1
-    ? `Line ${picks[0]}`
-    : `Lines ${picks.slice(0, -1).join(', ')} and ${picks.at(-1)}`
+  picks.length === 0
+    ? ''
+    : picks.length === 1
+      ? `Line ${picks[0]}`
+      : `Lines ${picks.slice(0, -1).join(', ')} and ${picks.at(-1)}`
 
 /** `{ passed, suggestion }`: the picks match correctLines in any order. A wrong pick's words are
  * its lineFeedback, else the task's feedback, else its explanation. */
 export function gradeLinePicks(task, answer) {
-  const picks = parseLinePicks(answer)
+  const picks = parseLinePicks(answer, task)
   const right = correctLinesOf(task)
   const passed = picks.length === right.length && right.every((n) => picks.includes(n))
   const wrong = picks.find((n) => !right.includes(n))
-  const feedback = task?.lineFeedback?.[wrong] ?? task?.feedback ?? task?.explanation ?? ''
+  const own = wrong == null ? undefined : task?.lineFeedback?.[wrong]
+  const feedback = own ?? task?.feedback ?? task?.explanation ?? ''
   return { passed, suggestion: passed ? '' : String(feedback).trim() }
 }
 
