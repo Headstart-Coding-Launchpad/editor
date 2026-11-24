@@ -70,7 +70,7 @@ export function quizWordLayout(count, width, wasWide, long = false, screenWide =
   const cols = count === 5 ? 1 : count === 3 ? (row && !long ? 3 : 1) : count === 6 && row ? 3 : 2
   const n = Math.max(1, Math.min(count, cols))
   const rows = Math.ceil(count / n)
-  const rowMax = n === 1 ? (count <= 3 ? 110 : 76) : ([320, 250, 160][rows - 1] ?? null)
+  const rowMax = n === 1 ? (count <= 3 ? 110 : 76) : ([320, 180, 160][rows - 1] ?? null)
   return { wide, cols: n, rowMax }
 }
 
