@@ -54,7 +54,7 @@ A feature that answers "no" to 1, 2 or 4 is incomplete. Ship it only with the ga
 | Zip files | `fflate` (approved 2026-10-14), loaded with `import()` only when Export work builds a `.zip` or `.sb3` |
 | Env vars | App: `.env` in the repo root (Vite default). CLI: `cli/.env` (`GOOGLE_APPLICATION_CREDENTIALS`). Both gitignored |
 
-Do not add major dependencies without confirming with the user.
+Do not add any new dependency without asking first (the rule lives in `CLAUDE.md`).
 
 ## Architecture Constraints
 
