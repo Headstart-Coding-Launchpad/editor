@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   CHANGE_LIMITS,
-  chooseChangeBase,
   cleanCodeLines,
   computeStageChange,
   copyAnchorRows,
   pairInlineRows,
+  pickStageChange,
+  stageChangeBases,
   stageChangeIsExcerpt,
   stageShowsChange,
 } from '../stageChange.js'
@@ -352,23 +353,62 @@ describe('computeStageChange', () => {
   })
 })
 
-describe('chooseChangeBase', () => {
-  it("uses the student's editor code when it has code", () => {
-    expect(chooseChangeBase('x = 1', 'starter')).toBe('x = 1')
+// The change view compares a stage with the lesson's step before it, never the student's code
+// (Plans/Show only the changing bit - facts - 24 Nov.md, option E).
+describe('stageChangeBases', () => {
+  const START = 'total = 0\nfor n in range(5):\n    total += n\nprint(total)'
+  const STEP = 'total = 0\nfor n in range(5):\n    total += n\n    print(n)\nprint(total)'
+  const DONE = `${STEP}\nprint("done")`
+  const task = (...stages) => ({ id: 2, codeStages: stages })
+
+  it('is the earlier Complete or whole Support stages, nearest first, then the starter', () => {
+    const t = task(
+      { role: 'starter', code: START },
+      { role: 'support', code: STEP },
+      { role: 'support', show: 'change', code: '    print(n)' },
+      { role: 'complete', code: DONE }
+    )
+    expect(stageChangeBases(t, t.codeStages[3])).toEqual([STEP, START])
+    expect(stageChangeBases(t, t.codeStages[2])).toEqual([STEP, START])
+    expect(stageChangeBases(t, t.codeStages[1])).toEqual([START])
   })
 
-  it('uses the starter when the editor is empty or only markers', () => {
-    expect(chooseChangeBase('   \n', 'starter')).toBe('starter')
-    expect(chooseChangeBase('#> hint only', 'starter')).toBe('starter')
-    expect(chooseChangeBase(null, null)).toBe('')
+  it('uses the carried task Complete when the task has no starter of its own', () => {
+    const t = { id: 2, carryCodeFrom: 1, codeStages: [{ role: 'complete', code: DONE }] }
+    const lessonTasks = [
+      { type: 'group', subtasks: [{ id: 1, codeStages: [{ role: 'complete', code: STEP }] }] },
+      t,
+    ]
+    expect(stageChangeBases(t, t.codeStages[0], lessonTasks)).toEqual([STEP])
+    expect(stageChangeBases(t, t.codeStages[0])).toEqual([])
+  })
+})
+
+describe('pickStageChange', () => {
+  const START = 'a = 1\nb = 2\nprint(a)'
+  const DONE = 'a = 1\nb = 2\nprint(a)\nprint(b)'
+
+  it('takes the nearest base it reads as a small change, skipping a hint excerpt', () => {
+    const change = pickStageChange(['print(b)'], DONE)
+    expect(change.kind).toBe('fallback')
+    const picked = pickStageChange(['print(b)', START], DONE)
+    expect(picked.kind).toBe('changes')
+    expect(picked.hunks[0].rows).toEqual([{ type: 'add', text: 'print(b)' }])
+  })
+
+  it('shows the whole stage, unmarked, when no step before it differs', () => {
+    const change = pickStageChange([DONE], DONE)
+    expect(change).toMatchObject({ kind: 'fallback', reason: 'same' })
+    expect(change.fullRows.every((row) => row.type === 'same')).toBe(true)
+    expect(pickStageChange([], DONE)).toMatchObject({ kind: 'fallback', reason: 'most' })
   })
 })
 
 describe('stageShowsChange', () => {
-  it('is true only for a Complete or Support code stage with show: change', () => {
+  it('is on for a Complete code stage unless show: full, and a Support one with show: change', () => {
     expect(stageShowsChange({ role: 'complete', show: 'change', code: 'x' })).toBe(true)
     expect(stageShowsChange({ role: 'support', show: 'change', code: 'x' })).toBe(true)
-    expect(stageShowsChange({ role: 'complete', code: 'x' })).toBe(false)
+    expect(stageShowsChange({ role: 'complete', code: 'x' })).toBe(true)
     expect(stageShowsChange({ role: 'complete', show: 'full', code: 'x' })).toBe(false)
     expect(stageShowsChange({ role: 'support', code: 'x' })).toBe(false)
     expect(stageShowsChange({ role: 'starter', show: 'change', code: 'x' })).toBe(false)

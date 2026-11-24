@@ -597,3 +597,65 @@ describe('Calm code screen: the hint after the student moves on', () => {
     expect(screen.queryByText('Try circle(')).not.toBeInTheDocument()
   })
 })
+
+// Fun moment (Ryan, 24 Nov sketch): a student who is a little off from the lesson (a renamed
+// variable, a typo, an extra line) sees the same one-line change as a student who matches: the
+// lesson's own step, placed after its line, with the author's one-line note. Never their own
+// lines in red, never the whole program.
+describe('Calm code screen: the change view is the lesson step, the same for every student', () => {
+  const START = 'total = 0\nfor n in range(5):\n    total += n\nprint(total)\n'
+  const stepTask = (complete = {}) => ({
+    ...task,
+    codeStages: [
+      { label: 'Starter', role: 'starter', code: START },
+      {
+        label: 'Complete solution',
+        role: 'complete',
+        changeNote: 'Add a line inside the loop that says each number.',
+        code: 'total = 0\nfor n in range(5):\n    total += n\n    print("added", n)\nprint(total)\n',
+        ...complete,
+      },
+    ],
+  })
+  const OFF =
+    'score = 0\nfor n in range(5):\n    score += n\n    print(n)\nprint(score)\nprint("done")\n'
+  const rowsFor = (displayCode, t = stepTask()) => {
+    const { unmount } = render(
+      <LessonTaskContent {...baseProps} task={t} displayCode={displayCode} cs={csAt()} />
+    )
+    const view = screen.getByTestId('stage-change-view')
+    const rows = within(view)
+      .queryAllByRole('listitem')
+      .map((row) => row.getAttribute('aria-label'))
+    const text = view.textContent
+    unmount()
+    return { rows, text }
+  }
+
+  it('shows an off student the same rows as a matching one, with the note and no red rows', () => {
+    const matching = rowsFor(START)
+    const off = rowsFor(OFF)
+    expect(off.rows).toEqual(matching.rows)
+    expect(off.rows).toContain('added: print("added", n)')
+    expect(off.rows.some((label) => /^removed/.test(label))).toBe(false)
+    expect(off.text).toContain('Add a line inside the loop that says each number.')
+    expect(off.text).toContain('after this line')
+    expect(off.text).not.toContain('A lot changed')
+  })
+
+  it('a Complete stage with no show field is the change view; show: full opts out', () => {
+    expect(rowsFor(OFF).rows).toContain('added: print("added", n)')
+    render(<LessonTaskContent {...baseProps} task={stepTask({ show: 'full' })} cs={csAt()} />)
+    expect(screen.queryByTestId('stage-change-view')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Complete solution stage reference')).toHaveTextContent(
+      'print("added", n)'
+    )
+  })
+
+  it("falls back to the whole stage when the lesson's own step is too big", () => {
+    const big = stepTask({ code: 'a = 1\nb = 2\nc = 3\nprint(a, b, c)\n' })
+    const { text } = rowsFor(START, big)
+    expect(text).toContain('A lot changed in this step')
+    expect(text).toContain('print(a, b, c)')
+  })
+})

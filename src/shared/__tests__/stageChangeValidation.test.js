@@ -42,6 +42,23 @@ describe('validateStageChange', () => {
     ])
   })
 
+  it('accepts a short changeNote, and flags a non-string or over-long one', () => {
+    const complete = (changeNote) => ({ label: 'Complete', role: 'complete', code: 'x', changeNote })
+    expect(run({ codeStages: [complete('Add a turn line inside the loop.')] })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(run({ codeStages: [complete(3)] }).errors).toEqual([
+      'Task 1 stage 1 changeNote must be one plain sentence (text)',
+    ])
+    expect(run({ codeStages: [complete('x'.repeat(121))] }).warnings).toEqual([
+      'Task 1 stage 1 changeNote is 121 characters; keep it to one sentence of 120 or fewer',
+    ])
+    expect(run({ codeStages: [{ ...starter, changeNote: 'Hi' }] }).warnings).toEqual([
+      'Task 1 stage 1 changeNote shows only above a change view; it is ignored here',
+    ])
+  })
+
   describe('a Support stage with show: change (read as an excerpt)', () => {
     const support = (code) => ({ label: 'Hint', role: 'support', code, show: 'change' })
 
