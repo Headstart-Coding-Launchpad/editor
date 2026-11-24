@@ -1,10 +1,14 @@
-// Marked-line code blocks (docs/authoring/markdown-renderer.md, "Line numbers and marked
+﻿// Marked-line code blocks (docs/authoring/markdown-renderer.md, "Line numbers and marked
 // lines"): ```python {lines=3} draws a numbered block with line 3 marked.
-import React from 'react'
 import { render } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { MarkdownRenderer } from '../markdown'
-import { parseCodeLinesMeta, findCodeLineProblems } from '../markdown/codeLines'
+import {
+  parseCodeLinesMeta,
+  findCodeLineProblems,
+  splitHighlightedLines,
+} from '../markdown/codeLines'
+import { validateLessonCore } from '../lessonValidation.js'
 
 vi.mock('../topicLibrary', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -78,16 +82,41 @@ describe('Fun moment: the marked line stands out in the question', () => {
 })
 
 describe('parseCodeLinesMeta', () => {
-  it('reads lines, ranges and numbered', () => {
-    expect(parseCodeLinesMeta('{lines=3,5-6}')).toEqual({ numbered: true, marks: [3, 5, 6] })
-    expect(parseCodeLinesMeta('{numbered}')).toEqual({ numbered: true, marks: [] })
-    expect(parseCodeLinesMeta('{ numbered lines=2 }')).toEqual({ numbered: true, marks: [2] })
+  it('reads lines, ranges, numbered and unknown words', () => {
+    expect(parseCodeLinesMeta('{lines=3,6-5}')).toEqual({
+      numbered: true,
+      marks: [3, 5, 6],
+      unknown: [],
+    })
+    expect(parseCodeLinesMeta('{numbered}')).toEqual({ numbered: true, marks: [], unknown: [] })
+    expect(parseCodeLinesMeta(' { numbered lines=2 big } ')).toEqual({
+      numbered: true,
+      marks: [2],
+      unknown: ['big'],
+    })
+    expect(parseCodeLinesMeta('{colour=red}')).toEqual({
+      numbered: false,
+      marks: [],
+      unknown: ['colour=red'],
+    })
   })
 
-  it('is null for no attribute or nothing it knows', () => {
+  it('is null with no attribute', () => {
     expect(parseCodeLinesMeta('')).toBeNull()
     expect(parseCodeLinesMeta(undefined)).toBeNull()
-    expect(parseCodeLinesMeta('{colour=red}')).toBeNull()
+    expect(parseCodeLinesMeta('title="x"')).toBeNull()
+  })
+
+  it('splits highlighted HTML per line, re-opening a string that runs across lines', () => {
+    expect(splitHighlightedLines('a<span class="s">"x\ny"</span>\nb')).toEqual([
+      'a<span class="s">"x</span>',
+      '<span class="s">y"</span>',
+      'b',
+    ])
+  })
+
+  it('leaves an unknown attribute as a plain block', () => {
+    expect(renderBlock('python {colour=red}').rows).toHaveLength(0)
   })
 })
 
@@ -101,11 +130,41 @@ describe('findCodeLineProblems', () => {
     expect(findCodeLineProblems(fence('python {lines=3 colour=red}'))).toEqual([
       { number: 1, problem: 'unknown-option', detail: 'colour=red' },
     ])
-    expect(findCodeLineProblems('x\n\n```\nplain\n```\n' + fence('python {lines=2,7-8}'))).toEqual(
-      [{ number: 2, problem: 'out-of-range', detail: '7, 8 (the block has 5 lines)' }]
-    )
+    expect(findCodeLineProblems('x\n\n```\nplain\n```\n' + fence('python {lines=2,7-8}'))).toEqual([
+      { number: 2, problem: 'out-of-range', detail: '7, 8 (the block has 5 lines)' },
+    ])
     expect(findCodeLineProblems(fence('python {lines=two}'))).toEqual([
       { number: 1, problem: 'unknown-option', detail: 'lines=two' },
     ])
+  })
+})
+
+describe('lesson validation', () => {
+  const lesson = (explainer) => ({
+    id: 'lines',
+    type: 'python',
+    title: 'Reading code',
+    tasks: [
+      {
+        id: 1,
+        title: 'Loop',
+        explainer,
+        starterCode: 'x = 1',
+        check: { type: 'code_contains', value: 'x' },
+      },
+    ],
+  })
+
+  it('warns, never errors, about a bad attribute or a mark past the end', () => {
+    const good = validateLessonCore(lesson(fence('python {lines=3}')))
+    expect(good.warnings.filter((w) => w.includes('code block'))).toEqual([])
+    const { errors, warnings } = validateLessonCore(lesson(fence('python {lines=9 big}')))
+    expect(errors).toEqual([])
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        'Task 1 explainer code block 1 has unrecognised words in its {...}: big (use lines=3,5-6 or numbered)',
+        'Task 1 explainer code block 1 marks lines past its end: 9 (the block has 5 lines)',
+      ])
+    )
   })
 })

@@ -24,6 +24,7 @@ import {
 } from './markdown/RealScratchBlocks'
 import { parseMarkdownBlocks } from './markdown/exampleFence.js'
 import { ExampleFenceButton } from './markdown/ExampleFenceButton.jsx'
+import { codeLinesForFence, markedLinesLabel, splitHighlightedLines } from './markdown/codeLines.js'
 import { anchorProps, blockAnchor, rehypeMarkdownAnchors, tableRowAnchor } from './markdown/anchors'
 import { staggerStyle } from './motion'
 
@@ -39,15 +40,19 @@ const CODE_FONT_STYLE = {
   fontFeatureSettings: '"liga" 0, "calt" 0',
 }
 
+// highlight.js HTML for code (a fence or hljs language), or the code escaped when unknown.
+function highlightHtml(code, lang) {
+  try {
+    return hljs.highlight(code, { language: INLINE_LANG_MAP[lang] ?? lang }).value
+  } catch {
+    return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+}
+
 function InlineHighlightedCode({ lang, code }) {
   const hljsLang = INLINE_LANG_MAP[lang]
   const multiline = String(code ?? '').includes('\n')
-  let highlighted
-  try {
-    highlighted = hljs.highlight(code, { language: hljsLang }).value
-  } catch {
-    highlighted = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  }
+  const highlighted = highlightHtml(code, hljsLang)
   return (
     <code
       className={`language-${hljsLang}`}
@@ -79,14 +84,7 @@ function ExampleCode({ language, code }) {
   const Blocks = EXAMPLE_BLOCK_RENDERERS[language]
   if (Blocks) return <Blocks code={code} />
   const hljsLang = INLINE_LANG_MAP[language]
-  let highlighted = null
-  if (hljsLang) {
-    try {
-      highlighted = hljs.highlight(code, { language: hljsLang }).value
-    } catch {
-      highlighted = null
-    }
-  }
+  const highlighted = hljsLang ? highlightHtml(code, hljsLang) : null
   return (
     <pre
       style={{
@@ -197,6 +195,25 @@ function preserveInlineCodeLineBreaks(text) {
   return output
 }
 
+// The `a` renderer: a [[topic]] link opens its topic card; other links stay links where
+// keepLinks (block Markdown) and plain text otherwise.
+function topicLinkRenderer(topics, keepLinks, onOpen) {
+  return function TopicLink({ href, children }) {
+    const topicId = parseTopicHref(href)
+    if (!topicId && keepLinks) return <a href={href}>{children}</a>
+    const topic = topicId && topics.find((item) => item.id === topicId)
+    if (!topic) return <span>{children}</span>
+    return (
+      <TopicReference
+        topic={topic}
+        label={children}
+        renderSummary={InlineMarkdown}
+        onOpen={onOpen}
+      />
+    )
+  }
+}
+
 export function InlineMarkdown({ content, topicType = null }) {
   const topicEnabled =
     String(content ?? '').includes('[[') || String(content ?? '').includes('#topic/')
@@ -206,23 +223,11 @@ export function InlineMarkdown({ content, topicType = null }) {
   const [selectedTopicId, setSelectedTopicId] = React.useState('')
   const inlineComponents = {
     ...components,
-    a({ href, children }) {
-      const topicId = parseTopicHref(href)
-      const topic = topicId && topics.find((item) => item.id === topicId)
-      if (!topic) return <span>{children}</span>
-      return (
-        <TopicReference
-          topic={topic}
-          label={children}
-          renderSummary={InlineMarkdown}
-          onOpen={(id) => {
-            setSelectedTopicId(id)
-            setLibraryOpen(true)
-            badgeSignals?.reportTopicOpen?.(id, { via: 'card' })
-          }}
-        />
-      )
-    },
+    a: topicLinkRenderer(topics, false, (id) => {
+      setSelectedTopicId(id)
+      setLibraryOpen(true)
+      badgeSignals?.reportTopicOpen?.(id, { via: 'card' })
+    }),
   }
 
   return (
@@ -279,25 +284,11 @@ function MarkdownTable({ headers, align, rows, blockIndex = 0 }) {
   )
 }
 
-const headingBase = {
-  fontFamily: 'var(--font-title)',
-  fontWeight: 700,
-  lineHeight: 1.25,
-}
+const headingBase = { fontFamily: 'var(--font-title)', fontWeight: 700, lineHeight: 1.25 }
 
 const tableStyles = {
-  scroll: {
-    overflowX: 'auto',
-    margin: '10px 0',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    minWidth: '320px',
-    fontSize: '0.92em',
-  },
+  scroll: { overflowX: 'auto', margin: '10px 0', border: '1px solid #e5e7eb', borderRadius: '8px' },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: '320px', fontSize: '0.92em' },
   th: {
     background: '#f7f2ff',
     color: 'var(--colour-primary-dark)',
@@ -307,34 +298,14 @@ const tableStyles = {
     borderBottom: '1px solid #e5e7eb',
     verticalAlign: 'top',
   },
-  td: {
-    padding: '8px 10px',
-    borderTop: '1px solid #f0f0f0',
-    verticalAlign: 'top',
-  },
+  td: { padding: '8px 10px', borderTop: '1px solid #f0f0f0', verticalAlign: 'top' },
 }
 
 const CALLOUT_VARIANTS = {
-  warning: {
-    border: '#f59e0b',
-    background: '#fffbeb',
-    color: '#78350f',
-  },
-  error: {
-    border: '#ef4444',
-    background: '#fef2f2',
-    color: '#7f1d1d',
-  },
-  success: {
-    border: '#22c55e',
-    background: '#f0fdf4',
-    color: '#14532d',
-  },
-  info: {
-    border: '#3b82f6',
-    background: '#eff6ff',
-    color: '#1e3a8a',
-  },
+  warning: { border: '#f59e0b', background: '#fffbeb', color: '#78350f' },
+  error: { border: '#ef4444', background: '#fef2f2', color: '#7f1d1d' },
+  success: { border: '#22c55e', background: '#f0fdf4', color: '#14532d' },
+  info: { border: '#3b82f6', background: '#eff6ff', color: '#1e3a8a' },
   default: {
     border: 'var(--colour-secondary)',
     background: '#fffaf0',
@@ -391,37 +362,20 @@ function useHeadingStyle(sizeRem, margin) {
   }
 }
 
-function Heading1({ children, ...props }) {
-  return (
-    <h1 {...anchorProps(props)} style={useHeadingStyle(1.45, '4px 0 10px')}>
-      {children}
-    </h1>
-  )
+// One heading component per level (h1-h4): its size and margins scale with the text.
+function markdownHeading(Tag, sizeRem, margin) {
+  return function MarkdownHeading({ children, ...props }) {
+    return (
+      <Tag {...anchorProps(props)} style={useHeadingStyle(sizeRem, margin)}>
+        {children}
+      </Tag>
+    )
+  }
 }
-
-function Heading2({ children, ...props }) {
-  return (
-    <h2 {...anchorProps(props)} style={useHeadingStyle(1.22, '4px 0 8px')}>
-      {children}
-    </h2>
-  )
-}
-
-function Heading3({ children, ...props }) {
-  return (
-    <h3 {...anchorProps(props)} style={useHeadingStyle(1.05, '8px 0 6px')}>
-      {children}
-    </h3>
-  )
-}
-
-function Heading4({ children, ...props }) {
-  return (
-    <h4 {...anchorProps(props)} style={useHeadingStyle(0.95, '8px 0 4px')}>
-      {children}
-    </h4>
-  )
-}
+const Heading1 = markdownHeading('h1', 1.45, '4px 0 10px')
+const Heading2 = markdownHeading('h2', 1.22, '4px 0 8px')
+const Heading3 = markdownHeading('h3', 1.05, '8px 0 6px')
+const Heading4 = markdownHeading('h4', 0.95, '8px 0 4px')
 
 function MarkdownCode({ node: _node, className, children, ...props }) {
   const isInBlock = React.useContext(BlockCodeContext)
@@ -468,6 +422,7 @@ function MarkdownCode({ node: _node, className, children, ...props }) {
 function MarkdownPre({ children, ...props }) {
   const scale = React.useContext(MarkdownScaleContext)
   const inheritColor = React.useContext(MarkdownInheritColorContext)
+  const descriptionId = React.useId()
   // Pass through without pre styling when the child is a scratch block
   const child = React.Children.toArray(children)[0]
   if (child?.props?.className?.includes('language-scratch')) {
@@ -479,17 +434,23 @@ function MarkdownPre({ children, ...props }) {
   if (plainCode && looksLikeScratchBlocks(plainCode)) {
     return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
   }
+  // ```python {lines=3}: numbered rows, marked lines (./markdown/codeLines.js).
+  const lines = codeLinesForFence(className, child?.props?.node?.data?.meta)
+  const code = lines && getTextFromChildren(child.props.children).replace(/\n$/, '')
+  const marks = lines?.marks.filter((n) => n <= code.split('\n').length) ?? []
   return (
     <BlockCodeContext.Provider value={true}>
       <pre
         {...anchorProps(props)}
+        className={lines ? 'md-code-lines' : undefined}
+        aria-describedby={marks.length ? descriptionId : undefined}
         style={{
           background: '#fafafa',
           // On a dark card (inheritColor) the text would be inherited white on this light fence.
           ...(inheritColor ? { color: '#1f2937' } : {}),
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
-          padding: '12px 14px',
+          padding: lines ? '12px 14px 12px 4px' : '12px 14px',
           overflowX: 'auto',
           ...CODE_FONT_STYLE,
           fontSize: `${14 * scale}px`,
@@ -497,8 +458,31 @@ function MarkdownPre({ children, ...props }) {
           lineHeight: 1.6,
         }}
       >
-        {isPlainCodeBlock ? <code style={CODE_FONT_STYLE}>{plainCode}</code> : children}
+        {lines ? (
+          // One row per line; the number and the marked line's arrow are CSS (index.css,
+          // .md-code-lines), so copying the code never picks them up.
+          <code className="hljs md-code-lines__code" style={CODE_FONT_STYLE}>
+            {splitHighlightedLines(highlightHtml(code, lines.language)).map((row, i, rows) => (
+              <span
+                key={i}
+                className={`md-code-lines__row${marks.includes(i + 1) ? ' md-code-lines__row--marked' : ''}`}
+                data-line={i + 1}
+                data-marked={marks.includes(i + 1) ? '' : undefined}
+                dangerouslySetInnerHTML={{ __html: i < rows.length - 1 ? `${row}\n` : row }}
+              />
+            ))}
+          </code>
+        ) : isPlainCodeBlock ? (
+          <code style={CODE_FONT_STYLE}>{plainCode}</code>
+        ) : (
+          children
+        )}
       </pre>
+      {marks.length > 0 && (
+        <span id={descriptionId} hidden>
+          {markedLinesLabel(marks)}
+        </span>
+      )}
     </BlockCodeContext.Provider>
   )
 }
@@ -540,22 +524,18 @@ function withListItemIndexes(children) {
     React.isValidElement(child) ? React.cloneElement(child, { motionIndex: index++ }) : child
   )
 }
-function MarkdownUnorderedList({ children }) {
-  const animate = React.useContext(MarkdownAnimateListsContext)
-  return (
-    <ul style={{ margin: '6px 0 8px 20px', lineHeight: 1.55 }}>
-      {animate ? withListItemIndexes(children) : children}
-    </ul>
-  )
+function markdownList(Tag, margin) {
+  return function MarkdownList({ children }) {
+    const animate = React.useContext(MarkdownAnimateListsContext)
+    return (
+      <Tag style={{ margin, lineHeight: 1.55 }}>
+        {animate ? withListItemIndexes(children) : children}
+      </Tag>
+    )
+  }
 }
-function MarkdownOrderedList({ children }) {
-  const animate = React.useContext(MarkdownAnimateListsContext)
-  return (
-    <ol style={{ margin: '6px 0 8px 22px', lineHeight: 1.55 }}>
-      {animate ? withListItemIndexes(children) : children}
-    </ol>
-  )
-}
+const MarkdownUnorderedList = markdownList('ul', '6px 0 8px 20px')
+const MarkdownOrderedList = markdownList('ol', '6px 0 8px 22px')
 function MarkdownListItem({ children, motionIndex, ...props }) {
   const animate = React.useContext(MarkdownAnimateListsContext)
   if (!animate)
@@ -699,20 +679,7 @@ export function MarkdownRenderer({
 
   const markdownComponents = {
     ...components,
-    a({ href, children }) {
-      const topicId = parseTopicHref(href)
-      if (!topicId) return <a href={href}>{children}</a>
-      const topic = topics.find((item) => item.id === topicId)
-      if (!topic) return <span>{children}</span>
-      return (
-        <TopicReference
-          topic={topic}
-          label={children}
-          renderSummary={InlineMarkdown}
-          onOpen={handleTopicLinkOpen}
-        />
-      )
-    },
+    a: topicLinkRenderer(topics, true, handleTopicLinkOpen),
   }
 
   return (

@@ -35,6 +35,7 @@ import {
   findExampleFenceProblems,
   MAX_LOGGED_EXAMPLES,
 } from './markdown/exampleFence.js'
+import { findCodeLineProblems } from './markdown/codeLines.js'
 import { validateTaskHighlight } from './controlHighlight.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
@@ -229,28 +230,31 @@ function validateFeedbackBasics(task, n, errors, warnings) {
   })
 }
 
-// "See example" fences in the explainer (./markdown/exampleFence.js). Warnings only: a bad one
+// "See example" fences (./markdown/exampleFence.js) and numbered-block attributes such as
+// ```python {lines=3} (./markdown/codeLines.js) in the explainer. Warnings only: a bad fence
 // still renders (as plain code, or with no code).
+const EXAMPLE_FENCE_WARNINGS = {
+  empty: () => 'has no code',
+  'unknown-language': (d) => `language "${d}" is not one of: ${EXAMPLE_LANGUAGES.join(', ')}`,
+  'unknown-option': (d) => `has unrecognised words after its language: ${d}`,
+  unclosed: () => 'has no closing fence',
+}
+const CODE_LINE_WARNINGS = {
+  'unknown-option': (d) =>
+    `has unrecognised words in its {...}: ${d} (use lines=3,5-6 or numbered)`,
+  'out-of-range': (d) => `marks lines past its end: ${d}`,
+}
 function validateExampleFences(task, n, warnings) {
   if (typeof task.explainer !== 'string') return
   for (const { number, problem, detail } of findExampleFenceProblems(task.explainer)) {
-    if (problem === 'empty') {
-      warnings.push(`Task ${n} explainer example ${number} has no code`)
-    } else if (problem === 'unknown-language') {
-      warnings.push(
-        `Task ${n} explainer example ${number} language "${detail}" is not one of: ${EXAMPLE_LANGUAGES.join(', ')}`
-      )
-    } else if (problem === 'unknown-option') {
-      warnings.push(
-        `Task ${n} explainer example ${number} has unrecognised words after its language: ${detail}`
-      )
-    } else if (problem === 'unclosed') {
-      warnings.push(`Task ${n} explainer example ${number} has no closing fence`)
-    } else if (problem === 'too-many') {
-      warnings.push(
-        `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
-      )
-    }
+    warnings.push(
+      problem === 'too-many'
+        ? `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
+        : `Task ${n} explainer example ${number} ${EXAMPLE_FENCE_WARNINGS[problem](detail)}`
+    )
+  }
+  for (const { number, problem, detail } of findCodeLineProblems(task.explainer)) {
+    warnings.push(`Task ${n} explainer code block ${number} ${CODE_LINE_WARNINGS[problem](detail)}`)
   }
 }
 
