@@ -2,8 +2,16 @@
 import { describe, it, expect } from 'vitest'
 import retention from '../retention.js'
 
-const { DELETE, LIMITS, toMs, reportTime, reportIsPastLimit, classIsPastLimit, shareIsPastLimit } =
-  retention
+const {
+  DELETE,
+  LIMITS,
+  toMs,
+  reportTime,
+  reportIsPastLimit,
+  classIsPastLimit,
+  shareIsPastLimit,
+  sweep,
+} = retention
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2029, 0, 1)
 
@@ -46,5 +54,36 @@ describe('retention sweep limits (#303)', () => {
     expect(shareIsPastLimit(NOW - 31 * DAY, NOW)).toBe(true)
     expect(shareIsPastLimit(NOW - 29 * DAY, NOW)).toBe(false)
     expect(shareIsPastLimit(null, NOW)).toBe(false)
+  })
+})
+
+// Just enough of the Admin SDK for sweep(): one class, one child, no reports or share links.
+function classDb({ createdAt, typedAt }) {
+  const list = (docs) => ({ docs, size: docs.length })
+  const collection = (docs) => ({ get: async () => list(docs) })
+  const doc = (data, subcollections = {}) => ({
+    data: () => data,
+    ref: { collection: (name) => collection(subcollections[name] ?? []) },
+  })
+  const typing = typedAt == null ? [] : [doc({ recordedAt: typedAt })]
+  const child = doc({ createdAt }, { typing })
+  const cls = doc({}, { roster: [child] })
+  return {
+    collectionGroup: () => collection([]),
+    collection: (name) => collection(name === 'classes' ? [cls] : []),
+  }
+}
+
+describe('retention sweep class activity (#303)', () => {
+  const longAgo = NOW - 400 * DAY
+
+  it('counts a class with no activity for a year', async () => {
+    const counts = await sweep(classDb({ createdAt: longAgo }), NOW)
+    expect(counts).toMatchObject({ classes: 1, rosterEntries: 1 })
+  })
+
+  it('keeps a class whose only recent activity is typing practice', async () => {
+    const counts = await sweep(classDb({ createdAt: longAgo, typedAt: NOW - DAY }), NOW)
+    expect(counts).toMatchObject({ classes: 0, rosterEntries: 0 })
   })
 })

@@ -24,7 +24,7 @@ lists every field).
    covers a re-run of a course. Reports from before July 2026 that may hold names: delete after
    **1 year** (by July 2027).
 2. **Class lists: delete a child's entry, work and typing 1 year after the class's last activity**
-   (latest `savedAt` / `updatedAt` in the class). An archived class: **90 days** after archiving.
+   (latest saved work `savedAt`, typing `recordedAt`, child added, or class `updatedAt`). An archived class: **90 days** after archiving.
 3. **Share links: delete the doc 30 days after it expires** (so 60 days after it was made).
 4. **Old US database and its backup: delete on 26 Nov** if nothing went wrong after the move.
 
