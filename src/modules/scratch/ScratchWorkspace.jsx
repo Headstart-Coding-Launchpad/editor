@@ -400,6 +400,10 @@ function defaultSpriteState(sp) {
   }
 }
 
+// Where the sprites, backdrop and variables stood when a workspace unmounted, by `runtimeKey`
+// (student + task), so Back from a classmate's shared work puts them back, not at the starter.
+const runtimeMemory = new Map()
+
 export function initSpriteStates(sprites) {
   const out = {}
   for (const sp of sprites) out[sp.id] = defaultSpriteState(sp)
@@ -1016,6 +1020,7 @@ export default function ScratchWorkspace({
   // student's own state. The sprite property row and + Backdrop fold behind Sprite settings.
   // Blockly's own layout and drag-and-drop are untouched.
   calm = null,
+  runtimeKey = null,
 }) {
   const calmOn = !!calm
   const calmStacked = !!calm?.stacked
@@ -2163,6 +2168,17 @@ export default function ScratchWorkspace({
             setVariableValues({ ...meta.variableValues })
           }
         }
+        const seen = !cancelled && runtimeKey ? runtimeMemory.get(runtimeKey) : null
+        if (seen) {
+          const states = { ...spriteStatesRef.current }
+          for (const id of Object.keys(states))
+            if (seen.spriteStates[id]) states[id] = seen.spriteStates[id]
+          commitSpriteStates(states)
+          backdropNameRef.current = seen.backdropName
+          setBackdropName(seen.backdropName)
+          variableRuntimeRef.current = { ...seen.variableValues }
+          setVariableValues({ ...seen.variableValues })
+        }
       } catch (err) {
         console.error('Scratch init error:', err)
         if (!cancelled) setStatus('error')
@@ -2172,6 +2188,13 @@ export default function ScratchWorkspace({
     init()
 
     return () => {
+      if (runtimeKey && statusRef.current === 'ready') {
+        runtimeMemory.set(runtimeKey, {
+          spriteStates: cloneSpriteStates(spriteStatesRef.current),
+          backdropName: backdropNameRef.current,
+          variableValues: { ...variableRuntimeRef.current },
+        })
+      }
       cancelled = true
       clearTimeout(syncTimerRef.current)
       clearTimeout(blockPlacedTimerRef.current)
