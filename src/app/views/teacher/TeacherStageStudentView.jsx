@@ -1,11 +1,11 @@
 // The tutor's Support and Complete tabs (tutor-tabs sketch, OK'd 16 Nov 2026): the stage shown
 // exactly as a student sees it (SupportStagePanel: the green change view, or the reference panel),
 // under a SUPPORT or COMPLETE label, with a "Student view / Raw code" switch that keeps the
-// read-only editor one click away. Read-only: it shows authored stages and never writes. Each
-// student's own view (compared with their code) is in their window's "Student can see" strip.
+// read-only editor one click away. Read-only: it shows authored stages and never writes. The change
+// view is the lesson's step (stageChangeBases), so every student sees exactly this.
 import { useState } from 'react'
 import SupportStagePanel from '../../components/SupportStagePanel'
-import { starterCodeOf } from '../../../modules/moduleContract'
+import { stageChangeBases } from '../../../shared/stageChange'
 import { getStageLineHints } from '../../../shared/lineHints'
 import { getTaskLockSets } from '../../../shared/lockedLines'
 
@@ -24,6 +24,7 @@ export default function TeacherStageStudentView({
   found,
   definition,
   task,
+  lessonTasks,
   action = null,
   // Shown under the student view as well (the expected output); the raw view has its own.
   extra = null,
@@ -32,7 +33,6 @@ export default function TeacherStageStudentView({
   const [mode, setMode] = useState('student')
   const { stage, index, role } = found
   const text = ROLE_TEXT[role]
-  const starter = starterCodeOf(task) ?? ''
   // Told by the panel itself, so a fall-back (the whole program) never claims a change view.
   const [showsChange, setShowsChange] = useState(false)
   return (
@@ -75,14 +75,14 @@ export default function TeacherStageStudentView({
             lessonType={definition?.type}
             revealed
             calm={!!definition?.capabilities?.calmCodeScreen}
-            changeBase={starter}
+            changeBase={stageChangeBases(task, index, lessonTasks)}
             onChangeViewShown={setShowsChange}
             lineHintsFor={(file) => getStageLineHints(task, index, file)}
             lockSets={getTaskLockSets(task)}
           />
           <p style={s.foot}>
             {showsChange
-              ? "Compared with the starter code. In a student's window it is compared with their own code. "
+              ? "Compared with the lesson's step before it, the same for every student. "
               : ''}
             Raw code is one click away. Edit it in Edit Lesson or the sandbox.
           </p>
