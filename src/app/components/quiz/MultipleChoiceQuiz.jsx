@@ -75,9 +75,8 @@ export default function MultipleChoiceQuiz({
     const content = optionsGridRef.current
     if (!container || !content) return undefined
 
-    // A rising option (its first-view entrance) is translated down, which scrollHeight counts
-    // as overflow; measure with the options at rest so the entrance never shrinks them. An
-    // !important declaration outranks the animation without restarting it.
+    // A rising option (entrance) is translated down, which scrollHeight counts as overflow;
+    // measure at rest (an !important declaration outranks the animation without restarting it).
     // `running` guards against re-entry: our own writes (columns, scale) can resize the frame.
     let running = false
     const run = () => {
@@ -100,8 +99,7 @@ export default function MultipleChoiceQuiz({
           nextPictureNarrow(content.hasAttribute('data-picture-narrow'), container.clientWidth)
         )
       else {
-        // Word tiles: the column count follows the frame's and screen's width (quizWordLayout),
-        // so set it here too, before the fit measures.
+        // Word tiles: columns follow the frame and screen width (quizWordLayout), set before the fit.
         const wasWide = content.dataset.quizWide === 'true'
         const width = container.clientWidth
         const screenWide = window.innerWidth >= 900
@@ -109,8 +107,7 @@ export default function MultipleChoiceQuiz({
         content.dataset.quizWide = String(layout.wide)
         content.dataset.quizCols = String(layout.cols)
         content.style.setProperty('--quiz-cols', String(layout.cols))
-        // The row cap also follows the fit scale (--quiz-row-cap), else rows stay 250px tall
-        // however far the shrink loop goes and the last tiles are cut off (24 Nov 2026).
+        // The row cap follows the fit scale, else rows stay tall and the last tiles are cut off.
         if (layout.rowMax) {
           content.style.setProperty('--quiz-row-max', `${layout.rowMax}px`)
           content.style.setProperty(
@@ -124,6 +121,7 @@ export default function MultipleChoiceQuiz({
       }
       const options = Array.from(content.children)
       options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))
+      container.style.minHeight = '0px'
       try {
         shrinkToFit({
           setScale: (scale) => {
@@ -139,6 +137,9 @@ export default function MultipleChoiceQuiz({
               (text) => text.scrollWidth > text.clientWidth + 1
             ),
         })
+        // Too tall even at the smallest size: frame = tiles' height, so the pane scrolls to them.
+        if (content.scrollHeight > container.clientHeight + 1)
+          container.style.minHeight = `${content.scrollHeight}px`
       } finally {
         options.forEach((option) => option.style.removeProperty('transform'))
       }
@@ -179,9 +180,8 @@ export default function MultipleChoiceQuiz({
       content.removeEventListener('error', refitOnPicture, true)
     }
     if (typeof ResizeObserver === 'undefined') return stopPictureRefit
-    // Only observe the frame, not the grid itself: the grid is what we resize,
-    // and font-size changes (unlike transform: scale) affect layout, so
-    // observing it here would re-trigger this same observer on our own writes.
+    // Observe only the frame: the grid is what we resize, and font-size changes affect
+    // layout, so observing it would re-trigger this observer on our own writes.
     const observer = new ResizeObserver(run)
     observer.observe(container)
     return () => {
