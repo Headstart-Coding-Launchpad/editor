@@ -45,7 +45,7 @@ const TASK = {
       role: 'support',
       label: 'Loop',
       show: 'change',
-      code: 'score = 0\nfor i in range(3):\n    score = score + i',
+      code: 'name = input("Name? ")\nscore = 0\nfor i in range(3):\n    score = score + i',
     },
     {
       role: 'complete',
@@ -111,7 +111,8 @@ describe('Student can see strip: the fun moment', () => {
     const preview = screen.getByTestId('can-see-preview')
     expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
     expect(preview).toHaveTextContent('Read-only')
-    // The Support change view against Sam's own code: the new lines, anchored after score = 0.
+    // The Support change view, the lesson's step (Support 1 before it), not Sam's own code: the
+    // new lines, anchored after the name line, the same for every student.
     const change = within(preview).getByTestId('stage-change-view')
     expect(change).toHaveTextContent('for i in range(3):')
     expect(change).toHaveTextContent('score = score + i')
@@ -195,7 +196,7 @@ describe('Student can see strip: the fun moment', () => {
     expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
     expect(preview).toHaveTextContent('Opened by student 14:32; may be closed now.')
     expect(preview).toHaveTextContent('Esc closes.')
-    expect(preview).toHaveTextContent("Compared with Sam R.'s code.")
+    expect(preview).toHaveTextContent('The same change for every student.')
 
     const close = within(preview).getByRole('button', { name: 'Close preview' })
     // Closing the preview hides nothing from the student.
