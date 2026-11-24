@@ -5,6 +5,7 @@ import {
   CollapseTabButton,
 } from '../../app/components/CollapsiblePanelControls'
 import { useElementSize } from '../../shared/useElementSize.js'
+import { rememberRuntime, recallRuntime } from './runtimeMemory.js'
 import { BadgeSignalsContext } from '../../shared/badgeSignalsContext.js'
 import { isBlocklyFieldIntermediateChange, isBlocklyUserEdit } from '../../badges/signals.js'
 import {
@@ -399,10 +400,6 @@ function defaultSpriteState(sp) {
     costume: sp.costume ?? sp.costumes?.[0]?.name ?? null,
   }
 }
-
-// Where the sprites, backdrop and variables stood when a workspace unmounted, by `runtimeKey`
-// (student + task), so Back from a classmate's shared work puts them back, not at the starter.
-const runtimeMemory = new Map()
 
 export function initSpriteStates(sprites) {
   const out = {}
@@ -1022,6 +1019,9 @@ export default function ScratchWorkspace({
   calm = null,
   runtimeKey = null,
 }) {
+  const mirroredRef = useRef(false)
+  if (readOnly || externalSpriteState) mirroredRef.current = true
+  const memoryOn = !!runtimeKey && !mirroredRef.current
   const calmOn = !!calm
   const calmStacked = !!calm?.stacked
   // Go Live and the presentation show the large stage: a view-only override, never stored.
@@ -2168,12 +2168,15 @@ export default function ScratchWorkspace({
             setVariableValues({ ...meta.variableValues })
           }
         }
-        const seen = !cancelled && runtimeKey ? runtimeMemory.get(runtimeKey) : null
+        const seen = !cancelled && memoryOn ? recallRuntime(runtimeKey, task) : null
         if (seen) {
+          // Set directly: a restore is not a student change, so nothing is broadcast.
           const states = { ...spriteStatesRef.current }
           for (const id of Object.keys(states))
             if (seen.spriteStates[id]) states[id] = seen.spriteStates[id]
-          commitSpriteStates(states)
+          spriteStatesRef.current = states
+          setSpriteStates(states)
+          preRunSpriteStatesRef.current = cloneSpriteStates(states)
           backdropNameRef.current = seen.backdropName
           setBackdropName(seen.backdropName)
           variableRuntimeRef.current = { ...seen.variableValues }
@@ -2188,13 +2191,19 @@ export default function ScratchWorkspace({
     init()
 
     return () => {
-      if (runtimeKey && statusRef.current === 'ready') {
-        runtimeMemory.set(runtimeKey, {
-          spriteStates: cloneSpriteStates(spriteStatesRef.current),
-          backdropName: backdropNameRef.current,
-          variableValues: { ...variableRuntimeRef.current },
-        })
-      }
+      // Never from a mirror of a broadcast (even after it ends) or mid-run.
+      if (memoryOn && !mirroredRef.current && statusRef.current === 'ready')
+        rememberRuntime(
+          runtimeKey,
+          task,
+          runningRef.current
+            ? null
+            : {
+                spriteStates: cloneSpriteStates(spriteStatesRef.current),
+                backdropName: backdropNameRef.current,
+                variableValues: { ...variableRuntimeRef.current },
+              }
+        )
       cancelled = true
       clearTimeout(syncTimerRef.current)
       clearTimeout(blockPlacedTimerRef.current)
