@@ -1006,7 +1006,7 @@ Pure, Node-safe input library for the Keyboard and Mouse activities and the Desk
 | `layouts.js` | Character → `{ code, shift }` tables (UK only for now), `describeCharKeys` ("Shift + 2"), key labels |
 | `events.js` | `normalizeKeyEvent` (modifiers, Caps Lock, hardware vs virtual source), `normalizePointerEvent` (`data-input-id` targets plus their `data-input-kind`, 0-1 positions), canonical combos (`mod+c`, Ctrl and Cmd alike), browser-reserved combos |
 | `gestures.js` | `recognizeGestures`: click, double-click, right-click, drag (pointer or HTML5 drag-and-drop, with source/drop target kinds), scroll, hover and the touch forms tap, double-tap, long-press; `TOUCH_EQUIVALENTS`, `gestureSatisfies` |
-| `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `summarizeInput` (small serialisable counts), `typingStats` (accuracy, WPM) |
+| `summary.js` | `typedCharacters` (Shift vs Caps Lock per capital), `typingStats` (accuracy, WPM) |
 | `recorder.js` | `createInputRecorder`: bounded in-memory event ring buffer, never persisted |
 | `targetSummary.js` | `summarizeTargetedInput` / `createInputTally`: capped, serialisable per-surface summary for `input_*` checks — gestures per target kind (`file`/`folder`/`window`/`icon`), drags by source>drop kind, shortcuts by keyboard vs menu, Shift/Caps Lock capitals; the tally folds finished segments into running totals so the ring buffer never loses gestures |
 | `checks.js` | Owner-`input` check types `input_gesture`, `input_shortcut`, `input_modifier` (registered in `src/modules/checks.js`): evaluate against `ctx.input`; `validate()` rejects modules without them in `inheritsCheckTypes`, browser-reserved combos, unknown gestures/kinds; `inputChecksOf` / `inputSummaryCapFor` |
