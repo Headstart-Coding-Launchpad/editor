@@ -3,6 +3,7 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import { chooseLockedLines } from '../../shared/lockedLines'
 import {
+  CHANGE_NOTE_MAX,
   cleanCodeLineIndexes,
   pickStageChange,
   stageChangeIsExcerpt,
@@ -99,9 +100,8 @@ export default function SupportStagePanel({
   lineHintsFor,
   // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
   lockSets = null,
-  // The lesson code to compare with (stageChangeBases, nearest first; or one string): with it, a
-  // stage stageShowsChange picks shows only what changes (capabilities.stageChangeView, Python),
-  // the same for every student; a Support stage is an excerpt (stageChangeIsExcerpt).
+  // The lesson code to compare with (stageChangeBases, or one string): a stageShowsChange stage
+  // then shows only what changes, the same for every student (capabilities.stageChangeView).
   changeBase = null,
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
@@ -130,8 +130,7 @@ export default function SupportStagePanel({
   const [view, setView] = useState('changes')
   const canShowChanges = change?.kind === 'changes'
   const changeViewShown = canShowChanges && view === 'changes'
-  // The author's one plain sentence on what this step changes, above the change rows.
-  const changeNote = typeof stage?.changeNote === 'string' ? stage.changeNote.trim() : ''
+  const changeNote = `${stage?.changeNote ?? ''}`.trim().slice(0, CHANGE_NOTE_MAX)
   const onChangeViewShownRef = useRef(onChangeViewShown)
   onChangeViewShownRef.current = onChangeViewShown
   useEffect(() => {

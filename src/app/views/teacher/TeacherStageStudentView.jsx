@@ -24,7 +24,6 @@ export default function TeacherStageStudentView({
   found,
   definition,
   task,
-  // The lesson's tasks, for a carried task's step before (stageChangeBases).
   lessonTasks,
   action = null,
   // Shown under the student view as well (the expected output); the raw view has its own.
@@ -76,7 +75,7 @@ export default function TeacherStageStudentView({
             lessonType={definition?.type}
             revealed
             calm={!!definition?.capabilities?.calmCodeScreen}
-            changeBase={stageChangeBases(task, stage, lessonTasks)}
+            changeBase={stageChangeBases(task, index, lessonTasks)}
             onChangeViewShown={setShowsChange}
             lineHintsFor={(file) => getStageLineHints(task, index, file)}
             lockSets={getTaskLockSets(task)}

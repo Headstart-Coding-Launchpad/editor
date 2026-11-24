@@ -196,9 +196,7 @@ describe('Student can see strip: the fun moment', () => {
     expect(preview).toHaveTextContent('Support 2 (hint) - what Sam R. sees')
     expect(preview).toHaveTextContent('Opened by student 14:32; may be closed now.')
     expect(preview).toHaveTextContent('Esc closes.')
-    expect(preview).toHaveTextContent(
-      "Compared with the lesson's step before, the same for every student."
-    )
+    expect(preview).toHaveTextContent('The same change for every student.')
 
     const close = within(preview).getByRole('button', { name: 'Close preview' })
     // Closing the preview hides nothing from the student.

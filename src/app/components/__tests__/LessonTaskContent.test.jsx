@@ -1102,7 +1102,7 @@ describe('LessonTaskContent Complete stage change view', () => {
       codeStages: [
         task.codeStages[0],
         { ...task.codeStages[1], label: 'First complete', show: undefined },
-        { ...task.codeStages[1], label: 'Other complete' },
+        { ...task.codeStages[1], label: 'Other complete', code: `${task.codeStages[1].code}\nx` },
       ],
     }
     render(

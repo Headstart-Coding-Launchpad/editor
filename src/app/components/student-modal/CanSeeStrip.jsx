@@ -33,9 +33,7 @@ function previewFoot(item, changeView) {
   if (item.key === 'copy') return 'Same view the student has. Esc closes.'
   const { detail } = itemText(item)
   const opened = detail ? `${detail[0].toUpperCase()}${detail.slice(1)}` : 'Opened earlier'
-  const compared = changeView
-    ? " Compared with the lesson's step before, the same for every student."
-    : ''
+  const compared = changeView ? ' The same change for every student.' : ''
   return `${opened}; may be closed now.${compared} Esc closes.`
 }
 
@@ -53,7 +51,6 @@ export default function CanSeeStrip({
   studentName,
   task,
   lessonType,
-  // The lesson's tasks, for a carried task's step before (stageChangeBases).
   lessonTasks,
   copyCode,
   openKey,
@@ -171,7 +168,7 @@ export default function CanSeeStrip({
                 revealed
                 // As the student's own screen draws it: the calm "What to change" box (Python).
                 calm={!!getModuleDefinition(lessonType)?.capabilities?.calmCodeScreen}
-                changeBase={stageChangeBases(task, open.stage, lessonTasks)}
+                changeBase={stageChangeBases(task, open.stageIndex, lessonTasks)}
                 onChangeViewShown={setChangeViewShown}
               />
             )}

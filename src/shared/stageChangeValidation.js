@@ -2,11 +2,14 @@
 // task's `copyAfter` / `copyBefore`. Shared by the Builder and the CLI through the python, turtle
 // and arcade module definitions' validateTask. Messages are in docs/authoring/validation-errors.md.
 import { getStageRole, getStarterStage } from './taskStages.js'
-import { cleanCodeLines, stageShowsChange } from './stageChange.js'
+import {
+  CHANGE_NOTE_MAX,
+  cleanCodeLines,
+  lessonStageChange,
+  stageShowsChange,
+} from './stageChange.js'
 
 export const STAGE_SHOW_VALUES = ['full', 'change']
-// A stage's `changeNote`: one plain sentence above its change view.
-export const CHANGE_NOTE_MAX = 120
 
 const COPY_ANCHOR_FIELDS = ['copyAfter', 'copyBefore']
 
@@ -18,7 +21,7 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
   const starterLines = starterLineSet(task)
   ;(Array.isArray(task?.codeStages) ? task.codeStages : []).forEach((stage, index) => {
     const where = `Task ${n} stage ${index + 1}`
-    validateChangeNote(stage, where, errors, warnings, changeView)
+    checkChangeView(task, index, where, errors, warnings, changeView)
     if (stage?.show == null) return
     if (!STAGE_SHOW_VALUES.includes(stage.show)) {
       errors.push(`${where} show must be "full" or "change"`)
@@ -71,18 +74,22 @@ export function validateStageChange(task, n, errors, warnings, { changeView = fa
   }
 }
 
-function validateChangeNote(stage, where, errors, warnings, changeView) {
+// A stage's changeNote; a Complete stage's change view (show unset too) a small enough step.
+function checkChangeView(task, index, where, errors, warnings, changeView) {
+  const stage = task.codeStages[index]
   const note = stage?.changeNote
-  if (note == null || note === '') return
-  if (typeof note !== 'string') {
+  const shows = changeView && stageShowsChange(stage)
+  if (note != null && note !== '' && typeof note !== 'string') {
     errors.push(`${where} changeNote must be one plain sentence (text)`)
-  } else if (!changeView || !stageShowsChange(stage)) {
+  } else if (note && !shows) {
     warnings.push(`${where} changeNote shows only above a change view; it is ignored here`)
-  } else if (note.trim().length > CHANGE_NOTE_MAX) {
-    warnings.push(
-      `${where} changeNote is ${note.trim().length} characters; keep it to one sentence of ${CHANGE_NOTE_MAX} or fewer`
-    )
+  } else if (note && note.trim().length > CHANGE_NOTE_MAX) {
+    warnings.push(`${where} changeNote is over ${CHANGE_NOTE_MAX} characters; shorten it`)
   }
+  if (!shows || getStageRole(stage) !== 'complete' || !starterLineSet(task)) return
+  const change = lessonStageChange(task, index)
+  if (change?.kind === 'fallback' && change.reason !== 'same')
+    warnings.push(`${where} is too big a step for the change view; split it or set show: "full"`)
 }
 
 // The trimmed non-blank lines of the code the student starts from, or null when that can't be

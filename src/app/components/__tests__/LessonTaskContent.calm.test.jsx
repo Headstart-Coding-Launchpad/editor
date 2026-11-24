@@ -657,5 +657,8 @@ describe('Calm code screen: the change view is the lesson step, the same for eve
     const { text } = rowsFor(START, big)
     expect(text).toContain('A lot changed in this step')
     expect(text).toContain('c = 3')
+    // A fall-back is not the change view: the Type this out copy stays.
+    render(<LessonTaskContent {...baseProps} task={{ ...big, copyCode: 'x' }} cs={csAt()} />)
+    expect(lastWorkspaceProps().whatToChange.hideCopyCode).toBe(false)
   })
 })

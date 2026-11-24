@@ -13,8 +13,7 @@ import {
   playScratchSound,
 } from '../../../modules/scratch/scratchSounds'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
-import { stageShowsChange } from '../../../shared/stageChange'
-import { CHANGE_NOTE_MAX } from '../../../shared/stageChangeValidation'
+import { CHANGE_NOTE_MAX, stageShowsChange } from '../../../shared/stageChange'
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleAuthoring } from '../../../modules/definitions'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'

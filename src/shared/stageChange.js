@@ -3,9 +3,8 @@
 // and re-indent, each change anchored by the TEXT of an unchanged line beside it ("after this
 // line" / "before this line"). Never line numbers: students add lines, so numbers shift.
 //
-// Worked out against the lesson's step before the stage (stageChangeBases), never the student's
-// code, so every student sees the same change; never stored. Pure and Node-safe apart from
-// taskStages.js (no imports of its own).
+// Worked out against the lesson's step before (stageChangeBases), never the student's code, and
+// never stored. Pure and Node-safe apart from taskStages.js (no imports of its own).
 //
 // The steps: clean both sides (drop #@lock / #@slot / #> marker lines, trim trailing whitespace),
 // ignore blank lines, line-diff the trimmed text (LCS), then call a line whose text matches but
@@ -70,42 +69,56 @@ function indentWidth(line) {
   return width
 }
 
-/**
- * The code a stage's change view compares with, nearest first: the lesson's step before it, so
- * every student sees the same change, never one worked out from their own code. The task's
- * earlier Complete stages and whole-program Support stages (not an excerpt, `show: 'change'`),
- * then its starter, else the Complete of the task it carries from (`lessonTasks`, groups too).
- */
-export function stageChangeBases(task, stage, lessonTasks = []) {
-  const stages = task?.codeStages ?? []
-  const earlier = stages
-    .slice(0, Math.max(stages.indexOf(stage), 0))
-    .reverse()
-    .filter((s) => typeof s?.code === 'string' && getStageRole(s) !== 'starter')
-    .filter((s) => getStageRole(s) === 'complete' || s.show !== 'change')
-  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
+// A stage's `changeNote`: one plain sentence above its change view, at most this many characters.
+export const CHANGE_NOTE_MAX = 120
+const codeKeys = (code) => cleanCodeLines(code).flatMap((l) => (l.trim() ? [l.trim()] : []))
+
+// The code the stage at `at` compares with, nearest first: the lesson's step before it (never the
+// student's code): earlier Complete stages and whole-program Support stages (as long as the code
+// the task starts from, holding half its lines: never a short hint), then the carried task's
+// Complete (`lessonTasks`, groups too), else the starter.
+export function stageChangeBases(task, at, lessonTasks = []) {
   const carried = (lessonTasks ?? [])
     .flatMap((t) => (t?.type === 'group' ? (t.subtasks ?? []) : [t]))
     .find((t) => task?.carryCodeFrom != null && t?.id === task.carryCodeFrom)
-  const hasStarter = cleanCodeLines(starter).some((line) => line.trim())
-  const from = hasStarter ? starter : (getCompleteStage(carried)?.stage?.code ?? starter)
+  const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
+  const from = getCompleteStage(carried)?.stage?.code ?? carried?.completeCode ?? starter
+  const fromKeys = codeKeys(from)
+  const whole = (s) => {
+    const keys = new Set(codeKeys(s.code))
+    const shared = fromKeys.filter((k) => keys.has(k)).length
+    return fromKeys.length > 0 && keys.size >= fromKeys.length && shared * 2 >= fromKeys.length
+  }
+  const earlier = (task?.codeStages ?? [])
+    .slice(0, Math.max(at, 0))
+    .reverse()
+    .filter((s) => typeof s?.code === 'string')
+    .filter((s) => getStageRole(s) === 'complete' || (isSupport(s) && whole(s)))
   return [...earlier.map((s) => s.code), ...(typeof from === 'string' ? [from] : [])]
 }
+const isSupport = (s) => getStageRole(s) === 'support' && s.show !== 'change'
 
-/**
- * The change view from the first of `bases` (stageChangeBases) it reads as a small change (an
- * earlier hint excerpt is skipped that way), else the nearest that differs (a fall-back, the whole
- * stage marked), else the whole stage unmarked (kind 'fallback', reason 'same').
- */
+// The change view from the nearest of `bases`: its changes, or the whole stage unmarked when the
+// same (kind 'fallback', reason 'same'); a fall-back (too big) tries the next base back, and when
+// all are, it is the nearest fall-back.
 export function pickStageChange(bases, targetCode, options) {
-  const results = []
+  let change = null
   for (const base of bases.length ? bases : ['']) {
-    const change = computeStageChange(base, targetCode, options)
-    if (change.kind === 'changes') return change
-    results.push(change)
+    const found = computeStageChange(base, targetCode, options)
+    change ??= found
+    if (found.kind === 'changes') change = found
+    if (found.kind === 'same') change = { ...found, kind: 'fallback', reason: 'same' }
+    if (found.kind !== 'fallback') break
   }
-  const same = { ...results[0], kind: 'fallback', reason: 'same' }
-  return results.find((r) => r.kind !== 'same') ?? same
+  return change
+}
+
+/** The change view `pickStageChange` gives the stage at `at` in `task`, or null when it has none. */
+export function lessonStageChange(task, at, lessonTasks) {
+  const stage = task?.codeStages?.[at]
+  if (!stageShowsChange(stage)) return null
+  const excerpt = stageChangeIsExcerpt(stage)
+  return pickStageChange(stageChangeBases(task, at, lessonTasks), stage.code, { excerpt })
 }
 
 /**

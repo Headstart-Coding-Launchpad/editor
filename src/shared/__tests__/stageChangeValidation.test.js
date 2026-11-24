@@ -16,7 +16,12 @@ describe('validateStageChange', () => {
     const result = run({
       codeStages: [
         { ...starter, show: 'full' },
-        { label: 'Complete', role: 'complete', code: 'x', show: 'change' },
+        {
+          label: 'Complete',
+          role: 'complete',
+          code: 'size = 100\nsize -= step\nx',
+          show: 'change',
+        },
       ],
     })
     expect(result).toEqual({ errors: [], warnings: [] })
@@ -57,11 +62,20 @@ describe('validateStageChange', () => {
       'Task 1 stage 1 changeNote must be one plain sentence (text)',
     ])
     expect(run({ codeStages: [complete('x'.repeat(121))] }).warnings).toEqual([
-      'Task 1 stage 1 changeNote is 121 characters; keep it to one sentence of 120 or fewer',
+      'Task 1 stage 1 changeNote is over 120 characters; shorten it',
     ])
     expect(run({ codeStages: [{ ...starter, changeNote: 'Hi' }] }).warnings).toEqual([
       'Task 1 stage 1 changeNote shows only above a change view; it is ignored here',
     ])
+  })
+
+  it('warns when a Complete stage with show unset (the default) is too big a step', () => {
+    const big = { label: 'Complete', role: 'complete', code: 'a = 1\nb = 2\nc = 3\nd = 4' }
+    const warning =
+      'Task 1 stage 2 is too big a step for the change view; split it or set show: "full"'
+    expect(run({ codeStages: [starter, big] }).warnings).toEqual([warning])
+    expect(run({ codeStages: [starter, { ...big, show: 'full' }] }).warnings).toEqual([])
+    expect(run({ codeStages: [starter, big] }, { changeView: false }).warnings).toEqual([])
   })
 
   describe('a Support stage with show: change (read as an excerpt)', () => {

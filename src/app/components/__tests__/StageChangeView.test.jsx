@@ -116,6 +116,12 @@ describe('Complete stage change view', () => {
       stage: completeStage({ changeNote: '  Turn a bit more each time.  ' }),
     })
     expect(screen.getByText('Turn a bit more each time.')).toBeInTheDocument()
+  })
+
+  it('cuts a changeNote over 120 characters to 120', () => {
+    renderPanel({ stage: completeStage({ changeNote: `${'a'.repeat(120)}TAIL` }) })
+    expect(screen.getByText('a'.repeat(120))).toBeInTheDocument()
+    expect(screen.queryByText(/TAIL/)).not.toBeInTheDocument()
     expect(screen.getByLabelText('added: turn += 10')).toBeInTheDocument()
     expect(screen.queryByText(/A lot changed/)).not.toBeInTheDocument()
   })

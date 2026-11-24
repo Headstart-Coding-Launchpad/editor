@@ -5,6 +5,7 @@ import {
   computeStageChange,
   copyAnchorRows,
   pairInlineRows,
+  lessonStageChange,
   pickStageChange,
   stageChangeBases,
   stageChangeIsExcerpt,
@@ -368,9 +369,31 @@ describe('stageChangeBases', () => {
       { role: 'support', show: 'change', code: '    print(n)' },
       { role: 'complete', code: DONE }
     )
-    expect(stageChangeBases(t, t.codeStages[3])).toEqual([STEP, START])
-    expect(stageChangeBases(t, t.codeStages[2])).toEqual([STEP, START])
-    expect(stageChangeBases(t, t.codeStages[1])).toEqual([START])
+    expect(stageChangeBases(t, 3)).toEqual([STEP, START])
+    expect(stageChangeBases(t, 2)).toEqual([STEP, START])
+    expect(stageChangeBases(t, 1)).toEqual([START])
+  })
+
+  it('never compares with a short Support hint: a 10-line Complete diffs against the starter', () => {
+    const starter = 'a = 1\nb = 2\nc = 3\nprint(a)'
+    const complete = `${starter}\nfor i in range(3):\n    a += i\n    b += i\nprint(b)\nprint(c)\nprint(a + b)`
+    const t = task(
+      { role: 'starter', code: starter },
+      { role: 'support', code: 'for i in range(3):\n    a += i\n    b += i' },
+      { role: 'complete', code: complete }
+    )
+    expect(stageChangeBases(t, 2)).toEqual([starter])
+    expect(lessonStageChange(t, 2).kind).toBe('fallback')
+  })
+
+  it('shows the whole stage unmarked when the nearest step is the same, never an older one', () => {
+    const t = task(
+      { role: 'starter', code: START },
+      { role: 'complete', code: STEP },
+      { role: 'complete', code: STEP }
+    )
+    expect(lessonStageChange(t, 2)).toMatchObject({ kind: 'fallback', reason: 'same' })
+    expect(lessonStageChange(t, 1).kind).toBe('changes')
   })
 
   it('uses the carried task Complete when the task has no starter of its own', () => {
@@ -379,8 +402,14 @@ describe('stageChangeBases', () => {
       { type: 'group', subtasks: [{ id: 1, codeStages: [{ role: 'complete', code: STEP }] }] },
       t,
     ]
-    expect(stageChangeBases(t, t.codeStages[0], lessonTasks)).toEqual([STEP])
-    expect(stageChangeBases(t, t.codeStages[0])).toEqual([])
+    expect(stageChangeBases(t, 0, lessonTasks)).toEqual([STEP])
+    expect(stageChangeBases(t, 0)).toEqual([])
+    // A placeholder starter never wins over the carried Complete.
+    const withStarter = {
+      ...t,
+      codeStages: [{ role: 'starter', code: '# carry on' }, ...t.codeStages],
+    }
+    expect(stageChangeBases(withStarter, 1, lessonTasks)).toEqual([STEP])
   })
 })
 

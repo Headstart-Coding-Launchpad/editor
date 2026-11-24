@@ -46,10 +46,10 @@ Entries written before 2026-09-29 are not tagged.
   line sees the same rows as one who matches, and none of their own lines show in red. A Python
   Complete stage with no `show` field now shows the change view; `show: full` opts out to the
   whole program. A step too big for the change view still shows the whole stage, marked, with the
-  "A lot changed" note. New optional stage field `changeNote`: one plain sentence (120 characters
+  "A lot changed" note, and the validator warns about it (also for stages with no `show`). New optional stage field `changeNote`: one plain sentence (120 characters
   or fewer) shown above the change (`changeNote: Add a line inside the loop that says each
-  number.`); the validator flags a non-text note, warns over 120 characters or where no change
-  view shows. The Builder's "Show only the changes" box is now ticked by default on Complete
+  number.`); the validator flags a non-text note, warns over 120 characters (the screen cuts it to
+  120) or where no change view shows. The Builder's "Show only the changes" box is now ticked by default on Complete
   stages, with a Change note field beside it. See [python-tasks.md](python-tasks.md#change-view).
 - Affects: python, cli · Existing lessons: Python Complete stages with no `show` now display as
   the change view (set `show: full` on a step that rewrites most of the program, and keep each

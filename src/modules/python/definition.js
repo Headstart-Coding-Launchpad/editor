@@ -177,12 +177,7 @@ export default defineModule({
         description:
           "Complete stages show only what changes from the lesson's step before (default; 'full' shows the whole program); a Support stage with 'change' does too, read as an excerpt.",
       },
-      {
-        name: 'changeNote',
-        type: 'string',
-        authored: true,
-        description: 'One plain sentence (120 characters or fewer) above the change view.',
-      },
+      { name: 'changeNote', type: 'string', authored: true, description: 'One short sentence.' },
     ]),
     { name: 'copyCode', type: 'string', authored: true, description: 'Read-only code to copy.' },
     {
