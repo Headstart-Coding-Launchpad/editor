@@ -29,13 +29,15 @@ export default function PollQuiz(props) {
         choice: multiple ? (chosenList.length ? selectedAnswer : null) : (chosen?.id ?? null),
       })
     : null
-  // Each tile carries its own count, percentage and bar (no separate results list, 24 Nov 2026).
+  // Each tile carries its own count, percentage and bar, marked "(your answer)" on the
+  // student's own pick as the old list was (no separate results list since 24 Nov 2026).
+  const large = !!classView?.presentation
   const tileResult = tally
-    ? (option, colour) => {
+    ? (option, look) => {
         const row = tally.options.find((candidate) => candidate.id === option.id)
-        if (!row) return null
-        const { respondedCount } = tally
-        return <PollTileResult {...{ count: row.count, respondedCount, multiple, colour }} />
+        const mine = !large && (multiple ? chosenList.includes(option) : chosen === option)
+        const shared = { respondedCount: tally.respondedCount, multiple, large, mine }
+        return row && <PollTileResult count={row.count} {...shared} {...look} />
       }
     : null
   const hint = multiple && !disabled ? <div style={hintStyle}>Pick all that apply.</div> : null

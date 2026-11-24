@@ -101,6 +101,43 @@ describe('poll results on the tiles', () => {
     expect(fills.map((fill) => fill.style.width)).toEqual(['100%', '0%'])
   })
 
+  it('describes each tile with its share in words, keeping its name the option words', () => {
+    renderPoll({ value: { session, anonymousId: null, presentation: true } })
+    expect(tiles()[0]).toHaveAccessibleName('a Games')
+    expect(tiles()[0]).toHaveAccessibleDescription('1 vote, 100 percent')
+    expect(tiles()[1]).toHaveAccessibleDescription('0 votes, 0 percent')
+  })
+
+  it('is projected larger on the presentation window, with no "your answer"', () => {
+    renderPoll({ value: { session, anonymousId: null, presentation: true } })
+    for (const result of tileResults()) expect(result).toHaveClass('poll-tile-result--large')
+    expect(screen.queryByText(/your answer/)).not.toBeInTheDocument()
+  })
+
+  it("marks the student's own pick in the results, as the old list did", () => {
+    renderPoll({ value: { session, anonymousId: 's1', presentation: false }, selectedAnswer: 'b' })
+    expect(tileResults()[1]).toHaveTextContent('(your answer)')
+    expect(tileResults()[0]).not.toHaveTextContent('(your answer)')
+    expect(tileResults()[1]).not.toHaveClass('poll-tile-result--large')
+  })
+
+  it('shows the counts on a poll whose options have pictures (polls never use picture cards)', () => {
+    const image = 'https://example.invalid/p.png'
+    renderPoll({
+      value: { session, anonymousId: null, presentation: true },
+      taskOverrides: {
+        options: [
+          { id: 'a', image, alt: 'A cat' },
+          { id: 'b', text: 'Art', image, alt: 'Paint' },
+        ],
+      },
+    })
+    expect(screen.queryByTestId('quiz-picture-tick')).not.toBeInTheDocument()
+    expect(tiles()[0]).toHaveTextContent('A cat')
+    expect(tiles()[0]).toHaveTextContent('1 · 100%')
+    expect(tiles()[1]).toHaveTextContent('0 · 0%')
+  })
+
   it('a multiple-answer poll says how many picked each tile', () => {
     renderPoll({
       value: { session, anonymousId: null, presentation: true },

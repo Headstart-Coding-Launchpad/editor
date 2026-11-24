@@ -37,7 +37,8 @@ export default function MultipleChoiceQuiz({
   showCorrectAnswer,
   // Extra content under the options (a poll's "you can change your vote" line).
   footer = null,
-  // Poll only: (option, colour) => content under a word tile's words (the class's vote share).
+  // Poll only: (option, { colour, onDark, id }) => content under a word tile's words (the
+  // class's vote share); the tile is aria-describedby that id. Polls never use picture mode.
   optionExtra = null,
   // Poll only: tick any number of options; selectedAnswer is then a JSON array string.
   multiple = false,
@@ -206,6 +207,7 @@ export default function MultipleChoiceQuiz({
             const active = multiple ? ticked.includes(option.id) : selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
             const isWrong = revealAnswers && active && option.id !== correctId
+            const marked = active || isCorrect || isWrong // filled with colour, white words
             // Decoration by position; a verdict only once the answer has been submitted.
             // OPTION_COLOURS holds no success or error hue, so a selected card can never
             // be mistaken for a judged one.
@@ -279,7 +281,7 @@ export default function MultipleChoiceQuiz({
                     ...s.pictureOption,
                     borderColor: verdict ? verdict.border : colour.border,
                     background: active && !verdict ? colour.background : '#fff',
-                    ...(active || isCorrect || isWrong
+                    ...(marked
                       ? {
                           boxShadow: `inset 0 0 0 4px ${ring}, 0 6px 18px rgba(17, 24, 39, 0.18)`,
                           zIndex: 2,
@@ -325,13 +327,20 @@ export default function MultipleChoiceQuiz({
               )
             }
 
-            const extra = optionExtra?.(option, textColour === '#fff' ? '#fff' : colour.active)
+            // The extra (a poll's vote share) describes the tile rather than naming it.
+            const extraId = `quiz-option-extra-${instanceId}-${option.id}`
+            const extra = optionExtra?.(option, {
+              colour: colour.active,
+              onDark: marked,
+              id: extraId,
+            })
             return (
               <div
                 key={option.id}
                 role={multiple ? 'checkbox' : 'radio'}
                 aria-checked={active}
                 aria-disabled={locked || undefined}
+                aria-describedby={extra ? extraId : undefined}
                 tabIndex={locked ? -1 : 0}
                 className={[
                   'quiz-word-option',
@@ -344,7 +353,7 @@ export default function MultipleChoiceQuiz({
                   background: bg,
                   borderColor: border,
                   color: textColour,
-                  ...(active || isCorrect || isWrong ? s.optionActive : {}),
+                  ...(marked ? s.optionActive : {}),
                   ...optionEntrance.style,
                 }}
                 onClick={chooseOption}
@@ -353,8 +362,7 @@ export default function MultipleChoiceQuiz({
                 <span
                   className="quiz-word-option__id"
                   style={{
-                    background:
-                      active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active,
+                    background: marked ? 'rgba(255,255,255,0.22)' : colour.active,
                   }}
                 >
                   {multiple && active ? '\u2713' : option.id}
@@ -369,10 +377,10 @@ export default function MultipleChoiceQuiz({
                         <MarkdownRenderer
                           content={optionText}
                           textScale={1.2}
-                          inheritColor={active || isCorrect || isWrong}
+                          inheritColor={marked}
                         />
                       ) : (
-                        <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                        <span style={marked ? s.markdownOnDark : undefined}>
                           <InlineMarkdown content={optionText} />
                         </span>
                       )}
@@ -381,10 +389,10 @@ export default function MultipleChoiceQuiz({
                     <MarkdownRenderer
                       content={optionText}
                       textScale={1.2 * optionsScale}
-                      inheritColor={active || isCorrect || isWrong}
+                      inheritColor={marked}
                     />
                   ) : (
-                    <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                    <span style={marked ? s.markdownOnDark : undefined}>
                       <InlineMarkdown content={optionText} />
                     </span>
                   )}
