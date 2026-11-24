@@ -201,7 +201,7 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a code-lines quiz but pick is … and correctLines has … (leave pick out, or make them match)` | `pick` differs from the number of `correctLines`. | Remove `pick` (it follows `correctLines`) or make them match. |
 | `Task … is a code-lines quiz but lineFeedback has line …, which is a correct line (it is never shown)` | Warning: `lineFeedback` is only shown for wrong picks. | Move the words to `explanation`, or remove the entry. |
 | `Task … is a code-lines quiz but lineFeedback has line …, which is not a line of its code` | Warning: a `lineFeedback` key is not a row of `code`. | Fix the line number or remove the entry. |
-| `Task … is a code-lines quiz with … lines; keep it to 12 or fewer so it fits the screen` | Warning: a long block may not fit a 1366x768 screen without scrolling. | Cut the program down to the lines that matter. |
+| `Task … is a code-lines quiz with … lines; keep it to … or fewer so it fits the screen` | Warning: the block is over 12 lines and may not fit a 1366x768 screen without scrolling. | Cut the program down to the lines that matter. |
 
 ## Activity tasks
 
