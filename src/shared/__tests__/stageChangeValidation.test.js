@@ -76,6 +76,13 @@ describe('validateStageChange', () => {
     expect(run({ codeStages: [starter, big] }).warnings).toEqual([warning])
     expect(run({ codeStages: [starter, { ...big, show: 'full' }] }).warnings).toEqual([])
     expect(run({ codeStages: [starter, big] }, { changeView: false }).warnings).toEqual([])
+    // No code before the stage (an empty starter): nothing to compare with, so no warning.
+    expect(run({ starterCode: '', codeStages: [big] }).warnings).toEqual([])
+    const fromLesson = {
+      carryCodeFromLesson: { lesson: 'l1', task: 2 },
+      codeStages: [starter, big],
+    }
+    expect(run(fromLesson).warnings).toEqual([])
   })
 
   describe('a Support stage with show: change (read as an excerpt)', () => {

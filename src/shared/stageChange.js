@@ -83,6 +83,8 @@ export function stageChangeBases(task, at, lessonTasks = []) {
   const starter = getStarterStage(task)?.stage?.code ?? task?.starterCode
   const from = getCompleteStage(carried)?.stage?.code ?? carried?.completeCode ?? starter
   const fromKeys = codeKeys(from)
+  // Code carried from another lesson can't be read here: no step before to compare with.
+  if (task?.carryCodeFromLesson != null) return []
   const isBase = (s) => {
     const keys = new Set(codeKeys(s?.code))
     const shared = fromKeys.filter((k) => keys.has(k)).length
@@ -91,7 +93,7 @@ export function stageChangeBases(task, at, lessonTasks = []) {
     return typeof s?.code === 'string' && ok
   }
   const earlier = (task?.codeStages ?? []).slice(0, Math.max(at, 0)).filter(isBase).reverse()
-  return [...earlier.map((s) => s.code), ...(typeof from === 'string' ? [from] : [])]
+  return [...earlier.map((s) => s.code), ...(fromKeys.length ? [from] : [])]
 }
 const isSupport = (s) => getStageRole(s) === 'support' && s.show !== 'change'
 
@@ -99,15 +101,15 @@ const isSupport = (s) => getStageRole(s) === 'support' && s.show !== 'change'
 // same (kind 'fallback', reason 'same'); a fall-back (too big) tries the next base back, and when
 // all are, it is the nearest fall-back.
 export function pickStageChange(bases, targetCode, options) {
-  let change = null
-  for (const base of bases.length ? bases : ['']) {
+  const fallbacks = []
+  // No base (nothing before the stage): the stage is its own base, so it shows whole, unmarked.
+  for (const base of bases.length ? bases : [targetCode]) {
     const found = computeStageChange(base, targetCode, options)
-    change ??= found
-    if (found.kind === 'changes') change = found
-    if (found.kind === 'same') change = { ...found, kind: 'fallback', reason: 'same' }
-    if (found.kind !== 'fallback') break
+    if (found.kind === 'changes') return found
+    if (found.kind === 'same') return { ...found, kind: 'fallback', reason: 'same' }
+    fallbacks.push(found)
   }
-  return change
+  return fallbacks[0]
 }
 
 /** The change view `pickStageChange` gives the stage at `at` in `task`, or null when it has none. */

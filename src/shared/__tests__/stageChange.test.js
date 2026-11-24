@@ -411,6 +411,21 @@ describe('stageChangeBases', () => {
     }
     expect(stageChangeBases(withStarter, 1, lessonTasks)).toEqual([STEP])
   })
+
+  it('has no base for code carried from another lesson, or an empty starter', () => {
+    const fromLesson = {
+      carryCodeFromLesson: { lesson: 'l1', task: 3 },
+      codeStages: [
+        { role: 'starter', code: START },
+        { role: 'complete', code: STEP },
+      ],
+    }
+    expect(stageChangeBases(fromLesson, 1)).toEqual([])
+    expect(lessonStageChange(fromLesson, 1)).toMatchObject({ kind: 'fallback', reason: 'same' })
+    expect(
+      stageChangeBases({ starterCode: '', codeStages: [{ role: 'complete', code: STEP }] }, 0)
+    ).toEqual([])
+  })
 })
 
 describe('pickStageChange', () => {
@@ -429,7 +444,16 @@ describe('pickStageChange', () => {
     const change = pickStageChange([DONE], DONE)
     expect(change).toMatchObject({ kind: 'fallback', reason: 'same' })
     expect(change.fullRows.every((row) => row.type === 'same')).toBe(true)
-    expect(pickStageChange([], DONE)).toMatchObject({ kind: 'fallback', reason: 'most' })
+    // No base at all: the whole stage, unmarked, with no "A lot changed" note.
+    expect(pickStageChange([], DONE)).toMatchObject({ kind: 'fallback', reason: 'same' })
+  })
+
+  it('the nearest base wins when it gives changes; a farther one only after nearer fall-backs', () => {
+    const near = 'a = 1\nb = 2'
+    expect(pickStageChange([START, near], DONE).hunks[0].rows).toEqual([
+      { type: 'add', text: 'print(b)' },
+    ])
+    expect(pickStageChange([near, START], DONE).hunks[0].rows).toHaveLength(2)
   })
 })
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
@@ -606,11 +606,16 @@ export default function LessonTaskContent({
   })()
   // The shown stage's real changes are on screen (not a fall-back to the whole program).
   const shownStageIndex = task?.codeStages?.indexOf(shownReference?.stage) ?? -1
+  // Lesson code only, never the student's: worked out per task and stage, not per keystroke.
+  const shownStageChange = useMemo(
+    () => lessonStageChange(task, shownStageIndex, lesson.tasks),
+    [task, shownStageIndex, lesson.tasks]
+  )
   const anyChangeViewOnScreen =
     calmScreen &&
     !!shownReference?.revealed &&
     !!moduleCaps?.stageChangeView &&
-    lessonStageChange(task, shownStageIndex, lesson.tasks)?.kind === 'changes'
+    shownStageChange?.kind === 'changes'
   // Only a Complete stage's change view takes the Type this out's place on the calm screen: a
   // Support stage's is a hint, part of the program, so the copy box stays beside it.
   const changeViewOnScreen =
