@@ -16,7 +16,12 @@ describe('validateStageChange', () => {
     const result = run({
       codeStages: [
         { ...starter, show: 'full' },
-        { label: 'Complete', role: 'complete', code: 'x', show: 'change' },
+        {
+          label: 'Complete',
+          role: 'complete',
+          code: 'size = 100\nsize -= step\nx',
+          show: 'change',
+        },
       ],
     })
     expect(result).toEqual({ errors: [], warnings: [] })
@@ -40,6 +45,44 @@ describe('validateStageChange', () => {
     expect(run({ codeStages: [{ ...starter, show: 'change' }] }).warnings).toEqual([
       'Task 1 stage 1 show: "change" works on a Complete or Support stage only; it is ignored here',
     ])
+  })
+
+  it('accepts a short changeNote, and flags a non-string or over-long one', () => {
+    const complete = (changeNote) => ({
+      label: 'Complete',
+      role: 'complete',
+      code: 'x',
+      changeNote,
+    })
+    expect(run({ codeStages: [complete('Add a turn line inside the loop.')] })).toEqual({
+      errors: [],
+      warnings: [],
+    })
+    expect(run({ codeStages: [complete(3)] }).errors).toEqual([
+      'Task 1 stage 1 changeNote must be one plain sentence (text)',
+    ])
+    expect(run({ codeStages: [complete('x'.repeat(121))] }).warnings).toEqual([
+      'Task 1 stage 1 changeNote is over 120 characters; shorten it',
+    ])
+    expect(run({ codeStages: [{ ...starter, changeNote: 'Hi' }] }).warnings).toEqual([
+      'Task 1 stage 1 changeNote shows only above a change view; it is ignored here',
+    ])
+  })
+
+  it('warns when a Complete stage with show unset (the default) is too big a step', () => {
+    const big = { label: 'Complete', role: 'complete', code: 'a = 1\nb = 2\nc = 3\nd = 4' }
+    const warning =
+      'Task 1 stage 2 is too big a step for the change view; split it or set show: "full"'
+    expect(run({ codeStages: [starter, big] }).warnings).toEqual([warning])
+    expect(run({ codeStages: [starter, { ...big, show: 'full' }] }).warnings).toEqual([])
+    expect(run({ codeStages: [starter, big] }, { changeView: false }).warnings).toEqual([])
+    // No code before the stage (an empty starter): nothing to compare with, so no warning.
+    expect(run({ starterCode: '', codeStages: [big] }).warnings).toEqual([])
+    const fromLesson = {
+      carryCodeFromLesson: { lesson: 'l1', task: 2 },
+      codeStages: [starter, big],
+    }
+    expect(run(fromLesson).warnings).toEqual([])
   })
 
   describe('a Support stage with show: change (read as an excerpt)', () => {

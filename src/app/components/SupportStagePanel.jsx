@@ -3,8 +3,9 @@ import { MarkdownRenderer } from '../../shared/markdown'
 import { getModuleDefinition, getModuleLabel } from '../../modules/definitions'
 import { chooseLockedLines } from '../../shared/lockedLines'
 import {
+  CHANGE_NOTE_MAX,
   cleanCodeLineIndexes,
-  computeStageChange,
+  pickStageChange,
   stageChangeIsExcerpt,
   stageShowsChange,
 } from '../../shared/stageChange'
@@ -20,7 +21,6 @@ const CHANGE_VIEW_TEXT = {
     'A lot changed in this step, so here is all of the code. Green lines are new, red lines go.',
   // A Support stage's fall-back: its own lines, which are only part of the program.
   excerptFallback: 'Here is all of this hint. Green lines are new, red lines go.',
-  same: 'Your code already matches this step',
 }
 
 function getLanguageLabel(lessonType) {
@@ -100,12 +100,8 @@ export default function SupportStagePanel({
   lineHintsFor,
   // The task's lock sets (getTaskLockSets): a code stage marks the lines a student can't change.
   lockSets = null,
-  // The student's code to compare with (chooseChangeBase): with it, a Complete or Support code
-  // stage that has `show: 'change'` shows only what changes (modules with
-  // capabilities.stageChangeView, Python); a Support stage is an excerpt (stageChangeIsExcerpt).
-  // Read once, when the stage is first revealed, so the view holds still while the student
-  // types; callers key the panel per task and stage, and remount it after "Replace my code with
-  // this" so it compares with the replaced code.
+  // The lesson code to compare with (stageChangeBases, or one string): a stageShowsChange stage
+  // then shows only what changes, the same for every student (capabilities.stageChangeView).
   changeBase = null,
   // Told whether the change view (not the whole program) is on screen, for the load button's words.
   onChangeViewShown,
@@ -117,25 +113,23 @@ export default function SupportStagePanel({
   onToggleFolded,
 }) {
   const text = stageToText(stage, lessonType)
-  // The base is read when the stage is first revealed (a panel can mount hidden), then held.
-  const [openedBase, setOpenedBase] = useState(() => (revealed ? changeBase : undefined))
-  if (revealed && openedBase === undefined) setOpenedBase(changeBase)
-  const base = openedBase === undefined ? (revealed ? changeBase : null) : openedBase
+  const basesKey = changeBase == null ? null : [].concat(changeBase).join('\u0000')
   const showsChange =
     revealed &&
-    typeof base === 'string' &&
+    basesKey != null &&
     stageShowsChange(stage) &&
     !!getModuleDefinition(lessonType)?.capabilities?.stageChangeView
   const excerpt = stageChangeIsExcerpt(stage)
   const change = useMemo(
-    () => (showsChange ? computeStageChange(base, stage.code, { excerpt }) : null),
-    [showsChange, base, stage?.code, excerpt]
+    () => (showsChange ? pickStageChange(basesKey.split('\u0000'), stage.code, { excerpt }) : null),
+    [showsChange, basesKey, stage?.code, excerpt]
   )
   // Only real changes ('changes') can be shown on their own; a fall-back always shows the whole
-  // program, and 'same' just says so. `view` is the student's choice from the toggle.
+  // program. `view` is the student's choice from the toggle.
   const [view, setView] = useState('changes')
   const canShowChanges = change?.kind === 'changes'
-  const changeViewShown = change?.kind === 'same' || (canShowChanges && view === 'changes')
+  const changeViewShown = canShowChanges && view === 'changes'
+  const changeNote = `${stage?.changeNote ?? ''}`.trim().slice(0, CHANGE_NOTE_MAX)
   const onChangeViewShownRef = useRef(onChangeViewShown)
   onChangeViewShownRef.current = onChangeViewShown
   useEffect(() => {
@@ -156,24 +150,22 @@ export default function SupportStagePanel({
   const languageLabel = getLanguageLabel(lessonType)
 
   const changeRows = change ? (
-    change.kind === 'same' ? (
-      <p style={s.changeNote}>{CHANGE_VIEW_TEXT.same}</p>
-    ) : change.kind === 'changes' && view === 'changes' ? (
-      // The changes on their own carry no lock tags or line hints (they name lines by
-      // text); "Show all the code" has both.
-      change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
-    ) : (
-      <>
-        {change.kind === 'fallback' && (
-          <p style={s.changeNote}>
-            {excerpt ? CHANGE_VIEW_TEXT.excerptFallback : CHANGE_VIEW_TEXT.fallback}
-          </p>
-        )}
+    <>
+      {changeNote && <p style={s.changeNote}>{changeNote}</p>}
+      {change.kind === 'fallback' && change.reason !== 'same' && (
+        <p style={s.changeNote}>
+          {excerpt ? CHANGE_VIEW_TEXT.excerptFallback : CHANGE_VIEW_TEXT.fallback}
+        </p>
+      )}
+      {/* The changes alone carry no lock tags or line hints; "Show all the code" has both. */}
+      {changeViewShown ? (
+        change.hunks.map((hunk, index) => <ChangeHunk key={index} {...hunk} />)
+      ) : (
         <FullChangeRows
           rows={withLineNotes(change.fullRows, stage.code, lockedIndexes, hintsByLine)}
         />
-      </>
-    )
+      )}
+    </>
   ) : null
 
   if (calm && change) {

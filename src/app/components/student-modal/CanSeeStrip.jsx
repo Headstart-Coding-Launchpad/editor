@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CopyCodePanel from '../CopyCodePanel'
 import SupportStagePanel from '../SupportStagePanel'
-import { chooseChangeBase } from '../../../shared/stageChange'
+import { stageChangeBases } from '../../../shared/stageChange'
 import { starterCodeOf } from '../../../modules/moduleContract'
 import { getModuleDefinition } from '../../../modules/definitions'
 import { useLatestRef } from '../../hooks/useLatestRef'
@@ -27,18 +27,12 @@ function itemText(item) {
   return item.on ? { main: 'Complete', detail } : { main: 'Complete: closed' }
 }
 
-// The preview's foot: who opened it and when (the log can't say it is still open), and, for a
-// change view, what it is compared with (their code, or the starter while their editor is blank).
-function previewFoot(item, studentName, comparedWith) {
+// The preview's foot: who opened it and when (the log can't say it is still open).
+function previewFoot(item, changeView) {
   if (item.key === 'copy') return 'Same view the student has. Esc closes.'
   const { detail } = itemText(item)
   const opened = detail ? `${detail[0].toUpperCase()}${detail.slice(1)}` : 'Opened earlier'
-  const compared =
-    comparedWith === 'student'
-      ? ` Compared with ${studentName}'s code.`
-      : comparedWith === 'starter'
-        ? ' Compared with the starter code.'
-        : ''
+  const compared = changeView ? ' The same change for every student.' : ''
   return `${opened}; may be closed now.${compared} Esc closes.`
 }
 
@@ -56,7 +50,7 @@ export default function CanSeeStrip({
   studentName,
   task,
   lessonType,
-  studentCode,
+  lessonTasks,
   copyCode,
   openKey,
   onOpenChange,
@@ -84,10 +78,6 @@ export default function CanSeeStrip({
 
   if (!items.length) return null
   const open = items.find((item) => item.key === openKey && item.on) ?? null
-  const studentText = typeof studentCode === 'string' ? studentCode : ''
-  const changeBase = chooseChangeBase(studentText, starterCodeOf(task))
-  // What the change view compares with, when the preview shows one.
-  const comparedWith = !changeViewShown ? null : changeBase === studentText ? 'student' : 'starter'
 
   return (
     <div
@@ -177,14 +167,12 @@ export default function CanSeeStrip({
                 revealed
                 // As the student's own screen draws it: the calm "What to change" box (Python).
                 calm={!!getModuleDefinition(lessonType)?.capabilities?.calmCodeScreen}
-                changeBase={changeBase}
+                changeBase={stageChangeBases(task, open.stageIndex, lessonTasks)}
                 onChangeViewShown={setChangeViewShown}
               />
             )}
           </div>
-          <div style={s.popoverFoot}>
-            {previewFoot(open, studentName, open.key === 'copy' ? null : comparedWith)}
-          </div>
+          <div style={s.popoverFoot}>{previewFoot(open, changeViewShown)}</div>
         </div>
       )}
     </div>
