@@ -5,29 +5,32 @@ import { eachFence } from './exampleFence.js'
 
 const LINES_OPTION = /^lines=(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)$/
 
-/** A fence's `{…}` attribute as `{ numbered, marks, unknown }`; null when it has none. */
+/** A fence's `{…}` attribute as `{ numbered, ranges: [[from, to]], unknown }`; null if none. */
 export function parseCodeLinesMeta(meta) {
   const body = String(meta ?? '').match(/^\s*\{(.*)\}\s*$/s)?.[1]
   if (body == null) return null
-  const result = { numbered: false, marks: [], unknown: [] }
+  const result = { numbered: false, ranges: [], unknown: [] }
   for (const word of body.split(/\s+/).filter(Boolean)) {
     const lines = word.match(LINES_OPTION)
     if (word === 'numbered' || lines) result.numbered = true
     else result.unknown.push(word)
     for (const [a, b = a] of lines?.[1].split(',').map((r) => r.split('-').map(Number)) ?? [])
-      for (let n = Math.min(a, b); n <= Math.min(Math.max(a, b), a + 500); n++) result.marks.push(n)
+      result.ranges.push([Math.min(a, b), Math.max(a, b)])
   }
-  result.marks = [...new Set(result.marks)].sort((x, y) => x - y)
   return result
 }
 
 /** `{ language, marks }` for a rendered `<code>` (className `language-python`, or
- * `language-{lines=2}` with no language) and its fence meta; null for a plain block. */
-export function codeLinesForFence(className, meta) {
+ * `language-{lines=2}` with no language), its fence meta and code; null for a plain block. */
+export function codeLinesForFence(className, meta, code) {
   const lang = String(className ?? '').match(/language-(\S+)/)?.[1] ?? ''
   const bare = lang.startsWith('{')
   const parsed = parseCodeLinesMeta(bare ? `${lang} ${meta ?? ''}` : meta)
-  return parsed?.numbered ? { language: bare ? '' : lang, marks: parsed.marks } : null
+  if (!parsed?.numbered) return null
+  // Only lines the block has can be marked, however long a range is.
+  const numbers = Array.from({ length: code.split('\n').length }, (_, i) => i + 1)
+  const marks = numbers.filter((n) => parsed.ranges.some(([a, b]) => n >= a && n <= b))
+  return { language: bare ? '' : lang, marks }
 }
 
 /** Splits highlight.js HTML into one string per line, re-opening spans that cross a line. */
@@ -63,7 +66,9 @@ export function findCodeLineProblems(content) {
     const number = index + 1
     const meta = parseCodeLinesMeta(info.trim().replace(/^[^\s{]+/, ''))
     const size = close - start - 1
-    const outside = meta?.marks.filter((n) => n < 1 || n > size) ?? []
+    const outside = (meta?.ranges ?? [])
+      .filter(([a, b]) => a < 1 || b > size)
+      .map(([a, b]) => (a === b ? a : `${a}-${b}`))
     if (meta?.unknown.length)
       problems.push({ number, problem: 'unknown-option', detail: meta.unknown.join(' ') })
     const detail = `${outside.join(', ')} (the block has ${size} lines)`

@@ -46,7 +46,21 @@ describe('Fun moment: the marked line stands out in the question', () => {
 
   it('copies as the plain program: no numbers, arrows or marks in the text', () => {
     const { pre } = renderBlock('python {lines=3}')
-    expect(pre.textContent.replace(/\n$/, '')).toBe(PROGRAM)
+    // The screen-reader words sit in a hidden span, which a selection never copies.
+    expect(pre.querySelector('code').textContent).toBe(PROGRAM)
+    expect(pre.querySelector('span[hidden]')).toHaveTextContent('Line 3 is marked.')
+  })
+
+  it('keeps a blank last line as a row that can be marked', () => {
+    const { container } = render(<MarkdownRenderer content={'```python {lines=3}\na\nb\n\n```'} />)
+    const rows = [...container.querySelectorAll('[data-line]')]
+    expect(rows).toHaveLength(3)
+    expect(rows[2]).toHaveAttribute('data-marked')
+  })
+
+  it('clamps a huge range to the block', () => {
+    const { marked } = renderBlock('python {lines=4-999999999}')
+    expect(marked.map((row) => row.getAttribute('data-line'))).toEqual(['4', '5'])
   })
 
   it('marks ranges and several lines', () => {
@@ -85,18 +99,21 @@ describe('parseCodeLinesMeta', () => {
   it('reads lines, ranges, numbered and unknown words', () => {
     expect(parseCodeLinesMeta('{lines=3,6-5}')).toEqual({
       numbered: true,
-      marks: [3, 5, 6],
+      ranges: [
+        [3, 3],
+        [5, 6],
+      ],
       unknown: [],
     })
-    expect(parseCodeLinesMeta('{numbered}')).toEqual({ numbered: true, marks: [], unknown: [] })
+    expect(parseCodeLinesMeta('{numbered}')).toEqual({ numbered: true, ranges: [], unknown: [] })
     expect(parseCodeLinesMeta(' { numbered lines=2 big } ')).toEqual({
       numbered: true,
-      marks: [2],
+      ranges: [[2, 2]],
       unknown: ['big'],
     })
     expect(parseCodeLinesMeta('{colour=red}')).toEqual({
       numbered: false,
-      marks: [],
+      ranges: [],
       unknown: ['colour=red'],
     })
   })
@@ -131,7 +148,7 @@ describe('findCodeLineProblems', () => {
       { number: 1, problem: 'unknown-option', detail: 'colour=red' },
     ])
     expect(findCodeLineProblems('x\n\n```\nplain\n```\n' + fence('python {lines=2,7-8}'))).toEqual([
-      { number: 2, problem: 'out-of-range', detail: '7, 8 (the block has 5 lines)' },
+      { number: 2, problem: 'out-of-range', detail: '7-8 (the block has 5 lines)' },
     ])
     expect(findCodeLineProblems(fence('python {lines=two}'))).toEqual([
       { number: 1, problem: 'unknown-option', detail: 'lines=two' },

@@ -2556,10 +2556,14 @@ select {
 .md-code-lines__row {
   display: block;
   position: relative;
+  /* An empty line keeps its height, so its number and mark still show. */
+  min-height: 1.6em;
   padding: 0 10px 0 3.4em;
   border-radius: 4px;
 }
 .md-code-lines__row::before {
+  /* Plain form first: browsers without CSS alt text drop the whole `/ ''` declaration. */
+  content: attr(data-line);
   content: attr(data-line) / '';
   position: absolute;
   left: 0;
@@ -2579,6 +2583,7 @@ select {
   font-weight: 700;
 }
 .md-code-lines__row--marked::after {
+  content: '\25B6';
   content: '\25B6' / '';
   position: absolute;
   left: 0.55em;

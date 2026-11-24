@@ -250,11 +250,13 @@ function validateExampleFences(task, n, warnings) {
     warnings.push(
       problem === 'too-many'
         ? `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
-        : `Task ${n} explainer example ${number} ${EXAMPLE_FENCE_WARNINGS[problem](detail)}`
+        : `Task ${n} explainer example ${number} ${EXAMPLE_FENCE_WARNINGS[problem]?.(detail) ?? problem}`
     )
   }
   for (const { number, problem, detail } of findCodeLineProblems(task.explainer)) {
-    warnings.push(`Task ${n} explainer code block ${number} ${CODE_LINE_WARNINGS[problem](detail)}`)
+    warnings.push(
+      `Task ${n} explainer code block ${number} ${CODE_LINE_WARNINGS[problem]?.(detail) ?? problem}`
+    )
   }
 }
 

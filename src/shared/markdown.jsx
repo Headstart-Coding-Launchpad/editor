@@ -40,12 +40,14 @@ const CODE_FONT_STYLE = {
   fontFeatureSettings: '"liga" 0, "calt" 0',
 }
 
-// highlight.js HTML for code (a fence or hljs language), or the code escaped when unknown.
-function highlightHtml(code, lang) {
+const escapeHtml = (code) => code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const hljsName = (lang) => (Object.hasOwn(INLINE_LANG_MAP, lang) ? INLINE_LANG_MAP[lang] : lang)
+// highlight.js HTML for code in an hljs language; when that fails, the code escaped (or null).
+function highlightHtml(code, hljsLang, escapeOnFail = true) {
   try {
-    return hljs.highlight(code, { language: INLINE_LANG_MAP[lang] ?? lang }).value
+    return hljs.highlight(code, { language: hljsLang }).value
   } catch {
-    return code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return escapeOnFail ? escapeHtml(code) : null
   }
 }
 
@@ -84,7 +86,7 @@ function ExampleCode({ language, code }) {
   const Blocks = EXAMPLE_BLOCK_RENDERERS[language]
   if (Blocks) return <Blocks code={code} />
   const hljsLang = INLINE_LANG_MAP[language]
-  const highlighted = hljsLang ? highlightHtml(code, hljsLang) : null
+  const highlighted = hljsLang ? highlightHtml(code, hljsLang, false) : null
   return (
     <pre
       style={{
@@ -364,13 +366,13 @@ function useHeadingStyle(sizeRem, margin) {
 
 // One heading component per level (h1-h4): its size and margins scale with the text.
 function markdownHeading(Tag, sizeRem, margin) {
-  return function MarkdownHeading({ children, ...props }) {
-    return (
-      <Tag {...anchorProps(props)} style={useHeadingStyle(sizeRem, margin)}>
-        {children}
-      </Tag>
-    )
-  }
+  const Heading = ({ children, ...props }) => (
+    <Tag {...anchorProps(props)} style={useHeadingStyle(sizeRem, margin)}>
+      {children}
+    </Tag>
+  )
+  Heading.displayName = `Heading${Tag[1]}`
+  return Heading
 }
 const Heading1 = markdownHeading('h1', 1.45, '4px 0 10px')
 const Heading2 = markdownHeading('h2', 1.22, '4px 0 8px')
@@ -435,9 +437,9 @@ function MarkdownPre({ children, ...props }) {
     return <ScratchBlocks code={plainCode.replace(/\n$/, '')} />
   }
   // ```python {lines=3}: numbered rows, marked lines (./markdown/codeLines.js).
-  const lines = codeLinesForFence(className, child?.props?.node?.data?.meta)
-  const code = lines && getTextFromChildren(child.props.children).replace(/\n$/, '')
-  const marks = lines?.marks.filter((n) => n <= code.split('\n').length) ?? []
+  const code = getTextFromChildren(child?.props?.children).replace(/\n$/, '')
+  const lines = codeLinesForFence(className, child?.props?.node?.data?.meta, code)
+  const marks = lines?.marks ?? []
   return (
     <BlockCodeContext.Provider value={true}>
       <pre
@@ -462,27 +464,29 @@ function MarkdownPre({ children, ...props }) {
           // One row per line; the number and the marked line's arrow are CSS (index.css,
           // .md-code-lines), so copying the code never picks them up.
           <code className="hljs md-code-lines__code" style={CODE_FONT_STYLE}>
-            {splitHighlightedLines(highlightHtml(code, lines.language)).map((row, i, rows) => (
-              <span
-                key={i}
-                className={`md-code-lines__row${marks.includes(i + 1) ? ' md-code-lines__row--marked' : ''}`}
-                data-line={i + 1}
-                data-marked={marks.includes(i + 1) ? '' : undefined}
-                dangerouslySetInnerHTML={{ __html: i < rows.length - 1 ? `${row}\n` : row }}
-              />
-            ))}
+            {splitHighlightedLines(highlightHtml(code, hljsName(lines.language))).map(
+              (row, i, rows) => (
+                <span
+                  key={i}
+                  className={`md-code-lines__row${marks.includes(i + 1) ? ' md-code-lines__row--marked' : ''}`}
+                  data-line={i + 1}
+                  data-marked={marks.includes(i + 1) ? '' : undefined}
+                  dangerouslySetInnerHTML={{ __html: i < rows.length - 1 ? `${row}\n` : row }}
+                />
+              )
+            )}
           </code>
         ) : isPlainCodeBlock ? (
           <code style={CODE_FONT_STYLE}>{plainCode}</code>
         ) : (
           children
         )}
+        {marks.length > 0 && (
+          <span id={descriptionId} hidden>
+            {markedLinesLabel(marks)}
+          </span>
+        )}
       </pre>
-      {marks.length > 0 && (
-        <span id={descriptionId} hidden>
-          {markedLinesLabel(marks)}
-        </span>
-      )}
     </BlockCodeContext.Provider>
   )
 }
@@ -524,31 +528,24 @@ function withListItemIndexes(children) {
     React.isValidElement(child) ? React.cloneElement(child, { motionIndex: index++ }) : child
   )
 }
-function markdownList(Tag, margin) {
-  return function MarkdownList({ children }) {
+function markdownList(Tag, margin, displayName) {
+  const List = ({ children }) => {
     const animate = React.useContext(MarkdownAnimateListsContext)
-    return (
-      <Tag style={{ margin, lineHeight: 1.55 }}>
-        {animate ? withListItemIndexes(children) : children}
-      </Tag>
-    )
+    const items = animate ? withListItemIndexes(children) : children
+    return <Tag style={{ margin, lineHeight: 1.55 }}>{items}</Tag>
   }
+  List.displayName = displayName
+  return List
 }
-const MarkdownUnorderedList = markdownList('ul', '6px 0 8px 20px')
-const MarkdownOrderedList = markdownList('ol', '6px 0 8px 22px')
+const MarkdownUnorderedList = markdownList('ul', '6px 0 8px 20px', 'MarkdownUnorderedList')
+const MarkdownOrderedList = markdownList('ol', '6px 0 8px 22px', 'MarkdownOrderedList')
 function MarkdownListItem({ children, motionIndex, ...props }) {
   const animate = React.useContext(MarkdownAnimateListsContext)
-  if (!animate)
-    return (
-      <li {...anchorProps(props)} style={{ margin: '3px 0' }}>
-        {children}
-      </li>
-    )
   return (
     <li
       {...anchorProps(props)}
-      className="motion-slide-in motion-stagger"
-      style={{ margin: '3px 0', ...staggerStyle(motionIndex) }}
+      className={animate ? 'motion-slide-in motion-stagger' : undefined}
+      style={{ margin: '3px 0', ...(animate ? staggerStyle(motionIndex) : {}) }}
     >
       {children}
     </li>
