@@ -4,49 +4,27 @@
 // before picking: the same currentAnswer field as every quiz, so the tutor sees the pick live.
 // Helpers and lesson rules: ./lines.js.
 import { defineQuizActivity, printTable } from '../quiz/quizActivity.js'
-import {
-  codeRows,
-  correctLinesOf,
-  encodeLinePicks,
-  gradeLinePicks,
-  linesLabel,
-  parseLinePicks,
-} from './lines.js'
+import * as lines from './lines.js'
 
-const field = (name, type, description, extra = {}) => ({
-  name,
-  type,
-  authored: true,
-  description,
-  ...extra,
-})
+// [name, type, description, required]
+const FIELDS = [
+  ['code', 'string', 'The program, shown numbered and read-only (no line numbers in it).', true],
+  ['language', 'string', 'Colouring: python (default), html, css or js.'],
+  ['correctLines', 'array', 'The right line numbers, from 1: [3], or [4, 5].', true],
+  ['pick', 'number', 'How many lines to pick; defaults to the length of correctLines.'],
+  ['explanation', 'string', 'One line saying why, shown after Check.'],
+  ['lineFeedback', 'object', 'Line number to the words shown when that wrong line is picked.'],
+  ['feedback', 'string', 'Shown for a wrong pick with no lineFeedback.'],
+]
 
 export default defineQuizActivity('code_lines', {
   label: 'Click the line',
   description: 'Tap the line (or lines) of a numbered code block that answer the question.',
   fields: {
-    task: [
-      field(
-        'code',
-        'string',
-        'The program, shown numbered and read-only (no line numbers in it).',
-        {
-          required: true,
-        }
-      ),
-      field('language', 'string', 'Colouring: python (default), html, css or js.'),
-      field('correctLines', 'array', 'The right line numbers, from 1: [3], or [4, 5].', {
-        required: true,
-      }),
-      field('pick', 'number', 'How many lines to pick; defaults to the length of correctLines.'),
-      field('explanation', 'string', 'One line saying why, shown after Check.'),
-      field(
-        'lineFeedback',
-        'object',
-        'Line number to the words shown when that wrong line is picked.'
-      ),
-      field('feedback', 'string', 'Shown for a wrong pick with no lineFeedback.'),
-    ],
+    task: FIELDS.map(([name, type, description, required]) => ({
+      ...{ name, type, authored: true, description },
+      ...(required ? { required } : {}),
+    })),
   },
   sealedFields: ['correctLines', 'lineFeedback', 'explanation'],
 
@@ -64,22 +42,23 @@ export default defineQuizActivity('code_lines', {
   }),
 
   initialState: () => '',
-  solutionState: (task) => encodeLinePicks(correctLinesOf(task)),
+  solutionState: (task) => lines.encodeLinePicks(lines.correctLinesOf(task)),
   serialize: (state) => (typeof state === 'string' ? state : ''),
   // Only lines the code still has are an answer (a block shortened since drops the rest).
   deserialize: (raw, task) =>
-    encodeLinePicks(parseLinePicks(raw).filter((n) => n <= codeRows(task).length)),
-  grade: gradeLinePicks,
-  summarize: (task, state) => ({ text: linesLabel(parseLinePicks(state)), tone: 'neutral' }),
-  printHtml: (task, { esc }) =>
-    printTable(
-      'Lines',
-      ['Line', 'Code', 'Answer'],
-      codeRows(task).map((code, i) => [
-        i + 1,
-        code,
-        correctLinesOf(task).includes(i + 1) ? 'Yes' : '',
-      ]),
-      esc
+    lines.encodeLinePicks(
+      lines.parseLinePicks(raw).filter((n) => n <= lines.codeRows(task).length)
     ),
+  grade: lines.gradeLinePicks,
+  summarize: (task, state) => ({
+    text: lines.linesLabel(lines.parseLinePicks(state)),
+    tone: 'neutral',
+  }),
+  printHtml: (task, { esc }) => {
+    const right = lines.correctLinesOf(task)
+    const rows = lines
+      .codeRows(task)
+      .map((code, i) => [i + 1, code, right.includes(i + 1) ? 'Yes' : ''])
+    return printTable('Lines', ['Line', 'Code', 'Answer'], rows, esc)
+  },
 })

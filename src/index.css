@@ -2705,11 +2705,6 @@ select {
   min-height: 52px;
   font-size: 1.25rem;
 }
-.cl-builder__lines {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 .cl-builder__line {
   display: flex;
   align-items: center;

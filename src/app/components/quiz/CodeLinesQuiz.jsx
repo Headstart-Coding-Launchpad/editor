@@ -1,14 +1,7 @@
 import React from 'react'
 import { MarkdownRenderer, highlightHtml, hljsName } from '../../../shared/markdown'
 import { splitHighlightedLines } from '../../../shared/markdown/codeLines.js'
-import {
-  codeRows,
-  correctLinesOf,
-  encodeLinePicks,
-  gradeLinePicks,
-  parseLinePicks,
-  pickCountOf,
-} from '../../../activities/quiz_code_lines/lines.js'
+import * as L from '../../../activities/quiz_code_lines/lines.js'
 import { baseStyles as s } from './quizUtils'
 
 // Click-the-line quiz (quizType code_lines; sketch OK'd 24 Nov 2026): the question, then the code
@@ -17,38 +10,27 @@ import { baseStyles as s } from './quizUtils'
 // again. A pick is an in-progress answer (onSelectAnswer(answer, null): mirrored to the tutor as
 // currentAnswer); Check is the final one, with its pass or fail for the Builder preview. On the
 // tutor's screens (disabled) the rows show the student's pick, and the verdict once checked.
-export default function CodeLinesQuiz({
-  task,
-  selectedAnswer,
-  onSelectAnswer,
-  submitted,
-  disabled,
-  showQuestion,
-}) {
-  const rows = codeRows(task)
-  const html = splitHighlightedLines(
-    highlightHtml(rows.join('\n'), hljsName(task?.language || 'python'))
-  )
-  const picks = parseLinePicks(selectedAnswer)
-  const need = pickCountOf(task)
-  const right = correctLinesOf(task)
+export default function CodeLinesQuiz(props) {
+  const { task, selectedAnswer: answer, onSelectAnswer: send, submitted, disabled } = props
+  const rows = L.codeRows(task)
+  const lang = hljsName(task?.language || 'python')
+  const html = splitHighlightedLines(highlightHtml(rows.join('\n'), lang))
+  const picks = L.parseLinePicks(answer)
+  const need = L.pickCountOf(task)
+  const right = L.correctLinesOf(task)
   const [retrying, setRetrying] = React.useState(false)
   const listRef = React.useRef(null)
   const id = React.useId()
+  const full = picks.length === need
   const verdict =
-    submitted && picks.length === need && (disabled || !retrying)
-      ? gradeLinePicks(task, selectedAnswer)
-      : null
+    submitted && full && (disabled || !retrying) ? L.gradeLinePicks(task, answer) : null
   const locked = disabled || !!verdict
 
   function toggle(n) {
     if (locked) return
-    const next = picks.includes(n)
-      ? picks.filter((p) => p !== n)
-      : need === 1
-        ? [n]
-        : [...picks, n].slice(-need)
-    onSelectAnswer?.(encodeLinePicks(next), null)
+    const kept = picks.filter((p) => p !== n)
+    const next = kept.length < picks.length ? kept : need === 1 ? [n] : [...picks, n].slice(-need)
+    send?.(L.encodeLinePicks(next), null)
   }
   function onKeyDown(event, index) {
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key]
@@ -57,56 +39,59 @@ export default function CodeLinesQuiz({
     else return
     event.preventDefault()
   }
-
-  const tagFor = (n) => {
-    const picked = picks.includes(n)
-    if (verdict && right.includes(n)) return ['right', picked ? '✓ Yes!' : '✓ This is the one']
-    if (verdict && picked) return ['wrong', 'Your pick']
-    return [null, picked ? '✓ picked' : '']
-  }
+  // [verdict mark, tag words] for line n: the tag means colour is never the only cue.
+  const tagFor = (n, picked) =>
+    verdict && right.includes(n)
+      ? ['right', picked ? '✓ Yes!' : '✓ This is the one']
+      : verdict && picked
+        ? ['wrong', 'Your pick']
+        : [undefined, picked ? '✓ picked' : '']
+  const one = need === 1
   const status = verdict
     ? verdict.passed
       ? `Yes! ${task?.explanation ?? ''}`
       : `Not quite. ${verdict.suggestion}`
-    : need === 1
-      ? picks.length
-        ? `You picked line ${picks[0]}.`
-        : 'Tap a line to pick it.'
-      : picks.length
-        ? `${picks.length} of ${need} lines picked`
+    : !picks.length
+      ? one
+        ? 'Tap a line to pick it.'
         : `Tap ${need} lines to pick them.`
+      : one
+        ? `You picked line ${picks[0]}.`
+        : `${picks.length} of ${need} lines picked`
+  const retry = verdict && !verdict.passed
 
   return (
     <div style={s.wrap} className="cl-quiz">
       <div style={s.question} className="cl-quiz__card">
-        {showQuestion && <div style={s.questionLabel}>{task?.title || 'Question'}</div>}
+        {props.showQuestion && <div style={s.questionLabel}>{task?.title || 'Question'}</div>}
         <div style={s.questionBody} className="cl-quiz__body">
-          {showQuestion && task?.explainer && (
+          {props.showQuestion && task?.explainer && (
             <MarkdownRenderer title={task.title} content={task.explainer} textScale={1.15} />
           )}
           <div
             ref={listRef}
             role="listbox"
             aria-label="Lines of code"
-            aria-multiselectable={need > 1 || undefined}
+            aria-multiselectable={!one || undefined}
             aria-disabled={locked || undefined}
             className="cl-quiz__lines hljs"
           >
             {rows.map((code, index) => {
               const n = index + 1
-              const [mark, tag] = tagFor(n)
+              const picked = picks.includes(n)
+              const [mark, tag] = tagFor(n, picked)
               return (
                 <div
                   key={n}
                   role="option"
-                  aria-selected={picks.includes(n)}
+                  aria-selected={picked}
                   aria-label={`Line ${n}: ${code}`}
                   aria-describedby={tag ? `${id}-${n}` : undefined}
-                  tabIndex={index === Math.max(0, (picks[0] ?? 1) - 1) ? 0 : -1}
+                  tabIndex={n === (picks[0] ?? 1) ? 0 : -1}
                   className="cl-quiz__row"
                   data-line={n}
-                  data-picked={picks.includes(n) || undefined}
-                  data-verdict={mark ?? undefined}
+                  data-picked={picked || undefined}
+                  data-verdict={mark}
                   onClick={() => toggle(n)}
                   onKeyDown={(event) => onKeyDown(event, index)}
                 >
@@ -126,33 +111,22 @@ export default function CodeLinesQuiz({
         <p
           role="status"
           className="cl-quiz__status"
-          data-verdict={verdict ? (verdict.passed ? 'right' : 'wrong') : undefined}
+          data-verdict={verdict && (retry ? 'wrong' : 'right')}
         >
           {status}
         </p>
-        {!disabled && !verdict && (
+        {!disabled && (!verdict || retry) && (
           <button
             type="button"
             className="btn-primary cl-quiz__button"
-            disabled={picks.length !== need}
+            disabled={!retry && !full}
             onClick={() => {
-              setRetrying(false)
-              onSelectAnswer?.(selectedAnswer, gradeLinePicks(task, selectedAnswer).passed)
+              setRetrying(!!retry)
+              if (retry) send?.('', null)
+              else send?.(answer, L.gradeLinePicks(task, answer).passed)
             }}
           >
-            Check
-          </button>
-        )}
-        {!disabled && verdict && !verdict.passed && (
-          <button
-            type="button"
-            className="btn-primary cl-quiz__button"
-            onClick={() => {
-              setRetrying(true)
-              onSelectAnswer?.('', null)
-            }}
-          >
-            Try again
+            {retry ? 'Try again' : 'Check'}
           </button>
         )}
       </div>
