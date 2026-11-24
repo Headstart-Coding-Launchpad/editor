@@ -13,7 +13,7 @@ and the Workspace-module-vs-Activity decision test are in
 [quiz-tasks.md](../authoring/quiz-tasks.md).
 
 Status: every activity in `src/activities/` runs through the host: Binary, Keyboard, Mouse,
-Classifier, Next Word, Real or AI and Station, and the six quizzes (`quiz_confidence`,
+Classifier, Next Word, Real or AI and Station, and the seven quizzes (`quiz_code_lines`, `quiz_confidence`,
 `quiz_fill_blank`, `quiz_match`, `quiz_multiple_choice`, `quiz_poll`, `quiz_short_answer`; see
 [Quizzes](#quizzes-legacy-activities)). The Builder authors every activity from the registry and
 previews it through the host (see [Builder](#builder)), and YAML has the `type: <activity>`
@@ -138,7 +138,7 @@ record the device in their state (`state.device`: `touch`, `virtualKeyboard`, an
 ## Quizzes (legacy activities)
 
 Each quiz sub-type is an activity: `quiz_multiple_choice`, `quiz_match`, `quiz_fill_blank`,
-`quiz_short_answer`, `quiz_confidence`, `quiz_poll` (`src/activities/quiz_<type>/`), built with
+`quiz_short_answer`, `quiz_confidence`, `quiz_poll`, `quiz_code_lines` (`src/activities/quiz_<type>/`), built with
 `defineQuizActivity` in `src/activities/quiz/quizActivity.js`. Stored lessons are unchanged:
 `resolve.js` maps `taskType: 'quiz'` + `quizType` (missing → `multiple_choice`) to the id, and each
 definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizType` gets the
@@ -164,6 +164,11 @@ definition carries `legacy: { taskType: 'quiz', quizType }`. An unknown `quizTyp
   `lessonReport.js` and `printLesson.js` are adapters over them, and their output is pinned
   byte-for-byte by the Phase 0 tests. Validation still runs the shared legacy rules
   (`legacyValidation.js`), which each definition's `validateTask` wraps.
+- `quiz_code_lines` (click the line): state / `currentAnswer` is the picked line number `"3"`,
+  or a JSON array `"[2,3]"` (pick order) for a two-line question; each tap is a discrete change,
+  Check is the final answer (`on_submit`, graded against `correctLines` in any order). Its UI is
+  `src/app/components/quiz/CodeLinesQuiz.jsx` (via `QuizTask`); its lesson rules live in
+  `quiz_code_lines/lines.js`, called by `legacyValidation.js`.
 - Quiz-only rules kept via `isLegacyQuizTask`: the feedback banner shows only for a quiz with a
   `check` or an auto-marked match / fill-in-the-gaps; the StudentModal hides the stage dropdown
   and Edit Code on quizzes.

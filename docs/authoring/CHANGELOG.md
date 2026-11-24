@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-24
 
+- **Click-the-line quiz (`quizType: code_lines`).** A new quiz type: `code` shown as numbered
+  rows, the student taps the line (or `pick` lines) in `correctLines`, then Check; right lines go
+  green, a wrong pick amber with its `lineFeedback` (else `feedback`, else `explanation`), and Try
+  again. Optional `language` and `explanation`. Validation: `code` and `correctLines` required,
+  each correct line inside the block, no repeats, `pick` must match. Listed by
+  `lessons capabilities`. Use it for "Which line is wrong?" and two-line questions instead of
+  hand-numbered multiple choice. See [quiz-tasks.md](quiz-tasks.md#click-the-line).
+- Affects: quiz_code_lines, quiz, cli · Existing lessons: no changes needed (a new optional type)
+  · Resolves: none (marked-line quiz sketch, Ryan 24 Nov 2026)
 - **Numbered code blocks with marked lines.** A fence attribute after the language, such as
   ```` ```python {lines=3} ````, `{lines=3,5-6}` or `{numbered}`, draws the block with line numbers
   and marks those lines (yellow band, amber bar, ▶ arrow; screen readers hear "Line 3 is
