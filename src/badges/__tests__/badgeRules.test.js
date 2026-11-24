@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateBadgeRules } from '../evaluate.js'
-import { ACTIVITY_EXAMPLE_LESSON, EXAMPLE_LESSON } from '../exampleLesson.js'
+import { ACTIVITY_EXAMPLE_LESSON } from '../exampleLesson.js'
+import { EXAMPLE_LESSON } from '../../test/fixtures/badgeExampleLesson.js'
 import { buildBadgeLessonIndex } from '../lessonIndex.js'
 import { getPassGuard, isRealPass, computeFirstInClass } from '../rules.js'
 import {
