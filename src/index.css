@@ -8482,9 +8482,34 @@ label.te-backdrop-tag,
   color: var(--colour-muted);
 }
 
+.poll-quiz__hint,
+.poll-quiz__answered {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
+}
+
+.poll-quiz__answered {
+  font-size: 0.82rem;
+}
+
+.poll-quiz__note {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--ui-surface-tint);
+  border: 1px solid var(--ui-border-strong);
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
 /* A poll task's tile carries its own share of the vote (PollTileResult): the words and letter
    on one line, the count and a thin bar in the tile's colour under them. */
-.quiz-word-option--extra {
+[data-option-extra] {
   /* Letter + words on one row (the words wrap within it, never drop under the letter), the vote
      share across the row below. The grid's height counts in the quiz fit (shrinkToFit). */
   display: grid;
@@ -8496,7 +8521,7 @@ label.te-backdrop-tag,
 }
 
 /* The letter in the second column (the words follow it); the spare columns centre the pair. */
-.quiz-word-option--extra > :first-child {
+[data-option-extra] > :first-child {
   grid-column: 2;
 }
 

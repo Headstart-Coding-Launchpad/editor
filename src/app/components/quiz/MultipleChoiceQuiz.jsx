@@ -37,8 +37,7 @@ export default function MultipleChoiceQuiz({
   showCorrectAnswer,
   // Extra content under the options (a poll's "you can change your vote" line).
   footer = null,
-  // Poll only: (option, { colour, onDark, id }) => content under a word tile's words (the
-  // class's vote share); the tile is aria-describedby that id. Polls never use picture mode.
+  // Poll only: (option, { colour, onDark, id }) => the tile's vote share, which describes it.
   optionExtra = null,
   // Poll only: tick any number of options; selectedAnswer is then a JSON array string.
   multiple = false,
@@ -327,13 +326,9 @@ export default function MultipleChoiceQuiz({
               )
             }
 
-            // The extra (a poll's vote share) describes the tile rather than naming it.
             const extraId = `quiz-option-extra-${instanceId}-${option.id}`
-            const extra = optionExtra?.(option, {
-              colour: colour.active,
-              onDark: marked,
-              id: extraId,
-            })
+            const look = { colour: colour.active, onDark: marked, id: extraId }
+            const extra = optionExtra?.(option, look)
             return (
               <div
                 key={option.id}
@@ -341,14 +336,9 @@ export default function MultipleChoiceQuiz({
                 aria-checked={active}
                 aria-disabled={locked || undefined}
                 aria-describedby={extra ? extraId : undefined}
+                data-option-extra={extra ? '' : undefined}
                 tabIndex={locked ? -1 : 0}
-                className={[
-                  'quiz-word-option',
-                  extra && 'quiz-word-option--extra',
-                  optionEntrance.className,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
+                className={['quiz-word-option', optionEntrance.className].filter(Boolean).join(' ')}
                 style={{
                   background: bg,
                   borderColor: border,

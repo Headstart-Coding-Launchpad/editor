@@ -11,7 +11,8 @@ export default function PollTileResult(props) {
   const words = multiple
     ? `${count} of ${respondedCount} picked this`
     : `${count} ${count === 1 ? 'vote' : 'votes'}, ${percent} percent`
-  const modifiers = `${props.onDark ? ' poll-tile-result--on-dark' : ''}${large ? ' poll-tile-result--large' : ''}`
+  const dark = props.onDark ? ' poll-tile-result--on-dark' : ''
+  const modifiers = `${dark}${large ? ' poll-tile-result--large' : ''}`
   return (
     <div
       className={`poll-tile-result${modifiers}`}

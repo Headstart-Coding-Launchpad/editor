@@ -10,8 +10,8 @@ import { normalizeQuizAnswerText } from './quizUtils'
 // option records it (never marked, so never a verdict banner or a revealed answer) and the
 // student can change it at any time. In a live lesson the class split (counts and percentages on
 // each tile, never who chose what) shows once the student has chosen, and live on the
-// presentation window, unless the task sets `showResults: false`. The teacher sees each student's choice on their card and
-// the option counts in the session report.
+// presentation window, unless the task sets `showResults: false`. The teacher sees each
+// student's choice on their card and the option counts in the session report.
 export default function PollQuiz(props) {
   const { task, selectedAnswer, disabled } = props
   const classView = useContext(PollTaskClassContext)
@@ -29,8 +29,7 @@ export default function PollQuiz(props) {
         choice: multiple ? (chosenList.length ? selectedAnswer : null) : (chosen?.id ?? null),
       })
     : null
-  // Each tile carries its own count, percentage and bar, marked "(your answer)" on the
-  // student's own pick as the old list was (no separate results list since 24 Nov 2026).
+  // Each tile shows its own share (PollTileResult), "(your answer)" on the student's own pick.
   const large = !!classView?.presentation
   const tileResult = tally
     ? (option, look) => {
@@ -40,10 +39,11 @@ export default function PollQuiz(props) {
         return row && <PollTileResult count={row.count} {...shared} {...look} />
       }
     : null
-  const hint = multiple && !disabled ? <div style={hintStyle}>Pick all that apply.</div> : null
+  const hint =
+    multiple && !disabled ? <div className="poll-quiz__hint">Pick all that apply.</div> : null
   const note =
     hasChosen && !disabled ? (
-      <div style={noteStyle} role="status">
+      <div className="poll-quiz__note" role="status">
         {multiple ? (
           <>You picked {chosenList.length}. You can change your answers.</>
         ) : (
@@ -60,7 +60,7 @@ export default function PollQuiz(props) {
         {hint}
         {note}
         {tally && (
-          <div style={splitHeadingStyle}>
+          <div className="poll-quiz__answered">
             {multiple ? 'What the class picked' : 'How the class voted'} · {tally.respondedCount}{' '}
             answered
           </div>
@@ -79,32 +79,4 @@ export default function PollQuiz(props) {
       footer={footer}
     />
   )
-}
-
-const splitHeadingStyle = {
-  flexShrink: 0,
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.82rem',
-  fontWeight: 700,
-  color: 'var(--colour-primary-dark)',
-}
-
-const hintStyle = {
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.88rem',
-  fontWeight: 700,
-  color: 'var(--colour-primary-dark)',
-  flexShrink: 0,
-}
-
-const noteStyle = {
-  padding: '8px 12px',
-  borderRadius: 6,
-  background: 'var(--ui-surface-tint)',
-  border: '1px solid var(--ui-border-strong)',
-  color: 'var(--colour-primary-dark)',
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.88rem',
-  fontWeight: 600,
-  flexShrink: 0,
 }
