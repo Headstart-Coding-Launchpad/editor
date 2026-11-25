@@ -48,8 +48,11 @@ Entries written before 2026-09-29 are not tagged.
   Enter there goes to the next slot instead of adding a line, and deleting across slots clears
   them. With `scrub`, a number changes only by dragging its small ↔ handle (or a long press on a
   tablet); a plain click on it no longer nudges it. Refused-edit notes stay until the next key.
-- Affects: python, turtle, html · Existing lessons: no changes needed · Resolves: none (calmer guided
-  editor sketch, Ryan 25 Nov 2026)
+- Affects: python, turtle, html · Existing lessons: no marker changes, but Enter, Tab, click and
+  scrub now behave differently in existing `#@lock-values`, `#@slot` and `scrub` tasks: re-read
+  any instruction that tells students to press Enter in a slot, click inside a value to edit
+  part of it, or drag / tap a number · Resolves: none (calmer guided editor sketch, Ryan 25 Nov
+  2026)
 
 ## 2026-11-24
 

@@ -232,21 +232,22 @@ function literalAtPointer(view, event, options) {
 
 // ── Decorations: the value boxes, number handles and colour swatches ───────────────────────
 
-// A colour's swatch (`hex`), or a number's small ↔ handle (no `hex`): the one place a mouse drag
-// scrubs it.
+// A colour's swatch (`hex`), or the small ↔ handle of the number starting at `from`: the one
+// place a mouse drag scrubs it (a touch tap on it opens the slider; a touch drag scrolls).
 class AfterValueWidget extends WidgetType {
-  constructor(hex = null) {
+  constructor(hex = null, from = null) {
     super()
-    this.hex = hex
+    Object.assign(this, { hex, from })
   }
   eq(other) {
-    return other.hex === this.hex
+    return other.hex === this.hex && other.from === this.from
   }
   toDOM() {
     const el = document.createElement('span')
     el.className = this.hex ? 'cm-scrubSwatch' : 'cm-scrubHandle'
     if (this.hex) el.style.background = this.hex
     else Object.assign(el, { textContent: '↔', title: 'Drag to change this number' })
+    if (this.from != null) el.dataset.from = this.from
     el.setAttribute('aria-hidden', 'true')
     return el
   }
@@ -254,7 +255,6 @@ class AfterValueWidget extends WidgetType {
     return false
   }
 }
-const HANDLE = Decoration.widget({ widget: new AfterValueWidget(), side: 1 })
 
 const scrubbableNumberMark = Decoration.mark({
   class: `${EDITABLE_VALUE_CLASS} cm-scrubbable`,
@@ -292,7 +292,8 @@ function swatchDecorations(state, options) {
       if (literal.kind === 'number') {
         if (literal.from < literal.to)
           ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
-        ranges.push(HANDLE.range(literal.to))
+        const handle = new AfterValueWidget(null, literal.from)
+        ranges.push(Decoration.widget({ widget: handle, side: 1 }).range(literal.to))
         continue
       }
       if (literal.kind === 'boolean') {
@@ -323,8 +324,9 @@ const scrubTheme = EditorView.baseTheme({
     color: '#6d28d9 !important',
     fontSize: '0.85em',
     cursor: 'ew-resize',
-    touchAction: 'none',
     userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
   },
   '.cm-scrubSwatch': {
     display: 'inline-block',
@@ -436,7 +438,7 @@ export function scrubExtension({ config, language, handlersRef }) {
 
   // A tap (or a click on a colour or a True / False): pointer up close to where it went down
   // opens the popover, or flips the True / False.
-  function trackTap(view, literal, event) {
+  function trackTap(view, literal, event, quick = false) {
     const startX = event.clientX
     const startY = event.clientY
     const startedAt = Date.now()
@@ -445,7 +447,10 @@ export function scrubExtension({ config, language, handlersRef }) {
       window.removeEventListener('pointercancel', onAbort)
       const moved = Math.hypot(e.clientX - startX, e.clientY - startY)
       const held = Date.now() - startedAt
-      if (moved > TAP_SLOP_PX || (literal.kind === 'number' ? held < LONG_PRESS_MS : held > 800))
+      if (
+        moved > TAP_SLOP_PX ||
+        (literal.kind === 'number' && !quick ? held < LONG_PRESS_MS : held > 800)
+      )
         return
       if (literal.kind === 'boolean') {
         flipBoolean(view, literal)
@@ -526,9 +531,13 @@ export function scrubExtension({ config, language, handlersRef }) {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return false
         const handle = event.target.closest?.('.cm-scrubHandle')
         const literal = handle
-          ? scrubLiteralAt(view.state, view.posAtDOM(handle) - 1, options)
+          ? scrubLiteralAt(view.state, Number(handle.dataset.from), options)
           : literalAtPointer(view, event, options)
         if (!literal) return false
+        if (handle && event.pointerType !== 'mouse') {
+          trackTap(view, literal, event, true)
+          return false
+        }
         if (handle) {
           event.preventDefault()
           startMouseDrag(view, literal, event)

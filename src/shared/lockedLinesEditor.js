@@ -453,16 +453,18 @@ const zoneEditFilter = EditorState.transactionFilter.of((tr) => {
   const effects = state.readOnly ? [] : [showLockedNote.of({ pos, kind, size })]
   const annotations = event ? [Transaction.userEvent.of(event)] : []
   if (kind === 'slot') {
-    // A deletion across slots clears the text inside them instead.
+    // A deletion across slots clears the text inside them instead (a replacement is dropped).
     const specs = []
-    tr.changes.iterChanges((fromA, toA) => {
+    let inserts = false
+    tr.changes.iterChanges((fromA, toA, _fromB, _toB, text) => {
+      if (text.length > 0) inserts = true
       for (const slot of field.slots) {
         const from = Math.max(fromA, slot.from)
         const to = Math.min(toA, slot.to)
         if (from < to) specs.push({ from, to })
       }
     })
-    const changes = specs.length > 0 && state.changes(specs)
+    const changes = !inserts && specs.length > 0 && state.changes(specs)
     if (changes && !zoneViolation(state, changes)) return { changes, effects, annotations }
   }
   if (kind === 'last' || kind === 'first') {
@@ -564,7 +566,9 @@ const tabField = (dir) => (view) => {
   const at = spans.findIndex((span) => sel.from >= span.from && sel.to <= span.to)
   const next = at < 0 ? spans[dir > 0 ? 0 : spans.length - 1] : spans[at + dir]
   const target = next ? whole(next) : hop(state, state.doc.lineAt(sel.head).number, dir, 0)
-  if (target) view.dispatch({ selection: target, scrollIntoView: true, userEvent: 'select' })
+  // Nowhere to go: the browser's Tab leaves the editor (no keyboard trap).
+  if (!target) return false
+  view.dispatch({ selection: target, scrollIntoView: true, userEvent: 'select' })
   return true
 }
 
@@ -589,7 +593,15 @@ function enterInSlots(view) {
   const target = next
     ? EditorSelection.cursor(state.doc.lineAt(next.from).to)
     : hop(state, lineNo(from), 1, 0)
-  if (target) view.dispatch({ selection: target, scrollIntoView: true, userEvent: 'select' })
+  if (!target && !slot) return enterOnLockedLine(view)
+  // Past the last slot with nowhere to go: say why nothing happened.
+  const effects = target ? [] : showLockedNote.of({ pos: head, kind: 'slot', size: slot.size })
+  view.dispatch({
+    selection: target ?? undefined,
+    scrollIntoView: true,
+    effects,
+    userEvent: 'select',
+  })
   return true
 }
 
