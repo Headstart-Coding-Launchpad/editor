@@ -324,7 +324,7 @@ Turtle module code-task authoring reference: the single-file task model, support
 **Load when:** authoring or editing a Turtle module code task.
 
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
-Detailed reference for all six quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, confidence rating and poll. Covers all sub-type-specific fields and YAML syntax.
+Detailed reference for all seven quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, confidence rating, poll and click the line (`code_lines`). Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
 

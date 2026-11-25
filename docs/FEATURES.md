@@ -39,6 +39,7 @@ New lessons are composed lessons: each code task selects one of the workspace ty
 - **Short answer** — free-text response; an open one (no check) with `showResponses: teacher_picks` lets the teacher pick answers from the student cards (📺 Show) to put on the presentation window, anonymous unless the teacher turns a name on
 - **Confidence** — 1–10 self-rating, no right/wrong answer
 - **Poll** — pick the option you prefer (2–6 options), no right/wrong answer, changeable; in a live lesson students see the class split (count, percentage and a thin bar on each answer tile, not names) after choosing and the presentation shows it live, unless the task sets `showResults: false`; the teacher sees each choice on the student cards and the counts in the session report
+- **Click the line** (`quizType: code_lines`) — a numbered, read-only code block; tap the line (or two lines) the question asks about, then Check: right lines green, a wrong pick amber with one line of why, Try again; keyboard and 44px rows; the tutor sees the picked line live on the card and in the student's view
 
 ---
 

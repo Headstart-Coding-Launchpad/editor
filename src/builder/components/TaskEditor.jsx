@@ -836,7 +836,9 @@ export default function TaskEditor({
                       ? 'Check passes — students will see the completion banner.'
                       : task.quizType === 'match' || task.quizType === 'fill_blank'
                         ? 'Check does not pass — try placing the correct answers in the preview.'
-                        : 'Check does not pass — review the answer or check configuration.'}
+                        : task.quizType === 'code_lines'
+                          ? 'Not the answer line — pick the ticked line(s) in the preview to see it pass.'
+                          : 'Check does not pass — review the answer or check configuration.'}
               </div>
             )
           })()}

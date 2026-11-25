@@ -59,7 +59,7 @@ isn't listed here, so add a row whenever you add a message.
 | `… must be an object` | A task entry is not a mapping (e.g. a bare string). | Write each task as `- title: …` with fields under it. |
 | `… taskType must be information, quiz, code_arrange or activity when provided` | `taskType` has an unsupported value. Allowed: `information`, `quiz`, `code_arrange`, `activity`; leave it out for code tasks. | Fix the value or remove `taskType`. In YAML, `type: information` / `type: quiz` also work. |
 | `… has an invalid task-type value` | The YAML `type:` shorthand isn't a known task type. | Use `information`, `quiz`, `code_arrange` or an activity (`binary`, `keyboard`, `mouse`), or omit it for a code task. A group is written `group:` + `tasks:`, not `type: group`. |
-| `… has an invalid quiz type` | `quizType` isn't one of the six quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence` or `poll`. |
+| `… has an invalid quiz type` | `quizType` isn't one of the seven quiz types. | Use `multiple_choice`, `match`, `fill_blank`, `short_answer`, `confidence`, `poll` or `code_lines`. |
 | `… intent must be a non-empty Markdown string while lesson draft is enabled` | Draft lessons need an `intent` on every real task. | Add `intent:` describing what the task is for. |
 | `… intent must be a Markdown string when provided` | `intent` isn't text. | Make it a string. |
 | `… taskActivity must be a string when provided` | `taskActivity` isn't text. | Make it a string. |
@@ -198,6 +198,14 @@ isn't listed here, so add a row whenever you add a message.
 | `Task … is a short-answer quiz but showResponses is not teacher_picks` | `showResponses` has a value other than `teacher_picks`. | Use `showResponses: teacher_picks`, or remove the field to keep answers teacher-only. |
 | `Task … is a short-answer quiz with a check but has showResponses (only open answers with no check can be shown)` | A graded short answer (with a `check`) asks for its answers to be shown. Graded quizzes never broadcast a student's answer. | Remove `check` to make it an open discussion question, or remove `showResponses`. |
 | `Task … is a short-answer quiz but anonymiseResponses is not true or false` | `anonymiseResponses` is set to something other than `true` or `false`. | Use `anonymiseResponses: false` to show names by default, or remove the field (default `true`). |
+| `Task … is a code-lines quiz but has no code` | A click-the-line quiz (`quizType: code_lines`) has an empty `code`. | Add the program, one row per line. |
+| `Task … is a code-lines quiz but has no correctLines (list the line numbers to pick, e.g. [3])` | No answer line is given. | Add `correctLines: [3]` (or two lines, `[2, 4]`). |
+| `Task … is a code-lines quiz but correctLines has …, which is not a line of its code (it has … lines)` | A correct line is past the end of `code`, below 1, or not a whole number. | Count the rows of `code` from 1 and fix the number. |
+| `Task … is a code-lines quiz but correctLines lists a line twice` | The same line appears twice in `correctLines`. | List each line once. |
+| `Task … is a code-lines quiz but pick is … and correctLines has … (leave pick out, or make them match)` | `pick` differs from the number of `correctLines`. | Remove `pick` (it follows `correctLines`) or make them match. |
+| `Task … is a code-lines quiz but lineFeedback has line …, which is a correct line (it is never shown)` | Warning: `lineFeedback` is only shown for wrong picks. | Move the words to `explanation`, or remove the entry. |
+| `Task … is a code-lines quiz but lineFeedback has line …, which is not a line of its code` | Warning: a `lineFeedback` key is not a row of `code`. | Fix the line number or remove the entry. |
+| `Task … is a code-lines quiz with … lines; keep it to … or fewer so it fits the screen` | Warning: the block is over 12 lines and may not fit a 1366x768 screen without scrolling. | Cut the program down to the lines that matter. |
 
 ## Activity tasks
 
