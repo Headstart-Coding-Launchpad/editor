@@ -1,6 +1,6 @@
 # Quiz Tasks Reference
 
-All six quiz sub-types. Set `type: quiz` on the task; the converter sets `taskType: "quiz"` in JSON.
+All seven quiz sub-types. Set `type: quiz` on the task; the converter sets `taskType: "quiz"` in JSON.
 
 Do not include code fields, carry fields, or `interactionMode` on quiz tasks.
 
@@ -68,6 +68,33 @@ A multiple-choice quiz takes exactly one `answer_equals` check (or the `answer:`
 | `options[].feedback` | No | Shown when this wrong option is selected. Markdown supported. |
 | `options[].hint` | No | Older name for `feedback`, still read when `feedback` is missing. Use `feedback`. |
 | `answer` | No | Shorthand for `check: {type: answer_equals, value: <id>}`. Option text is mapped to its id. |
+
+**"What is this line for?"** Put the program in the `explainer` as a fenced block with a marked
+line, ```` ```python {lines=3} ````, and ask about "the marked line"; the options stay ordinary
+words. No `# <-- this line` comments and no hand-written line numbers. See
+[Line numbers and marked lines](markdown-renderer.md#line-numbers-and-marked-lines).
+
+```yaml
+- type: quiz
+  title: What is this line for?
+  explainer: |
+    Look at this program. What is the **marked line** for?
+
+    ```python {lines=3}
+    name = input("Your name? ")
+    score = 0
+    for i in range(3):
+        score = score + 10
+    print(name, score)
+    ```
+  options:
+    - id: a
+      text: It repeats the lines below it 3 times
+    - id: b
+      text: It prints the score
+      feedback: Look for the line that starts with `print`. Is that the marked one?
+  answer: a
+```
 
 **Word answer layout** (no orphan tile, none stretched): 2 options sit side by side, 3 in one row
 (stacked as bars on a screen under about 900px wide, when the quiz frame itself is under about
@@ -420,6 +447,65 @@ No `check`, `answer:`, option `feedback` or task `feedback`: a poll is never mar
 is a validation error). For a quick question the teacher thinks of during a live lesson, use the
 **📊 Poll** button in the teacher's top bar instead — no lesson change needed (see
 `docs/FEATURES.md`).
+
+---
+
+## Click the Line
+
+`quizType: code_lines`. A short program shown as numbered, read-only rows; the student taps the
+line the question asks about ("Which line is wrong?", "Which line runs next?"), or two lines for
+a two-line question, then presses **Check**. The right line(s) turn green; a wrong pick turns
+amber with one line saying why, and **Try again** clears the pick. The app draws the line
+numbers, so never number the lines or mark them with comments in `code`. Rows are at least 44px
+tall and work by keyboard (arrow keys move, Space or Enter picks). Copying is off on the rows.
+
+```yaml
+- type: quiz
+  quizType: code_lines
+  title: Which line is wrong?
+  explainer: This program should print `Hello, Ava!` but it crashes. Which line is wrong?
+  language: python
+  code: |
+    name = "Ava"
+    print("Hello, " + name)
+    print("Welcome" + 5)
+    print("Bye")
+  correctLines: [3]
+  explanation: Line 3 tries to add a word and a number, and Python cannot.
+  lineFeedback:
+    4: Line 4 is fine - it prints one word.
+```
+
+Two lines (the student must pick both; order does not matter, and there is no part marks):
+
+```yaml
+- type: quiz
+  quizType: code_lines
+  title: Which 2 lines are wrong?
+  explainer: Two lines have a mistake. Pick **both**.
+  code: |
+    age = 10
+    print("Age: " + age)
+    print("Bye"
+  correctLines: [2, 3]
+  explanation: Line 2 adds a word and a number; line 3 is missing its closing bracket.
+```
+
+| Field | Required | Notes |
+|---|:---:|---|
+| `code` | Yes | The program, one row per line. Keep it to 12 lines or fewer (a warning above that) so it fits the screen. |
+| `correctLines` | Yes | The right line numbers, counting from 1: `[3]`, or `[2, 3]` for a two-line question. Each must be a line of `code`, with no repeats. |
+| `language` | No | Colouring: `python` (default), `html`, `css` or `js`. |
+| `pick` | No | How many lines the student picks. Defaults to the length of `correctLines`; if set it must match it. |
+| `explanation` | No | One line saying why, shown after Check (after "Yes!" when right). |
+| `lineFeedback` | No | A map of wrong line number to the words shown when that line is picked. A key that is a correct line, or not a line of the code, is a warning. |
+| `feedback` | No | Shown for a wrong pick with no `lineFeedback` entry (else `explanation` is shown). |
+
+No `options`, `check` or `answer:`: the answer is `correctLines`. The student's answer (live
+`currentAnswer` and each attempt's `submission` in the report) is the line number as text, `"3"`,
+or a JSON array for more than one line, `"[2,3]"`. The tutor sees the picked line on the
+student's card ("Line 3") and highlighted in their live view before Check, then marked right or
+wrong once checked.
 
 ---
 

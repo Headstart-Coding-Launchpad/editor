@@ -2546,6 +2546,195 @@ select {
   background: transparent;
   color: var(--colour-text);
 }
+
+/* Numbered code blocks, ```python {lines=3} (src/shared/markdown/codeLines.js). The number and
+   the marked line's arrow are CSS content, so copying the code never picks them up. */
+.md-code-lines__code {
+  display: inline-block;
+  min-width: 100%;
+}
+.md-code-lines__row {
+  display: block;
+  position: relative;
+  /* An empty line keeps its height, so its number and mark still show. */
+  min-height: 1.6em;
+  padding: 0 10px 0 3.4em;
+  border-radius: 4px;
+}
+.md-code-lines__row::before {
+  /* Plain form first: browsers without CSS alt text drop the whole `/ ''` declaration. */
+  content: attr(data-line);
+  content: attr(data-line) / '';
+  position: absolute;
+  left: 0;
+  width: 2.7em;
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.85em;
+  line-height: 1.88;
+  user-select: none;
+}
+.md-code-lines__row--marked {
+  background: #fdf1c0;
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+.md-code-lines__row--marked::before {
+  color: #b45309;
+  font-weight: 700;
+}
+.md-code-lines__row--marked::after {
+  content: '\25B6';
+  content: '\25B6' / '';
+  position: absolute;
+  left: 0.55em;
+  top: 0;
+  color: #d97706;
+  font-size: 0.7em;
+  line-height: 2.3;
+  user-select: none;
+}
+
+/* Click-the-line quiz (src/app/components/quiz/CodeLinesQuiz.jsx): numbered rows to tap, 44px
+   tall at least; picked = purple outline + "picked", then green right / amber wrong after Check.
+   The words in each row's tag mean colour is never the only cue. */
+.cl-quiz__card {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.cl-quiz__body {
+  overflow-y: auto;
+}
+.cl-quiz__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+  user-select: none;
+}
+.cl-quiz__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 12px 4px 3.2em;
+  position: relative;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.cl-quiz__row::before {
+  content: attr(data-line);
+  content: attr(data-line) / '';
+  position: absolute;
+  left: 0;
+  width: 2.3em;
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.85em;
+}
+.cl-quiz__row code {
+  flex: 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.cl-quiz__row:hover {
+  border-color: #c4b5fd;
+}
+.cl-quiz__row:focus-visible {
+  outline: 3px solid #a78bfa;
+  outline-offset: 2px;
+}
+.cl-quiz__row[data-picked] {
+  border-color: #6d28d9;
+  background: #ede9fe;
+}
+.cl-quiz__row[data-verdict='right'] {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+.cl-quiz__row[data-verdict='wrong'] {
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+.cl-quiz__row[data-answer]:not([data-verdict]) {
+  border-style: dashed;
+  border-color: #16a34a;
+}
+.cl-quiz__row[data-answer]:not([data-verdict]) .cl-quiz__tag {
+  color: #15803d;
+}
+.cl-quiz__lines[aria-disabled='true'] .cl-quiz__row {
+  cursor: default;
+}
+.cl-quiz__tag {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #6d28d9;
+}
+.cl-quiz__row[data-verdict='right'] .cl-quiz__tag {
+  color: #15803d;
+}
+.cl-quiz__row[data-verdict='wrong'] .cl-quiz__tag {
+  color: #b45309;
+}
+.cl-quiz__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: none;
+}
+.cl-quiz__status {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: #4b5563;
+}
+.cl-quiz__status[data-verdict='right'] {
+  color: #166534;
+}
+.cl-quiz__status[data-verdict='wrong'] {
+  color: #92400e;
+}
+.cl-quiz__button {
+  flex: none;
+  min-width: 180px;
+  min-height: 52px;
+  font-size: 1.25rem;
+}
+.cl-builder__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cl-builder__line label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.cl-builder__line .te-input {
+  flex: 1;
+}
+.cl-builder__n {
+  width: 1.6em;
+  text-align: right;
+  color: #6b7280;
+}
+.cl-builder__code {
+  font-family: 'JetBrains Mono', monospace;
+}
 .hljs-keyword {
   color: #7c3aed;
   font-weight: bold;

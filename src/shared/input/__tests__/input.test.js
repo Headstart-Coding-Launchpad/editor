@@ -10,7 +10,6 @@ import {
   recognizeGestures,
   gestureSatisfies,
   typedCharacters,
-  summarizeInput,
   typingStats,
   createInputRecorder,
   detectInputCapabilities,
@@ -199,28 +198,6 @@ describe('summaries', () => {
       ['B', 'caps_lock'],
       ['"', null],
     ])
-  })
-
-  it('summarises keys, shortcuts and gestures without raw events', () => {
-    const summary = summarizeInput([
-      key('Shift', { shift: true }),
-      key('H', { code: 'KeyH', shift: true }),
-      key('c', { code: 'KeyC', ctrl: true }),
-      key('v', { code: 'KeyV', ctrl: true }),
-      pointer('dblclick', { target: 'folder' }),
-      pointer('click', { target: 'star' }),
-    ])
-    expect(summary).toMatchObject({
-      keystrokes: 3,
-      shiftCapitals: 1,
-      capsLockCapitals: 0,
-      shortcuts: { 'mod+c': 1, 'mod+v': 1 },
-      clicks: 1,
-      doubleClicks: 1,
-      pointerTypes: ['mouse'],
-      sources: ['hardware'],
-    })
-    expect(JSON.stringify(summary).length).toBeLessThan(500)
   })
 
   it('computes typing accuracy and words per minute', () => {

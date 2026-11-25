@@ -13,6 +13,7 @@ import quizFillBlank from './quiz_fill_blank/definition.js'
 import quizShortAnswer from './quiz_short_answer/definition.js'
 import quizConfidence from './quiz_confidence/definition.js'
 import quizPoll from './quiz_poll/definition.js'
+import quizCodeLines from './quiz_code_lines/definition.js'
 import codeArrange from './code_arrange/definition.js'
 import unknown from './unknown/definition.js'
 import realOrAi from './real_or_ai/definition.js'
@@ -36,6 +37,7 @@ const ACTIVITIES = [
   quizShortAnswer,
   quizConfidence,
   quizPoll,
+  quizCodeLines,
   codeArrange,
   realOrAi,
   nextWord,

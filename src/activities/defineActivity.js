@@ -170,6 +170,9 @@ export function defineActivity(def) {
     // quizzes: an option chosen, every tile placed). The host then never auto-submits on
     // change, and a teacher's edit is marked only on those submits.
     submitsAnswers: false,
+    // true when the first change after a submit makes the answer a draft again (the click-the-line
+    // quiz's Try again): the host clears the run status and check (useActivityState).
+    retryClearsCheck: false,
     // What the teacher's own task panel shows: the answers ('solution') or the blank task
     // ('initial', for quizzes, whose teacher screen is often projected).
     previewState: 'solution',

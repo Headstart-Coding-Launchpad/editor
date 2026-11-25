@@ -241,18 +241,18 @@ export function getSelectableScratchSprites(sprites, respectStudentEditable = fa
   return respectStudentEditable ? sprites.filter(isSpriteStudentEditable) : sprites
 }
 
-// A student-added sprite/backdrop (from the runtime "Add sprite"/"Add backdrop" picker, or
-// restored from persisted `__meta__`) is decorative only: it must never satisfy a check that
-// assumes an author-known sprite set (`sprite_property`, `block_used`, etc. with no explicit
-// `spriteName`, or `spriteWorkspaces[0]` fallbacks). Author-authored sprites are always
-// checkable; student-added ones are excluded before check evaluation.
+// Student-added (decorative) and blockless stand-in sprites are never checked: checks assume
+// the author-known, built sprites (no explicit `spriteName`, `spriteWorkspaces[0]` fallbacks).
 export function isSpriteCheckable(sprite) {
-  return sprite?.studentAdded !== true
+  return sprite?.studentAdded !== true && sprite?.workspace !== NO_BLOCKS
 }
 
 export function filterCheckableSpriteWorkspaces(spriteWorkspaces) {
   return (spriteWorkspaces ?? []).filter(isSpriteCheckable)
 }
+
+// Stands in for a sprite with no Blockly workspace: it runs nothing but can still be targeted.
+const NO_BLOCKS = { getBlocksByType: () => [] }
 
 // A sprite is removable when the task explicitly allows it (`allowRemoveSprite`) and the
 // sprite itself is either student-added, or the task additionally opts every sprite in via
@@ -1723,7 +1723,7 @@ export default function ScratchWorkspace({
         id: sp.id,
         name: sp.name,
         studentAdded: !!sp.studentAdded,
-        workspace: workspaceRefs.current[sp.id],
+        workspace: workspaceRefs.current[sp.id] ?? NO_BLOCKS,
         state: spriteStatesRef.current[sp.id],
         costumes: sp.costumes ?? [],
         sounds: soundsBySpriteId[sp.id] ?? DEFAULT_SPRITE_SOUNDS,
@@ -1731,7 +1731,7 @@ export default function ScratchWorkspace({
           commitSpriteStates({ ...spriteStatesRef.current, [sp.id]: s })
         },
       }))
-      .filter((sp) => sp.workspace)
+      .filter((sp) => sp.state)
     // Include stage workspace when enabled
     if (task?.enableStageCode && workspaceRefs.current['__stage__']) {
       result.push({
