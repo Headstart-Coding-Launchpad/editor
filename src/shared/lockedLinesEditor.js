@@ -1,26 +1,21 @@
 // Locked lines in the CodeMirror editor (see ./lockedLines.js for the authoring side and the
-// anchoring). A locked line is greyed with a 🔒 icon (labelled "Locked") and can't be typed in, deleted,
-// cut, pasted over, re-indented or merged with its neighbours. New lines can still be added
-// before, between and after locked lines:
-//   - Enter on a locked line adds a new line: above it when the cursor is at (or before) the
-//     line's first character, else below it.
+// anchoring). A locked line is greyed with a 🔒 icon (labelled "Locked") and can't be typed in,
+// deleted, cut, pasted over, re-indented or merged with its neighbours. New lines can still be
+// added before, between and after locked lines (Enter on one: enterKey).
 //   - Backspace at the start of the line after a locked line, or Delete at the end of a locked
 //     line, only works when it removes an empty line (it would otherwise merge a line into it).
 //   - A deletion that spans locked lines (select-all + delete, cut, paste over) keeps them: the
 //     text around them goes, the locked lines and the line breaks before them stay.
-//   - The caret never rests inside locked text (calmer guided editor, 25 Nov; see
-//     lockedSelectionFilter), and the touch keyboard stays shut there (inputmode="none"). A
-//     refused edit shows a note beside the caret until the next key or click.
+//   - The caret never rests inside locked text (lockedSelectionFilter, 25 Nov), the touch
+//     keyboard stays shut there, and a refused edit's note stays until the next key or click.
 //
 // Only the student's own edits are guarded (transactions with a user event, other than undo and
 // redo). A value replaced from outside (task switch, Reset, a support stage, a teacher edit)
 // goes through, and the locks are re-anchored by text on the new code — as are undo and redo.
 //
-// A VALUES lock (`#@lock-values`, P6-22) is a locked line whose values stay editable: the text
-// between a plain string's quote marks (empty strings too) and its numbers (lineValueSpans in
-// ./lockedLines.js), marked with the shared "you can change this" look (./editableValueStyle.js).
-// An edit on such a line goes through only when it stays inside the line and leaves its value
-// skeleton as it was. Its caret is always in a value (lockedSelectionFilter, tabField).
+// A VALUES lock (`#@lock-values`, P6-22) is a locked line whose values (string contents, numbers:
+// lineValueSpans) stay editable, in the shared "you can change this" look. An edit there goes
+// through only inside the line, keeping its value skeleton; its caret is always in a value.
 //
 // EDIT ZONES (P6-30):
 //   - A FENCED lock (`#@lock-first` / `#@lock-last`) is a locked line nothing can be added
@@ -29,8 +24,7 @@
 //     would add there is dropped with that note. Enter on the line adds on its open side.
 //   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default),
 //     a dashed row. An edit that would give it more lines, or join a line onto it, is dropped
-//     with "This space takes one line"; a deletion across slots clears their text. Enter goes
-//     from slot to slot (enterInSlots).
+//     with "This space takes one line"; deleting across slots clears them. Enter: enterKey.
 //   - `puzzle.noNewLines`: an edit that adds lines outside the slots is dropped.
 //
 // Dispatch `setLockedLineSets.of(sets)` (the task's lock sets, getTaskLockSets) to (re)place the
@@ -472,13 +466,7 @@ const zoneEditFilter = EditorState.transactionFilter.of((tr) => {
     const changes = moved && state.changes(moved.changes)
     // The moved edit must itself be allowed (e.g. not a new line under puzzle.noNewLines).
     if (changes && !zoneViolation(state, changes)) {
-      return {
-        changes,
-        selection: moved.selection,
-        scrollIntoView: true,
-        effects,
-        annotations,
-      }
+      return { changes, selection: moved.selection, scrollIntoView: true, effects, annotations }
     }
   }
   return { effects }
@@ -572,54 +560,36 @@ const tabField = (dir) => (view) => {
   return true
 }
 
-// Enter in a full slot, or on the locked line just above a slot: on to the (next) slot, or past
-// the last one to the next line that can change; never a new, unmarked line.
-function enterInSlots(view) {
+// Enter in a full slot, or on the locked line just above a slot: on to the next slot (or past
+// the last one to the next line that can change; with none, the slot note), never a new line.
+// On another locked line: a new line above it (cursor at or before its first character) or
+// below it. A fenced line adds on its open side only: above a last line, below a first one.
+function enterKey(view) {
   const { state } = view
   const { head, empty } = state.selection.main
-  const slots = state.field(lockedLinesField, false)?.slots ?? []
-  if (state.readOnly || !empty || slots.length === 0) return enterOnLockedLine(view)
+  if (state.readOnly || !empty) return false
+  const field = state.field(lockedLinesField)
+  const line = lockedLineAt(state, head)
   const lineNo = (pos) => state.doc.lineAt(pos).number
-  const here = lineNo(head)
-  const slot = slots.find((s) => head >= s.from && head <= s.to)
-  let from = null
-  if (slot) {
-    if (lineNo(slot.to) - lineNo(slot.from) + 1 < slot.size) return false
-    from = slot.to
-  } else if (lockedLineAt(state, head) && slots.some((s) => lineNo(s.from) === here + 1)) {
-    from = state.doc.lineAt(head).to
-  } else return enterOnLockedLine(view)
-  const next = slots.find((s) => s.from > from)
-  const target = next
-    ? EditorSelection.cursor(state.doc.lineAt(next.from).to)
-    : hop(state, lineNo(from), 1, 0)
-  if (!target && !slot) return enterOnLockedLine(view)
-  // Past the last slot with nowhere to go: say why nothing happened.
-  const effects = target ? [] : showLockedNote.of({ pos: head, kind: 'slot', size: slot.size })
-  view.dispatch({
-    selection: target ?? undefined,
-    scrollIntoView: true,
-    effects,
-    userEvent: 'select',
-  })
-  return true
-}
-
-// Enter on a locked line: a new line above it (cursor at or before its first character) or
-// below it (anywhere else). A fenced line adds on its open side only: above a last line, below a
-// first one.
-function enterOnLockedLine(view) {
-  const { state } = view
-  if (state.readOnly) return false
-  const sel = state.selection.main
-  if (!sel.empty) return false
-  const line = lockedLineAt(state, sel.head)
+  const slot = field.slots.find((s) => head >= s.from && head <= s.to)
+  if (slot && lineNo(slot.to) - lineNo(slot.from) + 1 < slot.size) return false
+  if (slot || (line && field.slots.some((s) => lineNo(s.from) === line.number + 1))) {
+    const from = slot ? slot.to : line.to
+    const next = field.slots.find((s) => s.from > from)
+    const target = next
+      ? EditorSelection.cursor(state.doc.lineAt(next.from).to)
+      : hop(state, lineNo(from), 1, 0)
+    if (target || slot) {
+      const effects = target ? [] : showLockedNote.of({ pos: head, kind: 'slot', size: slot.size })
+      view.dispatch({ selection: target ?? undefined, effects, userEvent: 'select' })
+      return true
+    }
+  }
   if (!line) return false
   const indent = /^\s*/.exec(line.text)[0]
-  const field = state.field(lockedLinesField)
   const above =
     field.last === line.from ||
-    (field.first !== line.from && sel.head <= line.from + indent.length && sel.head < line.to)
+    (field.first !== line.from && head <= line.from + indent.length && head < line.to)
   if (above) {
     view.dispatch({
       changes: { from: line.from, insert: `${indent}\n` },
@@ -629,7 +599,7 @@ function enterOnLockedLine(view) {
     })
     return true
   }
-  if (sel.head !== line.to) view.dispatch({ selection: { anchor: line.to } })
+  if (head !== line.to) view.dispatch({ selection: { anchor: line.to } })
   return insertNewlineAndIndent(view)
 }
 
@@ -885,7 +855,7 @@ export function lockedLinesExtension() {
     lockedSelectionFilter,
     Prec.highest(
       keymap.of([
-        { key: 'Enter', run: enterInSlots },
+        { key: 'Enter', run: enterKey },
         { key: 'Tab', run: tabField(1), shift: tabField(-1) },
       ])
     ),

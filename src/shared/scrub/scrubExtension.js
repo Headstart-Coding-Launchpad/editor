@@ -2,11 +2,9 @@
 // field; ./scrubConfig.js). The shared CodeEditor turns it on through a Compartment
 // (./useEditorScrub.jsx).
 //
-// - A number scrubs only from its small ↔ handle (shown with its box): dragging the handle left
-//   / right changes it (./literals.js steps, clamps and formats), a click on it opens the slider.
-//   A click on the number itself is a plain click, however shaky (calmer guided editor, 25 Nov).
-// - Touch and pen: a long press on a number opens the slider popover; a tap just selects.
-//   Clicking or tapping a colour opens the picker.
+// - A number scrubs only from its small ↔ handle: a mouse drag on it changes it (./literals.js
+//   steps, clamps and formats); a click or tap on it, or a long press on the number, opens the
+//   slider. A plain click on the number just selects (25 Nov). A colour click opens the picker.
 // - A click or tap on a Python True or False flips it (P6-31): one edit, no popover.
 // - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider);
 //   on a True or False it flips it.
@@ -14,9 +12,8 @@
 //   after a failed run carry the shared "you can change this" box (../editableValueStyle.js),
 //   colours a small swatch after the word. Before the student first clicks in, the first line
 //   with a value shows them instead; a read-only editor shows none. Other lines stay plain, but
-//   their values still work: a tap or click (a long press for a number) opens its control and
-//   moves the caret to its line (not in a view-only editor or onto a locked line), so its boxes
-//   show (calmer Stage lines, 18 Nov; was every line, P6-24).
+//   their values still work: opening one moves the caret to its line (not in a view-only editor
+//   or onto a locked line), so its boxes show (calmer Stage lines, 18 Nov).
 //
 // While a value is moving the document changes with `scrubPreviewAnnotation` (and no undo
 // history): the editor's owner must not treat those as edits (no save, no live write, no typing
