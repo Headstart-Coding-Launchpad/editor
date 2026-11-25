@@ -331,6 +331,7 @@ const lineHintChipClick = EditorView.domEventHandlers({
 const lineHintTheme = EditorView.baseTheme({
   '.cm-lineHintChip': {
     display: 'inline-block',
+    textIndent: 0,
     marginLeft: '1em',
     padding: '0 8px',
     lineHeight: '1.35',
