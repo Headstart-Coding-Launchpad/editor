@@ -4,17 +4,19 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
 import { readFileSync } from 'fs'
-import { getBuildInfo } from './scripts/build-info.mjs'
+import { getBuildInfo, versionJsonPlugin } from './scripts/build-info.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'))
 
+const buildInfo = getBuildInfo({ packageVersion: pkg.version })
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionJsonPlugin(buildInfo)],
   base: '/editor/',
   // Version shown in the Admin Portal footer (src/shared/appVersion.js).
   define: {
-    __APP_BUILD_INFO__: JSON.stringify(getBuildInfo({ packageVersion: pkg.version })),
+    __APP_BUILD_INFO__: JSON.stringify(buildInfo),
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
