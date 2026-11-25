@@ -39,6 +39,18 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-25
 
+- **`lessons ready`: is a lesson ready for class?** A new CLI command, `lessons ready <file|id>`,
+  validates the lesson as published (the Draft flag ignored), fetches every image and asset URL it
+  uses, runs each Python and Turtle task's starter and complete code in a browser (the starter
+  must not pass, the complete code must pass, `setupCode` must run clean, each authored hint must
+  show in some run) and judges Scratch block checks on each stage. It prints a JSON report and a
+  plain summary and exits 0 ready, 1 not ready, 2 nothing failed but something was not checked.
+  Anything not run (quizzes, activities, `input()` code without `--inputs`, predict locks, frozen
+  modules) is "not checked" with its reason, so a lesson with such tasks is never "ready". No new
+  lesson fields; nothing is written to Firebase. See [lessons-ready-cli.md](lessons-ready-cli.md).
+- Affects: cli, python, turtle, scratch · Existing lessons: no changes needed · Resolves: none
+  (Deep Review C1/C6/C10, 10 Nov 2026)
+
 - **Python Stage tasks open on the Picture tab on smaller screens.** A task that draws on the Stage
   (the code imports `stage` or `matplotlib`, or it has a `stageTarget`) used to open on Tags when it
   had `showVariables`, so a child saw no drawing. It now opens on the Picture; predict / target
