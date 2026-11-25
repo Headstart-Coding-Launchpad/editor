@@ -222,24 +222,34 @@ const sameCode = (a, b) => {
   return a != null && b != null && plain(a) === plain(b)
 }
 
-const INPUT_SKIP = "the code calls input(): answers can't be guessed"
+const INPUT_SKIP = "the code calls input(): answers can't be guessed (give them with --inputs)"
 
 const LOCK_SKIP = 'predict mode locks Run until the child fills in their predictions'
 
-function codeRun(task, role, code, expect, extra = {}) {
+// The --inputs answers for one run: a list for every run of the task, or { starter, complete }.
+function answersFor(taskInputs, role) {
+  const list = Array.isArray(taskInputs) ? taskInputs : taskInputs?.[role]
+  return Array.isArray(list) ? list.map((v) => String(v)) : null
+}
+
+function codeRun(task, role, code, expect, extra = {}, taskInputs = null) {
   const run = { role, code, expect, ...extra }
   if (run.skip != null || code == null) return run
-  if (codeCallsInput(code) || codeCallsInput(getTaskSetupCode(task))) run.skip = INPUT_SKIP
-  else if (getPredictRunLock(task, null) || getRunCountLock(task, null, code)) run.skip = LOCK_SKIP
+  const answers = answersFor(taskInputs, role)
+  if (answers) run.inputs = answers
+  if (!answers && (codeCallsInput(code) || codeCallsInput(getTaskSetupCode(task)))) {
+    run.skip = INPUT_SKIP
+  } else if (getPredictRunLock(task, null) || getRunCountLock(task, null, code))
+    run.skip = LOCK_SKIP
   return run
 }
 
 /**
  * What `lessons ready` does with one task: `status` and `reason` when it runs nothing, else
  * `runs` ({ role, code, expect: 'not_pass' | 'pass' | 'runs_clean' | 'runs', skip? }) and the
- * authored `hints` to look for.
+ * authored `hints` to look for. `inputs`: this task's answers to input() (see answersFor).
  */
-export function planTask(lesson, task) {
+export function planTask(lesson, task, { inputs = null } = {}) {
   const module = getTaskModuleType(lesson, task) ?? lesson?.type ?? null
   const format = getTaskFormat(task)
   const base = { id: task.id, title: task.title ?? '', module, format, runs: [], hints: [] }
@@ -276,13 +286,17 @@ export function planTask(lesson, task) {
       normalizeChecks(task.check).every(isRunAttemptedCheck))
   if (runAndRead) {
     runs.push(
-      codeRun(task, 'starter', starter.code, 'pass', {
-        ...starterExtra,
-        note: 'a run-and-read task: the starter is meant to pass',
-      })
+      codeRun(
+        task,
+        'starter',
+        starter.code,
+        'pass',
+        { ...starterExtra, note: 'a run-and-read task: the starter is meant to pass' },
+        inputs
+      )
     )
   } else if (hasCheck) {
-    runs.push(codeRun(task, 'starter', starter.code, 'not_pass', starterExtra))
+    runs.push(codeRun(task, 'starter', starter.code, 'not_pass', starterExtra, inputs))
     runs.push(
       complete == null
         ? {
@@ -291,18 +305,21 @@ export function planTask(lesson, task) {
             expect: 'pass',
             skip: 'no complete code to prove the checks can pass',
           }
-        : codeRun(task, 'complete', complete, 'pass')
+        : codeRun(task, 'complete', complete, 'pass', {}, inputs)
     )
   } else if (complete != null) {
-    runs.push(codeRun(task, 'complete', complete, 'runs_clean'))
+    runs.push(codeRun(task, 'complete', complete, 'runs_clean', {}, inputs))
   } else {
-    runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra))
+    runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra, inputs))
   }
   return { ...base, setup: setupCode != null, runs, hints: authoredHints(task) }
 }
 
-export function planTasks(lesson) {
-  return flattenTasks(lesson?.tasks ?? []).map((task) => planTask(lesson, task))
+/** Every task's plan. `inputs`: { [taskId]: answers } from --inputs. */
+export function planTasks(lesson, { inputs = {} } = {}) {
+  return flattenTasks(lesson?.tasks ?? []).map((task) =>
+    planTask(lesson, task, { inputs: inputs?.[String(task.id)] ?? null })
+  )
 }
 
 // ── 4. Judging the runs ──────────────────────────────────────────────────────

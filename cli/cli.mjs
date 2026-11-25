@@ -201,7 +201,7 @@ const loadLessonScreenshot = () => import('./lesson-screenshot.mjs')
 const loadLessonReady = () => import('./lesson-ready.mjs')
 
 // `lessons ready`: validate as published, fetch assets, run the tasks, one report.
-async function runLessonReady(lesson, { base, run, assets, taskId }) {
+async function runLessonReady(lesson, { base, run, assets, taskId, inputs }) {
   const ready = await loadLessonReady()
   const appBase = base ?? (await loadLessonScreenshot()).DEFAULT_BASE
   const validation = ready.validateAsPublished(lesson)
@@ -214,7 +214,7 @@ async function runLessonReady(lesson, { base, run, assets, taskId }) {
         broken: [],
         notChecked: refs.map(({ ref, where }) => ({ ref, where, reason: '--no-assets' })),
       }
-  let plans = ready.planTasks(lesson)
+  let plans = ready.planTasks(lesson, { inputs })
   if (taskId != null) {
     plans = plans.filter((p) => String(p.id) === String(taskId))
     if (plans.length === 0) throw new Error(`Task ${taskId} is not in lesson ${lesson.id}`)
@@ -857,6 +857,11 @@ await yargs(hideBin(process.argv))
             describe: 'Fetch asset URLs; --no-assets reports them as not checked',
           },
           task: { type: 'string', describe: 'Only this task id' },
+          inputs: {
+            type: 'string',
+            describe:
+              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...] } }',
+          },
           out: { type: 'string', describe: 'Also write the JSON report to this file' },
         },
         cmd(async (argv) => {
@@ -869,6 +874,7 @@ await yargs(hideBin(process.argv))
             run: argv.run,
             assets: argv.assets,
             taskId: argv.task,
+            inputs: argv.inputs ? parseJsonOrYaml(argv.inputs, await readText(argv.inputs)) : {},
           })
           if (argv.out) await writeText(resolve(argv.out), JSON.stringify(report, null, 2))
           print(report)

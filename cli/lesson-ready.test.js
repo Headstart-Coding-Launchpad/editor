@@ -252,6 +252,30 @@ describe('planTask', () => {
     expect(plan.runs.every((r) => /predict/.test(r.skip))).toBe(true)
   })
 
+  it('runs input() code with the answers given (--inputs), per task or per run', () => {
+    const ask = {
+      ...printTask,
+      id: 4,
+      codeStages: [
+        { role: 'starter', label: 'Starter', code: 'name = input("Name?")\n' },
+        {
+          role: 'complete',
+          label: 'Complete',
+          code: 'name = input("Name?")\nprint("hello", name)\n',
+        },
+      ],
+    }
+    const lesson = pythonLesson([ask])
+    const [plan] = planTasks(lesson, { inputs: { 4: ['Ava'] } })
+    expect(plan.runs.map((r) => [r.skip, r.inputs])).toEqual([
+      [undefined, ['Ava']],
+      [undefined, ['Ava']],
+    ])
+    const perRun = planTask(lesson, ask, { inputs: { complete: ['Ben'] } })
+    expect(perRun.runs[0].skip).toMatch(/--inputs/)
+    expect(perRun.runs[1].inputs).toEqual(['Ben'])
+  })
+
   it('reports Python tests and submit-mode tasks as not checked', () => {
     const tests = { ...printTask, id: 5, tests: [{ id: 't1', inputs: [], check: printTask.check }] }
     const submit = { ...printTask, id: 6, interactionMode: 'submit' }

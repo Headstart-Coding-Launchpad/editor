@@ -12,7 +12,7 @@
 
 /* global window, document, location -- page callbacks only */
 import { findShotTask, prepareShotLesson } from './lesson-screenshot-input.mjs'
-import { launchBrowser, runTask, withTrailingSlash } from './lesson-screenshot.mjs'
+import { launchBrowser, withTrailingSlash } from './lesson-screenshot.mjs'
 import { SETUP_ERROR_TEXT } from '../src/shared/puzzle/setupCode.js'
 
 const SHOT_GLOBAL = '__HSC_SHOT__'
@@ -146,7 +146,47 @@ async function waitForVerdict(page, timeoutMs) {
   return seen
 }
 
-async function runOne(page, base, key, { expectVerdict }) {
+// Presses Run and answers each input() question from `answers`, in order, until the run ends.
+// A question past the answers given stops the run as not checked: nothing is made up.
+async function runAnswering(page, answers) {
+  const run = page
+    .locator('[data-highlight-target~="run"], [data-highlight-target~="green_flag"]')
+    .first()
+  await run.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
+    throw new Error('could not find the Run button')
+  })
+  await run.click({ timeout: 6000 })
+  const field = page.getByPlaceholder('Type your input…').first()
+  const running = async () => /^(Stop|Running…)$/.test(((await run.textContent()) ?? '').trim())
+  let next = 0
+  const deadline = Date.now() + 60_000
+  await page.waitForTimeout(200)
+  while (await running()) {
+    if (Date.now() > deadline) throw new Error('the run did not finish within 60 seconds')
+    if (await field.isVisible().catch(() => false)) {
+      if (next >= answers.length) {
+        throw new Error(
+          `the run asked input() question ${next + 1}, but ${answers.length} answer(s) were given`
+        )
+      }
+      await field.fill(answers[next++])
+      await field.press('Enter')
+      await page.waitForTimeout(300)
+      continue
+    }
+    await page.waitForTimeout(200)
+  }
+  // A Turtle picture plays its drawing after the run ends.
+  await page
+    .locator('[data-testid="turtle-canvas"][data-playing="true"]')
+    .first()
+    .waitFor({ state: 'detached', timeout: 120_000 })
+    .catch(() => {
+      throw new Error('the turtle was still drawing after 2 minutes')
+    })
+}
+
+async function runOne(page, base, key, { expectVerdict, inputs = [] }) {
   const errors = []
   const onError = (e) => errors.push(e.message.split('\n')[0])
   page.on('pageerror', onError)
@@ -166,7 +206,7 @@ async function runOne(page, base, key, { expectVerdict }) {
       .catch(() => {
         throw new Error('Python did not finish loading within 90 seconds')
       })
-    await runTask(page, [])
+    await runAnswering(page, inputs)
     // The check banner follows the end of the run.
     const seen = await waitForVerdict(page, expectVerdict ? 5000 : 800)
     return { status: 'done', ...seen, ...(errors.length ? { pageErrors: errors.slice(0, 5) } : {}) }
@@ -207,6 +247,7 @@ export async function runPlannedTasks({ lesson, plans, base, log = () => {} }) {
     for (const [i, { plan, run, key }] of jobs.entries()) {
       const result = await runOne(page, base, key, {
         expectVerdict: run.expect === 'pass' || run.expect === 'not_pass',
+        inputs: run.inputs ?? [],
       })
       ;(results[plan.id] ??= {})[run.role] = result
       const said =
