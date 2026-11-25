@@ -35,6 +35,7 @@ import {
   findExampleFenceProblems,
   MAX_LOGGED_EXAMPLES,
 } from './markdown/exampleFence.js'
+import { findCodeLineProblems } from './markdown/codeLines.js'
 import { validateTaskHighlight } from './controlHighlight.js'
 import { validateDraftLessonStructure } from './draftLesson.js'
 import {
@@ -229,8 +230,9 @@ function validateFeedbackBasics(task, n, errors, warnings) {
   })
 }
 
-// "See example" fences in the explainer (./markdown/exampleFence.js). Warnings only: a bad one
-// still renders (as plain code, or with no code).
+// "See example" fences (./markdown/exampleFence.js) and numbered-block attributes such as
+// ```python {lines=3} (./markdown/codeLines.js) in the explainer. Warnings only: a bad fence
+// still renders (as plain code, or with no code). Messages stay whole for validation-errors.md.
 function validateExampleFences(task, n, warnings) {
   if (typeof task.explainer !== 'string') return
   for (const { number, problem, detail } of findExampleFenceProblems(task.explainer)) {
@@ -249,6 +251,15 @@ function validateExampleFences(task, n, warnings) {
     } else if (problem === 'too-many') {
       warnings.push(
         `Task ${n} explainer has more than ${MAX_LOGGED_EXAMPLES} examples; opens of the rest are not recorded`
+      )
+    }
+  }
+  for (const { number, problem, detail } of findCodeLineProblems(task.explainer)) {
+    if (problem === 'out-of-range') {
+      warnings.push(`Task ${n} explainer code block ${number} marks lines past its end: ${detail}`)
+    } else if (problem === 'unknown-option') {
+      warnings.push(
+        `Task ${n} explainer code block ${number} has unknown words in its {...}: ${detail}`
       )
     }
   }

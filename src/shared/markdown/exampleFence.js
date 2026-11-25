@@ -108,6 +108,24 @@ export function parseExampleBody(body) {
   return { intro: introLines.join('\n').trim(), code: codeLines.join('\n') }
 }
 
+/** Each top-level fence in Markdown's lines: `{ start, close, end, indent, info, closed }`. */
+export function* eachFence(lines) {
+  for (let i = 0; i < lines.length;) {
+    const open = lines[i].match(FENCE_OPEN)
+    // A backtick fence's info string can't hold a backtick (CommonMark), so that's inline code.
+    if (!open || (open[2][0] === '`' && open[3].includes('`'))) {
+      i++
+      continue
+    }
+    let close = i + 1
+    while (close < lines.length && !isFenceClose(lines[close], open[2][0], open[2].length)) close++
+    const closed = close < lines.length
+    const end = closed ? close + 1 : lines.length
+    yield { start: i, close, end, indent: open[1], info: open[3], closed }
+    i = end
+  }
+}
+
 /**
  * Splits Markdown into segments: `{ type: 'markdown', content }` and
  * `{ type: 'example', index, language, label, intro, code, closed, unknownLanguage, extra }`.
@@ -118,35 +136,16 @@ export function splitExampleFences(content) {
     .replace(/\r\n?/g, '\n')
     .split('\n')
   const segments = []
-  let markdown = []
   let index = 0
-  const flush = () => {
-    if (markdown.length) segments.push({ type: 'markdown', content: markdown.join('\n') })
-    markdown = []
+  let from = 0
+  const flush = (to) => {
+    if (to > from) segments.push({ type: 'markdown', content: lines.slice(from, to).join('\n') })
   }
-
-  let i = 0
-  while (i < lines.length) {
-    const open = lines[i].match(FENCE_OPEN)
-    // A backtick fence's info string can't hold a backtick (CommonMark), so that's inline code.
-    if (!open || (open[2][0] === '`' && open[3].includes('`'))) {
-      markdown.push(lines[i])
-      i++
-      continue
-    }
-    const [, indent, marker, info] = open
-    let close = i + 1
-    while (close < lines.length && !isFenceClose(lines[close], marker[0], marker.length)) close++
-    const closed = close < lines.length
-    const end = closed ? close + 1 : lines.length
-    if (!isExampleInfo(info)) {
-      markdown.push(...lines.slice(i, end))
-      i = end
-      continue
-    }
-    flush()
+  for (const { start, close, end, indent, info, closed } of eachFence(lines)) {
+    if (!isExampleInfo(info)) continue
+    flush(start)
     const body = lines
-      .slice(i + 1, close)
+      .slice(start + 1, close)
       .map((line) => stripIndent(line, indent.length))
       .join('\n')
     segments.push({
@@ -156,9 +155,9 @@ export function splitExampleFences(content) {
       ...parseExampleBody(body),
       closed,
     })
-    i = end
+    from = end
   }
-  flush()
+  flush(lines.length)
   return segments
 }
 

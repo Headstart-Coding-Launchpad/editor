@@ -2546,6 +2546,53 @@ select {
   background: transparent;
   color: var(--colour-text);
 }
+
+/* Numbered code blocks, ```python {lines=3} (src/shared/markdown/codeLines.js). The number and
+   the marked line's arrow are CSS content, so copying the code never picks them up. */
+.md-code-lines__code {
+  display: inline-block;
+  min-width: 100%;
+}
+.md-code-lines__row {
+  display: block;
+  position: relative;
+  /* An empty line keeps its height, so its number and mark still show. */
+  min-height: 1.6em;
+  padding: 0 10px 0 3.4em;
+  border-radius: 4px;
+}
+.md-code-lines__row::before {
+  /* Plain form first: browsers without CSS alt text drop the whole `/ ''` declaration. */
+  content: attr(data-line);
+  content: attr(data-line) / '';
+  position: absolute;
+  left: 0;
+  width: 2.7em;
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.85em;
+  line-height: 1.88;
+  user-select: none;
+}
+.md-code-lines__row--marked {
+  background: #fdf1c0;
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+.md-code-lines__row--marked::before {
+  color: #b45309;
+  font-weight: 700;
+}
+.md-code-lines__row--marked::after {
+  content: '\25B6';
+  content: '\25B6' / '';
+  position: absolute;
+  left: 0.55em;
+  top: 0;
+  color: #d97706;
+  font-size: 0.7em;
+  line-height: 2.3;
+  user-select: none;
+}
 .hljs-keyword {
   color: #7c3aed;
   font-weight: bold;
