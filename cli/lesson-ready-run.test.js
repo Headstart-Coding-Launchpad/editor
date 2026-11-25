@@ -2,12 +2,11 @@ import { createElement as h } from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { guardDecision, readShotVerdict } from './lesson-ready-run.mjs'
+import { RUN_ERROR, guardDecision, readShotVerdict } from './lesson-ready-run.mjs'
 import CheckFeedbackBanner from '../src/app/components/CheckFeedbackBanner.jsx'
 import OutputPanel from '../src/app/components/OutputPanel.jsx'
 import { SETUP_ERROR_TEXT } from '../src/shared/puzzle/setupCode.js'
 
-const RUN_ERROR = /Traceback \(most recent call last\)|^\s*\w*(Error|Exception):/m
 const read = () => readShotVerdict([SETUP_ERROR_TEXT, RUN_ERROR.source])
 
 afterEach(cleanup)
@@ -65,6 +64,18 @@ describe('readShotVerdict reads the real check banner and output panel', () => {
     )
     await waitFor(() => expect(read().output).toContain('turtle has no Turtle'))
     expect(read()).toMatchObject({ runError: true, setupError: false })
+  })
+
+  it('a program that prints "Error:" on purpose did not error', async () => {
+    render(
+      h(OutputPanel, {
+        output: 'Error: wrong password\n',
+        runStatus: 'success',
+        collapsible: false,
+      })
+    )
+    await waitFor(() => expect(read().output).toContain('wrong password'))
+    expect(read().runError).toBe(false)
   })
 
   it('a clean run has no error', async () => {

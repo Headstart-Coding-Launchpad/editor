@@ -36,7 +36,9 @@ export function guardDecision(url, method = 'GET') {
   return BLOCKED_HOSTS.test(host) ? 'block' : 'allow'
 }
 
-const RUN_ERROR = /Traceback \(most recent call last\)|^\s*\w*(Error|Exception):/m
+// A traceback header; the panel's status word covers a crash whose traceback is folded away.
+// Not any line starting "Error:", which a program may print on purpose.
+export const RUN_ERROR = /Traceback \(most recent call last\)/
 
 /**
  * What the child sees after a run, read from the page: the check banner (CheckFeedbackBanner,
@@ -90,6 +92,8 @@ function runTaskCopy(lesson, taskId, code) {
 // Runs in the browser before the app loads: picks the run named in ?ready= and hands its lesson
 // to ShotView. Storage is cleared so no run sees what an earlier one left.
 function installShot([key, data]) {
+  // Init scripts also run in frames: only the page itself is set up.
+  if (window !== window.top) return
   try {
     localStorage.clear()
     sessionStorage.clear()
@@ -155,12 +159,25 @@ async function runAnswering(page, answers) {
   await run.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
     throw new Error('could not find the Run button')
   })
+  const status = async () =>
+    page
+      .locator('[data-testid="output-panel"]')
+      .first()
+      .evaluate((el) => el.firstElementChild?.textContent ?? '')
+      .catch(() => '')
+  const before = await status()
   await run.click({ timeout: 6000 })
   const field = page.getByPlaceholder('Type your input…').first()
   const running = async () => /^(Stop|Running…)$/.test(((await run.textContent()) ?? '').trim())
+  // Wait for the run to start (the button says Stop, or the output's status word changes), so a
+  // slow start is never read as a finished run. A run too quick to see goes on after 15s.
+  const startBy = Date.now() + 15_000
+  while (!(await running()) && (await status()) === before) {
+    if (Date.now() > startBy) break
+    await page.waitForTimeout(100)
+  }
   let next = 0
   const deadline = Date.now() + 60_000
-  await page.waitForTimeout(200)
   while (await running()) {
     if (Date.now() > deadline) throw new Error('the run did not finish within 60 seconds')
     if (await field.isVisible().catch(() => false)) {

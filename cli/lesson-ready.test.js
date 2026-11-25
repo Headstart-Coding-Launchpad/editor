@@ -412,3 +412,78 @@ describe('Scratch tasks: block checks judged on each stage', () => {
     expect(report.checks.find((c) => c.name === 'complete blocks pass').reason).toMatch(/run/)
   })
 })
+
+describe('review fixes', () => {
+  it('still runs different complete code on a run_attempted task, for errors', () => {
+    const task = {
+      ...printTask,
+      id: 11,
+      check: { type: 'run_attempted' },
+      codeStages: [
+        { role: 'starter', label: 'Starter', code: '' },
+        { role: 'complete', label: 'Complete', code: 'print(oops)\n' },
+      ],
+      starterCode: '',
+    }
+    const plan = planTask(pythonLesson([task]), task)
+    expect(plan.runs.map((r) => [r.role, r.expect])).toEqual([
+      ['starter', 'pass'],
+      ['complete', 'runs_clean'],
+    ])
+    const report = judgeTask(plan, {
+      starter: done('passed'),
+      complete: done('passed', { runError: true, output: 'NameError' }),
+    })
+    expect(report.status).toBe('fail')
+  })
+
+  it('judges a Scratch task with no starter blocks on an empty workspace', () => {
+    const task = {
+      id: 12,
+      title: 'Blank start',
+      sprites: [{ id: 'sprite1', name: 'Cat' }],
+      completeBlocks: { sprite1: { blocks: { blocks: [{ type: 'motion_movesteps' }] } } },
+      check: [{ type: 'block_used', opcode: 'motion_movesteps' }],
+    }
+    const lesson = { id: 's', type: 'scratch', title: 'S', description: 'd', tasks: [task] }
+    const report = judgeTask(planTask(lesson, task))
+    expect(report.checks[0]).toMatchObject({ name: 'starter does not pass', status: 'pass' })
+    expect(report.status).toBe('pass')
+  })
+
+  it('never fetches assetsPath, with or without a trailing slash', () => {
+    const lesson = pythonLesson([printTask], { assetsPath: '/lesson-assets/pets' })
+    expect(collectAssetRefs(lesson, { base: BASE })).toEqual([])
+  })
+
+  it('matches a hint with a Markdown link by its text', () => {
+    const task = {
+      ...printTask,
+      check: { ...printTask.check, hint: 'Look at [print](https://docs.python.org).' },
+    }
+    const report = judgeTask(planTask(pythonLesson([task]), task), {
+      starter: done('failed', { hintShown: 'Look at print.' }),
+      complete: done('passed'),
+    })
+    expect(report.hints[0].status).toBe('shown')
+  })
+
+  it('finds a carryCodeFrom task whose id is written as text', () => {
+    // Task 2's complete code is task 1's, so a child carrying task 1's work starts with the
+    // answer: that is "starter already passes", never a run-and-read task.
+    const second = { ...printTask, id: 2, carryCodeFrom: '1' }
+    const plan = planTask(pythonLesson([printTask, second]), second)
+    expect(plan.runs[0].expect).toBe('not_pass')
+    expect(plan.runs[0]).toMatchObject({
+      code: 'print("hello")\n',
+      note: expect.stringMatching(/carried/),
+    })
+  })
+
+  it('counts an empty file (416) as there', async () => {
+    const result = await checkAssets([{ url: 'https://storage.test/empty.txt', where: ['x'] }], {
+      fetchImpl: async () => ({ ok: false, status: 416 }),
+    })
+    expect(result.status).toBe('pass')
+  })
+})

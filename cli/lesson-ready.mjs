@@ -6,7 +6,7 @@
 // lesson with anything not checked is "not_fully_checked", never "ready".
 
 import { validateLessonForMcp } from './validate.mjs'
-import { flattenTasks, findTaskById } from '../src/shared/taskUtils.js'
+import { flattenTasks } from '../src/shared/taskUtils.js'
 import { getTaskModuleType } from '../src/shared/composedLesson.js'
 import { getTaskFormat } from '../src/activities/registry.pure.js'
 import {
@@ -71,7 +71,7 @@ export function validateAsPublished(lesson) {
 
 // Code, blocks and files are the child's program, not lesson assets.
 const SKIP_KEYS =
-  /^(?:.*code|.*blocks|prebuiltStacks|starterFiles|completeFiles|files|starter|_sealed)$/i
+  /^(?:.*code|.*blocks|prebuiltStacks|starterFiles|completeFiles|files|starter|_sealed|assetsPath)$/i
 // A whole-string value under one of these keys is an asset URL.
 const URL_KEYS = /(url|src|image|img|icon|thumb|costume|sound|audio|asset|picture|sprite)/i
 const MD_IMAGE = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+["'][^"']*["'])?\s*\)/g
@@ -152,7 +152,9 @@ async function fetchOne(url, fetchImpl, timeoutMs) {
       signal: AbortSignal.timeout(timeoutMs),
     })
     await res.body?.cancel?.().catch(() => {})
-    return res.ok ? { ok: true, status: res.status } : { ok: false, status: res.status }
+    // 416: the file is there but has no byte 0 (an empty file).
+    const ok = res.ok || res.status === 416
+    return { ok, status: res.status }
   } catch (e) {
     return { ok: false, error: e.message }
   }
@@ -203,7 +205,9 @@ function starterFor(lesson, task) {
     }
   }
   if (task.carryCodeFrom != null && task.carryCodeFrom !== '') {
-    const from = findTaskById(lesson.tasks, task.carryCodeFrom)
+    const from = flattenTasks(lesson.tasks).find(
+      (t) => String(t?.id) === String(task.carryCodeFrom)
+    )
     const code = from ? stage(from, 'complete') : null
     if (code == null) {
       return {
@@ -296,10 +300,11 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   }
   const runs = []
   // A run-and-read task: the child only presses Run, so its starter is meant to pass (the
-  // starter is the complete code, or every completion check is run_attempted).
+  // authored starter is the complete code, or every completion check is run_attempted). Carried
+  // code that equals the complete code is not that: the child would start with the answer.
   const runAndRead =
     hasCheck &&
-    ((complete != null && sameCode(starter.code, complete)) ||
+    ((complete != null && sameCode(stage(task, 'starter') ?? '', complete)) ||
       normalizeChecks(task.check).every(isRunAttemptedCheck))
   if (runAndRead) {
     runs.push(
@@ -312,6 +317,10 @@ export function planTask(lesson, task, { inputs = null } = {}) {
         inputs
       )
     )
+    // run_attempted passes any run, so different complete code is only checked for errors.
+    if (complete != null && !sameCode(starter.code, complete)) {
+      runs.push(codeRun(task, 'complete', complete, 'runs_clean', {}, inputs))
+    }
   } else if (hasCheck) {
     runs.push(codeRun(task, 'starter', starter.code, 'not_pass', starterExtra, inputs))
     runs.push(
@@ -365,7 +374,9 @@ function planBlocksTask(task, base) {
     return { ...base, status: NOTHING_TO_RUN, reason: 'no completion check' }
   }
   const stages = getScratchVerificationStages(task).map(({ stage, kind, blocks }) => {
-    if (blocks == null) return { stage, kind, missing: true }
+    // A task with no starter blocks starts on an empty workspace.
+    if (blocks == null && kind !== 'starter') return { stage, kind, missing: true }
+    blocks = blocks ?? {}
     try {
       return { stage, kind, blocks, ...evaluateScratchStage(task, blocks) }
     } catch (e) {
@@ -417,6 +428,8 @@ const RUN_NAMES = {
 
 const plainText = (text) =>
   String(text ?? '')
+    // Links and images read as their text.
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[*_`#>~[\]()]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -464,7 +477,7 @@ function judgeRun(run, result) {
         return {
           ...item,
           status: FAIL,
-          detail: `the complete code fails the checks${shown}${result.runError ? `; output: ${tail(result.output)}` : ''}`,
+          detail: `the ${run.role === 'starter' ? 'starter (run and read)' : 'complete code'} fails the checks${shown}${result.runError ? `; output: ${tail(result.output)}` : ''}`,
         }
       }
       return { ...item, status: NOT_CHECKED, reason: 'no check result appeared after Run' }
