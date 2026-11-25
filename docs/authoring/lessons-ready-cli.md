@@ -63,6 +63,7 @@ The `#/shot` page keeps the code in memory (the Builder preview's mode): no sess
 
 ## The report
 
+<!-- example:template -->
 ```json
 {
   "lessonId": "caakmdqj5j",
