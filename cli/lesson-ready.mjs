@@ -9,7 +9,11 @@ import { validateLessonForMcp } from './validate.mjs'
 import { flattenTasks, findTaskById } from '../src/shared/taskUtils.js'
 import { getTaskModuleType } from '../src/shared/composedLesson.js'
 import { getTaskFormat } from '../src/activities/registry.pure.js'
-import { normalizeChecks, normalizeFeedbackChecks } from '../src/modules/checks.js'
+import {
+  isRunAttemptedCheck,
+  normalizeChecks,
+  normalizeFeedbackChecks,
+} from '../src/modules/checks.js'
 import { codeCallsInput } from '../src/shared/scrub/runOnOpen.js'
 import { getTaskSetupCode } from '../src/shared/puzzle/setupCode.js'
 import { resolveAssetsPath } from '../src/shared/assetPaths.js'
@@ -209,6 +213,15 @@ function authoredHints(task) {
   return hints
 }
 
+// The same program but for trailing spaces and blank lines at either end.
+const sameCode = (a, b) => {
+  const plain = (text) =>
+    String(text ?? '')
+      .replace(/[ \t]+$/gm, '')
+      .trim()
+  return a != null && b != null && plain(a) === plain(b)
+}
+
 const INPUT_SKIP = "the code calls input(): answers can't be guessed"
 
 const LOCK_SKIP = 'predict mode locks Run until the child fills in their predictions'
@@ -255,7 +268,20 @@ export function planTask(lesson, task) {
     ...(starter.note ? { note: starter.note } : {}),
   }
   const runs = []
-  if (hasCheck) {
+  // A run-and-read task: the child only presses Run, so its starter is meant to pass (the
+  // starter is the complete code, or every completion check is run_attempted).
+  const runAndRead =
+    hasCheck &&
+    ((complete != null && sameCode(starter.code, complete)) ||
+      normalizeChecks(task.check).every(isRunAttemptedCheck))
+  if (runAndRead) {
+    runs.push(
+      codeRun(task, 'starter', starter.code, 'pass', {
+        ...starterExtra,
+        note: 'a run-and-read task: the starter is meant to pass',
+      })
+    )
+  } else if (hasCheck) {
     runs.push(codeRun(task, 'starter', starter.code, 'not_pass', starterExtra))
     runs.push(
       complete == null
@@ -307,7 +333,11 @@ const tail = (text, n = 300) => {
 }
 
 function judgeRun(run, result) {
-  const item = { name: RUN_NAMES[run.expect], role: run.role }
+  const name =
+    run.role === 'starter' && run.expect === 'pass'
+      ? 'starter passes (run and read)'
+      : RUN_NAMES[run.expect]
+  const item = { name, role: run.role }
   if (run.note) item.note = run.note
   if (run.skip) return { ...item, status: NOT_CHECKED, reason: run.skip }
   if (!result) return { ...item, status: NOT_CHECKED, reason: 'not run' }

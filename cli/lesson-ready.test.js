@@ -220,6 +220,23 @@ describe('planTask', () => {
     expect(task.checks[0].reason).toMatch(/input\(\)/)
   })
 
+  it('expects the starter of a run-and-read task to pass', () => {
+    const demo = {
+      ...printTask,
+      id: 9,
+      starterCode: 'print("hello")\n',
+      codeStages: [{ role: 'starter', label: 'Starter', code: 'print("hello")\n' }],
+      completeCode: 'print("hello")  \n',
+    }
+    const plan = planTask(pythonLesson([demo]), demo)
+    expect(plan.runs).toEqual([expect.objectContaining({ role: 'starter', expect: 'pass' })])
+    const task = judgeTask(plan, { starter: done('passed') })
+    expect(task.checks[0]).toMatchObject({ name: 'starter passes (run and read)', status: 'pass' })
+
+    const runAttempted = { ...printTask, id: 10, check: { type: 'run_attempted' } }
+    expect(planTask(pythonLesson([runAttempted]), runAttempted).runs[0].expect).toBe('pass')
+  })
+
   it('does not run a task whose Run waits for predictions', () => {
     const predict = {
       ...printTask,
