@@ -130,7 +130,10 @@ describe('collectAssetRefs', () => {
           starterCode: 'print("https://example.test/not-an-asset.png")\n',
         },
       ],
-      { storageAssets: [{ name: 'cat.png', url: 'https://storage.test/cat.png' }] }
+      {
+        storageAssets: [{ name: 'cat.png', url: 'https://storage.test/cat.png' }],
+        assetsPath: '/assets/ready-demo/',
+      }
     )
     const refs = collectAssetRefs(lesson, { base: BASE })
     const urls = refs.map((r) => r.url)
@@ -138,6 +141,8 @@ describe('collectAssetRefs', () => {
     expect(urls).toContain('https://storage.test/dog.png')
     expect(urls).toContain('https://example.test/editor/assets/logo.png')
     expect(urls).not.toContain('https://example.test/not-an-asset.png')
+    // A folder is not a file to fetch.
+    expect(urls.some((u) => u?.endsWith('/'))).toBe(false)
     // One entry per URL, listing every place it is used.
     const cat = refs.find((r) => r.url === 'https://storage.test/cat.png')
     expect(cat.where).toEqual(expect.arrayContaining(['task 1 instructions', 'storageAssets']))
@@ -343,5 +348,67 @@ describe('judgeTask', () => {
     const nudge = task.hints.find((h) => h.hint === 'Use print, not a loop.')
     expect(nudge.status).toBe('not_checked')
     expect(task.status).toBe('not_checked')
+  })
+})
+
+describe('Scratch tasks: block checks judged on each stage', () => {
+  const stack = (...opcodes) =>
+    opcodes.reduceRight(
+      (next, type) => ({ type, ...(next ? { next: { block: next } } : {}) }),
+      null
+    )
+  const blocksFor = (...stacks) => ({ sprite1: { blocks: { blocks: stacks } } })
+  const scratchTask = (overrides = {}) => ({
+    id: 7,
+    title: 'Move the rocket',
+    sprites: [{ id: 'sprite1', name: 'Rocket' }],
+    starterBlocks: blocksFor(stack('event_whenflagclicked', 'motion_turnright')),
+    completeBlocks: blocksFor(stack('event_whenflagclicked', 'motion_movesteps')),
+    check: [{ type: 'block_used', opcode: 'motion_movesteps', hint: 'Use a move block.' }],
+    feedbackChecks: [
+      { type: 'block_used', opcode: 'motion_turnright', hint: 'Remove the turn block.' },
+    ],
+    ...overrides,
+  })
+  const lesson = (task) => ({
+    id: 's',
+    type: 'scratch',
+    title: 'S',
+    description: 'd',
+    tasks: [task],
+  })
+
+  it('passes when the starter fails and the complete blocks pass, with hints found', () => {
+    const task = scratchTask()
+    const report = judgeTask(planTask(lesson(task), task))
+    expect(report.method).toBe('blocks')
+    expect(report.checks.map((c) => [c.name, c.status])).toEqual([
+      ['starter does not pass', 'pass'],
+      ['complete blocks pass', 'pass'],
+    ])
+    expect(report.hints.map((h) => [h.hint, h.status])).toEqual([
+      ['Use a move block.', 'shown'],
+      ['Remove the turn block.', 'shown'],
+    ])
+    expect(report.status).toBe('pass')
+  })
+
+  it('fails a starter that already passes', () => {
+    const task = scratchTask({
+      starterBlocks: blocksFor(stack('event_whenflagclicked', 'motion_movesteps', 'looks_say')),
+    })
+    const report = judgeTask(planTask(lesson(task), task))
+    expect(report.status).toBe('fail')
+    expect(report.checks[0].detail).toMatch(/already pass/)
+  })
+
+  it('reports run-time checks as not checked', () => {
+    const task = scratchTask({
+      check: [{ type: 'sprite_property', property: 'x', operator: 'greater_than', value: 5 }],
+      feedbackChecks: [],
+    })
+    const report = judgeTask(planTask(lesson(task), task))
+    expect(report.status).toBe('not_checked')
+    expect(report.checks.find((c) => c.name === 'complete blocks pass').reason).toMatch(/run/)
   })
 })

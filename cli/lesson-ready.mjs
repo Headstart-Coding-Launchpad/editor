@@ -19,6 +19,10 @@ import { getTaskSetupCode } from '../src/shared/puzzle/setupCode.js'
 import { resolveAssetsPath } from '../src/shared/assetPaths.js'
 import { getPredictRunLock } from '../src/shared/variablesPanel/variablesPanel.js'
 import { getRunCountLock } from '../src/shared/runCounts.js'
+import {
+  evaluateScratchStage,
+  getScratchVerificationStages,
+} from '../src/modules/scratch/checkVerification.js'
 
 export const PASS = 'pass'
 export const FAIL = 'fail'
@@ -27,6 +31,9 @@ export const NOTHING_TO_RUN = 'nothing_to_run'
 
 // Modules whose tasks are run in the browser (the #/shot page).
 export const RUN_MODULES = ['python', 'turtle']
+// Modules whose checks are judged on the blocks, without a run (as the classroom does for
+// block checks); run-time checks are reported not checked.
+export const BLOCK_MODULES = ['scratch']
 // Frozen modules: reported, never built for.
 export const FROZEN_MODULES = ['html', 'filesystem', 'desktop']
 
@@ -36,6 +43,8 @@ export const NOT_COVERED = Object.freeze([
   'tutor views, live sessions and the Admin screens',
   'how the lesson reads or looks (use lessons screenshot)',
   'code stages other than starter and complete',
+  'Scratch run-time checks, and Scratch starters carried from another task (the authored starter is judged)',
+  'quizzes, activities, code_arrange, Arcade and Electronics tasks',
 ])
 
 // ── 1. Validate as published ─────────────────────────────────────────────────
@@ -68,7 +77,8 @@ function splitBase(base) {
 
 // One asset reference as written: its URL, or null with the reason it can't be fetched.
 function resolveRef(ref, base) {
-  if (/^(?:data|blob):/i.test(ref)) return null
+  // Inline data, and folders (assetsPath), are not files to fetch.
+  if (/^(?:data|blob):/i.test(ref) || ref.endsWith('/')) return null
   if (/^https?:\/\//i.test(ref)) return { url: ref }
   if (ref.startsWith('//')) return { url: `https:${ref}` }
   if (ref.startsWith('/')) {
@@ -203,11 +213,11 @@ function authoredHints(task) {
   const hints = []
   normalizeChecks(task.check).forEach((c, i) => {
     if (typeof c.hint === 'string' && c.hint.trim())
-      hints.push({ source: `check[${i}]`, hint: c.hint })
+      hints.push({ source: `check[${i}]`, index: i, hint: c.hint })
   })
   normalizeFeedbackChecks(task).forEach((c, i) => {
     if (typeof c.hint === 'string' && c.hint.trim()) {
-      hints.push({ source: `feedbackChecks[${i}]`, hint: c.hint })
+      hints.push({ source: `feedbackChecks[${i}]`, index: i, hint: c.hint })
     }
   })
   return hints
@@ -261,6 +271,7 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   if (FROZEN_MODULES.includes(module)) {
     return stop(NOT_CHECKED, `${module} is a frozen module: not checked`)
   }
+  if (BLOCK_MODULES.includes(module)) return planBlocksTask(task, base)
   if (!RUN_MODULES.includes(module)) {
     return stop(NOT_CHECKED, `${module} tasks are not run by lessons ready yet`)
   }
@@ -312,7 +323,74 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   } else {
     runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra, inputs))
   }
-  return { ...base, setup: setupCode != null, runs, hints: authoredHints(task) }
+  const hints = authoredHints(task).map(({ index: _index, ...h }) => h)
+  return { ...base, setup: setupCode != null, runs, hints }
+}
+
+// ── Scratch: the checks judged on each stage's blocks ─────────────────────────
+
+const BLOCKS_NOTE = 'judged on the blocks without a run, as in class'
+
+// One stage's completion verdict as a check: `expectPass` for complete stages.
+function blocksCheck(name, entry, expectPass) {
+  if (!entry) return { name, status: NOT_CHECKED, reason: 'no such stage' }
+  if (entry.error) return { name, status: FAIL, detail: `the ${entry.stage} ${entry.error}` }
+  const result = entry.completion.result
+  if (result === 'none') return { name, status: NOT_CHECKED, reason: 'no completion check' }
+  if (result === 'incomplete') {
+    return expectPass
+      ? { name, status: NOT_CHECKED, reason: 'its run-time checks need a run, which is not made' }
+      : { name, status: NOT_CHECKED, reason: 'the block checks pass; run-time checks not judged' }
+  }
+  const passed = result === 'pass'
+  if (passed === expectPass) return { name, status: PASS, note: BLOCKS_NOTE }
+  const failed = entry.completion.checks.filter((c) => c.result === 'fail').map((c) => c.type)
+  return {
+    name,
+    status: FAIL,
+    detail: expectPass
+      ? `the ${entry.stage} blocks fail completion check(s): ${failed.join(', ')}`
+      : 'the starter blocks already pass every completion check: a child could finish without changing anything',
+  }
+}
+
+function planBlocksTask(task, base) {
+  if (normalizeChecks(task.check).length === 0) {
+    return { ...base, status: NOTHING_TO_RUN, reason: 'no completion check' }
+  }
+  const stages = getScratchVerificationStages(task).map(({ stage, kind, blocks }) => {
+    if (blocks == null) return { stage, kind, missing: true }
+    try {
+      return { stage, kind, blocks, ...evaluateScratchStage(task, blocks) }
+    } catch (e) {
+      return { stage, kind, error: `blocks are not valid JSON (${e.message})` }
+    }
+  })
+  const starter = stages.find((s) => s.kind === 'starter' && !s.missing)
+  const completes = stages.filter((s) => s.kind === 'complete' && !s.missing)
+  // A run-and-read task: the starter is the complete blocks.
+  const runAndRead =
+    starter?.blocks != null &&
+    completes.some((c) => JSON.stringify(c.blocks) === JSON.stringify(starter.blocks))
+  const checks = []
+  if (!runAndRead) checks.push(blocksCheck('starter does not pass', starter, false))
+  if (completes.length === 0) {
+    checks.push({
+      name: 'complete blocks pass',
+      status: NOT_CHECKED,
+      reason: 'no complete blocks to prove the checks can pass',
+    })
+  }
+  for (const c of completes) checks.push(blocksCheck(`${c.stage} blocks pass`, c, true))
+  // A completion check's hint shows when a stage the child could be on fails it; a feedback
+  // check's when it fires.
+  const hints = authoredHints(task).map(({ index, ...h }) => {
+    const shows = h.source.startsWith('check')
+      ? (s) => s.kind !== 'complete' && s.completion?.checks[index]?.result === 'fail'
+      : (s) => s.feedback?.[index]?.result === 'fires'
+    return { ...h, seenIn: stages.filter(shows).map((s) => s.stage) }
+  })
+  return { ...base, method: 'blocks', blockChecks: checks, blockHints: hints }
 }
 
 /** Every task's plan. `inputs`: { [taskId]: answers } from --inputs. */
@@ -415,6 +493,19 @@ export function judgeTask(plan, results = {}) {
   const base = { id: rest.id, title: rest.title, module: rest.module, format: rest.format }
   if (plan.status)
     return { ...base, status: plan.status, reason: plan.reason, checks: [], hints: [] }
+  if (plan.method === 'blocks') {
+    const checks = plan.blockChecks
+    const hints = plan.blockHints.map(({ seenIn, ...h }) =>
+      seenIn.length
+        ? { ...h, status: 'shown', seenIn }
+        : { ...h, status: NOT_CHECKED, reason: 'no authored stage makes this hint show' }
+    )
+    const status = rollUp([
+      ...checks.map((c) => c.status),
+      ...hints.map((h) => (h.status === 'shown' ? PASS : NOT_CHECKED)),
+    ])
+    return { ...base, method: 'blocks', status, checks, hints }
+  }
 
   const checks = runs.map((run) => judgeRun(run, results[run.role]))
   if (setup) {
