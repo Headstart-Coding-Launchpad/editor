@@ -39,6 +39,14 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-25
 
+- **Python Stage tasks open on the Picture tab on smaller screens.** A task that draws on the Stage
+  (the code imports `stage` or `matplotlib`, or it has a `stageTarget`) used to open on Tags when it
+  had `showVariables`, so a child saw no drawing. It now opens on the Picture; predict / target
+  mode without a picture goal still opens on Tags. `layout.firstPane` still wins.
+- Affects: python (result tab on tablets and small laptops) · Existing lessons: Stage tasks with
+  name tags now open on the Picture tab; set `layout: { firstPane: tags }` to keep the old start
+  · Resolves: none (Python Level A Lesson 2 report, Ryan 25 Nov 2026)
+
 - **Calmer guided code editor (no marker changes).** `#@lock`, `#@lock-values`, `#@slot` and `#>`
   mean what they did; only how the editor behaves and looks changed. A `#>` hint is now a small
   "Hint: …" chip at the end of its line (no longer a note box above it), so line numbers stay

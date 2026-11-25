@@ -1226,7 +1226,9 @@ Most tasks need nothing. To pick the first tab yourself, add `layout`:
 ```
 
 `firstPane` only sets the tab selected when the task opens (and opens the result side on a task
-that would otherwise start with it folded away); Run still switches as above. A tab the task
+that would otherwise start with it folded away). A task that draws on the Stage (the code imports
+`stage` or `matplotlib`, or it has a `stageTarget`) opens on the Picture, even with name tags; set
+`firstPane: tags` to start on Tags. Run still switches as above. A tab the task
 doesn't have is ignored. Turtle tasks take the same field.
 
 ## Output and Code Checks (shared with HTML)
