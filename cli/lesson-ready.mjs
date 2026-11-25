@@ -29,13 +29,20 @@ export const FAIL = 'fail'
 export const NOT_CHECKED = 'not_checked'
 export const NOTHING_TO_RUN = 'nothing_to_run'
 
-// Modules whose tasks are run in the browser (the #/shot page).
-export const RUN_MODULES = ['python', 'turtle']
-// Modules whose checks are judged on the blocks, without a run (as the classroom does for
-// block checks); run-time checks are reported not checked.
-export const BLOCK_MODULES = ['scratch']
-// Frozen modules: reported, never built for.
-export const FROZEN_MODULES = ['html', 'filesystem', 'desktop']
+// How `lessons ready` checks each module's code tasks (a map, so a new module is "not run yet"
+// until it is added here):
+// - run: run in the browser on the #/shot page;
+// - blocks: checks judged on each stage's blocks without a run, as the classroom judges block
+//   checks (run-time checks are reported not checked);
+// - frozen: reported not checked, never built for.
+export const READY_METHOD_BY_MODULE = Object.freeze({
+  python: 'run',
+  turtle: 'run',
+  scratch: 'blocks',
+  html: 'frozen',
+  filesystem: 'frozen',
+  desktop: 'frozen',
+})
 
 // What `lessons ready` never looks at, listed in every report.
 export const NOT_COVERED = Object.freeze([
@@ -268,13 +275,12 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   if (format === 'information') return stop(NOTHING_TO_RUN, 'information task')
   if (format !== 'code')
     return stop(NOT_CHECKED, `${format} tasks are not run by lessons ready yet`)
-  if (FROZEN_MODULES.includes(module)) {
-    return stop(NOT_CHECKED, `${module} is a frozen module: not checked`)
-  }
-  if (BLOCK_MODULES.includes(module)) return planBlocksTask(task, base)
-  if (!RUN_MODULES.includes(module)) {
-    return stop(NOT_CHECKED, `${module} tasks are not run by lessons ready yet`)
-  }
+  const method = Object.hasOwn(READY_METHOD_BY_MODULE, module ?? '')
+    ? READY_METHOD_BY_MODULE[module]
+    : null
+  if (method === 'frozen') return stop(NOT_CHECKED, `${module} is a frozen module: not checked`)
+  if (method === 'blocks') return planBlocksTask(task, base)
+  if (method !== 'run') return stop(NOT_CHECKED, `${module} tasks are not run by lessons ready yet`)
   if (task.tests?.length > 0) return stop(NOT_CHECKED, 'Python tests (Run Tests) are not run yet')
   if (task.interactionMode === 'submit') {
     return stop(NOT_CHECKED, 'a submit-mode task (Submit is not pressed yet)')
