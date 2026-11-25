@@ -68,7 +68,7 @@ Author starter and complete code as `codeStages` entries with `role: starter` / 
 
 ## Line Hints
 
-Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown as a small "Hint: …" note just above the next line (no gutter icon). The hint is never part of the student's code. Lines inside a triple-quoted string (`"""…"""` or `'''…'''`) are never hints.
+Put instructions **next to** a line of starter code instead of in a comment the student has to read around, delete or accidentally break. A line whose trimmed text starts with `#>` is a **line hint**: it is removed from the code and its text is shown as a small "Hint: …" chip at the end of the next line, inside that row (no gutter icon; a tap on the chip puts the cursor on the line and shows the whole hint). The hint is never part of the student's code. Lines inside a triple-quoted string (`"""…"""` or `'''…'''`) are never hints.
 
 ```yaml
     codeStages:
@@ -143,8 +143,8 @@ codeStages:
       text(headline, "black", y=200, size=24)
 ```
 
-- Each value has a light box with a dashed outline — the same "you can change this" look as a draggable number with [live scrubbing](#live-scrubbing-scrub) — and the line ends in a 🔒 **Change the values only** tag. The rest of the line is greyed like a locked line.
-- Clicking or tapping the line puts the cursor in the nearest value; the arrow keys jump from value to value along the line. Typing that would change anything outside a value (the name, a quote mark, a new line) does nothing and shows "Only the values on this line can change".
+- Each value has a light box with a dashed outline — the same "you can change this" look as a draggable number with [live scrubbing](#live-scrubbing-scrub) — and the line ends in a 🔒 icon (read out as "Change the values only"). The rest of the line is greyed like a locked line.
+- Clicking, tapping or Tab on the line selects the nearest value whole, so typing replaces it (a second click puts the cursor inside it). The arrow keys and Tab / Shift-Tab go from value to value, then on to the next line that can change; the cursor never rests on the locked part, and the touch keyboard stays shut there. Typing that would change anything outside a value (the name, a quote mark, a new line) does nothing and shows "Only the values on this line can change" beside the cursor until the next key.
 - An empty string (`name = ""`) stays editable: a small box between the quote marks shows where to type. A student can empty a string, but not delete a number completely (it must stay a number).
 - Values are plain strings and numbers. f-strings (their `{name}` is code), `r"…"`/`b"…"` strings, triple-quoted strings and comments stay locked.
 - Scrubbing works on the line's numbers and colour strings, and typing a new value redraws the
@@ -181,7 +181,7 @@ For tasks where the student should write or change **one specific line**, or whe
 - **`#@lock-last`** locks the next non-blank line like `#@lock`, and **nothing can be added after it**. Typing, Enter or a paste below it puts the new line just **above** it instead, with "This line stays last. Add your code above it." (read out to screen readers). Enter on the line itself also adds above it. It ends in "🔒 nothing below" (read out as "Locked · nothing below"; the note shows on hover). Use it for the line that uses the student's work (`draw(robot)`, `grid(pixels)`).
 - **`#@lock-first`** is the same the other way round: **nothing can be added before it**; new lines go **below** it ("This line stays first. Add your code below it."), its tag "🔒 nothing above".
 - At most one of each per task. Validation warns when there are more, when one has no line after it, and when the complete code has lines on a fenced side.
-- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It has a soft yellow wash and a small ✎ at its end (no outline or words; the ✎ is read out, and hovering shows, "This space takes one line"), so give it a `#>` hint saying what to write. Enter there doesn't make a new line, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
+- **`#@slot`** marks the **next line, blank or not**, as a place the student types **exactly one line**. It shows as a dashed row with a soft yellow wash, "✎ your line goes here" while empty and its `#>` hint as a chip in the same row (the ✎ is read out, and hovering shows, "This space takes one line"), so give it a `#>` hint saying what to write. Enter there goes to the next slot (or past the last one), never a new line; so does Enter on the locked line just above a slot. Selecting across slots and deleting clears their text, a multi-line paste is refused, and Backspace or Delete can't join another line onto it ("This space takes one line"). It keeps its indentation, so a slot in a loop body stays in the loop. Start it empty with a `#>` hint saying what to write, or give it a line to change. **`#@slot 2`** (up to 5) allows a small block of up to that many lines. Several slots per task are fine.
 - **`puzzle.noNewLines: true`**: students can't add a line anywhere ("No new lines in this task. Change the lines you can edit."); they edit the editable lines and fill the slots. With slots, everything is fixed except the line the student writes. With `onlyEdit`, it is "change one line, add nothing", the Debug task case: `puzzle: { onlyEdit: [4], noNewLines: true }`.
 - These guard the student's own typing only. Reset, a support stage, carried code and a tutor's edit go through as written. Slots and fences follow their lines through saving and reloading, as locks do.
 - Python and Turtle tasks, side-quest starters included. Tutors see the same outline and tags in the student's card view and Go Live.
@@ -976,7 +976,7 @@ It's off unless set, and works on Python, Turtle and HTML tasks.
     title: Make the square bigger
     scrub:
       enabled: true          # required (scrub: true is short for this)
-      numbers: true          # optional — drag a number, or tap it for a slider (default true)
+      numbers: true          # optional — drag a number's handle, or long-press it for a slider (default true)
       colours: true          # optional — click a colour string for a picker (default true)
       booleans: true         # optional — click a True or False to flip it (default true)
       ranges:                # optional — per-line slider ranges; otherwise a range around the value
@@ -1001,15 +1001,17 @@ What students get:
   with the cursor) and on the error line after a failed run show their box and colour swatch, so
   the rest of the code stays calm. Before the student first clicks into the code, the first line
   with a value shows them instead, so a tablet student sees there is something to tap; a
-  read-only editor shows none. Every value still works on every line: hovering one marks it,
-  and a click, drag or tap on one moves the cursor to its line (its boxes appear) and opens its
+  read-only editor shows none. Every value still works on every line: a long press on a number,
+  or a click or tap on a colour, moves the cursor to its line (its boxes appear) and opens its
   slider or picker (on a `#@lock-values` line or in a view-only editor the cursor stays put). `scrub: false` still turns them all off.
 - **Numbers.** A number that can be dragged carries a light box with a dashed outline, on
   computers and tablets alike — the same "you can change this" look as
   the values on a [`#@lock-values`](#locked-lines-with-editable-values-lock-values) line. It is
-  calm (no animation) and its dashed shape reads without colour. On a computer, a number also
-  underlines when the pointer is over it; dragging left or right changes it. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
-  steps by 0.1, `0.25` by 0.01). On a tablet, tapping a number opens a slider beside it, with
+  calm (no animation) and its dashed shape reads without colour. A boxed number has a small ↔
+  handle after it: dragging the handle left or right changes it, and clicking the handle opens the
+  slider. A click on the number itself is a plain click (it selects or places the cursor), however
+  shaky, so values never change by accident. Whole numbers stay whole; a decimal steps by its last decimal place (`0.5`
+  steps by 0.1, `0.25` by 0.01). On a tablet, a long press on a number (or a tap on its handle) opens a slider beside it, with
   − and + buttons (all at least 44 px). The keyboard works too: **Alt+Enter** on a number opens
   the slider, and the arrow keys move it.
 - **Colours.** A colour string (`'red'`, `"#ff0000"`) gets a small swatch after it and the same dashed

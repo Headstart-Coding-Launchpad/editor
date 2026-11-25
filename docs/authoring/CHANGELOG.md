@@ -37,6 +37,20 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-25
+
+- **Calmer guided code editor (no marker changes).** `#@lock`, `#@lock-values`, `#@slot` and `#>`
+  mean what they did; only how the editor behaves and looks changed. A `#>` hint is now a small
+  "Hint: …" chip at the end of its line (no longer a note box above it), so line numbers stay
+  level with the code. A `#@lock-values` line ends in a plain 🔒 (the "Change the values only"
+  pill is gone): a click, tap or Tab selects a value whole and typing replaces it; the cursor never
+  rests on the locked part. An empty `#@slot` reads "✎ your line goes here" in a dashed row;
+  Enter there goes to the next slot instead of adding a line, and deleting across slots clears
+  them. With `scrub`, a number changes only by dragging its small ↔ handle (or a long press on a
+  tablet); a plain click on it no longer nudges it. Refused-edit notes stay until the next key.
+- Affects: python, turtle, html · Existing lessons: no changes needed · Resolves: none (calmer guided
+  editor sketch, Ryan 25 Nov 2026)
+
 ## 2026-11-24
 
 - **Python Complete stages show only the change, the same for every student.** The change view
