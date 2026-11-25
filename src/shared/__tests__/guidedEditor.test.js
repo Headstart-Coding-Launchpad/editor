@@ -34,11 +34,15 @@ if fuel >= 100:
 
     text("go", y=100)
 `
-const TASK = stripTaskLineHints({ id: 1, codeStages: [{ role: 'starter', code: STARTER }] }, 'python')
+const TASK = stripTaskLineHints(
+  { id: 1, codeStages: [{ role: 'starter', code: STARTER }] },
+  'python'
+)
 const DOC = TASK.codeStages[0].code
 const views = []
 
-function makeView({ doc = DOC, scrub = null } = {}) {
+function makeView({ task = TASK, scrub = null } = {}) {
+  const doc = task.codeStages[0].code
   const handlers = { openPopover: vi.fn() }
   const view = new EditorView({
     state: EditorState.create({
@@ -54,8 +58,8 @@ function makeView({ doc = DOC, scrub = null } = {}) {
   })
   view.dispatch({
     effects: [
-      setLineHints.of(chooseLineHints(doc, getTaskLineHintSets(TASK))),
-      setLockedLineSets.of(getTaskLockSets(TASK)),
+      setLineHints.of(chooseLineHints(doc, getTaskLineHintSets(task))),
+      setLockedLineSets.of(getTaskLockSets(task)),
     ],
   })
   views.push(view)
@@ -76,7 +80,8 @@ const valueFrom = (view) => line(view, IF).from + line(view, IF).text.indexOf('1
 const sel = (view) => view.state.selection.main
 const selected = (view) => view.state.sliceDoc(sel(view).from, sel(view).to)
 const lineOf = (view, pos = sel(view).head) => view.state.doc.lineAt(pos).number
-const click = (view, pos) => view.dispatch({ selection: { anchor: pos }, userEvent: 'select.pointer' })
+const click = (view, pos) =>
+  view.dispatch({ selection: { anchor: pos }, userEvent: 'select.pointer' })
 const move = (view, pos) => view.dispatch({ selection: { anchor: pos }, userEvent: 'select' })
 function key(view, k, opts = {}) {
   const event = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...opts })
@@ -111,15 +116,17 @@ describe('calmer guided editor: the Fun moment', () => {
     expect(sel(view).head).toBe(valueFrom(view) + 1)
   })
 
-  it('1. Tab on a values line selects the next field, Shift-Tab the one before', () => {
-    const { view } = makeView({ doc: DOC.replace('if fuel >= 100:', 'if fuel >= 100 and ship == "rocket":') })
+  it('1. Tab on a values line selects the next field, Shift-Tab the one before, then off the line', () => {
+    const code = STARTER.replace('if fuel >= 100:', 'if fuel >= 100 and ship == "rocket":')
+    const task = stripTaskLineHints({ id: 2, codeStages: [{ role: 'starter', code }] }, 'python')
+    const { view } = makeView({ task })
     click(view, valueFrom(view))
     key(view, 'Tab')
     expect(selected(view)).toBe('rocket')
     key(view, 'Tab', { shiftKey: true })
     expect(selected(view)).toBe('100')
     key(view, 'Tab', { shiftKey: true })
-    expect(lineOf(view)).toBe(IF)
+    expect(lineOf(view)).toBe(6)
   })
 
   it('2. no dead spot after the colon: moving right off the last value goes to the slot', () => {
@@ -191,6 +198,7 @@ describe('calmer guided editor: the Fun moment', () => {
     vi.advanceTimersByTime(10000)
     expect(note(view)).not.toBeNull()
     key(view, 'Shift')
+    vi.runOnlyPendingTimers()
     expect(note(view)).toBeNull()
   })
 
@@ -229,7 +237,14 @@ describe('calmer guided editor: slots and hint chips', () => {
 describe('calmer guided editor: scrub only from the handle', () => {
   const SCRUB = { numbers: true, colours: true, booleans: true, ranges: [] }
   function pointer(target, type, x, opts = {}) {
-    const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: 75, ...opts })
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: x,
+      clientY: 75,
+      ...opts,
+    })
     Object.defineProperty(event, 'pointerType', { value: opts.pointerType ?? 'mouse' })
     target.dispatchEvent(event)
     return event
@@ -260,6 +275,7 @@ describe('calmer guided editor: scrub only from the handle', () => {
 
   it('3. a number field shows a small handle; dragging the handle scrubs', () => {
     const { view } = makeView({ scrub: SCRUB })
+    view.contentDOM.dispatchEvent(new FocusEvent('focus'))
     view.dispatch({ selection: { anchor: valueFrom(view) } })
     const handle = view.dom.querySelector('.cm-scrubHandle')
     expect(handle).not.toBeNull()

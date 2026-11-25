@@ -2,9 +2,11 @@
 // field; ./scrubConfig.js). The shared CodeEditor turns it on through a Compartment
 // (./useEditorScrub.jsx).
 //
-// - Desktop: hovering a number underlines it with an ew-resize cursor; dragging left / right
-//   changes it (./literals.js steps, clamps and formats). Clicking a colour opens the picker.
-// - Touch and pen: tapping a number opens a slider popover, tapping a colour the picker.
+// - A number scrubs only from its small ↔ handle (shown with its box): dragging the handle left
+//   / right changes it (./literals.js steps, clamps and formats), a click on it opens the slider.
+//   A click on the number itself is a plain click, however shaky (calmer guided editor, 25 Nov).
+// - Touch and pen: a long press on a number opens the slider popover; a tap just selects.
+//   Clicking or tapping a colour opens the picker.
 // - A click or tap on a Python True or False flips it (P6-31): one edit, no popover.
 // - Keyboard: Alt-Enter on a number or colour opens its popover (arrow keys move the slider);
 //   on a True or False it flips it.
@@ -12,7 +14,7 @@
 //   after a failed run carry the shared "you can change this" box (../editableValueStyle.js),
 //   colours a small swatch after the word. Before the student first clicks in, the first line
 //   with a value shows them instead; a read-only editor shows none. Other lines stay plain, but
-//   their values still work: hovering one marks it, and a tap or click opens its control and
+//   their values still work: a tap or click (a long press for a number) opens its control and
 //   moves the caret to its line (not in a view-only editor or onto a locked line), so its boxes
 //   show (calmer Stage lines, 18 Nov; was every line, P6-24).
 //
@@ -47,6 +49,7 @@ export const SCRUB_USER_EVENT = 'input.scrub'
 
 const DRAG_START_PX = 3
 const TAP_SLOP_PX = 10
+const LONG_PRESS_MS = 450
 // How far back a markup line looks for an open <style> tag.
 const STYLE_LOOKBACK_CHARS = 20000
 
@@ -227,35 +230,12 @@ function literalAtPointer(view, event, options) {
   return literal
 }
 
-// ── Decorations: the hovered literal and colour swatches ────────────────────────────────────
+// ── Decorations: the value boxes, number handles and colour swatches ───────────────────────
 
-const setHover = StateEffect.define()
-
-const hoverField = StateField.define({
-  create: () => ({ literal: null, deco: Decoration.none }),
-  update(value, tr) {
-    for (const effect of tr.effects) {
-      if (!effect.is(setHover)) continue
-      const literal = effect.value
-      if (!literal) return { literal: null, deco: Decoration.none }
-      const max = tr.state.doc.length
-      if (literal.to > max || literal.from >= literal.to) return value
-      const cls = literal.kind === 'number' ? 'cm-scrubNumber' : 'cm-scrubColour'
-      return {
-        literal,
-        deco: Decoration.set([Decoration.mark({ class: cls }).range(literal.from, literal.to)]),
-      }
-    }
-    if (tr.docChanged) {
-      return value.literal ? { literal: null, deco: Decoration.none } : value
-    }
-    return value
-  },
-  provide: (field) => EditorView.decorations.from(field, (value) => value.deco),
-})
-
-class SwatchWidget extends WidgetType {
-  constructor(hex) {
+// A colour's swatch (`hex`), or a number's small ↔ handle (no `hex`): the one place a mouse drag
+// scrubs it.
+class AfterValueWidget extends WidgetType {
+  constructor(hex = null) {
     super()
     this.hex = hex
   }
@@ -263,20 +243,22 @@ class SwatchWidget extends WidgetType {
     return other.hex === this.hex
   }
   toDOM() {
-    const swatch = document.createElement('span')
-    swatch.className = 'cm-scrubSwatch'
-    swatch.style.background = this.hex
-    swatch.setAttribute('aria-hidden', 'true')
-    return swatch
+    const el = document.createElement('span')
+    el.className = this.hex ? 'cm-scrubSwatch' : 'cm-scrubHandle'
+    if (this.hex) el.style.background = this.hex
+    else Object.assign(el, { textContent: '↔', title: 'Drag to change this number' })
+    el.setAttribute('aria-hidden', 'true')
+    return el
   }
   ignoreEvent() {
     return false
   }
 }
+const HANDLE = Decoration.widget({ widget: new AfterValueWidget(), side: 1 })
 
 const scrubbableNumberMark = Decoration.mark({
   class: `${EDITABLE_VALUE_CLASS} cm-scrubbable`,
-  attributes: { title: 'Drag or tap to change this number' },
+  attributes: { title: 'Drag the ↔ handle to change this number' },
 })
 
 // Pickable colours carry the same "you can change this" box as numbers, swatch beside it.
@@ -310,6 +292,7 @@ function swatchDecorations(state, options) {
       if (literal.kind === 'number') {
         if (literal.from < literal.to)
           ranges.push(scrubbableNumberMark.range(literal.from, literal.to))
+        ranges.push(HANDLE.range(literal.to))
         continue
       }
       if (literal.kind === 'boolean') {
@@ -320,7 +303,7 @@ function swatchDecorations(state, options) {
       if (literal.from < literal.to)
         ranges.push(scrubbableColourMark.range(literal.from, literal.to))
       ranges.push(
-        Decoration.widget({ widget: new SwatchWidget(literal.hex), side: 1 }).range(literal.to)
+        Decoration.widget({ widget: new AfterValueWidget(literal.hex), side: 1 }).range(literal.to)
       )
     }
   }
@@ -328,20 +311,20 @@ function swatchDecorations(state, options) {
 }
 
 const scrubTheme = EditorView.baseTheme({
-  '.cm-scrubNumber': {
-    cursor: 'ew-resize',
-    textDecoration: 'underline dotted #7c3aed',
-    textUnderlineOffset: '3px',
-    background: 'rgba(124, 58, 237, 0.08)',
-    borderRadius: '3px',
-  },
-  '.cm-scrubColour': {
-    cursor: 'pointer',
-    textDecoration: 'underline dotted #7c3aed',
-    textUnderlineOffset: '3px',
-  },
-  '&.cm-scrubbing .cm-content, &.cm-scrubbing .cm-scrubNumber': { cursor: 'ew-resize' },
+  '&.cm-scrubbing .cm-content': { cursor: 'ew-resize' },
   '.cm-scrubBoolean': { cursor: 'pointer' },
+  '.cm-scrubHandle': {
+    display: 'inline-block',
+    margin: '0 2px',
+    padding: '0 3px',
+    borderRadius: '4px',
+    background: '#ede9fe',
+    color: '#6d28d9',
+    fontSize: '0.75em',
+    cursor: 'ew-resize',
+    touchAction: 'none',
+    userSelect: 'none',
+  },
   '.cm-scrubSwatch': {
     display: 'inline-block',
     width: '0.8em',
@@ -391,7 +374,8 @@ export function scrubExtension({ config, language, handlersRef }) {
   }
 
   function openPopover(view, literal) {
-    view.dispatch({ effects: setHover.of(null) }, ...caretMove(view.state, literal, literal.to))
+    const move = caretMove(view.state, literal, literal.to)
+    if (move.length) view.dispatch(...move)
     handlers().openPopover?.(popoverRequest(view, literal))
   }
 
@@ -427,16 +411,11 @@ export function scrubExtension({ config, language, handlersRef }) {
         formatScrubNumber(valueForDrag(literal.value, dx, range, step), literal)
       )
     }
-    function onUp(e) {
+    function onUp() {
       finish()
-      if (session) {
-        commitScrub(view, session)
-        return
-      }
-      // A click without a drag places the caret, as a plain click would have.
-      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
-      if (pos != null) view.dispatch({ selection: { anchor: pos } })
-      view.focus()
+      // A click on the handle without a drag opens the slider.
+      if (session) commitScrub(view, session)
+      else openPopover(view, literal)
     }
     function onCancel() {
       finish()
@@ -464,7 +443,9 @@ export function scrubExtension({ config, language, handlersRef }) {
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onAbort)
       const moved = Math.hypot(e.clientX - startX, e.clientY - startY)
-      if (moved > TAP_SLOP_PX || Date.now() - startedAt > 800) return
+      const held = Date.now() - startedAt
+      if (moved > TAP_SLOP_PX || (literal.kind === 'number' ? held < LONG_PRESS_MS : held > 800))
+        return
       if (literal.kind === 'boolean') {
         flipBoolean(view, literal)
         return
@@ -517,7 +498,6 @@ export function scrubExtension({ config, language, handlersRef }) {
 
   return [
     engagedField,
-    hoverField,
     swatches,
     scrubTheme,
     editableValueTheme,
@@ -536,40 +516,32 @@ export function scrubExtension({ config, language, handlersRef }) {
       }
     }),
     EditorView.domEventHandlers({
-      mousemove(event, view) {
-        if (event.buttons !== 0 || activeSessions.get(view)) return false
-        const literal = literalAtPointer(view, event, options)
-        const current = view.state.field(hoverField).literal
-        if (literal?.from === current?.from && literal?.to === current?.to) return false
-        view.dispatch({ effects: setHover.of(literal) })
-        return false
-      },
       focus(_event, view) {
         if (!view.state.field(engagedField)) view.dispatch({ effects: setEngaged.of(true) })
-        return false
-      },
-      mouseleave(_event, view) {
-        if (view.state.field(hoverField).literal) view.dispatch({ effects: setHover.of(null) })
         return false
       },
       pointerdown(event, view) {
         if (event.button !== 0 || view.state.readOnly) return false
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return false
-        const literal = literalAtPointer(view, event, options)
+        const handle = event.target.closest?.('.cm-scrubHandle')
+        const literal = handle
+          ? scrubLiteralAt(view.state, view.posAtDOM(handle) - 1, options)
+          : literalAtPointer(view, event, options)
         if (!literal) return false
+        if (handle) {
+          event.preventDefault()
+          startMouseDrag(view, literal, event)
+          return true
+        }
         if (literal.kind === 'boolean') {
           // A mouse click flips it without moving the caret or starting a selection.
           if (event.pointerType === 'mouse') event.preventDefault()
           trackTap(view, literal, event)
           return event.pointerType === 'mouse'
         }
-        if (event.pointerType === 'mouse' && literal.kind === 'number') {
-          // Cancelling pointerdown stops CodeMirror's mousedown text selection.
-          event.preventDefault()
-          startMouseDrag(view, literal, event)
-          return true
-        }
-        trackTap(view, literal, event)
+        // A mouse click on a number is a plain click; a touch tap is too (a long press opens it).
+        if (event.pointerType !== 'mouse' || literal.kind !== 'number')
+          trackTap(view, literal, event)
         return false
       },
     }),

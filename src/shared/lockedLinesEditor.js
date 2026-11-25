@@ -8,10 +8,9 @@
 //     line, only works when it removes an empty line (it would otherwise merge a line into it).
 //   - A deletion that spans locked lines (select-all + delete, cut, paste over) keeps them: the
 //     text around them goes, the locked lines and the line breaks before them stay.
-//   - The arrow keys skip locked lines; a typing attempt on one does nothing and shows "This
-//     line is locked" (also on a tap or click), announced to screen readers.
-//   - On a touch screen the on-screen keyboard is told not to open (inputmode="none") while the
-//     cursor is inside a locked line.
+//   - The caret never rests inside locked text (calmer guided editor, 25 Nov; see
+//     lockedSelectionFilter), and the touch keyboard stays shut there (inputmode="none"). A
+//     refused edit shows a note beside the caret until the next key or click.
 //
 // Only the student's own edits are guarded (transactions with a user event, other than undo and
 // redo). A value replaced from outside (task switch, Reset, a support stage, a teacher edit)
@@ -21,17 +20,17 @@
 // between a plain string's quote marks (empty strings too) and its numbers (lineValueSpans in
 // ./lockedLines.js), marked with the shared "you can change this" look (./editableValueStyle.js).
 // An edit on such a line goes through only when it stays inside the line and leaves its value
-// skeleton as it was (so the name, `=`, quote marks and brackets can't change); clicking or
-// moving onto the line puts the caret in the nearest value.
+// skeleton as it was. Its caret is always in a value (lockedSelectionFilter, tabField).
 //
 // EDIT ZONES (P6-30):
 //   - A FENCED lock (`#@lock-first` / `#@lock-last`) is a locked line nothing can be added
 //     before / after. Typing, Enter or a paste on the fenced side goes to the other side of the
 //     line instead, with "This line stays last. Add your code above it."; any other edit that
 //     would add there is dropped with that note. Enter on the line adds on its open side.
-//   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default):
-//     an edit that would give it more lines, or join a line onto it, is dropped with "This space
-//     takes one line". It has a soft wash and a small ✎ (both carry that note).
+//   - A SLOT (`#@slot`, `#@slot n`) is an editable stretch of at most n lines (one by default),
+//     a dashed row. An edit that would give it more lines, or join a line onto it, is dropped
+//     with "This space takes one line"; a deletion across slots clears their text. Enter goes
+//     from slot to slot (enterInSlots).
 //   - `puzzle.noNewLines`: an edit that adds lines outside the slots is dropped.
 //
 // Dispatch `setLockedLineSets.of(sets)` (the task's lock sets, getTaskLockSets) to (re)place the
@@ -68,7 +67,6 @@ export const FENCE_FIRST_NOTE = 'This line stays first. Add your code below it.'
 export const NO_NEW_LINES_NOTE = 'No new lines in this task. Change the lines you can edit.'
 export const slotNote = (size) =>
   size > 1 ? `This space takes up to ${size} lines` : 'This space takes one line'
-const NOTE_MS = 1800
 
 export const setLockedLineSets = StateEffect.define()
 // Shows the "This line is locked" note at a position (null hides it).
@@ -186,11 +184,6 @@ export function lockedValueSpansAt(state, pos) {
     to: line.from + span.to,
     kind: span.kind,
   }))
-}
-
-// The value span `pos` is in or at the edge of, or null.
-function spanAround(spans, pos) {
-  return (spans ?? []).find((span) => pos >= span.from && pos <= span.to) ?? null
 }
 
 /** The locked line `pos` is on, or null. */
@@ -339,12 +332,13 @@ const lockedEditFilter = EditorState.transactionFilter.of((tr) => {
   const changes = tr.startState.changes(specs)
   const event = tr.annotation(Transaction.userEvent)
   const values = isValuesLine(tr.startState, blockedAt)
+  const selection = tr.startState.selection.map(changes, 1)
   return {
     changes,
-    selection: tr.startState.selection.map(changes, 1),
+    selection,
     effects: tr.startState.readOnly
       ? []
-      : [showLockedNote.of({ pos: changes.mapPos(blockedAt, 1), values })],
+      : [showLockedNote.of({ pos: selection.main.head, values })],
     annotations: event ? [Transaction.userEvent.of(event)] : [],
   }
 })
@@ -365,15 +359,23 @@ export function zoneViolation(state, changes) {
   const oldDoc = state.doc
   const newDoc = changes.apply(oldDoc)
   let slotGrowth = 0
+  let lastSlotLine = 0
   for (const slot of field.slots) {
     const from = changes.mapPos(slot.from, -1)
     const to = changes.mapPos(slot.to, 1)
     const fromLine = newDoc.lineAt(from)
     const toLine = newDoc.lineAt(to)
     const lines = toLine.number - fromLine.number + 1
-    if (fromLine.from !== from || toLine.to !== to || lines > slot.size) {
+    // Also two slots run together onto one line.
+    if (
+      fromLine.from !== from ||
+      toLine.to !== to ||
+      lines > slot.size ||
+      fromLine.number <= lastSlotLine
+    ) {
       return { kind: 'slot', size: slot.size, at: slot.from }
     }
+    lastSlotLine = toLine.number
     slotGrowth += lines - (oldDoc.lineAt(slot.to).number - oldDoc.lineAt(slot.from).number + 1)
   }
   if (field.last != null) {
@@ -441,14 +443,29 @@ function hasZones(field) {
 const zoneEditFilter = EditorState.transactionFilter.of((tr) => {
   if (!tr.docChanged || !isGuardedEdit(tr)) return tr
   const state = tr.startState
-  if (!hasZones(state.field(lockedLinesField, false))) return tr
+  const field = state.field(lockedLinesField, false)
+  if (!hasZones(field)) return tr
   const violation = zoneViolation(state, tr.changes)
   if (!violation) return tr
   const event = tr.annotation(Transaction.userEvent)
-  const effects = state.readOnly
-    ? []
-    : [showLockedNote.of({ pos: violation.at, kind: violation.kind, size: violation.size })]
-  if (violation.kind === 'last' || violation.kind === 'first') {
+  const { kind, size } = violation
+  const pos = state.selection.main.head
+  const effects = state.readOnly ? [] : [showLockedNote.of({ pos, kind, size })]
+  const annotations = event ? [Transaction.userEvent.of(event)] : []
+  if (kind === 'slot') {
+    // A deletion across slots clears the text inside them instead.
+    const specs = []
+    tr.changes.iterChanges((fromA, toA) => {
+      for (const slot of field.slots) {
+        const from = Math.max(fromA, slot.from)
+        const to = Math.min(toA, slot.to)
+        if (from < to) specs.push({ from, to })
+      }
+    })
+    const changes = specs.length > 0 && state.changes(specs)
+    if (changes && !zoneViolation(state, changes)) return { changes, effects, annotations }
+  }
+  if (kind === 'last' || kind === 'first') {
     const moved = moveFencedEdit(state, tr.changes, violation)
     const changes = moved && state.changes(moved.changes)
     // The moved edit must itself be allowed (e.g. not a new line under puzzle.noNewLines).
@@ -458,96 +475,122 @@ const zoneEditFilter = EditorState.transactionFilter.of((tr) => {
         selection: moved.selection,
         scrollIntoView: true,
         effects,
-        annotations: event ? [Transaction.userEvent.of(event)] : [],
+        annotations,
       }
     }
   }
   return { effects }
 })
 
-// The arrow keys skip locked lines; a tap or click on one shows the note.
+// A value selected whole (an empty one as a caret in its quote marks).
+const whole = (span) => EditorSelection.range(span.from, span.to)
+
+// The nearest place that can change past line `n` going `dir` (1 / -1): a free line (caret at
+// `column`) or a values line's first / last value, whole; null when none.
+function hop(state, n, dir, column) {
+  for (let k = n + dir; k >= 1 && k <= state.doc.lines; k += dir) {
+    const line = state.doc.line(k)
+    if (!lockedLineAt(state, line.from)) {
+      return EditorSelection.cursor(line.from + Math.min(column, line.length))
+    }
+    const spans = lockedValueSpansAt(state, line.from)
+    if (spans?.length) return whole(dir > 0 ? spans[0] : spans[spans.length - 1])
+  }
+  return null
+}
+
+// On a values line a click selects a value whole (a second one goes inside) and moves go value
+// to value, then off the line. A click on a fully locked line hops to the nearest line that can
+// change; the arrows skip it, or go along it to its end or start, where Enter adds a line.
 const lockedSelectionFilter = EditorState.transactionFilter.of((tr) => {
   if (tr.docChanged || !tr.selection || !tr.isUserEvent('select')) return tr
   const state = tr.startState
-  const main = tr.selection.main
-  if (!main.empty) return tr
-  const line = lockedLineAt(state, main.head)
+  const { head, empty } = tr.selection.main
+  const line = empty && lockedLineAt(state, head)
   if (!line) return tr
-  const spans = lockedValueSpansAt(state, main.head)
-  if (spans) {
-    const moved = valuesLineSelection(state, tr, line, spans)
-    if (moved !== undefined) return moved
-  }
-  if (tr.isUserEvent('select.pointer')) {
+  const pointer = tr.isUserEvent('select.pointer')
+  const spans = lockedValueSpansAt(state, head) ?? []
+  const before = state.selection.main
+  const beforeLine = state.doc.lineAt(before.head).number
+  const down = line.number > beforeLine || (line.number === beforeLine && head > before.head)
+  const column = head - line.from
+  let target = null
+  if (spans.length > 0) {
+    const inside = spans.find((span) => head >= span.from && head <= span.to)
+    const near = (a, b) => (Math.abs(a.from - head) <= Math.abs(b.from - head) ? a : b)
+    if (pointer) {
+      const span = inside ?? spans.reduce(near)
+      if (span === inside && before.from === span.from && before.to === span.to) return tr
+      target = whole(span)
+    } else if (beforeLine !== line.number) target = whole(spans.reduce(near))
+    else if (inside) return tr
+    else {
+      const next = down ? spans.find((s) => s.from >= head) : spans.findLast((s) => s.to <= head)
+      target = next
+        ? whole(next)
+        : (hop(state, line.number, down ? 1 : -1, 0) ?? whole(spans.reduce(near)))
+    }
+  } else if (pointer) {
     if (state.readOnly) return tr
+    const below = hop(state, line.number, 1, column)
+    const above = hop(state, line.number, -1, column)
+    const lines = (sel) => (sel ? Math.abs(state.doc.lineAt(sel.head).number - line.number) : 1e9)
+    target = lines(below) <= lines(above) ? below : above
     return {
-      selection: tr.selection,
-      effects: showLockedNote.of(line.from),
+      selection: target ?? tr.selection,
+      effects: showLockedNote.of(target?.head ?? head),
       annotations: [Transaction.userEvent.of('select.pointer')],
     }
+  } else if (beforeLine !== line.number) {
+    target = hop(state, line.number, down ? 1 : -1, column)
+    target ??= EditorSelection.cursor(down ? line.to : line.from)
+  } else if (head > line.from && head < line.to) {
+    target = EditorSelection.cursor(down ? line.to : line.from)
   }
-  const before = state.selection.main.head
-  const beforeLine = state.doc.lineAt(before)
-  let pos = null
-  if (beforeLine.number !== line.number) {
-    // A move onto the line from another: on to the next unlocked line that way, keeping the
-    // column, or the locked line's end (going down) or start (going up) when there is none.
-    const down = line.number > beforeLine.number
-    const column = main.head - line.from
-    for (
-      let n = line.number + (down ? 1 : -1);
-      n >= 1 && n <= state.doc.lines;
-      n += down ? 1 : -1
-    ) {
-      const candidate = state.doc.line(n)
-      if (lockedLineAt(state, candidate.from)) continue
-      pos = candidate.from + Math.min(column, candidate.length)
-      break
-    }
-    if (pos == null) pos = down ? line.to : line.from
-  } else if (main.head > line.from && main.head < line.to) {
-    // Along the line: to its end going right, its start going left.
-    pos = main.head > before ? line.to : line.from
-  }
-  if (pos == null || pos === main.head) return tr
+  if (!target || (target.empty && target.head === head)) return tr
   return {
-    selection: EditorSelection.cursor(pos),
+    selection: target,
     scrollIntoView: tr.scrollIntoView,
-    annotations: [Transaction.userEvent.of('select')],
+    annotations: [Transaction.userEvent.of(pointer ? 'select.pointer' : 'select')],
   }
 })
 
-// The caret on a values-locked line (#@lock-values): inside (or at the edge of) a value it stays;
-// a click elsewhere on the line goes to the nearest value; a move along the line jumps to the
-// next value that way, and a move onto the line from another lands in the value nearest the
-// column. `undefined` falls back to the locked-line rules (no value that way, or none at all).
-function valuesLineSelection(state, tr, line, spans) {
-  const head = tr.selection.main.head
-  if (spanAround(spans, head)) return tr
-  if (spans.length === 0) return undefined
-  const to = (pos, event) => ({
-    selection: EditorSelection.cursor(pos),
-    scrollIntoView: tr.scrollIntoView,
-    annotations: [Transaction.userEvent.of(event)],
-  })
-  const nearestEdge = () => {
-    let best = null
-    for (const span of spans) {
-      for (const edge of [span.from, span.to]) {
-        if (best == null || Math.abs(edge - head) < Math.abs(best - head)) best = edge
-      }
-    }
-    return best
-  }
-  if (tr.isUserEvent('select.pointer')) return to(nearestEdge(), 'select.pointer')
-  const before = state.selection.main.head
-  if (state.doc.lineAt(before).number !== line.number) return to(nearestEdge(), 'select')
-  if (head > before) {
-    const next = spans.find((span) => span.from >= head)
-    return next ? to(next.from, 'select') : undefined
-  }
-  const prev = [...spans].reverse().find((span) => span.to <= head)
-  return prev ? to(prev.to, 'select') : undefined
+// Tab / Shift-Tab on a values line: the next / previous value, whole, then on off the line.
+const tabField = (dir) => (view) => {
+  const { state } = view
+  const sel = state.selection.main
+  const spans = lockedValueSpansAt(state, sel.head)
+  if (!spans?.length) return false
+  const at = spans.findIndex((span) => sel.from >= span.from && sel.to <= span.to)
+  const next = at < 0 ? spans[dir > 0 ? 0 : spans.length - 1] : spans[at + dir]
+  const target = next ? whole(next) : hop(state, state.doc.lineAt(sel.head).number, dir, 0)
+  if (target) view.dispatch({ selection: target, scrollIntoView: true, userEvent: 'select' })
+  return true
+}
+
+// Enter in a full slot, or on the locked line just above a slot: on to the (next) slot, or past
+// the last one to the next line that can change; never a new, unmarked line.
+function enterInSlots(view) {
+  const { state } = view
+  const { head, empty } = state.selection.main
+  const slots = state.field(lockedLinesField, false)?.slots ?? []
+  if (state.readOnly || !empty || slots.length === 0) return enterOnLockedLine(view)
+  const lineNo = (pos) => state.doc.lineAt(pos).number
+  const here = lineNo(head)
+  const slot = slots.find((s) => head >= s.from && head <= s.to)
+  let from = null
+  if (slot) {
+    if (lineNo(slot.to) - lineNo(slot.from) + 1 < slot.size) return false
+    from = slot.to
+  } else if (lockedLineAt(state, head) && slots.some((s) => lineNo(s.from) === here + 1)) {
+    from = state.doc.lineAt(head).to
+  } else return enterOnLockedLine(view)
+  const next = slots.find((s) => s.from > from)
+  const target = next
+    ? EditorSelection.cursor(state.doc.lineAt(next.from).to)
+    : hop(state, lineNo(from), 1, 0)
+  if (target) view.dispatch({ selection: target, scrollIntoView: true, userEvent: 'select' })
+  return true
 }
 
 // Enter on a locked line: a new line above it (cursor at or before its first character) or
@@ -581,8 +624,9 @@ function enterOnLockedLine(view) {
 // ─── Showing the locks ───────────────────────────────────────────────────────
 
 // The icon at the end of a locked line (🔒, read out as "Locked"), of a fenced one with its short
-// words in view ("🔒 nothing below"), of a values-locked one ("🔒 Change the values only", a
-// pill) or of a slot's first line (a ✎ read out as "This space takes one line"; not colour alone).
+// words in view ("🔒 nothing below"), of a values-locked one (🔒, read out as "Change the values
+// only") or of a slot's first line (✎, read out as "This space takes one line"; while the slot
+// is empty "✎ your line goes here"; not colour alone).
 class LockedTagWidget extends WidgetType {
   constructor(label = 'Locked', title = LOCKED_LINE_NOTE, words = '', className = '', icon = '🔒') {
     super()
@@ -606,27 +650,15 @@ const FENCE_TAGS = {
   last: new LockedTagWidget('Locked · nothing below', FENCE_LAST_NOTE, 'nothing below'),
   first: new LockedTagWidget('Locked · nothing above', FENCE_FIRST_NOTE, 'nothing above'),
 }
-const VALUES_TAG = new LockedTagWidget(
-  LOCKED_VALUES_TAG,
-  LOCKED_VALUES_NOTE,
-  LOCKED_VALUES_TAG,
-  'cm-valuesTag'
-)
-const slotMark = (size) =>
-  new LockedTagWidget(slotNote(size), slotNote(size), '', 'cm-slotMark', '✎')
+const VALUES_TAG = new LockedTagWidget(LOCKED_VALUES_TAG, LOCKED_VALUES_NOTE)
+const SLOT_EMPTY = 'your line goes here'
+const slotMark = (size, empty) =>
+  new LockedTagWidget(slotNote(size), slotNote(size), empty ? SLOT_EMPTY : '', 'cm-slotMark', '✎')
 
-const slotLineDeco = (size) =>
-  Decoration.line({ class: 'cm-slotLine', attributes: { title: slotNote(size) } })
-
-const lockedLineDeco = Decoration.line({
-  class: 'cm-lockedLine',
-  attributes: { title: LOCKED_LINE_NOTE },
-})
-
-const lockedValuesLineDeco = Decoration.line({
-  class: 'cm-lockedLine cm-lockedValuesLine',
-  attributes: { title: LOCKED_VALUES_NOTE },
-})
+const lineDeco = (cls, title) => Decoration.line({ class: cls, attributes: { title } })
+const lockedLineDeco = lineDeco('cm-lockedLine', LOCKED_LINE_NOTE)
+const lockedValuesLineDeco = lineDeco('cm-lockedLine cm-lockedValuesLine', LOCKED_VALUES_NOTE)
+const slotLineDeco = (size) => lineDeco('cm-slotLine', slotNote(size))
 
 const editableValueMark = Decoration.mark({ class: EDITABLE_VALUE_CLASS })
 
@@ -676,21 +708,24 @@ const lockedDecorations = EditorView.decorations.compute([lockedLinesField], (st
     for (let n = first.number; n <= last.number; n += 1) {
       ranges.push(slotLineDeco(slot.size).range(state.doc.line(n).from))
     }
-    ranges.push(Decoration.widget({ widget: slotMark(slot.size), side: 1 }).range(first.to))
+    const empty = slot.from === slot.to || state.doc.sliceString(slot.from, slot.to).trim() === ''
+    ranges.push(Decoration.widget({ widget: slotMark(slot.size, empty), side: 1 }).range(first.to))
   }
   return Decoration.set(ranges, true)
 })
 
-// The on-screen keyboard stays shut while the cursor is inside a locked line.
+// The on-screen keyboard stays shut while the cursor is inside a locked line, or anywhere on a
+// values line but in one of its values.
 const lockedInputMode = EditorView.contentAttributes.compute(
   [lockedLinesField, 'selection'],
   (state) => {
     const head = state.selection.main.head
     const line = lockedLineAt(state, head)
-    if (!line || head <= line.from || head >= line.to) return {}
-    // A values-locked line's values take typing.
-    if (spanAround(lockedValueSpansAt(state, head), head)) return {}
-    return { inputmode: 'none' }
+    if (!line) return {}
+    const spans = lockedValueSpansAt(state, head)
+    const inValue = spans?.some((span) => head >= span.from && head <= span.to)
+    const shut = spans ? !inValue : head > line.from && head < line.to
+    return shut ? { inputmode: 'none' } : {}
   }
 )
 
@@ -746,12 +781,11 @@ const lockedNoteField = StateField.define({
     }),
 })
 
-// Hides the note after a moment, and announces it to screen readers.
+// Announces the note to screen readers; hideNoteSoon hides it.
 const lockedNotePlugin = ViewPlugin.fromClass(
   class {
     constructor(view) {
       this.view = view
-      this.timer = null
       this.region = document.createElement('div')
       this.region.className = 'cm-lockedLiveRegion'
       this.region.setAttribute('role', 'status')
@@ -768,26 +802,27 @@ const lockedNotePlugin = ViewPlugin.fromClass(
       setTimeout(() => {
         this.region.textContent = words
       }, 30)
-      clearTimeout(this.timer)
-      const id = note.id
-      this.timer = setTimeout(() => {
-        if (this.view.state.field(lockedNoteField, false)?.id === id) {
-          this.view.dispatch({ effects: showLockedNote.of(null) })
-        }
-      }, NOTE_MS)
     }
     destroy() {
-      clearTimeout(this.timer)
+      this.gone = true
       this.region.remove()
     }
-  }
+  },
+  { eventHandlers: { keydown: hideNoteSoon, pointerdown: hideNoteSoon } }
 )
 
+// On the next key or click (as the plugin): hides the note, unless that brought a new one.
+function hideNoteSoon() {
+  const id = this.view.state.field(lockedNoteField, false)?.id
+  if (id == null) return
+  setTimeout(() => {
+    if (!this.gone && this.view.state.field(lockedNoteField, false)?.id === id)
+      this.view.dispatch({ effects: showLockedNote.of(null) })
+  })
+}
+
 const lockedTheme = EditorView.baseTheme({
-  '.cm-lockedLine': {
-    backgroundColor: 'rgba(148, 163, 184, 0.16)',
-    color: '#64748b',
-  },
+  '.cm-lockedLine': { backgroundColor: 'rgba(148, 163, 184, 0.16)', color: '#64748b' },
   '.cm-lockedLine span': { color: 'inherit !important' },
   // A values-locked line's values read as normal code: they are the part that can change.
   [`.cm-lockedLine .${EDITABLE_VALUE_CLASS}, .cm-lockedLine .${EDITABLE_VALUE_CLASS} span`]: {
@@ -801,23 +836,14 @@ const lockedTheme = EditorView.baseTheme({
     WebkitUserSelect: 'none',
     pointerEvents: 'none',
   },
-  // A values-locked line keeps its "🔒 Change the values only" words, as a pill.
-  '.cm-lockedTag.cm-valuesTag': {
-    padding: '0 6px',
-    borderRadius: '999px',
-    border: '1px solid #cbd5e1',
-    background: '#f1f5f9',
-    color: '#475569 !important',
-    fontFamily: 'var(--font-body, sans-serif)',
-    fontWeight: 600,
-    opacity: 1,
-    whiteSpace: 'nowrap',
-  },
-  // A slot: one soft wash across the whole line (its hint note says what goes there).
+  // A slot: one dashed row with a soft wash (its hint chip says what goes there).
   '.cm-slotLine': {
     borderRadius: '4px',
     backgroundColor: 'rgba(250, 204, 21, 0.14)',
+    outline: '1px dashed #d4a514',
+    outlineOffset: '-1px',
   },
+  '.cm-slotMark': { fontStyle: 'italic', color: '#7a5b00 !important', marginLeft: '0.6em' },
   '.cm-tooltip.cm-lockedNote': {
     padding: '4px 10px',
     borderRadius: '6px',
@@ -845,7 +871,12 @@ export function lockedLinesExtension() {
     lockedEditFilter,
     zoneEditFilter,
     lockedSelectionFilter,
-    Prec.highest(keymap.of([{ key: 'Enter', run: enterOnLockedLine }])),
+    Prec.highest(
+      keymap.of([
+        { key: 'Enter', run: enterInSlots },
+        { key: 'Tab', run: tabField(1), shift: tabField(-1) },
+      ])
+    ),
     lockedDecorations,
     lockedInputMode,
     lockedNoteField,
