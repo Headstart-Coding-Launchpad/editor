@@ -315,7 +315,7 @@ broken import in the CLI's graph fails `npm test`.
 `.github/workflows/deploy.yml` runs when CI finishes on a push to `main`, and only if it passed.
 It builds the commit CI checked with `npx vite build`, skipping the `prebuild` test run. A manual
 run (`workflow_dispatch`) runs `npm test` first, since no CI run vouches for it. After the
-build, `scripts/carry-assets.mjs` copies the hashed assets of the previous two releases from the
+build, `scripts/carry-assets.mjs` copies the hashed assets of releases from the last two earlier commits on the
 live site into `dist/`, so tabs open across a deploy still load their lazy chunks. It only warns
 on failure (see the "Carry earlier assets forward" step's log).
 

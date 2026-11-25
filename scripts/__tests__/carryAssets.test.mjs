@@ -45,6 +45,7 @@ function run(fetchImpl, options = {}) {
     siteUrl: SITE,
     fetchImpl,
     warn: (message) => warnings.push(message),
+    retryMs: 0,
     ...options,
   })
 }
@@ -113,18 +114,66 @@ describe('carryAssets', () => {
     expect(existsSync(path.join(dist, 'assets/a.js'))).toBe(false)
   })
 
-  it('does not spend a history slot on a re-deploy of identical files', async () => {
-    const same = release('new', ['assets/vendor-same.js', 'assets/index-new.js'])
+  // A re-deploy renames chunks (builtAt is baked into the bundle) without being a new release.
+  it('does not spend a history slot on re-deploys of one commit', async () => {
     const { fetchImpl } = site({
       'asset-manifest.json': {
         format: 1,
-        releases: [same, release('b', ['assets/b.js']), release('a', ['assets/a.js'])],
+        releases: [
+          release('new', ['assets/rerun.js']),
+          release('b', ['assets/b2.js']),
+          release('b', ['assets/b1.js']),
+          release('a', ['assets/a.js']),
+          release('z', ['assets/z.js']),
+        ],
       },
-      'assets/b.js': 'b',
+      'assets/rerun.js': 'rerun',
+      'assets/b2.js': 'b2',
+      'assets/b1.js': 'b1',
       'assets/a.js': 'a',
     })
     await run(fetchImpl)
-    expect(manifest().releases.map((r) => r.commit)).toEqual(['new', 'b', 'a'])
+    expect(manifest().releases.map((r) => r.commit)).toEqual(['new', 'new', 'b', 'b', 'a'])
+  })
+
+  it('stays bounded however often one commit is re-deployed', async () => {
+    const releases = Array.from({ length: 20 }, (_, i) => release('new', [`assets/${i}.js`]))
+    const { fetchImpl } = site({
+      'asset-manifest.json': { format: 1, releases },
+      ...Object.fromEntries(releases.map((r) => [r.files[0], 'x'])),
+    })
+    await run(fetchImpl)
+    expect(manifest().releases).toHaveLength(6)
+  })
+
+  it('retries a passing network or server error', async () => {
+    const { fetchImpl } = site({
+      'asset-manifest.json': { format: 1, releases: [release('old', ['assets/old.js'])] },
+      'assets/old.js': 'old',
+    })
+    const seen = new Set()
+    const flaky = async (url) => {
+      const { pathname } = new URL(url)
+      if (seen.has(pathname)) return fetchImpl(url)
+      seen.add(pathname)
+      if (pathname.endsWith('.json')) return new Response('', { status: 503 })
+      throw new Error('reset')
+    }
+    await expect(run(flaky)).resolves.toMatchObject({ carried: 1 })
+    expect(warnings).toEqual([])
+  })
+
+  it('has the earlier releases on record before downloading, in case it is cut short', async () => {
+    const { fetchImpl } = site({
+      'asset-manifest.json': { format: 1, releases: [release('old', ['assets/old.js'])] },
+      'assets/old.js': 'old',
+    })
+    let during
+    await run(async (url) => {
+      if (url.pathname.endsWith('old.js')) during = manifest()
+      return fetchImpl(url)
+    })
+    expect(during.releases.map((r) => r.commit)).toEqual(['new', 'old'])
   })
 
   it.each([

@@ -10,9 +10,13 @@ import { pathToFileURL } from 'node:url'
 
 const MANIFEST = 'asset-manifest.json'
 const FORMAT = 1
-// Releases kept besides the one being built. Each lists only the files its own build made, so
-// a file drops off the site once its release leaves this window.
-const KEEP_PREVIOUS = 2
+// Earlier commits whose releases are kept. Each release lists only the files its own build made,
+// so a file drops off the site once its release leaves this window.
+const KEEP_COMMITS = 2
+// Re-deploys of one commit rename chunks without using up a commit, so releases are capped too.
+const MAX_PREVIOUS = 5
+const ATTEMPTS = 3
+const RETRY_MS = 2000
 const MAX_FILES_PER_RELEASE = 5000
 const MAX_BYTES = 300 * 1024 * 1024
 const BUDGET_MS = 120_000
@@ -44,19 +48,42 @@ function readBuildInfo(distDir) {
   }
 }
 
-async function download(fetchImpl, url) {
-  const response = await fetchImpl(url, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(FILE_TIMEOUT_MS),
-  })
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return response
+// Retries network and server errors; a 404 and the like will not change.
+async function download(fetchImpl, url, retryMs, deadline = Infinity) {
+  for (let attempt = 1; ; attempt += 1) {
+    let status
+    try {
+      const response = await fetchImpl(url, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(FILE_TIMEOUT_MS),
+      })
+      status = response.status
+      if (!response.ok) throw new Error(`HTTP ${status}`)
+      const type = response.headers.get('content-type') ?? ''
+      return { type, body: Buffer.from(await response.arrayBuffer()) }
+    } catch (error) {
+      const final = status >= 400 && status < 500
+      if (final || attempt === ATTEMPTS || Date.now() > deadline) throw error
+      await new Promise((resolve) => setTimeout(resolve, retryMs))
+    }
+  }
 }
 
-async function previousReleases(fetchImpl, siteUrl, own, warn) {
+// Newest first: releases from up to KEEP_COMMITS commits other than the one being built.
+function withinWindow(releases, commit) {
+  const earlier = new Set()
+  return releases
+    .filter((release) => {
+      if (release.commit !== commit) earlier.add(release.commit)
+      return earlier.size <= KEEP_COMMITS
+    })
+    .slice(0, MAX_PREVIOUS)
+}
+
+async function previousReleases(fetchImpl, siteUrl, commit, retryMs, warn) {
   // The query skips the CDN's ten-minute copy of the manifest.
   const url = new URL(`${MANIFEST}?t=${Date.now()}`, siteUrl)
-  const live = await (await download(fetchImpl, url)).json()
+  const live = JSON.parse((await download(fetchImpl, url, retryMs)).body.toString('utf8'))
   if (live?.format !== FORMAT || !Array.isArray(live.releases)) {
     throw new Error('unrecognised format')
   }
@@ -69,12 +96,10 @@ async function previousReleases(fetchImpl, siteUrl, own, warn) {
     }
     const files = listed.filter(isSafe)
     rejected += listed.length - files.length
-    // A re-deploy of identical files must not use up a history slot.
-    const identical = files.length === own.size && files.every((file) => own.has(file))
-    return identical || !files.length ? [] : [{ ...describeBuild(release), files }]
+    return files.length ? [{ ...describeBuild(release), files }] : []
   })
   if (rejected) warn(`ignored ${rejected} odd entries in the live ${MANIFEST}`)
-  return releases.slice(0, KEEP_PREVIOUS)
+  return withinWindow(releases, commit)
 }
 
 export async function carryAssets({
@@ -84,28 +109,32 @@ export async function carryAssets({
   warn = (message) => console.log(`::warning::carry-assets: ${message}`),
   budgetMs = BUDGET_MS,
   maxBytes = MAX_BYTES,
+  retryMs = RETRY_MS,
 }) {
   const result = { carried: 0 }
   let own
   try {
-    own = new Set(listFiles(distDir, 'assets').filter(isSafe).sort())
+    own = listFiles(distDir, 'assets').filter(isSafe).sort()
   } catch (error) {
     warn(`no build to add to (${error.message})`)
     return result
   }
-  const current = { ...readBuildInfo(distDir), files: [...own] }
+  const current = { ...readBuildInfo(distDir), files: own }
   const writeManifest = (releases) =>
     writeFileSync(path.join(distDir, MANIFEST), JSON.stringify({ format: FORMAT, releases }))
-  // Written before any fetching, so a run cut short still leaves the next deploy a list.
+  // Written before any fetching, so even a run cut short publishes a manifest.
   writeManifest([current])
 
   let previous
   try {
-    previous = await previousReleases(fetchImpl, siteUrl, own, warn)
+    previous = await previousReleases(fetchImpl, siteUrl, current.commit, retryMs, warn)
   } catch (error) {
     warn(`no old assets carried: could not read the live ${MANIFEST} (${error.message})`)
     return result
   }
+
+  // Listed before downloading: if the step is killed, the next deploy still knows about them.
+  writeManifest([current, ...previous])
 
   const deadline = Date.now() + budgetMs
   let bytes = 0
@@ -116,10 +145,9 @@ export async function carryAssets({
     if (existsSync(target)) return
     try {
       if (Date.now() > deadline) throw new Error('out of time')
-      const response = await download(fetchImpl, new URL(file, siteUrl))
-      const type = response.headers.get('content-type') ?? ''
+      const url = new URL(file, siteUrl)
+      const { type, body } = await download(fetchImpl, url, retryMs, deadline)
       if (type.includes('text/html') && !file.endsWith('.html')) throw new Error('got a web page')
-      const body = Buffer.from(await response.arrayBuffer())
       if (bytes + body.length > maxBytes) throw new Error('over the size limit')
       mkdirSync(path.dirname(target), { recursive: true })
       // 'wx' refuses to replace an existing file.

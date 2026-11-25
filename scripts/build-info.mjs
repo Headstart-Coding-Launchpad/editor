@@ -16,17 +16,6 @@ function tryRun(run, command) {
 // `version` is MAJOR.MINOR from package.json (bumped by hand for milestones); `build` is the
 // commit count on HEAD, so it rises on every merge to main with no manual step. A shallow
 // clone would report a tiny count, so `build` is null there rather than misleading.
-// Publishes the build info the bundle carries as version.json beside index.html.
-export function versionJsonPlugin(info) {
-  return {
-    name: 'version-json',
-    apply: 'build',
-    generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify(info) })
-    },
-  }
-}
-
 export function getBuildInfo({ packageVersion, run = defaultRun, now = new Date() }) {
   const [major = '0', minor = '0'] = String(packageVersion ?? '').split('.')
   const shallow = tryRun(run, 'git rev-parse --is-shallow-repository') === 'true'
@@ -38,5 +27,16 @@ export function getBuildInfo({ packageVersion, run = defaultRun, now = new Date(
     build,
     commit: commit || null,
     builtAt: now.toISOString(),
+  }
+}
+
+// Publishes the build info the bundle carries as version.json beside index.html.
+export function versionJsonPlugin(info) {
+  return {
+    name: 'version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify(info) })
+    },
   }
 }
