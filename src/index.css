@@ -8671,8 +8671,94 @@ label.te-backdrop-tag,
   color: var(--colour-muted);
 }
 
+.poll-quiz__hint,
+.poll-quiz__answered {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
+}
+
+.poll-quiz__answered {
+  font-size: 0.82rem;
+}
+
+.poll-quiz__note {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--ui-surface-tint);
+  border: 1px solid var(--ui-border-strong);
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* A poll task's tile carries its own share of the vote (PollTileResult): the words and letter
+   on one line, the count and a thin bar in the tile's colour under them. */
+[data-option-extra] {
+  /* Letter + words on one row (the words wrap within it, never drop under the letter), the vote
+     share across the row below. The grid's height counts in the quiz fit (shrinkToFit). */
+  display: grid;
+  grid-template-columns: 1fr auto minmax(0, max-content) 1fr;
+  align-content: center;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: calc(var(--quiz-option-scale, 1) * 10px);
+}
+
+/* The letter in the second column (the words follow it); the spare columns centre the pair. */
+[data-option-extra] > :first-child {
+  grid-column: 2;
+}
+
+.poll-tile-result {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--quiz-option-scale, 1) * 6px);
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-tile-result__track {
+  display: block;
+  width: min(100%, 360px);
+  height: calc(var(--quiz-option-scale, 1) * 8px);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+}
+
+.poll-tile-result--on-dark .poll-tile-result__track {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Projected on the presentation window: read from the back of the room. */
+.poll-tile-result--large {
+  font-size: 0.95em;
+  font-weight: 700;
+}
+
+.poll-tile-result--large .poll-tile-result__track {
+  width: min(100%, 440px);
+  height: calc(var(--quiz-option-scale, 1) * 12px);
+}
+
+.poll-tile-result__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--motion-base) var(--motion-ease-out);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .poll-bar__fill {
+  .poll-bar__fill,
+  .poll-tile-result__fill {
     transition: none;
   }
 }

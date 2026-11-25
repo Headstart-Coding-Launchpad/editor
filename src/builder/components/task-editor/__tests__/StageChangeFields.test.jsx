@@ -7,7 +7,8 @@ import { normalizeTasksForExport } from '../../../lessonUtils'
 // Platform request 134: the Builder fields for a Complete stage's change view and the Copy code
 // panel's place line (copyAfter / copyBefore).
 describe('StageMetadataEditor change view option', () => {
-  it('offers "Show only the changes" on a Complete stage and stores show: change', () => {
+  // A Complete stage shows the change view by default: off stores show: full, on removes it.
+  it('is on for a Complete stage with no show field; turning it off stores show: full', () => {
     const onChange = vi.fn()
     render(
       <StageMetadataEditor
@@ -16,26 +17,49 @@ describe('StageMetadataEditor change view option', () => {
         showChangeOption
       />
     )
+    expect(screen.getByLabelText('Show only the changes')).toBeChecked()
     fireEvent.click(screen.getByLabelText('Show only the changes'))
     expect(onChange).toHaveBeenCalledWith({
       label: 'Complete',
       role: 'complete',
       code: 'x',
-      show: 'change',
+      show: 'full',
     })
   })
 
-  it('turning it off removes the field', () => {
+  it('turning it back on removes the field', () => {
     const onChange = vi.fn()
     render(
       <StageMetadataEditor
-        stage={{ label: 'Complete', role: 'complete', code: 'x', show: 'change' }}
+        stage={{ label: 'Complete', role: 'complete', code: 'x', show: 'full' }}
         onChange={onChange}
         showChangeOption
       />
     )
     fireEvent.click(screen.getByLabelText('Show only the changes'))
     expect(onChange).toHaveBeenCalledWith({ label: 'Complete', role: 'complete', code: 'x' })
+  })
+
+  it('edits the change note above the change view, and an empty note removes the field', () => {
+    const onChange = vi.fn()
+    render(
+      <StageMetadataEditor
+        stage={{ label: 'Complete', role: 'complete', code: 'x', changeNote: 'Add' }}
+        onChange={onChange}
+        showChangeOption
+      />
+    )
+    const note = screen.getByLabelText('Change note')
+    expect(note).toHaveAttribute('maxLength', '120')
+    fireEvent.change(note, { target: { value: 'Add a line that prints x.' } })
+    expect(onChange).toHaveBeenLastCalledWith({
+      label: 'Complete',
+      role: 'complete',
+      code: 'x',
+      changeNote: 'Add a line that prints x.',
+    })
+    fireEvent.change(note, { target: { value: '' } })
+    expect(onChange).toHaveBeenLastCalledWith({ label: 'Complete', role: 'complete', code: 'x' })
   })
 
   it('offers it on a Support stage too', () => {

@@ -1853,7 +1853,7 @@ export default function StudentModal({
           studentName={studentName}
           task={task}
           lessonType={taskLesson?.type}
-          studentCode={student.currentCode}
+          lessonTasks={lesson?.tasks}
           copyCode={workspaceCopyCode}
           openKey={canSeeOpenKey}
           onOpenChange={(key) => setCanSeePreview(key ? { at: canSeeAt, key } : null)}

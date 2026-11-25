@@ -118,6 +118,37 @@ describe('quiz tiles: the row cap shrinks with the fit (Ryan 24 Nov, tiles C and
   })
 })
 
+describe('quiz tiles: a tall question never squeezes the answers out (Ryan 24 Nov)', () => {
+  const heights = (scrollHeight, clientHeight) => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => scrollHeight,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => clientHeight,
+    })
+  }
+  afterEach(() => {
+    delete HTMLElement.prototype.scrollHeight
+    delete HTMLElement.prototype.clientHeight
+  })
+
+  it('keeps the frame as tall as the tiles once shrinking is used up, so the pane scrolls', () => {
+    frameWidth(1300)
+    heights(370, 0)
+    render(<QuizTask task={quiz(4)} />)
+    expect(grid().parentElement.style.minHeight).toBe('370px')
+  })
+
+  it('leaves the frame free to shrink when the tiles fit', () => {
+    frameWidth(1300)
+    heights(200, 300)
+    render(<QuizTask task={quiz(4)} />)
+    expect(grid().parentElement.style.minHeight).toBe('0px')
+  })
+})
+
 describe('quizWordLayout', () => {
   it('has frame hysteresis (620 / 580) so a frame cannot flip back and forth', () => {
     expect(quizWordLayout(3, 600, false).cols).toBe(1)

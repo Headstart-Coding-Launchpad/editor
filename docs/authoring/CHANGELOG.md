@@ -24,12 +24,12 @@ Every new entry ends with one tag line, so lesson agents can tell at a glance wh
 touches without reading all of it:
 
 ```markdown
-- Affects: <modules / activities / areas> · Existing lessons: <no changes needed | what to change> ·
+- Affects: <modules / activities / areas> Â· Existing lessons: <no changes needed | what to change> Â·
   Resolves: authoring-requests/<yyyy-mm-dd>-<slug>.md
 ```
 
-- **Affects:** module types (`python`, `scratch`, `desktop`, …), activity ids (`keyboard`,
-  `quiz_match`, …), or an area (`cli`, `markdown`, `topics`, `all`), comma-separated.
+- **Affects:** module types (`python`, `scratch`, `desktop`, â€¦), activity ids (`keyboard`,
+  `quiz_match`, â€¦), or an area (`cli`, `markdown`, `topics`, `all`), comma-separated.
 - **Existing lessons:** `no changes needed`, or the change authors must make (for example "add
   `markdown` to blocks-only Support stages").
 - **Resolves:** the authoring request(s) the change ships, comma-separated; `none` when there
@@ -50,28 +50,48 @@ Entries written before 2026-09-29 are not tagged.
   · Resolves: none (marked-line quiz sketch, Ryan 24 Nov 2026)
 - **Numbered code blocks with marked lines.** A fence attribute after the language, such as
   ```` ```python {lines=3} ````, `{lines=3,5-6}` or `{numbered}`, draws the block with line numbers
-  and marks those lines (yellow band, amber bar, ▶ arrow; screen readers hear "Line 3 is
+  and marks those lines (yellow band, amber bar, â–¶ arrow; screen readers hear "Line 3 is
   marked."). Use it for "What is this line for?" quizzes in place of `# <-- the marked line`
   comments and hand-numbered lines. Copying the block copies only the code. Validation warns
-  about unknown words inside `{…}` and marks past the block's end. It is Markdown, so no field
+  about unknown words inside `{â€¦}` and marks past the block's end. It is Markdown, so no field
   changes. See [markdown-renderer.md](markdown-renderer.md#line-numbers-and-marked-lines) and
   [quiz-tasks.md](quiz-tasks.md#multiple-choice).
-- Affects: markdown, quiz_multiple_choice, all explainers · Existing lessons: no changes needed
-  (fences without `{…}` render as before; quizzes that mark a line with a comment can move to
-  `{lines=N}`) · Resolves: none (marked-line quiz sketch, Ryan 24 Nov 2026)
+- Affects: markdown, quiz_multiple_choice, all explainers Â· Existing lessons: no changes needed
+  (fences without `{â€¦}` render as before; quizzes that mark a line with a comment can move to
+  `{lines=N}`) Â· Resolves: none (marked-line quiz sketch, Ryan 24 Nov 2026)
+
+- **Python Complete stages show only the change, the same for every student.** The change view
+  now compares a stage with the lesson's step before it (the nearest earlier Complete or
+  whole-program Support stage, else the Complete of the task it carries from, else the task's
+  starter), never with the student's own code: a student with a renamed variable, a typo or an
+  extra line sees the same rows as one who matches, and none of their own lines show in red. A
+  task that carries code from another lesson (`carryCodeFromLesson`) has no step to compare with
+  and shows the whole stage. A Python Complete stage with no `show` field now shows the change
+  view; `show: full` opts out to the whole program. A step too big for the change view still
+  shows the whole stage, marked, with the "A lot changed" note, and the validator warns about it
+  (also for stages with no `show`). New optional stage field `changeNote`: one plain sentence
+  (120 characters or fewer) shown above the change (`changeNote: Add a line inside the loop that
+  says each number.`); the validator flags a non-text note, warns over 120 characters (the screen
+  cuts it to 120) or where no change view shows. The Builder's "Show only the changes" box is now
+  ticked by default on Complete stages, with a Change note field beside it. See
+  [python-tasks.md](python-tasks.md#change-view).
+- Affects: python, cli Â· Existing lessons: Python Complete stages with no `show` now display as
+  the change view (set `show: full` on a step that rewrites most of the program, and keep each
+  Complete a small step from the one before; add a `changeNote` where a sentence helps) Â·
+  Resolves: none (change-view sketch, Ryan 24 Nov 2026)
 
 ## 2026-11-23
 
-- **Calm Turtle and Arcade screens: Run is now ▶ Draw / ▶ Play.** Turtle's run button is one big
-  **▶ Draw** and Arcade's **Run game** is one big **▶ Play**; Reset code, the Map editor, Slow-mo
+- **Calm Turtle and Arcade screens: Run is now â–¶ Draw / â–¶ Play.** Turtle's run button is one big
+  **â–¶ Draw** and Arcade's **Run game** is one big **â–¶ Play**; Reset code, the Map editor, Slow-mo
   and the Topic library move behind one **More** menu (Arcade: Reset code, Topic library), and
-  Arcade's assets open from a **🎨 Assets** chip. Turtle's console is a one-line strip under the
+  Arcade's assets open from a **ðŸŽ¨ Assets** chip. Turtle's console is a one-line strip under the
   picture that opens by itself on a print or an error. Both now dock the hint beside the task
   ("Have a go, then tap Draw / Play") and fold the Type this out box after a passing run, as the
   calm Python screen does. No fields change. See [turtle.md](turtle.md) and
   [arcade.md](arcade.md).
-- Affects: turtle, arcade · Existing lessons: no changes needed (hints or explainers that say
-  "press Run" / "Run game" read better as "tap Draw" / "tap Play") · Resolves: none (calm-screen
+- Affects: turtle, arcade Â· Existing lessons: no changes needed (hints or explainers that say
+  "press Run" / "Run game" read better as "tap Draw" / "tap Play") Â· Resolves: none (calm-screen
   sketch, Ryan 23 Nov 2026)
 
 ## 2026-11-21
@@ -84,8 +104,8 @@ Entries written before 2026-09-29 are not tagged.
   sit under the question. 3-, 5- and 6-option quizzes look different from before (3 used to
   leave a lone tile, 5 used to make 3 rows). Picture options are unchanged. See
   [quiz-tasks.md](quiz-tasks.md#fields).
-- Affects: quiz (multiple_choice, poll), quiz_multiple_choice, quiz_poll · Existing lessons: no
-  changes needed (prefer 2 to 4 short options; a long answer stacks 3 options) · Resolves: none
+- Affects: quiz (multiple_choice, poll), quiz_multiple_choice, quiz_poll Â· Existing lessons: no
+  changes needed (prefer 2 to 4 short options; a long answer stacks 3 options) Â· Resolves: none
   (calm-screen sketches, Ryan 21 Nov 2026)
 
 - **Calmer Binary and Falling code screens.** Binary `make_number` and `to_binary` show the
@@ -95,8 +115,8 @@ Entries written before 2026-09-29 are not tagged.
   the start with one big Start inside and only the timer above it: the student no longer sees the
   `words` list before the round (the tutor still does), only the words as they fall. No fields
   change.
-- Affects: binary (make_number, to_binary), keyboard (falling_words) · Existing lessons: no
-  changes needed · Resolves: none (calm-screen sketches, 21 Nov 2026)
+- Affects: binary (make_number, to_binary), keyboard (falling_words) Â· Existing lessons: no
+  changes needed Â· Resolves: none (calm-screen sketches, 21 Nov 2026)
 
 ## 2026-11-20
 
@@ -107,25 +127,25 @@ Entries written before 2026-09-29 are not tagged.
   files (`style.css`, `script.js`) still load, and element checks now read the page as it is
   after it finishes loading (images and stylesheets), not just after its HTML is parsed. See
   [html.md](html.md#the-preview-sandbox).
-- Affects: html (preview, element checks, Inspector), code_arrange (HTML preview) · Existing
+- Affects: html (preview, element checks, Inspector), code_arrange (HTML preview) Â· Existing
   lessons: no changes needed (no lesson in the repo or the Lesson Gen folders uses web storage;
-  Firestore lessons not searched) · Resolves: none (Deep Review R6)
+  Firestore lessons not searched) Â· Resolves: none (Deep Review R6)
 
 ## 2026-11-18
 
-- **Calmer code lines.** A `#>` line hint shows only as its "Hint: …" note above the line (the 💡
-  gutter icon is gone). A `#@slot` line has a soft yellow wash and a small ✎ at its end (read out
+- **Calmer code lines.** A `#>` line hint shows only as its "Hint: â€¦" note above the line (the ðŸ’¡
+  gutter icon is gone). A `#@slot` line has a soft yellow wash and a small âœŽ at its end (read out
   as "This space takes one line"), with no dashed outline and no "Write one line here" tag (the
   one-line limit and its note are unchanged), so start an empty slot with a `#>` hint saying what
-  to write. A locked line ends in a small 🔒 icon (read out as "Locked") instead of the "🔒
-  Locked" pill; `#@lock-last` / `#@lock-first` lines keep their words ("🔒 nothing below" /
-  "🔒 nothing above"). With `scrub`, value boxes and colour swatches (now after the colour word)
+  to write. A locked line ends in a small ðŸ”’ icon (read out as "Locked") instead of the "ðŸ”’
+  Locked" pill; `#@lock-last` / `#@lock-first` lines keep their words ("ðŸ”’ nothing below" /
+  "ðŸ”’ nothing above"). With `scrub`, value boxes and colour swatches (now after the colour word)
   show only on the cursor line (before the first click, the first line with a value) and the
   error line after a failed run; values on other lines still respond to a drag, click or tap,
   which moves the cursor there. See
   [python.md live scrubbing](python.md#live-scrubbing-scrub).
-- Affects: python, turtle, html (line hints, locks, slots, scrub) · Existing lessons: no changes
-  needed (give empty `#@slot` lines a `#>` hint if they lack one) · Resolves: none (Ryan's calmer
+- Affects: python, turtle, html (line hints, locks, slots, scrub) Â· Existing lessons: no changes
+  needed (give empty `#@slot` lines a `#>` hint if they lack one) Â· Resolves: none (Ryan's calmer
   Stage lines sketch, 18 Nov)
 
 ## 2026-11-11
@@ -138,9 +158,9 @@ Entries written before 2026-09-29 are not tagged.
   order), and a blocking hint is never replaced by a higher-priority nudge's. On idle (before any
   Run) a matched nudge still shows, not an unrun check's hint. `lessons test-checks --cases`
   prints `studentHint` per case (or says it needs a run). See [Which hint is shown](AUTHORING_GUIDE.md#which-hint-is-shown).
-- Affects: checks and feedbackChecks in every module; cli (test-checks) · Existing lessons: no
+- Affects: checks and feedbackChecks in every module; cli (test-checks) Â· Existing lessons: no
   edits needed, but learners see a failed check's hint where they used to see a nudge (make the
-  nudge `mode: blocking` if it should win) · Resolves: none (deep review 2026-11-10, C5)
+  nudge `mode: blocking` if it should win) Â· Resolves: none (deep review 2026-11-10, C5)
 
 ## 2026-11-10
 
@@ -158,8 +178,8 @@ Entries written before 2026-09-29 are not tagged.
   draws as an empty oval. A block written under a top-level `forever` is now drawn as its own stack,
   as Scratch shows it (before, it looked attached). See
   [markdown-renderer.md](markdown-renderer.md#scratch-blocks-fenced).
-- Affects: scratch, markdown · Existing lessons: no changes needed (a `say [] for (2) seconds`
-  line with an empty slot shows its fence as plain text) · Resolves: none (Ryan, 10 and 14 Nov
+- Affects: scratch, markdown Â· Existing lessons: no changes needed (a `say [] for (2) seconds`
+  line with an empty slot shows its fence as plain text) Â· Resolves: none (Ryan, 10 and 14 Nov
   2026)
 
 - **Support stages can show the change view (`show: change`).** Before, `show: change` worked on
@@ -177,17 +197,17 @@ Entries written before 2026-09-29 are not tagged.
   errors) when such a Support stage holds the whole starter code or shares no line with it; a
   Starter stage still warns. There is no `diffFrom` field: the base is the student's editor code,
   else the starter. See [python-tasks.md](python-tasks.md#change-view).
-- Affects: python, cli · Existing lessons: no changes needed (add `show: change` to a Support
-  stage to opt in) · Resolves: none (Ryan, 10 Nov 2026: Python 2B L10, 3B L10, Python 1 L10)
+- Affects: python, cli Â· Existing lessons: no changes needed (add `show: change` to a Support
+  stage to opt in) Â· Resolves: none (Ryan, 10 Nov 2026: Python 2B L10, 3B L10, Python 1 L10)
 
 ## 2026-11-09
 
 - **Line hints show in a small note box above their line.** A `#>` / `lineHints` hint used to
   trail the end of its line in faint text and, when long, wrapped under the code. It now sits in a
   pale-amber "Hint: ..." box on the line above, wrapping inside the box, so a hint can be a full
-  sentence (for example "Add a while loop here that repeats the two lines below"). The 💡 gutter
+  sentence (for example "Add a while loop here that repeats the two lines below"). The ðŸ’¡ gutter
   marker and tooltip stay.
-- Affects: python, html, turtle (line hints) · Existing lessons: no changes needed ·
+- Affects: python, html, turtle (line hints) Â· Existing lessons: no changes needed Â·
   Resolves: none (Ryan, 9 Nov 2026, Python L2B 10)
 - **The Builder's task editor has three tabs: Content, Settings, Authoring notes.** Content opens
   first: title and minutes on one row, then one line for Priority, Must see, Available in and
@@ -202,14 +222,14 @@ Entries written before 2026-09-29 are not tagged.
   column. A quiz whose `options` are plain strings (old files) no longer crashes the editor: it
   shows them as options and saves them as `{ id, text }` on the next edit, with the stored
   correct answer still selected.
-  - Affects: builder, quiz_multiple_choice, quiz_poll · Existing lessons: no changes needed ·
+  - Affects: builder, quiz_multiple_choice, quiz_poll Â· Existing lessons: no changes needed Â·
     Resolves: none
 - **Admin > Lessons is the way into the Builder.** The Builder has no start screen and no lesson
   list. Start a lesson with Admin > Lessons "+ New Lesson" (opens a blank lesson) or "Upload JSON";
-  edit one by opening its row and pressing "✎ Edit in Builder" (or a `#/builder?load=<lessonId>`
+  edit one by opening its row and pressing "âœŽ Edit in Builder" (or a `#/builder?load=<lessonId>`
   link). Opening `#/builder` with no lesson takes an admin to Admin > Lessons. The Builder's All
   lessons button takes admins back there. Saved lesson fields are unchanged.
-- Affects: Builder, Admin Lessons · Existing lessons: no changes needed ·
+- Affects: Builder, Admin Lessons Â· Existing lessons: no changes needed Â·
   Resolves: none (Builder entry, Ryan's decision 9 Nov 2026)
 
 ## 2026-11-08
@@ -223,7 +243,7 @@ Entries written before 2026-09-29 are not tagged.
   from `output_equals` / `output_contains` checks, a Python Stage task's `stageTarget` picture,
   and a multiple-choice quiz's options with the `answer` ticked. A code task with no `complete`
   stage opens on its starter, so add one if tutors should see a model answer.
-  - Affects: all · Existing lessons: no changes needed · Resolves: none
+  - Affects: all Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Scratch: small stage with Enlarge (the A+B layout).** On the calm Scratch screen the stage
   now starts small beside the blocks (320x240 on a 1366 laptop, about 256 wide on a 1024 tablet)
@@ -238,7 +258,7 @@ Entries written before 2026-09-29 are not tagged.
   that say "tap the green flag" still read right (Run carries the flag); "click the stage" still
   works on the small stage and full screen. `highlight: green_flag` now pulses Run.
   See [scratch.md](scratch.md#calm-screen).
-  - Affects: scratch · Existing lessons: no changes needed (they get the new layout as they are; an explainer that relies on the stage being big can say "tap **Enlarge**") · Resolves: none
+  - Affects: scratch Â· Existing lessons: no changes needed (they get the new layout as they are; an explainer that relies on the stage being big can say "tap **Enlarge**") Â· Resolves: none
 
 ## 2026-11-07
 
@@ -246,21 +266,21 @@ Entries written before 2026-09-29 are not tagged.
   forever, `if <> then`, `if <> then else`) was drawn as a flat orange pill with a hat-style notch
   and no mouth. It now draws the full C: header, an empty mouth (two for if-else, with the `else`
   band) and the closing bottom arm. Fenced `scratch` blocks are unchanged.
-  - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
+  - Affects: markdown, scratch Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Scratch C-blocks are open on the right, like real Scratch.** The mouth of a drawn `repeat`,
   `forever`, `if` or `if else` (inline and fenced, nested too) was boxed in on the right and ran
   to the full block width. It is now one open outline: full-width header, left spine, and short
   bottom arms (the `else` band gets its own), with the page showing through the mouth.
-  - Affects: markdown, scratch · Existing lessons: no changes needed · Resolves: none
+  - Affects: markdown, scratch Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Scratch: the calm screen.** **Existing Scratch lessons are unchanged: the block palette still
-  starts open.** A 🧱 **Blocks** button above the script opens and closes it; blocks hidden under
+  starts open.** A ðŸ§± **Blocks** button above the script opens and closes it; blocks hidden under
   it are scrolled clear each time it opens. New optional lesson field `scratchPaletteClosed: true`
   (Builder: Lesson Details, **Start with the block palette closed**) starts it closed behind that
   button, for a calmer screen. Lesson Gen can opt a lesson in after checking its explainers: there
   "drag from the palette" then means "tap **Blocks**, then drag". The explainer card and the
-  docked hint (the calm Python screen's hint box: nudge, amber hint after a failed run, ✋ Ask for
+  docked hint (the calm Python screen's hint box: nudge, amber hint after a failed run, âœ‹ Ask for
   help only with a tutor there) stay beside the blocks (no Instructions/Code or Blocks/Stage tabs,
   no explainer slide in Solo), Flag / Stop / Reset Stage sit in one row, and the sprite property
   row and **+ Backdrop** go behind **More** unless a check (including `feedbackChecks` /
@@ -271,40 +291,40 @@ Entries written before 2026-09-29 are not tagged.
   starts folded to its title on the task's first view (decided once as it arrives, never while
   the student is reading it): keep explainers short.
   See [scratch.md](scratch.md#calm-screen).
-  - Affects: scratch, lesson (`scratchPaletteClosed`) · Existing lessons: palette still starts open (new calm layout and explainer column); opt in with `scratchPaletteClosed: true` after rewording explainers that point at an open palette ("tap Blocks, then drag") · Resolves: none
+  - Affects: scratch, lesson (`scratchPaletteClosed`) Â· Existing lessons: palette still starts open (new calm layout and explainer column); opt in with `scratchPaletteClosed: true` after rewording explainers that point at an open palette ("tap Blocks, then drag") Â· Resolves: none
 \n- **Python: the calm code screen.** On a Python code task the Type this out box and a Complete
   stage's change view are now one box titled **What to change** above the code (never both). It
   is open when the task opens and folds to one line ("Show what to change" and the first new
   line) after the first passing Run (never a failed one), once per task view; a tap opens it
   again, and it stays as the student leaves it. Lesson text that
   names the box should say "the *What to change* box" on Python tasks (Turtle and Arcade keep
-  "⌨️ Type this out"). The check result is no longer a popup on Python: the hint sits under the
+  "âŒ¨ï¸ Type this out"). The check result is no longer a popup on Python: the hint sits under the
   task card the whole time (a gentle nudge, then the check's hint in amber after a failed Run),
-  with **✋ Ask for help** in a live lesson (none in solo). Touch screens show one row of keys:
+  with **âœ‹ Ask for help** in a live lesson (none in solo). Touch screens show one row of keys:
   the symbols the task's own code uses (its complete code, code stages and `copyCode`) first,
   then common ones, and **More keys** for the rest; a `highlight: "key:<symbol>"` on a key that
   is under More keys rings **More keys** and opens it. The Topic library chip moves to the code
   row. No new fields.
-  - Affects: python · Existing lessons: say "the *What to change* box" where a Python lesson
-    names the Type this out box · Resolves: none
+  - Affects: python Â· Existing lessons: say "the *What to change* box" where a Python lesson
+    names the Type this out box Â· Resolves: none
 
 - **Activities have no Topic library chip.** The purple title bar over an activity's instructions
   (keyboard, mouse, binary, quizzes, Mind Reader and the other activities) no longer shows the
   Topic library chip. `[[topic]]` links in an activity's `description` still open their topic,
   and a tutor's sent topic still opens, as before (an activity with no title or text never had a
   header to open it from, then or now). Code lessons keep the chip.
-  - Affects: activities, topics · Existing lessons: no changes needed · Resolves: none
+  - Affects: activities, topics Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Python change view: only the changed part of a line.** In a Complete stage's change view (and
   its **Show all the code**), a line that only gains text is now one green row: the part already
   there dimmed, the new text green, bold and underlined, with **Add**, and no red line. A small
-  swap inside a line is one `±` row with only the old piece struck through in red and the new
+  swap inside a line is one `Â±` row with only the old piece struck through in red and the new
   piece underlined in green, with **Remove** and **Add**. A line where more than about half the
   characters change, with 3 or more separate changes, with only spaces changed, or with a different
   indent, keeps the red line then the green line. Words added inside a string show on their own.
   The Copy code panel with `copyAfter` / `copyBefore` does the same for a typed line that extends
   the place line or the starter line right next to it. No new fields. See [python-tasks.md](python-tasks.md#change-view).
-  - Affects: python (stage `show: change`), turtle, arcade (`copyAfter`, `copyBefore`) · Existing lessons: no changes needed · Resolves: authoring-requests/2026-11-07-stage-change-view-show-only-the-changed-part-of-a-line-inlin.md
+  - Affects: python (stage `show: change`), turtle, arcade (`copyAfter`, `copyBefore`) Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-11-07-stage-change-view-show-only-the-changed-part-of-a-line-inlin.md
 - **Python: a Complete stage can show only what changes.** Set `show: change` on a Complete
   stage and, when it opens (Solo's "See complete code", the tutor's send stage, a feedback
   preview), the student sees only the lines to add (green, `+`, **Add**), remove (red, `-`,
@@ -312,14 +332,14 @@ Entries written before 2026-09-29 are not tagged.
   this line", or "before this line" at the top). No line numbers. It compares with the student's
   editor code (else the starter), never stored; too much change shows the whole program with the
   changes marked (no "Show only the changes" then). **Show all the code** toggles and keeps the
-  stage's 🔒 Locked tags and line hints; the Solo load button reads "Replace my code with this"
+  stage's ðŸ”’ Locked tags and line hints; the Solo load button reads "Replace my code with this"
   and still loads the whole stage. Python only at runtime too. Default `full`: nothing changes until a stage opts in.
   The Copy code panel takes `copyAfter` (or `copyBefore`), the text of the line the typed lines
   go after (before): it shows that line dimmed, then the lines in green. An empty one counts as
   not set. Builder: "Show only the
   changes" on a Complete stage; a place line under the Copy code panel. See
   [python-tasks.md](python-tasks.md#change-view).
-  - Affects: python (stage `show`, `copyAfter`, `copyBefore`), turtle, arcade (`copyAfter`, `copyBefore`) · Existing lessons: no changes needed · Resolves: authoring-requests/2026-11-07-python-code-stages-a-change-view-green-add-red-remove-anchor.md
+  - Affects: python (stage `show`, `copyAfter`, `copyBefore`), turtle, arcade (`copyAfter`, `copyBefore`) Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-11-07-python-code-stages-a-change-view-green-add-red-remove-anchor.md
 
 ## 2026-11-06
 
@@ -331,7 +351,7 @@ Entries written before 2026-09-29 are not tagged.
   reload). The bar above the workspace stays, with bigger text and buttons. Nothing to author:
   short, clear side-quest titles read best on the button. See
   [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md) "Side-quests".
-  - Affects: python, turtle, html (side-quests) · Existing lessons: no changes needed · Resolves: none
+  - Affects: python, turtle, html (side-quests) Â· Existing lessons: no changes needed Â· Resolves: none
 
 ## 2026-11-05
 
@@ -342,18 +362,18 @@ Entries written before 2026-09-29 are not tagged.
   to fill the screen and the pictures showed at their natural size (found in Lesson Gen's first
   real picture quiz, "Which Corner?"). Export Stage pictures about 2:1 or square, cropped to the
   Stage only. See [quiz-tasks.md](quiz-tasks.md#picture-options).
-  - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves: none
+  - Affects: quiz_multiple_choice Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Keyboard: `showKey` and `highlight: "key:<key>"`.** A `symbols` or `find_key` task with
   `showKey: true` shows the target big above the practice area (with "Shift + 9" under it when it
   needs Shift) and lights its key, and both Shift keys when needed, on the keyboard picture from
   the start: a steady amber glow that pulses twice (no pulse with reduce motion). A press that
   isn't the target gets a calm line, "Hold Shift, then press 9" or "That was 8. Press the glowing
-  keys."; the "Look for…" hint is not needed. Left out, nothing changes: the key lights after two
+  keys."; the "Look forâ€¦" hint is not needed. Left out, nothing changes: the key lights after two
   misses. The Builder turns `showKey` on for a new `find_key` / `symbols` task. With `showKey`, each
   finished item also saves `tries` (once, with the result; without it the stored result is
   unchanged), and the tutor card adds the hardest item once it took 3 or more presses
-  (`2/5 done · ( took 3 tries`). A bare Shift, Ctrl, Alt, Meta or Caps Lock press is no longer a
+  (`2/5 done Â· ( took 3 tries`). A bare Shift, Ctrl, Alt, Meta or Caps Lock press is no longer a
   miss in `find_key` (it already wasn't in `symbols`). Keyboard tasks also take `highlight: "key:("` (any UK character, letters once, or `Space`, `Enter`, `Tab`,
   `Shift`, in quotes): the key glows for 20 seconds on the picture or the on-screen keyboard when
   the task opens, and tutors can do the same live from the Highlight menu. Modes with no picture
@@ -362,7 +382,7 @@ Entries written before 2026-09-29 are not tagged.
   nowhere (the tutor menu offers no keys there).
   `highlight` on any other activity is an error: "the <activity> activity has no highlight
   targets". UK layout only. See [activities/keyboard.md](activities/keyboard.md).
-  - Affects: keyboard (symbols, find_key), cli · Existing lessons: no changes needed · Resolves:
+  - Affects: keyboard (symbols, find_key), cli Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-11-05-keyboard-symbols-mode-show-the-target-symbol-big-and-light-i-2.md
 
 - **Python Stage: typing the right code ticks the task, no Run needed.** On a task whose typing
@@ -392,9 +412,9 @@ Entries written before 2026-09-29 are not tagged.
   Reset, carried code or saved work loading redraws but doesn't tick. A tutor's Mark Fail stops it on that task until the student presses Run
   themselves (a scrub's release checks and the tutor's remote Run don't lift it; it holds after a
   reload). See [python.md](python.md#live-scrubbing-scrub) (Typing redraws too).
-  - Affects: python · Existing lessons: tasks with scrub, run-on-open or locked values and a
+  - Affects: python Â· Existing lessons: tasks with scrub, run-on-open or locked values and a
     positive output/code check now tick while typing; to keep Run-to-pass, add a run_attempted
-    check · Resolves:
+    check Â· Resolves:
     authoring-requests/2026-11-05-stage-tasks-run-the-completion-check-on-live-redraw-tick-whe.md
 
 - **Multiple choice: picture answer options (`image` / `emoji` + `alt`).** An option can be a
@@ -414,13 +434,13 @@ Entries written before 2026-09-29 are not tagged.
   undone" confirm. Quizzes with no pictures read exactly as before. A picture in the
   question (`explainer` Markdown) with word or code options already worked and is now
   documented. See [quiz-tasks.md](quiz-tasks.md#picture-options).
-  - Affects: quiz_multiple_choice · Existing lessons: no changes needed · Resolves:
+  - Affects: quiz_multiple_choice Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-11-05-picture-answer-options-in-multiple-choice-quizzes.md
 
 - **Python: an Indent (Tab) key on the touch key row, and `highlight: "key:Tab"`.** iPad students
-  with no hardware keyboard get a `⇥` key right after the colon that indents the current line (or
+  with no hardware keyboard get a `â‡¥` key right after the colon that indents the current line (or
   every selected line) by one step. A task or tutor can make it glow like any other key.
-  - Affects: python · Existing lessons: no changes needed · Resolves: none (Hub request #125,
+  - Affects: python Â· Existing lessons: no changes needed Â· Resolves: none (Hub request #125,
     Tab/indent key)
 
 - **Preview review notes: `lessons notes <id>`.** An admin previewing a lesson
@@ -431,7 +451,7 @@ Entries written before 2026-09-29 are not tagged.
   <noteId> --status picked_up|done` (never backwards). The lesson schema is unaffected: notes
   live in `lessons/{id}/reviewNotes`, not in the lesson, and are deleted with the lesson. Works
   only once the new Firestore rules are deployed. See [feedback-cli.md](feedback-cli.md#preview-review-notes).
-  - Affects: cli, all (preview) · Existing lessons: no changes needed · Resolves:
+  - Affects: cli, all (preview) Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-11-05-preview-review-leave-a-note-on-any-task-while-previewing-a-l.md
 
 - **Python: `highlight: "key:("` makes one key glow.** A new `key:<symbol>` target for the task's
@@ -442,22 +462,22 @@ Entries written before 2026-09-29 are not tagged.
   glows, and validation warns so); Python only for now, not Turtle/Arcade/Electronics. Always quote
   the target (`highlight: "key:#"`): YAML can misread `#`, `"`, `:` and other symbols unquoted.
   Use it when a new symbol first comes in. An unknown key is a validation error. See [lesson-schema.md](lesson-schema.md) (`highlight`).
-  - Affects: python · Existing lessons: no changes needed · Resolves: none (Hub request #126,
+  - Affects: python Â· Existing lessons: no changes needed Â· Resolves: none (Hub request #126,
     tutor key highlight)
 
 ## 2026-11-03
 
 - **Image Lab: `recolour(picture, old, new)`.** A new Python Stage call (from `from stage import
   *`) that changes every pixel of `picture` that is colour `old` to `new`, in the list itself, so
-  the next `grid(picture, width=…)` shows it; recolouring back restores the picture exactly. It
+  the next `grid(picture, width=â€¦)` shows it; recolouring back restores the picture exactly. It
   gives Level 1 a one-line colour swap with no `for`/`range`/indexing (Secret spy photo). Exact
   match, no tolerance, but a colour matches however it is written (`"orange"`, `"#ffa500"`,
   `(255, 165, 0)`); whole numbers match palette indexes; a list of rows works too. Nothing
   matching is not an error; wrong values get plain-words errors naming `recolour()`. Returns
-  `None` (so `spy = recolour(spy, …)` is a mistake worth a hint). Best on pixel art: a photo's
-  pixels are hex codes that rarely match exactly. See [stage.md → Image
+  `None` (so `spy = recolour(spy, â€¦)` is a mistake worth a hint). Best on pixel art: a photo's
+  pixels are hex codes that rarely match exactly. See [stage.md â†’ Image
   Lab](stage.md#10-image-lab-pictures-are-lists).
-  - Affects: python (stage module, Image Lab) · Existing lessons: no changes needed · Resolves:
+  - Affects: python (stage module, Image Lab) Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-11-03-image-lab-recolour-picture-old-new-kit-call.md
 
 ## 2026-10-29
@@ -470,7 +490,7 @@ Entries written before 2026-09-29 are not tagged.
   sentences. Each sentence the student types in My writing also counts as 5 copies, so a few lines
   show up against a big pack ("Copied word for word!" still checks the real sentences only).
   Tapping a written word now also shows a small word-tree of the choices the bot had there.
-  - Affects: next_word (write mode) · Existing lessons: no changes needed · Resolves:
+  - Affects: next_word (write mode) Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-29-next-word-write-mode-any-start-word-mix-packs-bigger-packs.md
 
 ## 2026-10-28
@@ -482,10 +502,10 @@ Entries written before 2026-09-29 are not tagged.
   neurons glowing and the outputs. After two lost rounds in a row it tips "Try playing randomly"
   (true randomness beats it). Task fields, all optional: `rounds` (5 to 100, default 30),
   `lookBack` (1 to 5, default 3), `panels` (`network`, `history`, `lookback`; default network and
-  history; `lookback` adds the **Remembers 1 … 5** dial) and `passAt` (rounds played to pass, win
-  or lose; default `rounds`). The tutor card shows `round 18 · You 7–11 It · read 70%` and the
+  history; `lookback` adds the **Remembers 1 â€¦ 5** dial) and `passAt` (rounds played to pass, win
+  or lose; default `rounds`). The tutor card shows `round 18 Â· You 7â€“11 It Â· read 70%` and the
   report adds `mindReaderResults`. See [activities/rps_mind_reader.md](activities/rps_mind_reader.md).
-  - Affects: rps_mind_reader · Existing lessons: no changes needed · Resolves:
+  - Affects: rps_mind_reader Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-rock-paper-scissors-mind-reader-a-neural-network-that-learns.md
 
 - **Recommender: `startRatings`, open with ratings already set.** New optional map on a
@@ -495,7 +515,7 @@ Entries written before 2026-09-29 are not tagged.
   adds `(started at 1)`, the shared state carries `startKinds`, and the report adds
   `avgStartFeedKinds` and `openedUpCount` beside `avgFeedKinds`. Leave the field out for the old
   behaviour (no ratings). See [activities/recommender.md](activities/recommender.md).
-  - Affects: recommender · Existing lessons: no changes needed · Resolves:
+  - Affects: recommender Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-recommender-start-with-ratings-already-set-for-get-out-of-yo.md
 
 - **Learning Tree: `deck` mode, sort a ready-made deck into bins, then play 20 Questions.** New
@@ -507,9 +527,9 @@ Entries written before 2026-09-29 are not tagged.
   and the student marks it right or wrong. Passing uses `passAt` on the rounds played: graded by
   the test item's `label`, or, with `studentLabels` (the student renamed the bins), by the rounds
   the student marked right. `testItems` may add an `emoji`. The tutor card reads
-  `sorted 8 · 20Q 3 of 4`. Without `deck` nothing changes. See
+  `sorted 8 Â· 20Q 3 of 4`. Without `deck` nothing changes. See
   [activities/learning_tree.md](activities/learning_tree.md).
-  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+  - Affects: learning_tree Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-learning-tree-card-deck-dragged-into-bins-and-a-20-questions.md
 
 - **Next Word: `mode: write`, the bot that writes like a headline, a post or a commentator.**
@@ -524,10 +544,10 @@ Entries written before 2026-09-29 are not tagged.
   `commentary`, default `headline`), `passAt` (kept cards to pass, 1-10, default 3). In write mode
   `texts` bodies may be up to 6000 characters (4000 otherwise), `guesses` and the `stats` panel are
   not used, and `silly`, `voices` and `lookback` still apply. The tutor card shows `2 of 3 cards
-  kept · looked back 2 · 1 copied · latest: "..."`; the session report adds
+  kept Â· looked back 2 Â· 1 copied Â· latest: "..."`; the session report adds
   `nextWordWriteResults` (cards kept, look-back used, copied count). See
   [activities/next_word.md](activities/next_word.md).
-  - Affects: next_word · Existing lessons: no changes needed · Resolves:
+  - Affects: next_word Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-next-word-bot-that-writes-like-go-auto-write-copied-badge-ou.md
 
 - **Game agent: `brain: copy` (a neural network that learns from the student's driving) and
@@ -539,7 +559,7 @@ Entries written before 2026-09-29 are not tagged.
   treasure. Drive badly and it copies the mistakes. `panels: [network]` draws the inputs (senses),
   hidden neurons and 4 outputs, lit as it decides. A copy-bot's `senses` default to
   `[walls, treasure_direction]` (leave `position` out); it uses `randomCourses` (defaults apply when
-  omitted) and ignores `testMaps` and the reward steppers. The tutor card reads `copy-bot · 34 moves ·
+  omitted) and ignores `testMaps` and the reward steppers. The tutor card reads `copy-bot Â· 34 moves Â·
   course 3: 8 pts`; the shared state carries `drives`. For a race, put a copy task and a reward task
   with `seed: class` in one lesson and compare the cards by course number. Also: with `randomCourses`
   and the usual brain, each practice try now runs on the next course of a separate training stream
@@ -547,8 +567,8 @@ Entries written before 2026-09-29 are not tagged.
   `walls` + `treasure_direction` clears about 70% of new 5 x 5 courses (compass alone about 55%);
   tasks without `randomCourses` are unchanged. See
   [game_agent.md](activities/game_agent.md#copy-bot).
-  - Affects: game_agent · Existing lessons: no changes needed (a `randomCourses` task now trains on
-    several courses per Train press, so a robot learns the courses better) ·
+  - Affects: game_agent Â· Existing lessons: no changes needed (a `randomCourses` task now trains on
+    several courses per Train press, so a robot learns the courses better) Â·
     Resolves: authoring-requests/2026-10-28-game-agent-robot-brain-from-playing-copy-bot-a-neural-networ.md,
     authoring-requests/2026-10-28-game-agent-random-solvable-courses-with-a-class-seed-no-dead.md
 
@@ -559,20 +579,20 @@ Entries written before 2026-09-29 are not tagged.
   rule as `testMaps`, which it replaces). Courses are always solvable (pits count as blocked) and have
   no dead-end pocket near the way from `R` to `T`. With `seed: class` every student in the lesson
   gets the same courses in the same order. The tutor card lists the last courses by number and
-  score (`course 1: 8 pts · course 2: lost`); the shared state carries `courses`; the report adds
+  score (`course 1: 8 pts Â· course 2: lost`); the shared state carries `courses`; the report adds
   `courseStudents`, `avgCoursesTried` and `avgCoursesCleared`. See
   [activities/game_agent.md](activities/game_agent.md).
-  - Affects: game_agent · Existing lessons: no changes needed · Resolves:
+  - Affects: game_agent Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-game-agent-random-solvable-courses-with-a-class-seed-no-dead.md
 
 - **Learning Tree: `studentPicksFeatures`, the student chooses which features the tree may use.**
   New optional number (1 up to the number of `features`) on a `learning_tree` task. The student ticks
   up to that many features and the tree regrows from only those; the examples still record every
-  feature. They start with none ticked. The tutor card adds `· uses has fur, can fly`, the shared
+  feature. They start with none ticked. The tutor card adds `Â· uses has fur, can fly`, the shared
   state carries `chosenFeatures`, and the session report adds `featureUse`. Leave the field out for
   the old behaviour (the tree uses every feature). See
   [activities/learning_tree.md](activities/learning_tree.md).
-  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+  - Affects: learning_tree Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-learning-tree-student-picked-features-and-depth-and-the-path.md
 
 - **New activity: Learning Tree (`type: learning_tree`).** The student gives a tree labelled
@@ -582,7 +602,7 @@ Entries written before 2026-09-29 are not tagged.
   `features` (1-6), `labels` (2-6), `testItems` (`name`, `yes`, `label`), `maxExamples`,
   `maxDepth`, `passAt`. The tutor card shows examples, tree depth and test score. See
   [activities/learning_tree.md](activities/learning_tree.md).
-  - Affects: learning_tree · Existing lessons: no changes needed · Resolves:
+  - Affects: learning_tree Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-23-learning-decision-tree-activity-ai-level-1.md
 
 - **Recommender: `goals`, a student switch for what the feed aims for.** New optional list on a
@@ -593,31 +613,31 @@ Entries written before 2026-09-29 are not tagged.
   and this feed wants you to keep watching"). The tutor card shows the goal, and the report adds
   `goalCounts`. Passing is unchanged. Leave `goals` out for the old feed exactly. See
   [activities/recommender.md](activities/recommender.md).
-  - Affects: recommender · Existing lessons: no changes needed · Resolves:
+  - Affects: recommender Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-recommender-feed-goal-switch-what-i-ll-like-keep-me-watching.md
 
 - **New activity: Recommender (`type: recommender`).** The student rates 12 to 20 `items`
-  (`{ id, emoji, label, group }`) with 👍 / 👎 and gets "Your feed" of 4 recommendations from a
+  (`{ id, emoji, label, group }`) with ðŸ‘ / ðŸ‘Ž and gets "Your feed" of 4 recommendations from a
   made-up class of raters generated from the items. `showWhy: true` adds a **Why?** button on each
   one ("Because Robo Rita and Sporty Sam, who liked what you liked, liked this"); `bubble: true`
   adds a meter of how many groups the feed shows, so rating one kind visibly closes the bubble.
   `minRated` (default 6) sets how many to rate; the task passes once that many are rated and a
   Why? is opened. Warns under 12 items or under 3 groups. Report: `recommenderResults`. See
   [activities/recommender.md](activities/recommender.md).
-- Affects: recommender · Existing lessons: no changes needed ·
+- Affects: recommender Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-23-recommender-activity-ai-level-1.md
 
 - **Network Playground: student-picked inputs, zero hidden layers and a new-dots test.** New
   optional fields on a `network_playground` task. `inputs` (the start) and `allowInputs` (a subset of
   `x`, `y`, `x2`, `y2`) let the student switch the network's inputs, rebuilding it, with the input
-  nodes labelled x, y, x², y² in the diagram. `allowZeroLayers: true` lets them remove every hidden
+  nodes labelled x, y, xÂ², yÂ² in the diagram. `allowZeroLayers: true` lets them remove every hidden
   layer (inputs wired straight to the output). `testDots: true` adds **Try new dots**, which scores
   80 fresh dots from the same pattern (a different seed from training) and shows **New dots: N%
   right** beside the training score; passing is unchanged. With `x2` and `y2` and no hidden layer the
   circle is solved. The tutor card and modal show the inputs and the new-dots score, and the report
   keeps them. Leave all four out for the old behaviour. See
   [activities/network_playground.md](activities/network_playground.md).
-  - Affects: network_playground · Existing lessons: no changes needed · Resolves:
+  - Affects: network_playground Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-network-playground-student-picked-inputs-x-y-x-2-y-2-and-a-n.md
 
 - **New activity: Network Playground (`type: network_playground`).** The student trains a tiny
@@ -627,7 +647,7 @@ Entries written before 2026-09-29 are not tagged.
   `[3]`), `maxNeurons` (default 6), `allowAddLayer` (default true), `target` (default 0.9).
   Marked as you go when accuracy reaches `target`. The tutor sees the network, layers and accuracy
   live. See [activities/network_playground.md](activities/network_playground.md).
-  - Affects: network_playground (new activity) · Existing lessons: no changes needed · Resolves:
+  - Affects: network_playground (new activity) Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-23-neural-network-playground-activity-ai-level-1.md
 
 - **`game_agent`: senses, coins, a mystery map and race v1.** New `map` character `C` (coin, paid
@@ -639,7 +659,7 @@ Entries written before 2026-09-29 are not tagged.
   it reaches the treasure there. Also a robot's-eye view, a "when it sees X it goes Y" list and a
   "N situations to learn" count. `race: true` now puts each student's best mystery-map score on
   their tutor card (it warns without `testMaps`). See [activities/game_agent.md](activities/game_agent.md).
-  - Affects: game_agent · Existing lessons: no changes needed · Resolves:
+  - Affects: game_agent Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-28-game-agent-senses-robot-s-eye-view-mystery-map-coins-and-a-c.md
 
 - **New activity `game_agent`: set the rewards and train a robot to find the treasure.** A grid
@@ -650,7 +670,7 @@ Entries written before 2026-09-29 are not tagged.
   reaches the treasure. `race` is accepted with a warning but is not built yet; the tutor card shows
   each student's best score so a race can be run on the big screen. See
   [activities/game_agent.md](activities/game_agent.md).
-  - Affects: game_agent (new activity) · Existing lessons: no changes needed · Resolves:
+  - Affects: game_agent (new activity) Â· Existing lessons: no changes needed Â· Resolves:
     authoring-requests/2026-10-23-game-agent-reinforcement-learning-activity-ai-level-1.md
 
 - **Classifier for AI Level 1: grid size, "Test on what it learned", one thing and "not sure".**
@@ -665,32 +685,32 @@ Entries written before 2026-09-29 are not tagged.
   floor) and recomputed as drawings are added. The tutor card and modal and the session report show
   the grid size, both scores and the "not sure" / "not a <thing>" counts per student. See
   [activities/classifier.md](activities/classifier.md).
-  - Affects: classifier · Existing lessons: no changes needed (the new panels are off by default and
-    `gridSize` defaults to 16) · Resolves:
+  - Affects: classifier Â· Existing lessons: no changes needed (the new panels are off by default and
+    `gridSize` defaults to 16) Â· Resolves:
     authoring-requests/2026-10-28-classifier-student-picked-grid-size-4x4-8x8-16x16.md,
     authoring-requests/2026-10-28-classifier-test-on-what-it-learned-button.md,
     authoring-requests/2026-10-28-classifier-only-one-thing-mode-and-an-i-m-not-sure-answer.md
 
 - **Next Word: student-picked look-back (1, 2 or 3 words).** New `lookback` panel plus `lookBack`
   (starting value, default 1) and `maxLookBack` (1 to 3, default 3) task fields. The student changes
-  how many words back the model looks with − / + or 1/2/3 buttons, and sees the model's counts change:
+  how many words back the model looks with âˆ’ / + or 1/2/3 buttons, and sees the model's counts change:
   the stats show multi-word contexts (`after "the big": dog: 2 of 3 times`) and, when a longer context
   was never seen, say it fell back to fewer words (`Never saw "the big red", using "big red"`). Marking
   is unchanged. The tutor sees the look-back on the card (`looked back 2`) and in the student modal.
   See [activities/next_word.md](activities/next_word.md).
-  - Affects: `next_word` · Existing lessons: no changes needed; add `lookback` to `panels` to use it ·
+  - Affects: `next_word` Â· Existing lessons: no changes needed; add `lookback` to `panels` to use it Â·
     Resolves: authoring-requests/2026-10-28-next-word-student-picked-look-back-1-2-or-3-words.md
 
 ## 2026-10-27
 
-- **Eight badges are no longer "first in class".** 🐛 Bug Hunter, Code Detective, Code Arranger,
+- **Eight badges are no longer "first in class".** ðŸ› Bug Hunter, Code Detective, Code Arranger,
   Code Builder, Prediction Pro, AI Trainer, Real Spotter and Station Builder now go to **every**
   student who meets the condition (once per lesson, on their earliest qualifying task), not just the
   first (children's design rule: no badge for being first; #302, Ryan 2026-10-27). Their conditions
   are unchanged. Class award pop-ups no longer name the child ("A coder earned a badge"). See
   [badges.md](badges.md).
-  - Affects: badges, `badgeHints` · Existing lessons: no changes needed; drop any hint or lesson text
-    that says "be the first to…" for these badges.
+  - Affects: badges, `badgeHints` Â· Existing lessons: no changes needed; drop any hint or lesson text
+    that says "be the first toâ€¦" for these badges.
 
 - **Python errors in plain words, and the error help wins over completion hints.** On Python and
   Turtle tasks, a crashed Run now shows a plain-words card under the output: what went wrong and the
@@ -702,35 +722,35 @@ Entries written before 2026-09-29 are not tagged.
   error, **no completion-check hint is shown on that Run**: a check written for working code
   ("is there a for loop?") no longer answers a syntax slip. Matched `feedbackChecks` still show
   their hint. Session report review #229 found the `for i in range 4:` case.
-  - Affects: python, turtle · Existing lessons: no changes needed. A completion-check hint that was
-    meant for broken code should move to a `feedbackChecks` entry · Resolves: Hub #225
+  - Affects: python, turtle Â· Existing lessons: no changes needed. A completion-check hint that was
+    meant for broken code should move to a `feedbackChecks` entry Â· Resolves: Hub #225
 
 ## 2026-10-26
 
 - **Station light patterns: hold the matched pattern, and `pattern: free`.** In a Station task
   (Lesson 1) a finished power card (an ordered `power_on` or a `light_pattern`) with another power
-  card still to come now stays lit for about 1.5 seconds, with "Signal sent ✓" on the card, before
+  card still to come now stays lit for about 1.5 seconds, with "Signal sent âœ“" on the card, before
   the station switches off for the next one (it used to switch off at once). New
   `light_pattern` with `pattern: free`: the card says "Make your own signal", the child switches
   any lights and presses **Send signal** (at least one on) to finish it; the tutor sees the sent
   pattern ("Sent signal: left + right"). Fixes the first of two `light_pattern` cards vanishing
   before the child saw it finished. See `activities/station.md`.
-  - Affects: station · Existing lessons: no changes needed (fixed `pattern` objects work as before,
-    now with the hold) · Resolves: none
+  - Affects: station Â· Existing lessons: no changes needed (fixed `pattern` objects work as before,
+    now with the hold) Â· Resolves: none
 
 - **Nine activity live badges.** Rule-backed badges for the activity tasks, suggested to the tutor
-  during a live session: 🔭 Prediction Pro (first right first time on a `Quiz: What Do You Expect
-  the Code to Do` task), 🏗️ Station Builder (first to pass a Space station task), 💯 Perfect Round
-  (a Classifier live round, Next Word or Real or AI round with every core try right), 🧐 Real
-  Spotter (first to finish a Real or AI round all right on the first attempt), 🎭 AI Fooler
-  (a Classifier miss the student then taught), 🔤 Keyboard Ace (a typing-mode round at 100%
-  accuracy; speed is never counted), 🏋️ AI Trainer (first Classifier pad ready), 📜 Storyteller (Next
-  Word: own writing and a generated passage) and 🖱️ Steady Hand (a Mouse round with no misses).
-  🔭, 🏗️, 🧐, 🔤 and 🖱️ are auto-awardable. Activity tasks are found by activity, so no `taskActivity`
+  during a live session: ðŸ”­ Prediction Pro (first right first time on a `Quiz: What Do You Expect
+  the Code to Do` task), ðŸ—ï¸ Station Builder (first to pass a Space station task), ðŸ’¯ Perfect Round
+  (a Classifier live round, Next Word or Real or AI round with every core try right), ðŸ§ Real
+  Spotter (first to finish a Real or AI round all right on the first attempt), ðŸŽ­ AI Fooler
+  (a Classifier miss the student then taught), ðŸ”¤ Keyboard Ace (a typing-mode round at 100%
+  accuracy; speed is never counted), ðŸ‹ï¸ AI Trainer (first Classifier pad ready), ðŸ“œ Storyteller (Next
+  Word: own writing and a generated passage) and ðŸ–±ï¸ Steady Hand (a Mouse round with no misses).
+  ðŸ”­, ðŸ—ï¸, ðŸ§, ðŸ”¤ and ðŸ–±ï¸ are auto-awardable. Activity tasks are found by activity, so no `taskActivity`
   tag is needed; `badgeHints.suggest` / `suppress` work on all nine. New activity state they read:
   Classifier `readyAt` and `taught`, Next Word `generated`, Mouse `misses` (old saves read as 0 /
-  absent). See [badges.md → Activity badges](badges.md#activity-badges).
-  - Affects: classifier, next_word, real_or_ai, keyboard, mouse, station, quiz_multiple_choice · Existing lessons: no changes needed · Resolves: none
+  absent). See [badges.md â†’ Activity badges](badges.md#activity-badges).
+  - Affects: classifier, next_word, real_or_ai, keyboard, mouse, station, quiz_multiple_choice Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Poll: `multiple: true` for "pick all that apply".** A `quizType: poll` task can set
   `multiple: true` (boolean, default false). Students tick any number of options (none to all) and
@@ -738,14 +758,14 @@ Entries written before 2026-09-29 are not tagged.
   so the bars can add up to more than 100%. `optionDistribution` counts a student once for every
   option they ticked. Stored answer and attempt `submission` is a JSON array string of the sorted
   ids (`["a","c"]`; `""` for none). Single-choice polls are unchanged. See
-  [quiz-tasks.md → Poll](quiz-tasks.md#poll).
-- Affects: quiz_poll · Existing lessons: no changes needed · Resolves: none
+  [quiz-tasks.md â†’ Poll](quiz-tasks.md#poll).
+- Affects: quiz_poll Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Tutor timing run.** In the admin preview a tutor can press **Start timing run**, walk the
   lesson, and **Finish** to save per-task seconds to `lessons/{lessonId}/timingRuns`. Read them
   with `node cli/cli.mjs lessons timing <lessonId> [--latest] [--yaml]`. No lesson fields change.
   See `docs/authoring/timing-runs.md`.
-  - Affects: cli, admin preview · Existing lessons: no changes needed · Resolves: none
+  - Affects: cli, admin preview Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Classifier: pre-loaded `examples`.** A Classifier task can now carry `examples: [{ label, grid | strokes }]`
   (same format as `testItems`, not sealed). The pad starts with these learned, so it guesses before the
@@ -753,25 +773,25 @@ Entries written before 2026-09-29 are not tagged.
   their own on top), are never part of the `held_out` test, are not saved in student state, and show to
   the tutor as "given + own". The Builder has a Pre-loaded examples section. See
   [activities/classifier.md](activities/classifier.md#pre-loaded-examples).
-  - Affects: classifier · Existing lessons: no changes needed · Resolves: none
+  - Affects: classifier Â· Existing lessons: no changes needed Â· Resolves: none
 
-- **Image Lab: pictures on the Stage (Make It Real, LG-P9 §2).** The `stage` module has six new
+- **Image Lab: pictures on the Stage (Make It Real, LG-P9 Â§2).** The `stage` module has six new
   calls that draw nothing and give back values: `rgb(r, g, b)` (a `'#rrggbb'` colour; numbers are
-  rounded and kept within 0–255), `red(c)`, `green(c)`, `blue(c)` (0–255, for any Stage colour),
+  rounded and kept within 0â€“255), `red(c)`, `green(c)`, `blue(c)` (0â€“255, for any Stage colour),
   `load_image(name, size=32)` (a picture from the 27-picture image library as one long list of
   `'#rrggbb'`, row by row; `size` 8, 16, 32 or 64) and `snapshot(size=32)` (the drawing so far as
   the same kind of list; text and emoji left out). Draw either with `grid(pixels, width=32)`.
   `(r, g, b)` tuples now work wherever a drawing call takes a colour. Pixel art and the green
   screen (`astronaut_green` on `"lime"`) give their pixels as colour names (`"orange"`), so Level
   1 swaps read `fox[i] == "orange"`; photos give hex codes and need number comparisons. The student's Stage has a **Save my picture** PNG button. `grid()`'s "one
-  long list" message suggests the picture's own width (`width=32`). Numbers in `rgb(…)` scrub
-  0–255. No new checks: use `stage_matches_target` (targets can call `load_image()`),
+  long list" message suggests the picture's own width (`width=32`). Numbers in `rgb(â€¦)` scrub
+  0â€“255. No new checks: use `stage_matches_target` (targets can call `load_image()`),
   `stage_pixel` with `index`, and list variable checks. See
-  [stage.md → Image Lab](stage.md#10-image-lab-pictures-are-lists).
-- Affects: python · Existing lessons: no changes needed · Resolves:
+  [stage.md â†’ Image Lab](stage.md#10-image-lab-pictures-are-lists).
+- Affects: python Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-22-image-lab-the-picture-model-on-the-stage-load-image-colour-h.md
 
-- **Beat Maker: the `beats` Python module (Make It Real §1).** `from beats import *` gives
+- **Beat Maker: the `beats` Python module (Make It Real Â§1).** `from beats import *` gives
   `play(kick, snare, hat, clap, tempo=100)` and `stop()`. A pattern is a string, one character per
   step: `x` a hit, `.` a rest, `X` a louder hit; a list of strings is joined into one pattern.
   Patterns can also be given by name (`play(hat="x.x.", clap="..x.")`, or `play(**beat)` with a
@@ -783,18 +803,18 @@ Entries written before 2026-09-29 are not tagged.
   too. The tutor sees the grid on the card and in the modal (with a Play button); nothing plays on
   the tutor's screen by itself. No new task fields or checks: use `variable_equals` and `code`
   checks on the patterns, which work with the sound off. Guide: [beats.md](beats.md).
-- Affects: python · Existing lessons: no changes needed ·
+- Affects: python Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-22-beat-maker-a-beats-library-and-step-sequencer-view-on-the-st.md
 
-- **Real charts on the Stage with matplotlib (LG-P9 "Make it real" §8).** A Python program that
+- **Real charts on the Stage with matplotlib (LG-P9 "Make it real" Â§8).** A Python program that
   imports matplotlib (`import matplotlib.pyplot as plt`) gets the real library, loaded the first
-  time only ("Loading charts… (first time only)"), and `plt.show()` puts the chart on the Stage,
+  time only ("Loading chartsâ€¦ (first time only)"), and `plt.show()` puts the chart on the Stage,
   fitted to the square; no `import stage` needed. A chart drawn but never shown is shown when the
   program ends; with several `show()`s the last one stays; Stage calls after `show()` draw on top.
   The tutor's card, modal, Go Live and Export work show the same chart. Stage checks don't look
   inside a chart: check chart tasks with `code` and `variable` checks. Subset, example and limits:
-  [stage.md → Charts](stage.md#11-charts-matplotlib).
-- Affects: python · Existing lessons: no changes needed · Resolves: none
+  [stage.md â†’ Charts](stage.md#11-charts-matplotlib).
+- Affects: python Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **Scratch blocks keyed by a later sprite load when the first sprite has none (Hub #256).**
   `starterBlocks`, `completeBlocks` and `codeStages[].blocks` keyed only by later sprites (for
@@ -802,8 +822,8 @@ Entries written before 2026-09-29 are not tagged.
   the first sprite's blocks, so the classroom showed no starter and `lessons test-checks` failed
   every stage. A blocks value now counts as keyed by sprite when any author sprite's id,
   `__stage__` or `__meta__` is a key; a bare workspace state still belongs to the first sprite.
-- Affects: scratch, cli · Existing lessons: no changes needed; the lone when-green-flag block on
-  the first fixed sprite (the #256 workaround) can be removed · Resolves: none
+- Affects: scratch, cli Â· Existing lessons: no changes needed; the lone when-green-flag block on
+  the first fixed sprite (the #256 workaround) can be removed Â· Resolves: none
 
 ## 2026-10-23
 
@@ -819,27 +839,27 @@ Entries written before 2026-09-29 are not tagged.
   world is an error (`... isn't in the zoo world.`). Each world's build is saved separately (the
   carried save is now `{ v: 2, worlds }`; old saves still load as the station). See
   [activities/station.md](activities/station.md#worlds).
-- Affects: station · Existing lessons: no changes needed (a task with no `world` is a station task) ·
+- Affects: station Â· Existing lessons: no changes needed (a task with no `world` is a station task) Â·
   Resolves: authoring-requests/2026-10-22-station-activity-one-saved-space-station-each-child-builds-w.md
 
 - **Show it shows builds unmarked, and one at a time (Lesson Gen #190 review).** Shown builds
   carry no hints, ticks, "Correct", check results or pass/fail colours. The tutor can switch
-  between "Side by side" and "One at a time" (one build full width, ← → arrows), and every screen
+  between "Side by side" and "One at a time" (one build full width, â† â†’ arrows), and every screen
   follows. An activity definition can set `showIt: 'single'` so its builds open one at a time
   (use it for a big view such as a space station); the default is `'side'`. An activity with its
   own hint or verdict line should check `usePresentation()` (src/activities/ui/presentation.js).
-- Affects: all activities, python, turtle, html, scratch · Existing lessons: no changes needed ·
+- Affects: all activities, python, turtle, html, scratch Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-23-show-it-the-tutor-puts-2-3-students-builds-on-the-big-screen.md
 
 - **Show it: the tutor puts up to three students' builds side by side (platform request R103,
   handoff #173).** Nothing to author: it works on any task with student work (every activity,
   and code tasks: Python with its Stage and output, Turtle, HTML, Scratch). Lesson guides can
-  rely on a "Show it" step: the tutor opens the class ⋯ menu > 📺 Show it, ticks up to 3 student
+  rely on a "Show it" step: the tutor opens the class â‹¯ menu > ðŸ“º Show it, ticks up to 3 student
   cards, and presses Show it; the presentation window and every student screen show the builds
   as Build 1 / 2 / 3, names hidden, until the tutor presses Stop showing (or moves to another
   task). It shows each build as the student's record stands: an activity's answer as it is
   saved, a code task's code and output as of the student's last Run.
-- Affects: all activities, python, turtle, html, scratch · Existing lessons: no changes needed ·
+- Affects: all activities, python, turtle, html, scratch Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-23-show-it-the-tutor-puts-2-3-students-builds-on-the-big-screen.md
 
 - **Space station: build jobs (handoff #101, Lesson Gen review #181).** New fields on station goals
@@ -854,8 +874,8 @@ Entries written before 2026-09-29 are not tagged.
   `coreItems` on a station task now means the FIRST this many goals are required (not any this
   many); put the required goals first. A sort job ("fuel to the tank") is not built. Details and a
   complete example lesson: [activities/station.md](activities/station.md).
-- Affects: station · Existing lessons: station tasks with `coreItems` must list their required
-  goals first · Resolves: none
+- Affects: station Â· Existing lessons: station tasks with `coreItems` must list their required
+  goals first Â· Resolves: none
 
 - **Space station: more Lesson 1 jobs, the robot's drops and a closer tray (Lesson Gen review #190).**
   Lesson 1: a task may now have more than one `power_on` goal with an `order` (a second start-up
@@ -869,7 +889,7 @@ Entries written before 2026-09-29 are not tagged.
   station. On Lessons 3 and 4 the Parts tray now sits directly under the station picture. A child
   carried past Lesson 1 always has a fully powered station. Lessons authored before keep working;
   see [activities/station.md](activities/station.md).
-- Affects: station · Existing lessons: no changes needed · Resolves: none
+- Affects: station Â· Existing lessons: no changes needed Â· Resolves: none
 
 - **New activity: Space station (Phase 1, Mouse and Keyboard Lessons 1-4).** `type: station` with
   `lesson` (1 to 4), `items` of `{ id, goal, target?, prompt? }`, optional `catalogue` and
@@ -881,15 +901,15 @@ Entries written before 2026-09-29 are not tagged.
   station art: three power sections (`left`, `core`, `right`), crew `crew-robot-1`, `crew-robot-2`,
   `crew-plant`, and a Lesson 4 catalogue of eight parts ending in `rainbow-ring`. Details:
   [activities/station.md](activities/station.md).
-- Affects: station · Existing lessons: no changes needed · Resolves:
+- Affects: station Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-22-station-activity-one-saved-space-station-each-child-builds-w.md
 
 - **The three AI activities are redesigned fun-first (handoff #99).** Each is one round, marked
   as you go, with no Check button.
   - **Classifier:** the student teaches each thing (`classes`, which may start with an emoji, such
-    as `"🐱 cat"`) `minExamplesPerClass` drawings (default now **3**, was 8); there is no Train
+    as `"ðŸ± cat"`) `minExamplesPerClass` drawings (default now **3**, was 8); there is no Train
     step. It then guesses live as they draw. `testSet` is optional and defaults to the new `live`
-    round: "Draw a 🐟, will it get it?" (students may draw anything to fool it), then one tap on
+    round: "Draw a ðŸŸ, will it get it?" (students may draw anything to fool it), then one tap on
     "What did you draw?". It passes after `liveTestSize` **tries**, right or wrong (default 5); the
     score is how many the AI got right, and a miss offers **Teach it this one**. New `panels` (`grid`, `sure`, `fool`; default `[fool]`)
     choose the extra parts. `held_out` tasks now need an explicit `minExamplesPerClass` of 4 or
@@ -904,16 +924,16 @@ Entries written before 2026-09-29 are not tagged.
     `tells` is ignored, and each pair's `tell`, `reliable` and `reveal` are optional.
 - Passing these three rounds means "finished", so the banner says **Round done!**, not
   **Correct!** (a new optional `passMessage` on activity definitions).
-- Affects: classifier, next_word, real_or_ai · Existing lessons: none use these yet; drafts should
+- Affects: classifier, next_word, real_or_ai Â· Existing lessons: none use these yet; drafts should
   drop `items` / `allowPaste` / `showTemperature` (Next Word) and `tells` (Real or AI), and set
-  `minExamplesPerClass` on `held_out` Classifier tasks · Resolves: none
+  `minExamplesPerClass` on `held_out` Classifier tasks Â· Resolves: none
 
 - **Solo study is no longer logged.** Ryan chose not to log Solo Challenge activity (handoff #130),
   so students no longer write `soloLog` and its database rule is gone. The rule was never deployed,
   so nothing was ever stored. `lessons solo-log <id>` and the Admin **Solo & side-quests** tab still
   run, but the solo log is always empty (the side-quest list is unchanged). Don't rely on the solo
   log to see who did a Solo Challenge.
-- Affects: cli, solo · Existing lessons: no changes needed · Resolves: none
+- Affects: cli, solo Â· Existing lessons: no changes needed Â· Resolves: none
 
 ## 2026-10-22
 
@@ -921,10 +941,10 @@ Entries written before 2026-09-29 are not tagged.
   and Mouse no longer have **Check my work**: an item ticks the moment it is right, and the task
   passes when the core is done. The in-task Previous / numbered dots / Next bar is gone from
   Keyboard, Binary, Next Word and Real or AI; students see a progress strip ("3 of 5 done") and
-  items move on by themselves after a short tick (Real or AI keeps **Next pair →** so the reveal
+  items move on by themselves after a short tick (Real or AI keeps **Next pair â†’** so the reveal
   can be read; Next Word keeps its **Check my work**). New optional task field `coreItems` (a whole
   number from 1 to the number of `items`; default all) on keyboard, binary and mouse: the task
-  passes when that many items are done, the rest are bonus reps ("Done! ⭐ Bonus round"), and a
+  passes when that many items are done, the rest are bonus reps ("Done! â­ Bonus round"), and a
   finish card ("You did it! N done") has **Play again**, which clears the items on the device and
   never un-passes the task or logs a fail. `coreItems` outside 1 to the item count is a
   validation error; on keyboard `falling_words` it is ignored with a warning. Writing rule: an
@@ -932,32 +952,32 @@ Entries written before 2026-09-29 are not tagged.
   navigation; if you want the class to look at one answer together, make it its own task. See
   [binary.md](activities/binary.md), [keyboard.md](activities/keyboard.md),
   [mouse.md](activities/mouse.md).
-- Affects: keyboard, binary, mouse, next_word, real_or_ai (activities) · Existing lessons: no
+- Affects: keyboard, binary, mouse, next_word, real_or_ai (activities) Â· Existing lessons: no
   changes needed (no `coreItems` means every item is the goal, as before; `on_submit` Check is
   replaced by marking as you go); optionally set `coreItems` on long item lists and move any "look
-  at one answer together" item into its own task · Resolves: HSC Hub handoff #97
+  at one answer together" item into its own task Â· Resolves: HSC Hub handoff #97
 
 - **Session reports keep the final code of tasks with no check.** Each student's task gains
   `finalRun: { code, unchecked?, truncated?, at }`, the code of their last Run in the session.
   It's flagged `unchecked` on a task with no check, and also appears when they ran new code after
   passing. It is never an attempt or a pass, and is capped at 20,000 characters. Only sessions run
   after this ships have it. See [session-reports.md](session-reports.md).
-- Affects: session reports (python, turtle and other run-based modules) · Existing lessons: no
-  changes needed · Resolves: HSC Hub handoff #89 item 4
+- Affects: session reports (python, turtle and other run-based modules) Â· Existing lessons: no
+  changes needed Â· Resolves: HSC Hub handoff #89 item 4
 
 - **Predict tags sit above the code by default.** Every Python predict task now shows its tags
   above the code until the first Run, without `showVariables.placement: above`. Ryan, 2026-10-22:
   "all of them instead of opt in". `placement: side` keeps the old place. See
   [python.md](python.md) (`placement`).
-- Affects: python (showVariables predict) · Existing lessons: no changes needed; drop
+- Affects: python (showVariables predict) Â· Existing lessons: no changes needed; drop
   `placement: above` when next editing a task (it is now the default), and set `placement: side`
-  only where a task needs the tags in the panel · Resolves: HSC Hub handoff #89 item 2
+  only where a task needs the tags in the panel Â· Resolves: HSC Hub handoff #89 item 2
 
 - **Read session reports from the CLI.** `lessons reports list <lessonId> [--since <ISO date>]`
   lists a lesson's session reports, newest first (startedAt, endedAt, studentCount, sessionId), and
   `lessons reports get <lessonId> <startedAt> --yaml` prints one report as the same anonymised YAML
   End Session exports. Read-only. See [session-reports.md](session-reports.md).
-- Affects: cli, session reports · Existing lessons: no changes needed ·
+- Affects: cli, session reports Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-21-cli-list-and-download-a-lesson-s-session-reports.md
 - **New activity: Real or AI** (`type: real_or_ai`). Each item is a pair, two pictures or two
   texts side by side (stacked on phones and narrow tablets). The student picks the AI one, picks
@@ -969,7 +989,7 @@ Entries written before 2026-09-29 are not tagged.
   (full URL, `/` path or relative to `assetsPath`). The tutor sees each pick and clue live,
   before Reveal. `itemProgress` is pairs picked right; the task summary adds `itemResults[]`. See
   [real_or_ai.md](activities/real_or_ai.md).
-- Affects: real_or_ai · Existing lessons: no changes needed · Resolves:
+- Affects: real_or_ai Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-21-real-or-ai-activity-ai-level-1.md
 - **New activity: `next_word` (Next Word predictor, AI Level 1).** The student picks one of the
   task's `texts` (or pastes their own when `allowPaste: true`, capped at 1200 characters); a
@@ -984,7 +1004,7 @@ Entries written before 2026-09-29 are not tagged.
   not) and the generated text. New fields: `texts[].title`, `texts[].body`, `allowPaste`,
   `showTemperature`, `items[].id|prompt|answer`. See
   [activities/next_word.md](activities/next_word.md).
-- Affects: next_word (new activity) · Existing lessons: no changes needed ·
+- Affects: next_word (new activity) Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-21-next-word-predictor-activity-ai-level-1.md
 - **New activity: `classifier` (Train a Classifier, AI Level 1).** Students draw examples of each
   class, press Train (instant, in-house k-nearest-neighbours, k = 3, on 16 x 16 greyscale grids),
@@ -1000,8 +1020,8 @@ Entries written before 2026-09-29 are not tagged.
   and the report gets `classifierResults` (average accuracy and summed confusion counts).
   `testItems` is sealed. New activity-contract hook for other authors of activities:
   `serializeShared`. See [activities/classifier.md](activities/classifier.md).
-- Affects: classifier (new), activities host (`serializeShared`), session reports · Existing
-  lessons: no changes needed · Resolves:
+- Affects: classifier (new), activities host (`serializeShared`), session reports Â· Existing
+  lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-21-train-a-classifier-activity-ai-level-1.md
 
 - **Scrub releases that miss are no longer failed attempts.** When a student lets go of a live
@@ -1012,31 +1032,31 @@ Entries written before 2026-09-29 are not tagged.
   report field `scrubChecks` (and a task-summary total) counts the missed releases, and they stay
   in `distinctAttempts` marked `source: scrub`. See [session-reports.md](session-reports.md),
   which also gains "Reading predict and scrub data (for pipeline-ui)".
-- Affects: session reports, python, turtle and html tasks with `scrub` · Existing lessons: no
-  changes needed · Resolves: HSC Hub handoff #92 items 1 and 5
+- Affects: session reports, python, turtle and html tasks with `scrub` Â· Existing lessons: no
+  changes needed Â· Resolves: HSC Hub handoff #92 items 1 and 5
 - **`mustSee: true` stops the class skipping a task by accident.** Add it to any task the tutor
   shouldn't skip (for example the task where students run code to see an error on purpose). In a
   live session, moving the class forward past a `mustSee` task it hasn't been on yet (Next twice,
-  or jumping from the task list) asks "Skip “…”?" with **Go to it** and **Skip anyway**; being on
+  or jumping from the task list) asks "Skip â€œâ€¦â€?" with **Go to it** and **Skip anyway**; being on
   the task once clears the warning. The Builder has a "Must see (warn before the class skips it)"
   box. It must be `true` or `false`. See [lesson-schema.md](lesson-schema.md) (`mustSee`).
-- Affects: all task types (live sessions) · Existing lessons: no changes needed; add `mustSee:
-  true` to tasks tutors skipped in the pilots · Resolves: HSC Hub handoff #92 item 3
+- Affects: all task types (live sessions) Â· Existing lessons: no changes needed; add `mustSee:
+  true` to tasks tutors skipped in the pilots Â· Resolves: HSC Hub handoff #92 item 3
 
 - **Stage hints wait until the code runs.** When a Python Run ends in an error, the hint of a
   stage check (`stage_matches_target`, `stage_pixel`, `stage_shape_count`, `stage_colour_used`,
   `stage_text_shown`), as a completion check or a feedback check, is no longer shown; the
   student and the tutor's card see the error help instead. Once the code runs without an error,
   hints work as before. Turtle's drawing checks are unchanged. See [python.md](python.md#stage-checks).
-- Affects: python (Stage checks) · Existing lessons: no changes needed · Resolves: HSC Hub
+- Affects: python (Stage checks) Â· Existing lessons: no changes needed Â· Resolves: HSC Hub
   handoff #92 item 4
 - **Stage emoji draw in Noto Color Emoji on every device.** `stamp()`, emoji inside `text()`,
   `stageTarget` ghosts and lesson screenshots now use the same emoji font (Noto Color Emoji), so a
   target picture or screenshot shows the emoji students see, whatever their device. Letters in
   `text()` keep the system font. Nothing changes in checks: emoji are still compared by what they
-  are and where. See [python.md → Stage](python.md#stage-drawing-beside-the-console).
-- Affects: python (Stage) · Existing lessons: no changes needed (screenshots taken before today
-  show the device's emoji; retake any where it matters) ·
+  are and where. See [python.md â†’ Stage](python.md#stage-drawing-beside-the-console).
+- Affects: python (Stage) Â· Existing lessons: no changes needed (screenshots taken before today
+  show the device's emoji; retake any where it matters) Â·
   Resolves: authoring-requests/2026-10-21-stage-draw-emoji-with-noto-color-emoji-in-text-and-stamp.md
 
 ## 2026-10-21
@@ -1047,7 +1067,7 @@ Entries written before 2026-09-29 are not tagged.
   (Copy, Copy all, Revoke). New report fields: `students[].studentKey` (stable anonymous key) and
   `shareLinks[]`. New CLI: `sessions share-links [lessonId] [--session <id>] [--since <date>]`.
   See [session-reports.md](session-reports.md#share-links). Nothing is sent anywhere.
-- Affects: cli, session reports, all code modules · Existing lessons: no changes needed ·
+- Affects: cli, session reports, all code modules Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-18-share-links-built-for-every-student-at-the-end-of-each-sessi.md
 
 ## 2026-10-20
@@ -1061,20 +1081,20 @@ Entries written before 2026-09-29 are not tagged.
   button that puts the cursor in the first empty tag, switching to the Tags tab if needed.
   Builder: "Show the predictions above the code until the first Run". See
   [python.md](python.md#name-tag-panel-showvariables).
-- Affects: python (placement), python + turtle (glow, lock button) · Existing lessons: no
-  changes needed; add `placement: above` to the first predict tasks of a lesson · Resolves:
+- Affects: python (placement), python + turtle (glow, lock button) Â· Existing lessons: no
+  changes needed; add `placement: above` to the first predict tasks of a lesson Â· Resolves:
   authoring-requests/2026-10-20-predict-mode-show-the-predict-tags-above-the-code-until-pred.md
 
 - **Scrub and `#@lock-values` open only after the pass** (`scrub.afterPass: true`, off by
   default). Until the task's first pass, there are no scrub boxes or True / False flips, and a
   `#@lock-values` line is fully locked, so students do the step instead of scrubbing and no
   `source: scrub` attempts happen first. On the first pass (checks or the tutor's pass) the
-  boxes and editable values appear with "✨ Now make it yours: change the values in the dashed
+  boxes and editable values appear with "âœ¨ Now make it yours: change the values in the dashed
   boxes." above the editor, and stay open on that device after a reload or Reset Code. A task
   with `#@lock-values` and no `scrub` uses `scrub: { afterPass: true }` (which also turns
   scrubbing on). See [python.md](python.md#live-scrubbing-scrub).
-- Affects: python, turtle, html · Existing lessons: no changes needed; add `afterPass: true` to
-  `scrub` on a Project's build steps · Resolves:
+- Affects: python, turtle, html Â· Existing lessons: no changes needed; add `afterPass: true` to
+  `scrub` on a Project's build steps Â· Resolves:
   authoring-requests/2026-10-20-scrub-and-editable-locked-values-open-only-after-the-task-is.md
 
 - **Click a True or False to flip it** (`scrub.booleans`, on by default; P6-31). On a task with
@@ -1085,8 +1105,8 @@ Entries written before 2026-09-29 are not tagged.
   new `scrubBooleans`) in the session report. `booleans: false` turns it off. Every existing
   `scrub` task now boxes its `True` / `False` too. See
   [python.md](python.md#live-scrubbing-scrub).
-- Affects: python, turtle · Existing lessons: no changes needed (L1 L10 task 15 can now say
-  "click True") · Resolves: authoring-requests/2026-10-20-p6-31-click-a-true-or-false-to-flip-it-boolean-scrub.md
+- Affects: python, turtle Â· Existing lessons: no changes needed (L1 L10 task 15 can now say
+  "click True") Â· Resolves: authoring-requests/2026-10-20-p6-31-click-a-true-or-false-to-flip-it-boolean-scrub.md
 
 - **The Stage shows the drawing while `input()` waits** (P6-32). When a Stage program stops to
   ask a question, the Stage (and the tutor's view) shows everything drawn so far, at every
@@ -1094,7 +1114,7 @@ Entries written before 2026-09-29 are not tagged.
   picture as before. Two-question stories (draw a scene, then ask the next question) now show
   each scene in turn. Not in Slow-mo (it replays), and not the Turtle drawing. See
   [python.md](python.md#stage-drawing-beside-the-console).
-- Affects: python · Existing lessons: no changes needed · Resolves:
+- Affects: python Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-20-p6-32-stage-shows-drawing-while-input-waits.md
 
 ## 2026-10-17
@@ -1107,14 +1127,14 @@ Entries written before 2026-09-29 are not tagged.
   `console`, `stage`) and desktop or tablet size. Student views need no session and work on
   Drafts; nothing is written to Firebase.
 - **Session views** (`tutor`, `tutor-grid`, `student-modal`, `shared-work`, `student-live`) run on
-  a throwaway Draft copy with the test tutor and made-up `Test …` students, deleted afterwards.
+  a throwaway Draft copy with the test tutor and made-up `Test â€¦` students, deleted afterwards.
 - `--spec shots.json` takes many shots in one run (what Attach assets calls). A shot that can't
   find its panel fails with the task named and writes no file. See
   [lesson-screenshot-cli.md](lesson-screenshot-cli.md).
 - **Fixed (request #76):** the Shared work gallery and its toast showed blank sharer names and
   title, and **Open** showed the task's starter instead of the classmate's work. The shared-work
   viewer no longer shows the "Live + Solo" preview banner.
-- Affects: cli, python, turtle, html, scratch · Existing lessons: no changes needed · Resolves:
+- Affects: cli, python, turtle, html, scratch Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-17-lesson-screenshot-command-cli-png-of-a-task-s-editor-output-.md,
   authoring-requests/2026-10-17-shared-work-list-shows-blank-names-and-opens-the-starter-code.md
 
@@ -1132,7 +1152,7 @@ Entries written before 2026-09-29 are not tagged.
   `reportId` (null for older items). The in-lesson Feedback button was removed from the live
   tutor header. See [session-reports.md](session-reports.md#teacher-feedback) and
   [feedback-cli.md](feedback-cli.md).
-- Affects: all · Existing lessons: no changes needed · Resolves:
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-17-merge-the-session-report-feedback-and-lesson-feedback-into-o-2.md
 
 ### Solo study log: who did a Solo Challenge, and the side-quests per session
@@ -1140,9 +1160,9 @@ Entries written before 2026-09-29 are not tagged.
 Tutors can now see who did a Solo Challenge (or any lesson opened solo) and who opened
 side-quests, per lesson. No lesson fields change.
 
-- **Admin ▸ Solo & side-quests** lists, per class and lesson, each solo student's started /
+- **Admin â–¸ Solo & side-quests** lists, per class and lesson, each solo student's started /
   finished times, tasks passed and first-attempt passes, and each side-quest opened in an ended
-  session (when, runs, ✓ self-reported). **Download (no names)** gives the anonymised JSON.
+  session (when, runs, âœ“ self-reported). **Download (no names)** gives the anonymised JSON.
 - **CLI:** `lessons solo-log <lessonId>` prints the lesson's solo log anonymised ("Student N", no
   names or ids): `{ lessonId, lessonTitle, students: [{ studentLabel, startedAt, lastAt,
   finishedAt, taskCount, tasksPassed, firstAttemptPasses, tasks[] }] }`. Fields are in
@@ -1150,7 +1170,7 @@ side-quests, per lesson. No lesson fields change.
   each session report's `sideQuests[]`.
 - The live "on side-quest" line on the student card is now written before the live-work mirror and
   ranks above topic / sandbox lines, so it leads the card's "Now:" line.
-- Affects: cli, python, turtle, html · Existing lessons: no changes needed · Resolves:
+- Affects: cli, python, turtle, html Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-17-tutor-view-of-solo-challenge-and-side-quest-completion-who-d.md
 
 ## 2026-10-16
@@ -1169,7 +1189,7 @@ side-quests, per lesson. No lesson fields change.
   nothing".
 - Python and Turtle tasks, side-quest starters included. See
   [python.md](python.md#edit-zones-one-line-slots-and-lines-that-stay-first-or-last-slot-lock-first-lock-last-puzzlenonewlines).
-- Affects: python, turtle · Existing lessons: no changes needed · Resolves:
+- Affects: python, turtle Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-16-p6-30-edit-zones-one-line-slots-and-fenced-locks.md
 
 ### Run counts: predict how many times a line runs (p6-26)
@@ -1197,7 +1217,7 @@ check:
 
 - `predict`: a "How many times will this run?" number box at the end of each marked line; Run waits
   until every box is filled (predict mode's lock and words; `showVariables.lockRun: false` turns it
-  off). After Run: "ran 3 times ✓" / "ran 1 time ✗ · you said 3" / "ran 0 times". `show`: "ran 3
+  off). After Run: "ran 3 times âœ“" / "ran 1 time âœ— Â· you said 3" / "ran 0 times". `show`: "ran 3
   times" after each Run.
 - A Turtle `stamp()` or drawing line counts its runs. Mark the line inside a loop, not the `for`
   line (that counts every check of the loop).
@@ -1208,8 +1228,8 @@ check:
 - New validation messages: [validation-errors.md](validation-errors.md#run-counts-runcounts-count).
 - See [python.md](python.md#run-counts-runcounts-count) and [turtle.md](turtle.md#run-counts-runcounts-count).
 
-- Affects: python, turtle · Existing lessons: no changes needed (the multiple-choice "how many
-  times?" questions can become `#@count` lines with `runCounts: predict`) ·
+- Affects: python, turtle Â· Existing lessons: no changes needed (the multiple-choice "how many
+  times?" questions can become `#@count` lines with `runCounts: predict`) Â·
   Resolves: authoring-requests/2026-10-16-p6-26-predict-how-many-times-a-line-runs.md
 
 ### Predict mode: answer boxes that fit the value, and predicting the type (p6-27)
@@ -1238,7 +1258,7 @@ check:
 
 - `variables_predicted` judges typed and picked answers by the same forgiving rules as before.
 - `predictType` entries may be `{ name, choices: [text, number] }` to limit the type labels.
-- Run's lock (`lockRun`) waits for type picks too. The tutor's 🏷️ chip counts them; the session
+- Run's lock (`lockRun`) waits for type picks too. The tutor's ðŸ·ï¸ chip counts them; the session
   report's `predictions` lists them after the values, marked `kind: 'type'`.
 - New validation messages: [validation-errors.md](validation-errors.md#name-tag-panel-showvariables).
   The "no predict list" error now reads "no predict or predictType list".
@@ -1246,27 +1266,27 @@ check:
   names, and has a "Students predict the type of" box; answer kinds are YAML-only for now.
 - See [python.md](python.md#name-tag-panel-showvariables) (Answer boxes, `types_predicted`).
 
-- Affects: python, turtle · Existing lessons: no changes needed (plain names work as before; give
-  true/false and number tags an `answer` for better boxes) ·
+- Affects: python, turtle Â· Existing lessons: no changes needed (plain names work as before; give
+  true/false and number tags an `answer` for better boxes) Â·
   Resolves: authoring-requests/2026-10-16-p6-27-predict-mode-typed-answers-and-predicting-the-type.md
 
 ### Slow-mo plays through the Run button (`slowMo.separateButton`)
 
 On a Python or Turtle task with `slowMo.enabled`, **Run now plays the program in slow-mo**. The
-button reads **▶ Run (slow-mo)**, and there is no separate 🐢 Slow-mo button. Once a run is
+button reads **â–¶ Run (slow-mo)**, and there is no separate ðŸ¢ Slow-mo button. Once a run is
 playing or paused, Pause (Play while paused), Step, Step back and Restart show above the code, with
-a new **⏭ Finish** that jumps to the end of the run. The output and check result are as for a
+a new **â­ Finish** that jumps to the end of the run. The output and check result are as for a
 normal Run, and checks still run once. The speed slider stays and starts at `slowMo.speed`. The run
 shortcut, a Code Arrange board's Run and the tutor's remote Run do the same. The predict-mode Run
 lock still applies, and in Go Live the presenter's Run plays slow-mo on every screen.
 
-`slowMo.separateButton: true` keeps the old layout: Run runs normally beside a 🐢 Slow-mo button
+`slowMo.separateButton: true` keeps the old layout: Run runs normally beside a ðŸ¢ Slow-mo button
 (say for a Solo Challenge that wants plain runs plus optional slow-mo). It is validated as true or
-false, and the Builder's Slow-mo field has a "Keep a separate 🐢 Slow-mo button" box. See
+false, and the Builder's Slow-mo field has a "Keep a separate ðŸ¢ Slow-mo button" box. See
 [python.md](python.md#slow-mo-slowmo).
 
-- Affects: python, turtle, code_arrange · Existing lessons: no changes needed (slow-mo tasks now
-  play through Run; add `separateButton: true` to keep a plain Run) · Resolves:
+- Affects: python, turtle, code_arrange Â· Existing lessons: no changes needed (slow-mo tasks now
+  play through Run; add `separateButton: true` to keep a plain Run) Â· Resolves:
   authoring-requests/2026-10-16-p6-28-slow-mo-through-the-run-button.md
 
 ### Typing a value redraws; two result panes stay side by side longer; Emoji Artist counts new emoji only
@@ -1279,18 +1299,18 @@ false, and the Builder's Slow-mo field has a "Keep a separate 🐢 Slow-mo butto
 - **Picture + Console never turn into tabs** in landscape: without name tags, the Picture sits
   above the Console and shrinks to fit, on Chromebooks and tablets alike. Three panes (with Tags)
   tab as before, and portrait screens and phones still put the editor above the result. See [python.md](python.md#screen-layout-layout).
-- **🤩 Emoji Artist** only counts emoji the student added. Emoji already in the task's code
+- **ðŸ¤© Emoji Artist** only counts emoji the student added. Emoji already in the task's code
   stages, `copyCode` or the tutor's sandbox code don't count, so a starter with emoji no longer
   awards it on the first Run. See [badges.md](badges.md).
-- Affects: python, turtle, html, badges · Existing lessons: no changes needed · Resolves: none
+- Affects: python, turtle, html, badges Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### Line hints and locks work in side-quest starters (P6-29)
 
-- A side-quest's `starter` now handles `#>` line hints (HTML `<!--> … -->`), `#@lock`,
+- A side-quest's `starter` now handles `#>` line hints (HTML `<!--> â€¦ -->`), `#@lock`,
   `#@lock-values` and `#@peek` exactly as a task's starter does. Before, the marker lines showed
   as plain comments. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
-- Affects: python, turtle, html · Existing lessons: no changes needed (markers already written
-  in side-quest starters now work) · Resolves:
+- Affects: python, turtle, html Â· Existing lessons: no changes needed (markers already written
+  in side-quest starters now work) Â· Resolves:
   authoring-requests/2026-10-16-p6-29-line-hints-in-side-quest-starters.md
 
 ### Authoring docs corrected to match the app (HSC Audit)
@@ -1313,8 +1333,8 @@ things that never work. Check existing lessons for these first:
 - **Fill-in-the-blank uses `___`** (three underscores), not `{{blank}}`.
 - **Arcade:** `game.clear`, `game.rect` and `game.text` take `colour=` (as documented) and `color=`;
   before this fix `colour=` crashed with a TypeError.
-- **The asset CLI is `node cli/cli.mjs assets …`** (`assets upload-sound`, `set-default-sounds`,
-  `list-type`), not `lessons assets …`. There is no `lessons export` either: use
+- **The asset CLI is `node cli/cli.mjs assets â€¦`** (`assets upload-sound`, `set-default-sounds`,
+  `list-type`), not `lessons assets â€¦`. There is no `lessons export` either: use
   `lessons get <id> --format yaml` or `lessons json-to-yaml`.
 - **Scratch checks:** leaving out `evaluation` means `after_run`; only `block_used`,
   `blocks_in_order` and `block_count` may use `after_block_placed` (others now fail validation); a
@@ -1339,11 +1359,11 @@ things that never work. Check existing lessons for these first:
   tab validation messages, feedback deletion with its lesson, and numeric CLI `--task-id`.
   Examples now use `codeStages` and the canonical check form.
 - Affects: all (python, turtle, html, scratch, arcade, desktop, filesystem, electronics, quiz, cli,
-  markdown) · Existing lessons: fix `code` regexes that use `\s`, `\n`, `^`/`$` or the `m` flag;
-  change HTML style-check values to computed `rgb(…)` / `px`; check multiple-choice `answer:` is
+  markdown) Â· Existing lessons: fix `code` regexes that use `\s`, `\n`, `^`/`$` or the `m` flag;
+  change HTML style-check values to computed `rgb(â€¦)` / `px`; check multiple-choice `answer:` is
   an option id (text is now mapped, unmatched text fails validation); replace `{{blank}}` with
   `___`; `"a","b"` lists only under `contains` / `not_contains`; Scratch `after_block_placed` on a
-  run-time check type, `variable_compare` with `name:`, or a bad `taskMode` now fail validation ·
+  run-time check type, `variable_compare` with `name:`, or a bad `taskMode` now fail validation Â·
   Resolves: none
 
 ### HSC Audit app fixes: Scratch checks, quiz answers, new validation rules
@@ -1376,10 +1396,10 @@ things that never work. Check existing lessons for these first:
 - **Topic links:** `types: [python]` topics now resolve on a composed lesson's information and
   quiz slides. See [validation-errors.md](validation-errors.md) for every new message.
 - Affects: scratch, arcade, quiz_multiple_choice, quiz_short_answer, keyboard, cli, topics, all
-  (taskMode, task ids) · Existing lessons: fix any new validation error (misspelt Scratch check
+  (taskMode, task ids) Â· Existing lessons: fix any new validation error (misspelt Scratch check
   types, `after_block_placed` on a run-time Scratch check, `variable_compare` with `name`, a quiz
   answer that is not an option id, a `taskMode` typo, clashing task ids); Scratch tasks that mixed
-  check timings may now need the blocks to be present on Run · Resolves: none
+  check timings may now need the blocks to be present on Run Â· Resolves: none
 
 ### Scrub follow-ups from the pilot click-through: colour names only, colour boxes, run on open
 
@@ -1392,8 +1412,8 @@ things that never work. Check existing lessons for these first:
   `#@lock-values` values have, with the swatch beside it.
 - **`runOnOpen` tasks open with the output side showing**, so the opening preview is in view (it
   was drawn into a folded panel, so it looked as if nothing ran).
-- Affects: python, turtle · Existing lessons: none need changes; explainers can say "pick a colour"
-  without warning about hex · Resolves: none (follow-ups to p6-23 and p6-24, logged in
+- Affects: python, turtle Â· Existing lessons: none need changes; explainers can say "pick a colour"
+  without warning about hex Â· Resolves: none (follow-ups to p6-23 and p6-24, logged in
   `HSC Hub\Handoffs.md` on 2026-10-16)
 
 ### Linked name tags, checks when a drag ends, live redraw with `input()` and on open, `#@lock-values`
@@ -1424,9 +1444,9 @@ things that never work. Check existing lessons for these first:
   [python.md](python.md#locked-lines-with-editable-values-lock-values).
 - Affects: python, turtle (new fields `showVariables.link`, `scrub.checkOnRelease`, `runOnOpen`;
   new marker `#@lock-values`), html (`scrub.checkOnRelease`, live redraw), session reports
-  (`distinctAttempts[].source`) · Existing lessons: no changes needed (scrub tasks now check on
+  (`distinctAttempts[].source`) Â· Existing lessons: no changes needed (scrub tasks now check on
   release and run on open; add `checkOnRelease: false` or `runOnOpen: false` to keep the old
-  behaviour; explainers that say "press Run after dragging" can drop it) · Resolves:
+  behaviour; explainers that say "press Run after dragging" can drop it) Â· Resolves:
   authoring-requests/2026-10-16-p6-19-name-tags-colour-linked-to-their-variables-in-the-code.md,
   authoring-requests/2026-10-16-p6-20-scrub-runs-the-checks-when-a-drag-ends.md,
   authoring-requests/2026-10-16-p6-21-scrub-live-redraw-for-programs-with-input.md,
@@ -1437,7 +1457,7 @@ things that never work. Check existing lessons for these first:
 
 ### Student screens from the HSC Audit: what lesson text can rely on
 
-- **The `copyCode` panel is titled "⌨️ Type this out".** Lesson text should name it ("type out
+- **The `copyCode` panel is titled "âŒ¨ï¸ Type this out".** Lesson text should name it ("type out
   the code in the *Type this out* box") rather than say where it is: "the panel above" read
   wrongly, because the panel sits above the editor, beside the instructions.
 - **The Topic Library button opens on the task's topic.** It picks the first `[[topic]]` link in
@@ -1447,20 +1467,20 @@ things that never work. Check existing lessons for these first:
   finished code.
 - **Recap `leftContent` is shown larger in a narrower panel.** Keep it to one short line
   ("Today you learned"), with no stray punctuation.
-- **The fail pop-up names the help button "✋ Help"**, and its stage offer reads "Want a hint?
+- **The fail pop-up names the help button "âœ‹ Help"**, and its stage offer reads "Want a hint?
   Show me a hint" (or "Show hint: <stage label>"). Hints that mention help should call it the
   Help button.
 - Affects: python, turtle, arcade, html (copyCode, line hints, check feedback), information
-  (recap), markdown (topic library) · Existing lessons: change "the panel above" to the
-  *Type this out* box where a lesson points at `copyCode` · Resolves: none
+  (recap), markdown (topic library) Â· Existing lessons: change "the panel above" to the
+  *Type this out* box where a lesson points at `copyCode` Â· Resolves: none
 
 ### HSC Audit visual fixes: wording and pictures authors refer to
 
 - **Binary's button is now "Check my work"**, like Keyboard and Mouse (it said "Check answers").
   Lesson text that tells students to press "Check answers" should say "Check my work".
-- **Scratch block pictures:** the text inputs of `say`, `think` and `ask … and wait` (for
+- **Scratch block pictures:** the text inputs of `say`, `think` and `ask â€¦ and wait` (for
   example `say [Hello!] for (2) seconds`) draw as white typed-text ovals with no dropdown arrow,
-  as in Scratch. Every other `[…]` stays a dropdown, and `[… v]` (scratchblocks syntax) always
+  as in Scratch. Every other `[â€¦]` stays a dropdown, and `[â€¦ v]` (scratchblocks syntax) always
   draws a dropdown, without the ` v`. Scratch pictures in a quiz question are drawn bigger. See
   [markdown-renderer.md](markdown-renderer.md).
 - **Activities show a purple title bar and a Topic library chip** over their instructions, like
@@ -1468,8 +1488,8 @@ things that never work. Check existing lessons for these first:
 - **Electronics:** the tutor's Starter board now shows the starter stage's board when
   `starterCircuit` is missing or empty, matching what students load. Still write
   `starterCircuit` (see [electronics.md](electronics.md)).
-- Affects: binary, scratch, markdown, activities, electronics · Existing lessons: change "Check
-  answers" to "Check my work" in Binary task text; otherwise no changes needed · Resolves: none
+- Affects: binary, scratch, markdown, activities, electronics Â· Existing lessons: change "Check
+  answers" to "Check my work" in Binary task text; otherwise no changes needed Â· Resolves: none
 
 ## 2026-10-15
 
@@ -1485,14 +1505,14 @@ things that never work. Check existing lessons for these first:
 - **Off switch:** `showVariables.lockRun: false` (Builder: "Students fill in every prediction
   before their first Run"). Validation errors on a non-boolean and warns when it's set outside
   predict mode. See [python.md](python.md#name-tag-panel-showvariables).
-- Affects: python, turtle (name-tag panel predict mode; new field `showVariables.lockRun`) ·
+- Affects: python, turtle (name-tag panel predict mode; new field `showVariables.lockRun`) Â·
   Existing lessons: predict tasks now lock Run until the predictions are in; add
-  `lockRun: false` to keep the old behaviour · Resolves:
+  `lockRun: false` to keep the old behaviour Â· Resolves:
   authoring-requests/2026-10-15-p6-18-predict-mode-locks-run-until-every-prediction-is-in.md
 
 ### Name-tag panel: `#@peek` now shows where the program stopped
 
-- **A "stopped here" band in the editor.** With `showVariables.at: marker`, a dashed purple ⏸ band
+- **A "stopped here" band in the editor.** With `showVariables.at: marker`, a dashed purple â¸ band
   sits in the gap above the line the `#@peek` marker stops at, reading "The tags show the values
   here". It shows from when the task opens (before any run), so predict-mode students know where
   to predict, and follows the line as the student edits. It is unlike slow-mo's amber band.
@@ -1503,14 +1523,14 @@ things that never work. Check existing lessons for these first:
 - StudentModal and Go Live show the band and the header too. Screen readers hear "Values shown
   just before line N". Nothing new to author. See
   [python.md](python.md#name-tag-panel-showvariables) ("The `#@peek` marker").
-- Affects: python, turtle (name-tag panel `at: marker`) · Existing lessons: no changes needed ·
+- Affects: python, turtle (name-tag panel `at: marker`) Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-15-p6-17-peek-marker-show-where-the-program-stopped.md
 
 ### Stage: flat pixel lists with `grid(values, width=n)`; palette numbers show as numbers in the panel
 
 - **`grid(pixels, width=8)`** draws a flat list (no item is a list) as rows of 8 squares, left to
   right, top to bottom; the last row may be short. Values, `palette`, `cell`, `x`, `y` and the
-  100 × 100 limit work as for a list of rows, and slow-mo draws it step by step as before.
+  100 Ã— 100 limit work as for a list of rows, and slow-mo draws it step by step as before.
   Plain-English errors: a flat list with no `width` ("grid(): pixels is one long list. Say how
   many squares fit in a row, like grid(pixels, width=8)", naming the student's variable), a
   `width` that isn't a whole number of 1 or more, and `width` given with a list of rows. A bad
@@ -1521,8 +1541,8 @@ things that never work. Check existing lessons for these first:
   one of `x`/`y`, `row`/`col` or `index`; the docs now say all three count from 0. Validation's
   message changed to "needs one of: x and y, row and col, or index", with a new one for a bad
   `index`.
-- **Name-tag panel: wrapped lists.** A flat list drawn with `grid(…, width=…)` this run shows its
-  tiles wrapped at the same width, indexes running on (0–7, 8–15 …), whatever `stageLists` says:
+- **Name-tag panel: wrapped lists.** A flat list drawn with `grid(â€¦, width=â€¦)` this run shows its
+  tiles wrapped at the same width, indexes running on (0â€“7, 8â€“15 â€¦), whatever `stageLists` says:
   swatches for colours, plain numbers for palette numbers (never bars), tiles otherwise. Screen
   readers hear "pixels, item 9 (row 2, column 2): white"; the tutor card shows a wrapped colour
   list as a small picture.
@@ -1532,37 +1552,37 @@ things that never work. Check existing lessons for these first:
   are unchanged: swatches, and a small picture for a 2D list (with `stageLists: picture` for a
   drawn one). See [python.md](python.md#stage-drawing-beside-the-console) (Grids, Stage checks)
   and [List and dict visuals](python.md#name-tag-panel-showvariables).
-- Affects: python (Stage `grid()`, `stage_pixel`, name-tag panel) · Existing lessons: no changes
+- Affects: python (Stage `grid()`, `stage_pixel`, name-tag panel) Â· Existing lessons: no changes
   needed; a task relying on `stageLists: picture` to show palette numbers as a picture now shows
-  a number table instead · Resolves:
+  a number table instead Â· Resolves:
   authoring-requests/2026-10-15-p6-13-stage-grid-flat-pixel-list-with-a-width.md,
   authoring-requests/2026-10-15-p6-14-name-tag-panel-palette-numbers-as-a-number-table.md
 
 ### Turtle course mode: students make their own maze (`course.studentMap`, `turtle.course_map`)
 
 - **New optional field `course.studentMap: true`** (grid courses only) lets the student's code
-  set its own map with **`turtle.course_map("""…""")`**, before the vehicle's first move. Same
-  legend and limits as an authored grid map (one start, at least one goal, at most 30 × 30);
+  set its own map with **`turtle.course_map("""â€¦""")`**, before the vehicle's first move. Same
+  legend and limits as an authored grid map (one start, at least one goal, at most 30 Ã— 30);
   blank lines at the ends and shared indentation are fine. The authored `map` is still required:
   it shows until the student sets one.
 - Mistakes stop the run with plain messages ("Your map needs a G for the goal.", "Your map has
-  two starts (>): keep just one.", "Call course_map() before the rover moves: …"). On a task
+  two starts (>): keep just one.", "Call course_map() before the rover moves: â€¦"). On a task
   without `studentMap`, `course_map()` says the map is set for you.
 - The student's map shows as soon as it's in the code (before a Run and in slow-mo), and after a
   Run the picture, the course checks (`course_goal_reached`, `course_no_crash`,
   `course_pickups`, `course_max_moves`), the tutor views, Go Live and screen-reader words all use
   the map the run drove. With `maps`, code that sets its own map runs once, on that map.
-- **Map editor:** a 🧱 **Map editor** button beside Run on `studentMap` tasks opens a
+- **Map editor:** a ðŸ§± **Map editor** button beside Run on `studentMap` tasks opens a
   tap-to-paint grid (Wall, Road, Goal, Star, Start; 44 px squares; 3 to 30 rows and columns)
-  that writes the `turtle.course_map("""…""")` call into the student's code.
+  that writes the `turtle.course_map("""â€¦""")` call into the student's code.
 - Validation: `studentMap` must be `true` or `false` and errors on a track. Add a `code` check
   for `course_map(` if students must make their own.
 - **Line hints are no longer read inside Python triple-quoted strings** (Python and Turtle), so a
   starter maze row such as `#>....G#` stays in the code instead of being taken out as a `#>`
-  hint. The same goes for `#@peek` and `#@lock` lines inside a `"""…"""` string. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
+  hint. The same goes for `#@peek` and `#@lock` lines inside a `"""â€¦"""` string. See [turtle.md](turtle.md#students-make-their-own-map-studentmap) and
   [validation-errors.md](validation-errors.md).
-- Affects: turtle (course mode; new field `course.studentMap`, new `turtle.course_map()`) ·
-  Existing lessons: no changes needed · Resolves:
+- Affects: turtle (course mode; new field `course.studentMap`, new `turtle.course_map()`) Â·
+  Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-15-p6-16-turtle-course-student-made-maps.md
 
 ### Code Arrange runs on Turtle (course mode too) and on the Python Stage
@@ -1575,7 +1595,7 @@ things that never work. Check existing lessons for these first:
 - **A Python arrangement whose code imports `stage`** (`from stage import *` on a fixed line or in
   a blank), or that has a `stageTarget`, gets the Stage pane from the start, the `stageTarget`
   ghost and Differences, and the `stage_*` checks, as a code task does.
-- On smaller screens both use the Picture · Tags · Console tabs. Tiles, distractors, tile
+- On smaller screens both use the Picture Â· Tags Â· Console tabs. Tiles, distractors, tile
   feedback, the tutor's board (now with the student's last picture or Stage under it), Edit
   answers, tile highlights and the report's attempts are unchanged. A plain Python or HTML
   arrangement looks as before.
@@ -1588,14 +1608,14 @@ things that never work. Check existing lessons for these first:
   `showVariables` yet, so author those in YAML. See [turtle.md](turtle.md#code-arrange-code_arrange),
   [python.md](python.md#drag-and-drop-runnable-code-code_arrange) and
   [lesson-schema.md](lesson-schema.md#code-arrange-task-fields).
-- Affects: code_arrange, turtle, python (Stage) · Existing lessons: no changes needed (Turtle
-  `fill_blank` stand-ins can become runnable arrangements) · Resolves:
+- Affects: code_arrange, turtle, python (Stage) Â· Existing lessons: no changes needed (Turtle
+  `fill_blank` stand-ins can become runnable arrangements) Â· Resolves:
   authoring-requests/2026-10-15-p6-15-code-arrange-on-turtle-course-and-stage-tasks.md
 
 ### Python and Turtle screen space: one tabbed result pane on smaller screens (`layout.firstPane`)
 
-- **Tablets, 1366 × 768 Chromebooks and small laptops** now show the editor on the left and one
-  result pane on the right with tabs **Picture · Tags · Console**. Portrait screens and phones put
+- **Tablets, 1366 Ã— 768 Chromebooks and small laptops** now show the editor on the left and one
+  result pane on the right with tabs **Picture Â· Tags Â· Console**. Portrait screens and phones put
   the editor above the tabs. Wide desktops keep everything side by side, as before. Only the tabs
   a task has appear: Picture once the code imports `stage` (or has a `stageTarget`; always on
   Turtle), Tags with `showVariables`. A Python task with just a console has no tabs.
@@ -1618,8 +1638,8 @@ things that never work. Check existing lessons for these first:
   keys or `tags` without `showVariables`, and warns when another module's task has `layout`.
   See [python.md](python.md#screen-layout-layout), [turtle.md](turtle.md#screen-layout) and the
   new rows in [validation-errors.md](validation-errors.md#screen-layout-layout).
-- Affects: python, turtle (workspace layout; new task field `layout`) · Existing lessons: no change
-  needed · Resolves:
+- Affects: python, turtle (workspace layout; new task field `layout`) Â· Existing lessons: no change
+  needed Â· Resolves:
   authoring-requests/2026-10-15-p6-12-python-screen-space-console-stage-and-panel.md
 
 ### Turtle course mode: drive a vehicle round a maze or track (`course`)
@@ -1628,13 +1648,13 @@ things that never work. Check existing lessons for these first:
   with ordinary Turtle Python: `{ type: grid | track, vehicle, map | maps }`. It is a mode of the
   `turtle` module, not a game: Run plays the moves; there are no keys or game loop.
 - **Grid** (`type: grid`): a text map, `#` wall, `.` road, `G` goal, `*` pickup, `>` `<` `^` `v`
-  start and heading (space: off the map; at most 30 × 30). `forward()` with no number moves one
-  square and `forward(3)` three; `left()` / `right()` turn 90°; part squares, other angles and
+  start and heading (space: off the map; at most 30 Ã— 30). `forward()` with no number moves one
+  square and `forward(3)` three; `left()` / `right()` turn 90Â°; part squares, other angles and
   `goto` / `home` / `reset` / `circle` stop with a plain message.
 - **Track** (`type: track`): turtle coordinates, `start: { x, y, heading }`, `goal: { x, y, r }`
   or `{ rect: [x1, y1, x2, y2] }`, `walls` (lines `[x1, y1, x2, y2]` and boxes `{ rect }`),
   `pickups: [[x, y]]` and an optional `trackCode` snippet whose drawn lines are walls (read, not
-  run: a fixed Turtle subset with `for … in range()` loops). The vehicle is a circle 10 units
+  run: a fixed Turtle subset with `for â€¦ in range()` loops). The vehicle is a circle 10 units
   across from centre to edge; the picture's edge is a wall.
 - **Sensors** on `turtle`: `wall_ahead()`, `wall_left()`, `wall_right()` (the next square; 30
   units on a track), `at_goal()`, `on_pickup()`, `collected()`. Pickups are collected by driving
@@ -1656,9 +1676,9 @@ things that never work. Check existing lessons for these first:
   [validation-errors.md](validation-errors.md). The tutor card shows "Reached goal", "Crashed" or
   "2/3 maps"; the session report adds per-task `course: { runs, goalReached, goalRuns, crashes,
   pickups, lastGoalReached }`. See [turtle.md](turtle.md#course-mode-course).
-- Affects: turtle (`course`, course checks, sensors, session report) · Existing lessons: none (a
+- Affects: turtle (`course`, course checks, sensors, session report) Â· Existing lessons: none (a
   new optional field; `forward()` and `left()` without a number still need one outside course
-  mode) · Resolves: authoring-requests/2026-10-15-p6-11-turtle-course-mode-drive-a-vehicle-round-a-maze.md
+  mode) Â· Resolves: authoring-requests/2026-10-15-p6-11-turtle-course-mode-drive-a-vehicle-round-a-maze.md
 
 ### Stage shapes: size-first calls, centre anchors, rotation, polygons, see-through, outlines, `hue()`
 
@@ -1675,24 +1695,24 @@ things that never work. Check existing lessons for these first:
   still goes down. Unlike Arcade Kit, where a rectangle is placed by its top-left corner.
 - **Default colours:** royal blue (`#4169e1`) for shapes, black for text and lines.
 - **New keywords** on `circle`, `square`, `rect` and `polygon`: `angle=` (degrees **clockwise**
-  around the centre: the opposite way to Turtle's `left()`), `opacity=` (0–1; see-through shapes
+  around the centre: the opposite way to Turtle's `left()`), `opacity=` (0â€“1; see-through shapes
   blend), `outline=` (colour), `width=` (outline width, default 2), and `colour=None` for an
   outline only. `text` and `stamp` take `angle=` and `opacity=`; `line` takes `opacity=`.
   `color=` works as well as `colour=`.
 - **New `hue(n, light=50)`** returns a hex colour round the colour wheel (`hue(0)` red,
-  `hue(120)` green, `hue(240)` blue, wrapping every 360); `light` 0–100 makes it darker or paler.
+  `hue(120)` green, `hue(240)` blue, wrapping every 360); `light` 0â€“100 makes it darker or paler.
   `stage_colour_used` can check it by its hex code.
 - **Checks:** `stage_shape_count`'s `kind` adds `square` and `polygon`, and a new `sides` field
   (with `kind: polygon`) counts only the polygons with that many sides. `stage_matches_target`,
   `stage_pixel` and the Differences view compare turned, see-through and outlined shapes as drawn.
   `stage_colour_used` also finds outline colours.
 - The Stage's screen-reader description says how shapes are turned, faded and outlined ("a red
-  square, size 80, turned 45°, in the middle"). Scrubbing gives `angle=` 0–360, `opacity=` 0–1,
-  `light=` 0–100 and numbers inside `hue()` 0–360; `outline=` colours get the colour picker.
+  square, size 80, turned 45Â°, in the middle"). Scrubbing gives `angle=` 0â€“360, `opacity=` 0â€“1,
+  `light=` 0â€“100 and numbers inside `hue()` 0â€“360; `outline=` colours get the colour picker.
   See [python.md](python.md#stage-drawing-beside-the-console) and the new rows in
   [validation-errors.md](validation-errors.md).
-- Affects: python (Stage, stageTarget, stage checks, scrub) · Existing lessons: rewrite any Stage
-  code (starter, complete, `stageTarget`) in the size-first, centred order · Resolves:
+- Affects: python (Stage, stageTarget, stage checks, scrub) Â· Existing lessons: rewrite any Stage
+  code (starter, complete, `stageTarget`) in the size-first, centred order Â· Resolves:
   authoring-requests/2026-10-15-p6-9-stage-shapes-rotation-polygons-size-first-calls.md
 
 ### Name-tag panel: lists and dicts you can see (`showVariables.visuals`, `stageLists`)
@@ -1704,23 +1724,23 @@ things that never work. Check existing lessons for these first:
   ambiguous stays as today's tiles. The exact Python value is one tap away (**Show value**).
 - New optional `showVariables` fields: `visuals` (default `true`; `false` keeps plain tags for the
   whole task) and `stageLists: picture | tiles | size` (default `size`), how a list passed to the
-  Stage's `grid()` in this run shows — just its size, a picture as well, or rows of tiles. Palette
+  Stage's `grid()` in this run shows â€” just its size, a picture as well, or rows of tiles. Palette
   numbers draw as a picture only in a drawn list with `stageLists: picture`.
 - Target mode draws list and dict targets with the same visuals; predict mode shows the real
-  value's visual next to the ✓ / ✗. After a re-run (and in slow-mo) the item that changed is
+  value's visual next to the âœ“ / âœ—. After a re-run (and in slow-mo) the item that changed is
   marked, not only the tag. The tutor's card shows small thumbnails; StudentModal and Go Live show
-  the visuals. The panel now reads about 1,000 values per variable (a 32 × 32 picture).
+  the visuals. The panel now reads about 1,000 values per variable (a 32 Ã— 32 picture).
 - Validation checks both fields ([validation-errors.md](validation-errors.md#name-tag-panel-showvariables)).
   See [python.md](python.md#name-tag-panel-showvariables).
-- Affects: python, turtle · Existing lessons: no changes needed (add `visuals: false` where a
-  list of words could be mistaken for colours) · Resolves:
+- Affects: python, turtle Â· Existing lessons: no changes needed (add `visuals: false` where a
+  list of words could be mistaken for colours) Â· Resolves:
   authoring-requests/2026-10-15-p6-7-name-tag-panel-lists-and-dicts-you-can-see.md
 
 ### Turtle: animated drawing, real drawing order, `pensize()` and `dot()`
 
-- **Run now plays the drawing**: the 🐢 moves, turns and draws at the `speed()` in the code. With
+- **Run now plays the drawing**: the ðŸ¢ moves, turns and draws at the `speed()` in the code. With
   no `speed()` call it plays at speed 10 pace, squeezed to finish within about 4 seconds;
-  `speed(1–10)` (or `"slowest"`, `"slow"`, `"normal"`, `"fast"`) plays at real turtle pace;
+  `speed(1â€“10)` (or `"slowest"`, `"slow"`, `"normal"`, `"fast"`) plays at real turtle pace;
   `speed(0)` / `"fastest"` is instant. A **Skip** button jumps to the end, and the check result
   shows once the drawing finishes or is skipped. Under reduced motion the drawing appears at once
   with a **Play** button. Slow-mo still takes over when it's on, scrubbing still redraws
@@ -1734,23 +1754,23 @@ things that never work. Check existing lessons for these first:
 - `turtle_command_used` accepts `command: pensize` (`width()` records as `pensize`) and
   `command: dot`. No other new checks.
 - The picture has a screen-reader description of the drawing.
-- Affects: turtle · Existing lessons: no changes needed (drawings that relied on fills sitting
-  under later lines may now look different; add `turtle.speed(0)` to keep a drawing instant) ·
+- Affects: turtle Â· Existing lessons: no changes needed (drawings that relied on fills sitting
+  under later lines may now look different; add `turtle.speed(0)` to keep a drawing instant) Â·
   Resolves: authoring-requests/2026-10-15-p6-10-turtle-animated-drawing-drawing-order-pensize-dot.md
 
 ### Locked lines, hidden setup and puzzle rules (`#@lock`, `setupCode`, `puzzle`, `max_lines`)
 
 - **Locked lines:** a `#@lock` marker line locks the next non-blank line of Python or Turtle code.
-  Students see it greyed with a 🔒 Locked tag and can't type in it, delete it, cut, paste over or
+  Students see it greyed with a ðŸ”’ Locked tag and can't type in it, delete it, cut, paste over or
   re-indent it, but can add lines before, between and after locked lines. Locks follow their line
   through saving, support stages and Reset, and show in the tutor's views and Go Live.
 - **Hidden setup:** `setupCode` runs first on every Run, in the same program, and is never shown;
   its variables show in the name-tag panel and the checks see them. `setupNote` is one short line
-  above the editor. Students never see a setup traceback ("This task's setup has a problem — tell
+  above the editor. Students never see a setup traceback ("This task's setup has a problem â€” tell
   your tutor."), and their line numbers are unchanged.
 - **Puzzle rules:** `puzzle: { onlyEdit: [lineNums], maxLines, par }`. `onlyEdit` locks every
   other non-blank starter line; `maxLines` shows a live "3 / 4 lines" counter; `par` is shown
-  after a pass ("Solved at par ⭐") and never decides it. The new `max_lines` check (Python,
+  after a pass ("Solved at par â­") and never decides it. The new `max_lines` check (Python,
   Turtle; no run needed) passes at or under `puzzle.maxLines` lines of code (non-blank,
   non-comment; locked lines count, setup doesn't), with the default hint "Can you do it in 4
   lines? A loop might help."
@@ -1762,8 +1782,8 @@ things that never work. Check existing lessons for these first:
   shows "Solved at par" or "Over line limit". See
   [python.md](python.md#locked-lines-hidden-setup-and-puzzles) and
   [turtle.md](turtle.md#locked-lines-hidden-setup-and-puzzles).
-- Affects: python, turtle, cli (validate, test-checks, capabilities) · Existing lessons: no
-  changes needed · Resolves:
+- Affects: python, turtle, cli (validate, test-checks, capabilities) Â· Existing lessons: no
+  changes needed Â· Resolves:
   authoring-requests/2026-10-15-p6-8-locked-lines-hidden-setup-and-puzzle-rules.md
 
 ## 2026-10-14
@@ -1783,8 +1803,8 @@ things that never work. Check existing lessons for these first:
 - The session report adds `scrubs`, `scrubNumbers` and `scrubColours` per student task, and
   `scrubUsedCount` per task ([session-reports.md](session-reports.md)). Validation checks the
   field's shape and ranges ([validation-errors.md](validation-errors.md#live-scrubbing-scrub)).
-- Affects: python, turtle, html, cli (capabilities, validate) · Existing lessons: no changes needed
-  (add `scrub: { enabled: true }` to Modify tasks) · Resolves:
+- Affects: python, turtle, html, cli (capabilities, validate) Â· Existing lessons: no changes needed
+  (add `scrub: { enabled: true }` to Modify tasks) Â· Resolves:
   authoring-requests/2026-10-14-p6-4-live-number-and-colour-scrubbing-in-the-editor.md
 
 ### Python and Turtle slow-mo: step through a run line by line
@@ -1792,7 +1812,7 @@ things that never work. Check existing lessons for these first:
 - New optional Python and Turtle task field `slowMo: { enabled: true, speed?, showVariables?,
   question? }` adds **Slow-mo**, **Pause**, **Step**, **Step back** and **Restart** above the
   code, plus a speed slider. It is off unless `enabled: true`. `speed` is the starting lines a
-  second (default 1; the slider goes 0.25–4), `showVariables: true` shows name tags step by step,
+  second (default 1; the slider goes 0.25â€“4), `showVariables: true` shows name tags step by step,
   and `question` shows while paused. See [python.md](python.md#slow-mo-slowmo) and
   [turtle.md](turtle.md#slow-mo).
 - The run is recorded first, then played back: the line that just ran is highlighted, each loop
@@ -1810,8 +1830,8 @@ things that never work. Check existing lessons for these first:
   speed, a question over 200 characters, unknown keys and a missing `enabled`. Pair slow-mo with a
   prediction or a single question: step-through alone doesn't teach.
 - Also: Python Export work now saves the Stage drawing as a PNG, and a share link shows it.
-- Affects: python, turtle, cli (capabilities) · Existing lessons: no changes needed (add `slowMo`
-  where students should trace a loop or a reassignment) · Resolves:
+- Affects: python, turtle, cli (capabilities) Â· Existing lessons: no changes needed (add `slowMo`
+  where students should trace a loop or a reassignment) Â· Resolves:
   authoring-requests/2026-10-14-p6-3-python-slow-mo-step-through-runs.md
 
 ### Keyboard typing history across lessons (`showHistory`)
@@ -1821,7 +1841,7 @@ things that never work. Check existing lessons for these first:
   lesson, mode, characters and words a minute, accuracy, corrections, time (and the falling-words
   score). Unmatched students, and sessions with no class, keep nothing.
 - New optional Keyboard field `showHistory: true` (task-level on the three typing modes; per item
-  on `type_text` / `type_code`) shows the student "Last time: 62 cpm, 91% · Best: 75 cpm" beside
+  on `type_text` / `type_code`) shows the student "Last time: 62 cpm, 91% Â· Best: 75 cpm" beside
   each item and, when they finish faster than their first lesson, "You went from 40 to 75
   characters a minute." Hidden until the student has an earlier score. See
   [keyboard.md](activities/keyboard.md#typing-history-showhistory).
@@ -1831,8 +1851,8 @@ things that never work. Check existing lessons for these first:
   [session-reports.md](session-reports.md#typing-history)).
 - Validation: an error for a non-boolean `showHistory`, a warning when it is set on a mode that
   keeps no history ([validation-errors.md](validation-errors.md)).
-- Affects: keyboard activity, cli (capabilities) · Existing lessons: no changes needed (add
-  `showHistory: true` to timed challenges) · Resolves:
+- Affects: keyboard activity, cli (capabilities) Â· Existing lessons: no changes needed (add
+  `showHistory: true` to timed challenges) Â· Resolves:
   authoring-requests/2026-10-14-typing-history-speed-and-accuracy-across-lessons-on-the-stud.md
 
 ### Carry a student's own work from an earlier lesson (two-lesson projects)
@@ -1843,7 +1863,7 @@ things that never work. Check existing lessons for these first:
   on that task (HTML: each `starterFiles` file by name). See
   [Two-lesson projects](AUTHORING_GUIDE.md#two-lesson-projects-carry-from-an-earlier-lesson).
 - The work comes from the class roster, through the tutor's screen. A student the tutor hasn't
-  matched yet waits ("Waiting for your tutor to find your Lesson 11 work…") until they are
+  matched yet waits ("Waiting for your tutor to find your Lesson 11 workâ€¦") until they are
   matched or the tutor chooses **Use the starter**. Nothing saved, "No class", solo study, the
   presentation window and the Builder preview use the task's starter, so keep a sensible
   `starterCode` / `starterFiles` / `starterBlocks`. A student with their own saved work for the
@@ -1852,14 +1872,14 @@ things that never work. Check existing lessons for these first:
   `{ lesson, task }`, naming the same lesson, or combining it with `carryCodeFrom` /
   `carryBlocksFrom` on the same task. `lessons publish` warns (doesn't fail) when the named
   lesson or task isn't found or saves a different kind of work
-  ([validation-errors.md](validation-errors.md)). Builder: Task options → **Carry from an
+  ([validation-errors.md](validation-errors.md)). Builder: Task options â†’ **Carry from an
   earlier lesson**. `lessons capabilities` lists each module's `crossLessonCarryField`.
 - Session reports add a per-student `crossLessonCarry` (`found` / `none` / `starter` /
   `no_class`) and the task's `crossLessonCarryCounts`
   ([session-reports.md](session-reports.md)).
-- Affects: python, turtle, html, scratch, cli · Existing lessons: no changes needed (Lesson 12's
+- Affects: python, turtle, html, scratch, cli Â· Existing lessons: no changes needed (Lesson 12's
   Build Reference starter workaround can move to `carryCodeFromLesson`, keeping the starter as
-  the fallback) · Resolves:
+  the fallback) Â· Resolves:
   authoring-requests/2026-10-14-carry-a-student-s-own-code-from-one-lesson-into-the-next-two.md
 
 ### Scratch test-checks: student-variation cases and Support stages
@@ -1874,8 +1894,8 @@ things that never work. Check existing lessons for these first:
   [scratch.md](scratch.md#testing-student-variations).
 - Without `--cases`, Support-role code stages with `blocks` are now checked too
   (`support:<label>`), and a Support stage that passes completion is a warning (exit status 1).
-- Affects: scratch, cli · Existing lessons: no changes needed (a Support stage that passes
-  completion now warns in `test-checks`) · Resolves:
+- Affects: scratch, cli Â· Existing lessons: no changes needed (a Support stage that passes
+  completion now warns in `test-checks`) Â· Resolves:
   authoring-requests/2026-10-14-scratch-test-checks-student-variation-cases-and-support-stag.md
 
 ### Scratch slow-mo: block glow, Step and a state timeline
@@ -1883,7 +1903,7 @@ things that never work. Check existing lessons for these first:
 - New optional Scratch task field `slowMo: { enabled: true, speed?, timeline? }` adds four big
   buttons under the stage: **Slow-mo**, **Pause**, **Step** (one block) and **Restart**, plus a
   speed slider. It is off unless `enabled: true`. `speed` is the starting blocks per second
-  (default 1; the slider goes 0.25–4). `timeline` lists what each timeline card shows, any of
+  (default 1; the slider goes 0.25â€“4). `timeline` lists what each timeline card shows, any of
   `costume`, `backdrop`, `x`, `y`, `variables` (default: all five; `[]` hides the strip). See
   [scratch.md](scratch.md#slow-mo).
 - The running block glows in each running script, and the stage redraws after every block, so
@@ -1900,14 +1920,14 @@ things that never work. Check existing lessons for these first:
   task ([session-reports.md](session-reports.md)).
 - Validation: errors for a malformed `slowMo`; warnings for an out-of-range speed, unknown
   timeline fields or keys, and a missing `enabled` ([validation-errors.md](validation-errors.md)).
-- Affects: scratch, cli · Existing lessons: no changes needed · Resolves:
+- Affects: scratch, cli Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-p6-6-scratch-slow-mo-block-glow-step-and-state-timeline.md
 
 ### Python Stage: a drawing pane beside the console (prototype)
 
 - Python tasks can draw: `from stage import *` gives `background`, `rect`, `circle`, `line`,
   `text`, `stamp`, `grid` (a 2D list as a pixel grid, values indexing `palette` or being colours)
-  and `clear`. A fixed 400 × 400 stage, **top-left origin, y down**. Colours are CSS names, hex
+  and `clear`. A fixed 400 Ã— 400 stage, **top-left origin, y down**. Colours are CSS names, hex
   codes or the PICO-8 names Arcade Kit uses (CSS wins where a name is both). The pane appears
   once the code draws, beside the console (above it on narrow screens); `print()` is unchanged.
   Bad arguments stop the run with a plain-English error on the student's line naming the
@@ -1924,10 +1944,10 @@ things that never work. Check existing lessons for these first:
 - The tutor sees each Run's drawing on the student card and in StudentModal, and Go Live
   broadcasts it. Validation covers `stageTarget` and every stage check field
   ([validation-errors.md](validation-errors.md)).
-- Affects: python, cli · Existing lessons: no changes needed · Resolves:
+- Affects: python, cli Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-p6-2-python-stage-drawing-pane-beside-the-console.md
 
-### HTML Inspector: box model, "Why this …?" and flex/grid overlays
+### HTML Inspector: box model, "Why this â€¦?" and flex/grid overlays
 
 - New optional HTML task field `inspector: { enabled: true, open?, focus?, show? }` adds an
   **Inspect** button to the preview. Off unless `enabled: true`. `open: true` starts in inspect
@@ -1935,7 +1955,7 @@ things that never work. Check existing lessons for these first:
   `box`, `cascade`, `layout` (default: all three). See [html.md](html.md#html-inspector).
 - Students point at (or tap) part of the page to see labelled margin, border, padding and content
   bands with px sizes. The panel explains the cascade in plain words (less specific, earlier in
-  the file, overridden by !important, inherited from …), and draws flex axes, gaps and grid
+  the file, overridden by !important, inherited from â€¦), and draws flex axes, gaps and grid
   lines. No new checks: the Inspector never changes the page, so `html_*` checks are unchanged.
 - The tutor's inspect state syncs in Go Live, and the session report adds a per-student
   `inspector` (`{ used, opens, selects }`) and the summary's `inspectorUsedCount`
@@ -1943,7 +1963,7 @@ things that never work. Check existing lessons for these first:
 - Validation: errors for a malformed `inspector`, warnings for unknown keys, a missing
   `enabled: true`, a submit-mode task, or `inspector` on a non-HTML task
   ([validation-errors.md](validation-errors.md)).
-- Affects: html, cli · Existing lessons: no changes needed · Resolves:
+- Affects: html, cli Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-p6-5-html-inspector-box-model-cascade-and-layout-overlays.md
 
 ### Feedback checks match when their check passes (docs fix)
@@ -1957,8 +1977,8 @@ things that never work. Check existing lessons for these first:
 - **Check your lessons:** a `code_structure` feedback check copied from the old examples fires
   the wrong way round. Invert its operator, and unwrap any `- check: {...}` feedback entry. Confirm
   with `test-checks` (`matchedFeedback`).
-- Affects: python, code_arrange · Existing lessons: invert `code_structure` feedback checks copied
-  from the old examples; unwrap `- check:` feedback entries · Resolves:
+- Affects: python, code_arrange Â· Existing lessons: invert `code_structure` feedback checks copied
+  from the old examples; unwrap `- check:` feedback entries Â· Resolves:
   authoring-requests/2026-10-14-python-md-not-nested-in-feedbackchecks-example-has-its-hint-.md
 
 ### `taskActivity` patterns: Which Construct Fits? and Poll
@@ -1966,7 +1986,7 @@ things that never work. Check existing lessons for these first:
 - `Quiz: Which Construct Fits?` (`quiz_which_construct_fits`) and `Quiz, Poll` (`quiz_poll`) are
   now recognised patterns, so they no longer warn "not a recognised pattern". See the table in
   [badges.md](badges.md).
-- Affects: all · Existing lessons: no changes needed · Resolves:
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-taskactivity-patterns-which-construct-fits-and-quiz-poll.md
 
 ### Scratch: no fail while still building; starting backdrop; sprite library fits the screen
@@ -1982,26 +2002,26 @@ things that never work. Check existing lessons for these first:
   **Start** choice. See [scratch.md](scratch.md#backdrop-object).
 - **Sprite and backdrop library pickers** now open over the page, sized to the screen, so every
   item can be reached on small laptops, tablets and zoomed browsers. Nothing to author.
-- Affects: scratch · Existing lessons: no changes needed; a lesson that reordered `backdrops` to
-  get the right starting scene can restore its order and mark the scene `current: true` ·
+- Affects: scratch Â· Existing lessons: no changes needed; a lesson that reordered `backdrops` to
+  get the right starting scene can restore its order and mark the scene `current: true` Â·
   Resolves: authoring-requests/2026-10-14-scratch-don-t-mark-work-wrong-while-the-workspace-is-unchang.md,
   authoring-requests/2026-10-14-scratch-sprite-library-student-can-t-scroll-to-the-bottom-in.md,
   authoring-requests/2026-10-14-scratch-task-choose-which-backdrop-the-stage-starts-on.md
 
 ### Tutors can see side-quests and the students on them
 
-- A **🗺️ Side-quests** panel under the task in the teacher's view lists the current task's
+- A **ðŸ—ºï¸ Side-quests** panel under the task in the teacher's view lists the current task's
   side-quests (title, kind, explainer, starter code), each with **On it now**, **Done** and
   **Probably stuck** counts. Probably stuck: on it, and the last 2 Runs in a row hit an error,
   or no Run for 5 minutes. Clicking a count lists those students. Clicking a student, or the
-  🗺️ chip on their card, opens their StudentModal on a read-only **Side-quest** view (status,
+  ðŸ—ºï¸ chip on their card, opens their StudentModal on a read-only **Side-quest** view (status,
   code, output, drawing or preview), with a Main task / Side-quest switch.
 - Side-quest code now reaches the tutor: on every Run, and live while the tutor has that
   student open. This reverses the 2026-10-09 "status only" note. It is still never saved as the
   task's work and never feeds `carryCodeFrom`. No new lesson fields and no report changes.
 - Authoring tip: the tutor reads each side-quest's `explainer` in the panel to help, so keep it
   clear about what "done" looks like. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
-- Affects: python, turtle, html (sideQuests) · Existing lessons: no changes needed · Resolves:
+- Affects: python, turtle, html (sideQuests) Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-tutor-view-of-side-quests-what-each-task-offers-and-how-each.md
 
 ### "See an example" button for worked examples in explainers
@@ -2009,12 +2029,12 @@ things that never work. Check existing lessons for these first:
 - **New Markdown fence, ` ```example `.** It renders a button in the explainer; the button
   opens the example in a wide pop-up (a full-width sheet on phones), so the code no longer wraps
   in the narrow panel. First line: `example`, an optional language (`python`, `html`, `css`,
-  `js`, `scratch`, `text`) and an optional `label="…"` (the button text, default "See an
+  `js`, `scratch`, `text`) and an optional `label="â€¦"` (the button text, default "See an
   example"). Lines before a `---` line are the intro (Markdown); the rest is the code:
 
   ````
   ```example python label="See an example"
-  Here's the same Check → Do → Otherwise shape with different weather.
+  Here's the same Check â†’ Do â†’ Otherwise shape with different weather.
   ---
   weather = "sunny"
   if weather == "rainy":
@@ -2029,7 +2049,7 @@ things that never work. Check existing lessons for these first:
   one, but a fence keeps it where it's read, can sit anywhere in the explainer and allows more
   than one. The guides v35 workaround (leaving the worked example out) can now be undone.
 - **Tutor and report.** When a student opens one in a task's explainer in a live lesson, the
-  tutor's card shows 🔍 and the student modal "🔍 Opened example". The session report adds
+  tutor's card shows ðŸ” and the student modal "ðŸ” Opened example". The session report adds
   `exampleOpens` per student task (first open, time after the task started, number of opens) and
   `exampleOpenStudentCount` per task. See
   [markdown-renderer.md](markdown-renderer.md#worked-examples-see-an-example) and
@@ -2037,14 +2057,14 @@ things that never work. Check existing lessons for these first:
 - **Validation warnings** for an example with no code, an unknown language, stray words on the
   first line (often an unquoted label), no closing fence, or more than 10 in one explainer. See
   [validation-errors.md](validation-errors.md).
-- Affects: markdown, all · Existing lessons: no changes needed (optionally put worked examples
-  back into Challenge explainers as ` ```example ` fences) · Resolves:
+- Affects: markdown, all Â· Existing lessons: no changes needed (optionally put worked examples
+  back into Challenge explainers as ` ```example ` fences) Â· Resolves:
   authoring-requests/2026-10-14-see-example-button-in-explainers-that-opens-a-worked-example.md
 
 ### Keyboard: `type_code` and `falling_words` modes
 
 - **`mode: type_code`** types whole blocks of real code. Each item has a multi-line `code`
-  (≤ 1000 characters, ≤ 30 lines, a YAML `|` block is easiest). Task fields: `language`
+  (â‰¤ 1000 characters, â‰¤ 30 lines, a YAML `|` block is easiest). Task fields: `language`
   (`python`, the default, or `html`: syntax colouring and the Tab width), `minAccuracy` (default
   `0.9` here) and an optional `targetCpm` (characters a minute; speed is always shown, checked only
   when set). Every typed character is marked right or wrong, newlines and indentation included.
@@ -2052,17 +2072,17 @@ things that never work. Check existing lessons for these first:
   (Python) or 2 (HTML), so Tab and spaces are both right. Needs a real keyboard (no on-screen
   keyboard). See [activities/keyboard.md](activities/keyboard.md#typing-code-type_code).
 - **`mode: falling_words`** is a timed warm-up: `words` (code tokens with symbols and spaces are
-  fine, ≤ 20 characters each, ≤ 100 words) fall and typing one exactly clears it. Points only, no
-  lives; the round always runs for `durationSeconds` (15–300, default 60) and then completes.
+  fine, â‰¤ 20 characters each, â‰¤ 100 words) fall and typing one exactly clears it. Points only, no
+  lives; the round always runs for `durationSeconds` (15â€“300, default 60) and then completes.
   The task has **no `items`**. Respects reduced motion and pauses when the tab is hidden. Needs a
   real keyboard. See [activities/keyboard.md](activities/keyboard.md#falling-words-falling_words).
 - **Results for typing history.** `type_text`, `type_code` and `falling_words` results all record
   `mode`, `accuracy`, `cpm`, `wpm`, `corrections`, `timeMs` and `done` (falling words adds
   `cleared`, `missed`, `score`); `type_text` gains `mode`, `cpm`, `corrections` and `timeMs`
-  alongside its existing fields. Tutor cards read `2/3 done · 94% · 71 cpm` and `falling: 23
-  cleared · 4 missed · 250 pts`. New validation messages are in
+  alongside its existing fields. Tutor cards read `2/3 done Â· 94% Â· 71 cpm` and `falling: 23
+  cleared Â· 4 missed Â· 250 pts`. New validation messages are in
   [validation-errors.md](validation-errors.md) (Keyboard).
-- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+- Affects: keyboard Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-keyboard-type-code-mode-type-a-multi-line-block-of-real-code.md,
   authoring-requests/2026-10-14-keyboard-falling-words-mode-with-code-tokens.md
 
@@ -2079,13 +2099,13 @@ things that never work. Check existing lessons for these first:
 - **Validation:** an unknown target for the task's own module (a composed lesson's `moduleType`)
   is an error, as is `highlight` on a quiz, information or activity task or on Filesystem or
   Desktop. `costumes_tab` / `sounds_tab` warn without `showCostumesTab` / `showSoundsTab`. The
-  Builder sets it under Task options → "Highlight a control"; `lessons capabilities` lists each
+  Builder sets it under Task options â†’ "Highlight a control"; `lessons capabilities` lists each
   module's `highlightTargets`.
 - **Live:** tutors can pulse the same controls for the whole class ("Highlight Class" in the top
-  bar) or one student (More → Highlight in the student modal). Nothing to author.
+  bar) or one student (More â†’ Highlight in the student modal). Nothing to author.
 - See [scratch.md](scratch.md#highlighting-a-control) and [lesson-schema.md](lesson-schema.md).
-- Affects: python, turtle, html, arcade, electronics, scratch · Existing lessons: no changes
-  needed · Resolves:
+- Affects: python, turtle, html, arcade, electronics, scratch Â· Existing lessons: no changes
+  needed Â· Resolves:
   authoring-requests/2026-10-14-highlight-a-scratch-ui-control-green-flag-stop-tabs-for-the-.md
 
 ### Name-tag panel: show what is in the variables (`showVariables`, `#@peek`, `variables_predicted`)
@@ -2097,8 +2117,8 @@ things that never work. Check existing lessons for these first:
   **Show all** for long values; "changed" marks on a second Run). Modules, functions, classes,
   dunder names, names imported from `turtle` and `hide` names are never shown.
   - `view`: the values after Run. `predict`: students type what each `predict` variable will
-    hold **before** running; Run marks each ✓ / ✗. `target`: target tags turn green with ✓ when
-    the variable matches (display only — keep the `variable_*` checks for completion); a name not
+    hold **before** running; Run marks each âœ“ / âœ—. `target`: target tags turn green with âœ“ when
+    the variable matches (display only â€” keep the `variable_*` checks for completion); a name not
     made yet reads "not made yet".
   - `at: marker` stops at a **`#@peek`** marker line: put `#@peek` on its own line just above the
     line to stop at. It is stripped like a `#>` line hint and follows its line through student
@@ -2106,13 +2126,13 @@ things that never work. Check existing lessons for these first:
     or the end of the run (with a note) when the line never runs.
 - **New check `variables_predicted`** (`names` optional; default every `predict` name): passes
   when every prediction matches the value shown after Run, compared forgivingly by the value's
-  type — text with or without quotes (capitals count), `5` = `5.0` but `"5"` ≠ `5`,
+  type â€” text with or without quotes (capitals count), `5` = `5.0` but `"5"` â‰  `5`,
   `true`/`True`, lists and dicts written as Python. Predict mode only; validation rejects it
   elsewhere. `lessons test-checks` reports it as needing a run.
 - **Variables after an error.** Python variables are now read at the end of a run even when it
   stops with an error (they were empty before). Completion still fails on an error; only feedback
   checks can notice.
-- **Tutor and reports.** The tutor card shows a 🏷️ chip (predictions typed / right, targets
+- **Tutor and reports.** The tutor card shows a ðŸ·ï¸ chip (predictions typed / right, targets
   hit) and StudentModal shows the student's panel, predictions included as they type; Go Live
   shows the presenter's panel. Session reports add `predictions` per student task (first and
   latest revealed predictions, each right or not) and `predictionStudentCount`,
@@ -2120,29 +2140,29 @@ things that never work. Check existing lessons for these first:
   **Name-tag panel** section. See [python.md](python.md#name-tag-panel-showvariables),
   [turtle.md](turtle.md#name-tag-panel-showvariables) and
   [session-reports.md](session-reports.md).
-- Affects: python, turtle · Existing lessons: no changes needed · Resolves:
+- Affects: python, turtle Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-14-p6-1-name-tag-panel-show-what-is-in-the-variables.md
 
 ## 2026-10-09
 
-### Confidence checks are 1–10; tutors see unsubmitted short answers
+### Confidence checks are 1â€“10; tutors see unsubmitted short answers
 
-- **Confidence 1–10 everywhere.** Every `quizType: confidence` task now shows ten buttons, red (1,
-  👎) to green (10, 👍); one tap still submits. This includes lessons already published: there is
+- **Confidence 1â€“10 everywhere.** Every `quizType: confidence` task now shows ten buttons, red (1,
+  ðŸ‘Ž) to green (10, ðŸ‘); one tap still submits. This includes lessons already published: there is
   nothing to change and no opt-in. There is **no `scale` field**: writing one gives the
-  validation warning "… confidence checks always use 1 to 10, so scale is ignored". The tutor's
+  validation warning "â€¦ confidence checks always use 1 to 10, so scale is ignored". The tutor's
   card reads "N/10" and a **Class confidence** strip above the student grid counts how many
   chose each number. Session reports add `ratingScale: 10` (task summary and student task) and
-  `ratingDistribution` has keys 1–10; a report without `ratingScale` is from before this change
-  and was rated 1–5. See [quiz-tasks.md](quiz-tasks.md#confidence).
+  `ratingDistribution` has keys 1â€“10; a report without `ratingScale` is from before this change
+  and was rated 1â€“5. See [quiz-tasks.md](quiz-tasks.md#confidence).
 - **Live answer drafts.** In a live lesson the tutor sees what a student is typing into a short
-  answer (open or checked) or the gaps of a typed fill-in-the-gaps before they submit: "✏️
+  answer (open or checked) or the gaps of a typed fill-in-the-gaps before they submit: "âœï¸
   Typing, not submitted" on the card and in full in StudentModal. See-only. Drafts are never
   attempts, checks, `showResponses` entries or badge signals. The session report adds `lastDraft`
   for a student who never submitted. Nothing to author. See
   [quiz-tasks.md](quiz-tasks.md#live-drafts-what-the-tutor-sees-before-submit).
-- Affects: quiz_confidence, quiz_short_answer, quiz_fill_blank · Existing lessons: no changes
-  needed · Resolves: authoring-requests/2026-10-09-confidence-check-1-to-10-scale.md,
+- Affects: quiz_confidence, quiz_short_answer, quiz_fill_blank Â· Existing lessons: no changes
+  needed Â· Resolves: authoring-requests/2026-10-09-confidence-check-1-to-10-scale.md,
   authoring-requests/2026-10-09-tutor-sees-short-answer-text-as-the-student-types.md
 
 ### Session reports: tutor tile highlights (`tutorTileHighlights`)
@@ -2154,31 +2174,31 @@ things that never work. Check existing lessons for these first:
   (the blank or Match prompt, the tile in it, the tutor's note). Not attempts; completion is
   unchanged. Read many on one task as a sign the tiles or distractors confused students. See
   [session-reports.md](session-reports.md).
-- Affects: code_arrange, quiz_match, quiz_fill_blank · Existing lessons: no changes needed ·
+- Affects: code_arrange, quiz_match, quiz_fill_blank Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-10-09-tutor-highlights-a-wrong-tile-in-arrange-and-drag-and-drop.md
 
-### New live badges 📖 Word Smith and 🤩 Emoji Artist; suggestions name their task
+### New live badges ðŸ“– Word Smith and ðŸ¤© Emoji Artist; suggestions name their task
 
-- 📖 Word Smith (`word_smith`) is suggested when a student is right **first time** on every vocab
+- ðŸ“– Word Smith (`word_smith`) is suggested when a student is right **first time** on every vocab
   task they have tried, and on at least `wordSmithMinTasks` (new `badgeOptions` key, default 2) of
   them. A vocab task is any **graded** quiz tagged `taskActivity: Quiz: Vocabulary Check` or
   `Quiz: Vocabulary Match`, whatever its `quizType`; one vocab task wrong first time rules the
   student out for the session. Tag vocab quizzes with one of those patterns for them to count.
-- 🤩 Emoji Artist (`emoji_artist`) is suggested the first time a student runs Python (or Turtle,
+- ðŸ¤© Emoji Artist (`emoji_artist`) is suggested the first time a student runs Python (or Turtle,
   Electronics) code with an emoji inside a string, or HTML with an emoji in its text or an
   attribute. Comments never count. No lesson fields; it works in tasks and sandboxes.
 - Every badge suggestion in the tutor's panel now names its task (the title, "Sandbox" or
   "No task"), so a badge's reason no longer needs to quote the task title for the tutor to see it.
   See [badges.md](badges.md).
 - Affects: badges, quiz_match, quiz_multiple_choice, quiz_fill_blank, quiz_short_answer, python,
-  turtle, electronics, html · Existing lessons: no changes needed · Resolves:
+  turtle, electronics, html Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-09-badge-suggestions-always-show-the-task.md,
   authoring-requests/2026-10-09-vocab-and-emoji-live-badges.md
 
 ### Side-quests for students who finish while the class waits (`sideQuests`)
 
 - New optional field `sideQuests` on Python, Turtle and HTML code tasks: up to 3 side-quests, each
-  `{ title, kind, explainer, starter }`. `title` (≤ 60 characters) is required; `kind` is
+  `{ title, kind, explainer, starter }`. `title` (â‰¤ 60 characters) is required; `kind` is
   `challenge` (default), `debug` or `predict` and only picks the label and icon; `explainer` is
   Markdown; `starter` is the side-quest's own starting code (HTML: its `index.html`).
 - Unchecked: no checks run, and the student marks each one done themselves. They unlock once the
@@ -2188,13 +2208,13 @@ things that never work. Check existing lessons for these first:
   side-quest closes.
 - Use them on tasks the class waits on (always Copy the Code; later tasks once the concept is
   taught). Practise the task's concept or an earlier skill, never the next task's content.
-- The teacher sees "🗺️ on side-quest n/m" on the card; the session report adds `sideQuests[]` per
+- The teacher sees "ðŸ—ºï¸ on side-quest n/m" on the card; the session report adds `sideQuests[]` per
   student task and `sideQuestStudentCount` / `sideQuestDoneCount` per task. New suggested badge
-  🗺️ Side Quester (`side_quester`) after `sideQuesterMinDone` (new `badgeOptions` key, default 2)
+  ðŸ—ºï¸ Side Quester (`side_quester`) after `sideQuesterMinDone` (new `badgeOptions` key, default 2)
   side-quests marked done. On Scratch (and other modules) `sideQuests` is a validation warning and
-  ignored. Builder: Task options → **Side-quests**. See
+  ignored. Builder: Task options â†’ **Side-quests**. See
   [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md#side-quests).
-- Affects: python, turtle, html, badges · Existing lessons: no changes needed · Resolves:
+- Affects: python, turtle, html, badges Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-09-side-quests-for-students-who-finish-a-code-task-while-the-cl.md
 
 ### Session reports: class task timeline, typing measures and time-on-task spread
@@ -2214,7 +2234,7 @@ things that never work. Check existing lessons for these first:
   `p90Ms`, `maxMs`, `studentCount`). Report only: nothing new on the teacher's live card.
 - Reports from before 2026-10-09 lack all of these; each is omitted when empty. Field reference:
   [session-reports.md](session-reports.md) "taskTimeline" and "Typing".
-- Affects: all (session reports), python, turtle, html · Existing lessons: no changes needed ·
+- Affects: all (session reports), python, turtle, html Â· Existing lessons: no changes needed Â·
   Resolves:
   authoring-requests/2026-10-09-session-report-timeline-of-the-class-s-current-task-includin.md,
   authoring-requests/2026-10-09-session-report-per-student-typing-rate-corrections-and-copy-.md
@@ -2237,37 +2257,37 @@ things that never work. Check existing lessons for these first:
   both lists for one blank. The Builder has a hint box per distractor and a **Tile feedback** list
   per blank. See [lesson-schema.md](lesson-schema.md) "Tile feedback" and
   [session-reports.md](session-reports.md).
-- Affects: code_arrange, python, html · Existing lessons: no changes needed · Resolves:
+- Affects: code_arrange, python, html Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-09-tile-level-feedback-for-code-arrange-flag-known-wrong-tile-p.md
 
 ### Text checks need an `operator`
 
-- A text-comparing check (`output`, `code`, `answer`, element value, file content, …) written
+- A text-comparing check (`output`, `code`, `answer`, element value, file content, â€¦) written
   with a `value` but no `operator` used to fail every time, even on matching output, while
-  `lessons validate` and the Builder accepted it. Validation now rejects it (`Task … has a check of type
-  output with no operator …`), and publishing is blocked until it has one.
+  `lessons validate` and the Builder accepted it. Validation now rejects it (`Task â€¦ has a check of type
+  output with no operator â€¦`), and publishing is blocked until it has one.
 - Already published lessons with such a check now compare with `contains` instead of always
   failing. The Builder's check editor shows `contains` for them and writes `operator: contains`
   into the task when it's opened, so the stored check matches what the author sees.
-- Affects: python, html, turtle, arcade, electronics, filesystem, desktop, code_arrange, quiz ·
+- Affects: python, html, turtle, arcade, electronics, filesystem, desktop, code_arrange, quiz Â·
   Existing lessons: no changes needed (a sweep of all 79 published lessons on 2026-10-09 found no
-  check without an operator; re-validate local YAML sources to catch any) · Resolves:
+  check without an operator; re-validate local YAML sources to catch any) Â· Resolves:
   authoring-requests/2026-10-09-output-check-with-no-operator-never-passes-and-validation-does.md,
   authoring-requests/2026-10-09-builder-check-editor-shows-contains-when-the-check-has-no-op.md
 
 ### Code Arrange indent mode (`arrangeMode: indent`)
 
 - New Python mode for `code_arrange`: the lines are fixed in order and the student only sets how
-  far each one is indented (drag it sideways, its ← → buttons, or ← → on the keyboard). Run
+  far each one is indented (drag it sideways, its â† â†’ buttons, or â† â†’ on the keyboard). Run
   assembles the program at the chosen depths (4 spaces per step) and runs it through the normal
   pipeline, so `check`, `feedbackChecks` and `code_structure` work as for any arrange task.
-- Lines are `{ id, code, depth, start?, locked? }`: `code` has no leading spaces, `depth` (0–4) is
+- Lines are `{ id, code, depth, start?, locked? }`: `code` has no leading spaces, `depth` (0â€“4) is
   always the correct depth, `start` is where a line begins (default 0) for "fix the indent" tasks,
   and `locked: true` fixes a line at its depth. No `parts`, `distractors` or HTML in this mode.
 - Coloured block brackets as in the Python editor (`showBlocks: false` hides them). The teacher's
   card shows "2/5 lines moved". The Builder's Arrange composer has an **Arrange mode** choice;
   switching keeps the program. See [lesson-schema.md](lesson-schema.md) "Indent mode".
-- Affects: code_arrange, python · Existing lessons: no changes needed · Resolves:
+- Affects: code_arrange, python Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-08-indent-mode-for-code-arrange-lines-fixed-in-order-student-se.md
 
 ## 2026-10-08
@@ -2283,38 +2303,38 @@ things that never work. Check existing lessons for these first:
   (remembered on that device). New optional task field `showBlocks: false` hides the brackets and
   the button for that task; the Builder's **Block brackets** checkbox sets it. Non-boolean
   values fail validation. See [python.md](python.md).
-- Affects: python, turtle, arcade, electronics · Existing lessons: no changes needed (brackets
-  appear automatically; add `showBlocks: false` only where a task should go without them) ·
+- Affects: python, turtle, arcade, electronics Â· Existing lessons: no changes needed (brackets
+  appear automatically; add `showBlocks: false` only where a task should go without them) Â·
   Resolves: authoring-requests/2026-10-08-show-indentation-depth-in-the-python-editor-indent-guides-or.md
 
 ## 2026-10-05
 
 ### 12 new tutor-only badges: confidence, sharing and code craft
 
-- Confidence: `honest_check_in` (🌡️ Honest Check-in), `brave_coder` (🦁 Brave Coder),
-  `growing_coder` (🌱 Growing Coder), `comeback_coder` (🔁 Comeback Coder).
-- Sharing: `show_and_tell` (🎤 Show and Tell), `great_answer` (💬 Great Answer),
-  `code_teacher` (🧑‍🏫 Code Teacher), `teacher_trap` (🕵️ Teacher Trap).
-- Code craft: `tidy_coder` (🧹 Tidy Coder), `edge_explorer` (🔦 Edge Explorer),
-  `finisher` (🏁 Finisher), `careful_checker` (🧷 Careful Checker).
-- Tutor-only: tutors award them by hand (student modal → More → 🏅 Award badge), they are
+- Confidence: `honest_check_in` (ðŸŒ¡ï¸ Honest Check-in), `brave_coder` (ðŸ¦ Brave Coder),
+  `growing_coder` (ðŸŒ± Growing Coder), `comeback_coder` (ðŸ” Comeback Coder).
+- Sharing: `show_and_tell` (ðŸŽ¤ Show and Tell), `great_answer` (ðŸ’¬ Great Answer),
+  `code_teacher` (ðŸ§‘â€ðŸ« Code Teacher), `teacher_trap` (ðŸ•µï¸ Teacher Trap).
+- Code craft: `tidy_coder` (ðŸ§¹ Tidy Coder), `edge_explorer` (ðŸ”¦ Edge Explorer),
+  `finisher` (ðŸ Finisher), `careful_checker` (ðŸ§· Careful Checker).
+- Tutor-only: tutors award them by hand (student modal â†’ More â†’ ðŸ… Award badge), they are
   never suggested, and they can't be named in `badgeHints.suggest`. Honest Check-in may later gain
   a suggestion rule the tutor confirms. See [badges.md](badges.md).
-- Affects: all · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-12-new-tutor-only-live-badges-confidence-sharing-code-craft.md
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-10-02-12-new-tutor-only-live-badges-confidence-sharing-code-craft.md
 
 ### `lessons validate` catches Firestore's 20-level nesting limit; prebuilt stacks stored as text
 
 - A lesson nested deeper than Firestore allows used to pass validation and then fail on save with
   `Input object is deeper than 20 levels`. The shared validator (CLI and Builder) now measures the
   lesson **as it will be stored** and reports an error naming the task, its title and the deepest
-  path, e.g. `Task 15 ("Title") is nested 24 levels deep at tasks[14].sprites[0]…`. See
+  path, e.g. `Task 15 ("Title") is nested 24 levels deep at tasks[14].sprites[0]â€¦`. See
   [validation errors](validation-errors.md#lesson-envelope).
 - `prebuiltStacks[].stack` (on a task and on each code stage) is now saved as JSON text and parsed
   back on read, like `starterBlocks` / `completeBlocks`, so a long prebuilt stack no longer hits
   the limit. Authors still write the stack as an object; stacks stored as objects still load.
   [scratch.md](scratch.md#populated-block-state-json) no longer calls a stack "one shallow block".
-- Affects: scratch, cli, all · Existing lessons: no changes needed (a lesson that failed to save
-  because of a long prebuilt stack can now be republished as it is) · Resolves:
+- Affects: scratch, cli, all Â· Existing lessons: no changes needed (a lesson that failed to save
+  because of a long prebuilt stack can now be republished as it is) Â· Resolves:
   authoring-requests/2026-10-04-lessons-validate-should-catch-firestore-s-20-level-depth-lim.md
 
 ### `lessons test-checks --cases` skips checks that need a run instead of failing them
@@ -2327,8 +2347,8 @@ things that never work. Check existing lessons for these first:
   A task with Python `tests` is skipped entirely, as at runtime. The output gains
   `actual.checks`, `skippedFeedback`, and `summary.skipped` / `summary.skippedRuntimeChecks`.
   See the [Quick Start](AUTHORING_GUIDE.md).
-- Affects: cli, python, html, turtle · Existing lessons: no changes needed; drop any stripped
-  "source-checks-only" lesson copies made to work around the old false failures · Resolves:
+- Affects: cli, python, html, turtle Â· Existing lessons: no changes needed; drop any stripped
+  "source-checks-only" lesson copies made to work around the old false failures Â· Resolves:
   authoring-requests/2026-10-04-lessons-test-checks-should-skip-runtime-checks-instead-of-fa.md
 
 ### Docs: which hint shows when Python code can't run
@@ -2338,10 +2358,10 @@ things that never work. Check existing lessons for these first:
   source (so a regex feedback check for a syntax slip does fire), `code_no_error` and `variable_*`
   checks fail, and output checks are compared against the error message. Order completion checks
   so the hint you want for broken code comes first. No behaviour change.
-- Affects: python · Existing lessons: no changes needed · Resolves:
+- Affects: python Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-04-document-whether-source-code-checks-evaluate-python-code-tha.md
 
-### Docs: shared asset CLI — `showInEditor`, replace vs append, multi-costume presets
+### Docs: shared asset CLI â€” `showInEditor`, replace vs append, multi-costume presets
 
 - [lesson-assets-cli.md](lesson-assets-cli.md#shared-lesson-type-assets) now says that
   `assets upload-type` stores `showInEditor: false` (Scratch never reads it, so preset costumes
@@ -2350,7 +2370,7 @@ things that never work. Check existing lessons for these first:
   and to fetch the current list with `assets list-type scratch` first.
   [scratch.md](scratch.md#a-multi-costume-preset) gains a worked multi-costume `defaultSprites`
   preset using uploaded shared images (use full `https://` URLs). No behaviour change.
-- Affects: scratch, arcade, cli · Existing lessons: no changes needed · Resolves:
+- Affects: scratch, arcade, cli Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-04-lesson-assets-cli-md-upload-type-showineditor-default-set-de.md
 
 ### Docs: Markdown renderer reference fences fixed
@@ -2358,7 +2378,7 @@ things that never work. Check existing lessons for these first:
 - An unbalanced code fence in [markdown-renderer.md](markdown-renderer.md) swallowed the
   "Scratch Blocks (fenced)", block colour, value pill, shape and maintenance sections into one code
   block. They now render as normal sections. No renderer change.
-- Affects: markdown · Existing lessons: no changes needed · Resolves:
+- Affects: markdown Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-04-markdown-renderer-md-broken-code-fence-swallows-the-scratch-.md
 
 ### Optional `lessonNumber` orders lessons within a level
@@ -2366,7 +2386,7 @@ things that never work. Check existing lessons for these first:
 - New optional lesson-envelope field `lessonNumber`: a positive whole number giving the lesson's
   position in its level. Every lesson list (Admin, the Builder's "Open from Firestore" picker
   and `lessons list`) now sorts within a level by `lessonNumber`, unnumbered lessons after
-  numbered ones by title, and shows it next to the title (`9 · Boolean Flags`). The classroom
+  numbered ones by title, and shows it next to the title (`9 Â· Boolean Flags`). The classroom
   header shows `Lesson 9` beside the level badge.
 - A Solo Challenge (`companionOf`) needs no number: it sorts straight after its parent. Give a
   Solo Project the number of the lesson it follows; on a shared number the lesson without
@@ -2377,15 +2397,15 @@ things that never work. Check existing lessons for these first:
 - `lessons list` (JSON and YAML) now includes `lessonNumber`, `soloOnly` and `companionOf` for
   every lesson, in the new order; `lessons get` includes `lessonNumber` (`null` when unset).
   See "Lesson Numbers" in [lesson-schema.md](lesson-schema.md).
-- Affects: all, cli · Existing lessons: no changes needed (add `lessonNumber` to set list
-  order) · Resolves: authoring-requests/2026-10-05-lesson-number-field-lessonnumber-that-sorts-lessons-within-a.md
+- Affects: all, cli Â· Existing lessons: no changes needed (add `lessonNumber` to set list
+  order) Â· Resolves: authoring-requests/2026-10-05-lesson-number-field-lessonnumber-that-sorts-lessons-within-a.md
 
 ### New `run_attempted` check for demo tasks
 
 - Demo tasks (Complete Example, Visual Fun Application: "press Run and watch") can now require
   that the student actually ran the code. `check: { type: run_attempted }` passes once the student
   presses **Run** (Python, Turtle, Electronics, HTML), **Run game** (Arcade Kit) or the **green
-  flag** (Scratch — clicking a single script does not count). Any run counts, even one that
+  flag** (Scratch â€” clicking a single script does not count). Any run counts, even one that
   errors or that the student stops; once passed the task stays complete.
 - Optional `requireSuccess: true` also requires the run to finish without an error. Honoured in
   Python, Turtle and Electronics; ignored in Arcade, HTML and Scratch (a validator warning).
@@ -2397,7 +2417,7 @@ things that never work. Check existing lessons for these first:
 - Example:
 
   ```yaml
-  - title: 🎮 Watch It Move
+  - title: ðŸŽ® Watch It Move
     taskActivity: Code Task, Complete Example
     starterCode: |
       import turtle
@@ -2411,8 +2431,8 @@ things that never work. Check existing lessons for these first:
 
   Reference: [python.md](python.md#run-attempted-check-run_attempted); per-module notes in
   `turtle.md`, `arcade.md`, `electronics.md` and `scratch.md`.
-- Affects: python, turtle, arcade, electronics, html, scratch, cli · Existing lessons: no changes
-  needed (checkless demo tasks can add `check: { type: run_attempted }`) · Resolves:
+- Affects: python, turtle, arcade, electronics, html, scratch, cli Â· Existing lessons: no changes
+  needed (checkless demo tasks can add `check: { type: run_attempted }`) Â· Resolves:
   authoring-requests/2026-10-04-run-attempted-completion-signal-for-demo-mode-tasks.md
 
 ## 2026-10-04
@@ -2424,15 +2444,15 @@ things that never work. Check existing lessons for these first:
   the browser blocked the download. The bucket now allows the app's origins, and a file on a host
   without CORS falls back to plain `<audio>` playback, so `start sound`, `play sound until done`
   and `stop all sounds` work either way. No field changes.
-- Affects: scratch · Existing lessons: no changes needed · Resolves: none
+- Affects: scratch Â· Existing lessons: no changes needed Â· Resolves: none
 
 ## 2026-10-02
 
 ### Peer help: optional `peerHints` on code tasks
 
 - In a live lesson a stuck student can now let a classmate who finished the task help them. The
-  teacher checks the work and offers it, and a finished student marks lines 👍/👎 and sends
-  preset hints (💡) on a line. Neither student sees the other's name.
+  teacher checks the work and offers it, and a finished student marks lines ðŸ‘/ðŸ‘Ž and sends
+  preset hints (ðŸ’¡) on a line. Neither student sees the other's name.
 - New optional task field `peerHints`: up to 6 short strings (60 characters each) that a helper
   can send on this task. Helpers see at most 6 hint cards: the lesson's first, then the
   platform's. They reach the stuck student without the teacher checking each one, and helpers
@@ -2440,15 +2460,15 @@ things that never work. Check existing lessons for these first:
   answer. Not valid on `quiz` or `information` tasks. See [lesson-schema.md](lesson-schema.md).
 - Peer help works on Python, Python Turtle, HTML and Scratch tasks (Scratch: feedback on scripts).
 - Session reports gain `peerHelp[]` (see [session-reports.md](session-reports.md#peerhelp)).
-- 🤝 Helpful Coder is no longer tutor-only: it is suggested (never auto-awarded) when a stuck
+- ðŸ¤ Helpful Coder is no longer tutor-only: it is suggested (never auto-awarded) when a stuck
   classmate found a student's peer help useful. It still can't be named in `badgeHints.suggest`;
   `badgeHints.suppress: [helpful_coder]` now works on a task. See [badges.md](badges.md).
-- Affects: python, turtle, html, scratch · Existing lessons: no changes needed · Resolves: none
+- Affects: python, turtle, html, scratch Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### Open short answers: the teacher can show chosen answers on the presentation window
 
 - New fields on an open `short_answer` quiz (no `check`): `showResponses: teacher_picks` gives
-  each student card a **📺 Show** button in a live lesson, and the picked answers replace the
+  each student card a **ðŸ“º Show** button in a live lesson, and the picked answers replace the
   answer box on the presentation window. `anonymiseResponses` (default `true`) shows them
   without names; `false` shows names by default. The teacher can turn a name on or off per
   answer either way. Students' screens don't change. See
@@ -2458,15 +2478,15 @@ things that never work. Check existing lessons for these first:
 - Session reports: the task summary gains `shownResponses[]` (`studentLabel`, `text`,
   `showName`, `shownAt`, `hiddenAt`). See
   [session-reports.md](session-reports.md#ungraded-tasks).
-- Affects: quiz_short_answer · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-open-short-answer-teacher-shows-chosen-answers-on-the-presen.md
+- Affects: quiz_short_answer Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-10-02-open-short-answer-teacher-shows-chosen-answers-on-the-presen.md
 
-### New tutor-only badge: 🦸 Independent Coder
+### New tutor-only badge: ðŸ¦¸ Independent Coder
 
-- `independent_coder` (🦸 Independent Coder): for a student who worked problems out on their own,
+- `independent_coder` (ðŸ¦¸ Independent Coder): for a student who worked problems out on their own,
   trying things and using hints and the Topic Library before asking for help. Tutor-only: tutors
   award it by hand, it is never suggested, and it can't be named in `badgeHints.suggest`. A suggestion rule may come later, once a "help requested" signal exists. See
   [badges.md](badges.md).
-- Affects: all · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-new-tutor-only-live-badge-independent-coder.md
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-10-02-new-tutor-only-live-badge-independent-coder.md
 
 ### Scratch: per-sprite sounds, and Costumes / Sounds tabs
 
@@ -2483,7 +2503,7 @@ things that never work. Check existing lessons for these first:
 - New admin library `lessonTypeAssets/scratch.defaultSounds` (`{ id, name, audio }`), with CLI
   `node cli/cli.mjs assets upload-sound scratch <file>` and `node cli/cli.mjs assets set-default-sounds scratch
   [file]` (`assets` is a top-level command; corrected 2026-10-16). `node cli/cli.mjs assets list-type scratch` now returns `defaultSounds` alongside `defaultSprites` / `defaultBackdrops` (`[]` when none), so check it before asking for a new sound file.
-- Affects: scratch, cli · Existing lessons: no changes needed · Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
+- Affects: scratch, cli Â· Existing lessons: no changes needed Â· Resolves: authoring-requests/2026-10-02-assets-list-type-scratch-include-defaultsounds.md
 
 ## 2026-10-01
 
@@ -2506,7 +2526,7 @@ things that never work. Check existing lessons for these first:
   pass still does. Overrides now carry `source: teacher | class_advance`. Check-less code tasks,
   information tasks, quizzes and activities are unchanged (moved past, they still count as
   complete).
-- Affects: all · Existing lessons: no changes needed · Resolves: none
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: none
 ### Poll quiz (`quizType: poll`) and live class polls in the session report
 
 - New quiz sub-type `quizType: poll`: an opinion question with 2 to 6 `options` (`id`, `text`),
@@ -2519,23 +2539,23 @@ things that never work. Check existing lessons for these first:
 - Its `taskSummary` entry reports `respondedCount` and `optionDistribution`
   (`[{ id, text, count }]`, each student's latest choice), like other ungraded tasks.
 - Session reports gain a top-level `polls[]`: the teacher's ad-hoc live polls from the new
-  **📊 Poll** button (question, options with counts, each student's final answer, who didn't
+  **ðŸ“Š Poll** button (question, options with counts, each student's final answer, who didn't
   answer, times). Their results are public by default (live on the presentation, and on a
   student's screen once they have voted) unless the teacher ticks "Keep results private". See [session-reports.md](session-reports.md#polls). Lessons don't author these.
-- Affects: quiz_poll, all · Existing lessons: no changes needed · Resolves: none
+- Affects: quiz_poll, all Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### Seven new live badges; `earlyBirdMinutes`; Code Arranger hints
 
-- New rule-backed badges: 🧩 **Code Arranger** (`code_arranger`, auto-awardable: first in class
-  right first time on any Arrange task, whatever its `taskActivity`), ✨ **Autocomplete Ace**
-  (`autocomplete_ace`: accepted a code-editor autocomplete suggestion) and 🐦 **Early Bird**
+- New rule-backed badges: ðŸ§© **Code Arranger** (`code_arranger`, auto-awardable: first in class
+  right first time on any Arrange task, whatever its `taskActivity`), âœ¨ **Autocomplete Ace**
+  (`autocomplete_ace`: accepted a code-editor autocomplete suggestion) and ðŸ¦ **Early Bird**
   (`early_bird`: joined at least `earlyBirdMinutes` before the tutor pressed Start).
-- New tutor-only badges: 🙋 Great Question, 🏹 Sharp Shooter, ✍️ Word Wizard, 🎨 Design Master.
+- New tutor-only badges: ðŸ™‹ Great Question, ðŸ¹ Sharp Shooter, âœï¸ Word Wizard, ðŸŽ¨ Design Master.
 - New `badgeOptions.earlyBirdMinutes` (default `5`, a number of minutes above 0).
 - `badgeHints.suggest` can now name `code_arranger` (to treat a non-Arrange task as its trigger),
   and `badgeHints.suppress` can name `code_arranger` or `autocomplete_ace` (Early Bird isn't tied
   to a task, so suppressing it does nothing). See [badges.md](badges.md).
-- Affects: all · Existing lessons: no changes needed · Resolves: none
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### Session report field reference
 
@@ -2550,7 +2570,7 @@ things that never work. Check existing lessons for these first:
   after **End & Go to Home**) and per-task `taskSummary[].teacherRating`, and how both differ from
   the [feedback CLI](feedback-cli.md)'s lesson feedback.
 - From now on, a change to the report's output updates that page and adds an entry here.
-- Affects: all · Existing lessons: no changes needed ·
+- Affects: all Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-09-30-document-the-session-report-schema-including-teacherfeedback.md
 
 ### Multi-group Draft example; recap `leftContent` is a single heading
@@ -2562,8 +2582,8 @@ things that never work. Check existing lessons for these first:
   (`leftContent: "## What we covered"`), with the recap body in `explainer`. An `introduction`
   ignores both `leftContent` and `explainer`: it shows the lesson's title, level and description.
   See [lesson-schema-yaml.md](lesson-schema-yaml.md#information-task-fields).
-- Affects: all · Existing lessons: recaps whose `leftContent` holds plain text or a body should
-  move to a single `## ` heading, with the body in `explainer` (they still render as before) ·
+- Affects: all Â· Existing lessons: recaps whose `leftContent` holds plain text or a body should
+  move to a single `## ` heading, with the body in `explainer` (they still render as before) Â·
   Resolves: authoring-requests/2026-09-30-authoring-guide-draft-lessons-add-a-multi-group-draft-exampl.md
 
 ### Arcade palette hex values
@@ -2571,7 +2591,7 @@ things that never work. Check existing lessons for these first:
 - [arcade.md](arcade.md#palette) lists each palette colour's hex. The palette is exactly the
   standard PICO-8 16-colour palette; `white` is the warm `#fff1e8`, not `#ffffff`, which matters
   when an image-generation prompt must match the game window.
-- Affects: arcade · Existing lessons: no changes needed ·
+- Affects: arcade Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-09-30-arcade-md-palette-section-should-list-each-colour-s-hex-valu.md
 
 ### Session reports: each student's first join, task at join and rejoins
@@ -2584,7 +2604,7 @@ things that never work. Check existing lessons for these first:
   "skipped".
 - Reports from sessions before 2026-10-01 lack these fields; any of them is also omitted when
   unknown (no session start, no rejoins, a student the teacher removed).
-- Affects: all (session reports) · Existing lessons: no changes needed · Resolves:
+- Affects: all (session reports) Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-10-01-session-report-per-student-join-time-and-task-at-join.md
 
 ### `code_structure` check: Python nesting (`nested_in`, `directly_nested_in`, `not_nested_in`)
@@ -2597,9 +2617,9 @@ things that never work. Check existing lessons for these first:
   operator fails when no line matches `inner`.
 - Needs no run: works in submit mode, in feedback checks (including `show: on_idle`), in
   `code_arrange` tasks with `moduleType: python`, and in `lessons test-checks`. The Builder offers
-  it as Code → Structure (nesting) on Python tasks.
+  it as Code â†’ Structure (nesting) on Python tasks.
 - See [python.md](python.md#code-structure-checks-code_structure).
-- Affects: python, code_arrange · Existing lessons: no changes needed · Resolves:
+- Affects: python, code_arrange Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-30-python-check-that-can-see-indentation-nesting-depth.md
 
 ### Scratch block checks accept one of several opcodes
@@ -2615,9 +2635,9 @@ things that never work. Check existing lessons for these first:
   `block_run` passes when any listed block ran.
 - Validation rejects an empty list or a malformed entry. It warns when a shared `fieldValues`
   key isn't an input of every listed block, and when a `block_count` entry has `fieldValues`.
-  The Builder shows a list as "any of: …" and leaves it alone; edit it in YAML. See
+  The Builder shows a list as "any of: â€¦" and leaves it alone; edit it in YAML. See
   [scratch.md](scratch.md#one-of-several-opcodes).
-- Affects: scratch · Existing lessons: no changes needed ·
+- Affects: scratch Â· Existing lessons: no changes needed Â·
   Resolves: authoring-requests/2026-09-30-scratch-block-checks-that-accept-one-of-several-opcodes.md
 
 ### Scratch checks verified per check by `test-checks` and `validate`
@@ -2631,11 +2651,11 @@ things that never work. Check existing lessons for these first:
   feedback check fires on a Complete stage, the starter already passes, or a Debug Code Task's
   blocking feedback checks all stay silent on the starter. `--task <id>` limits it to one task.
   See [scratch.md](scratch.md#verifying-scratch-checks).
-- `lessons validate` (and the Builder) warn `Task … complete solution fails a block check —
-  review the complete blocks` and `Task … starter already passes every completion check — …`.
+- `lessons validate` (and the Builder) warn `Task â€¦ complete solution fails a block check â€”
+  review the complete blocks` and `Task â€¦ starter already passes every completion check â€” â€¦`.
   See [validation-errors.md](validation-errors.md#warnings-about-the-solution).
-- Affects: scratch, cli · Existing lessons: no changes needed (validate may now warn on Scratch
-  lessons whose Complete stage fails a check) · Resolves:
+- Affects: scratch, cli Â· Existing lessons: no changes needed (validate may now warn on Scratch
+  lessons whose Complete stage fails a check) Â· Resolves:
   authoring-requests/2026-09-30-scratch-check-verification-per-check-results-from-validate-o.md
 
 ### Which hint is shown: one documented rule, Scratch now follows it
@@ -2649,40 +2669,40 @@ things that never work. Check existing lessons for these first:
 - Scratch now matches Python/HTML: it no longer falls back to the first check's hint when no
   failed check has one (that could be a check the learner had already passed), and while the
   learner is placing blocks only an `after_block_placed` check that has definitely failed can
-  supply the hint. Run-time checks (`block_run`, `sprite_property`, …) only contribute hints
+  supply the hint. Run-time checks (`block_run`, `sprite_property`, â€¦) only contribute hints
   after Run. See [scratch.md](scratch.md).
-- Affects: all, scratch · Existing lessons: no changes needed (Scratch lessons that relied on a
-  passed check's hint now show the generic banner) · Resolves:
+- Affects: all, scratch Â· Existing lessons: no changes needed (Scratch lessons that relied on a
+  passed check's hint now show the generic banner) Â· Resolves:
   authoring-requests/2026-09-30-document-which-hint-shows-when-several-completion-checks-fai.md
 
 ### Scratch: typing in a text field no longer logs an attempt per keystroke
 
 - On Scratch tasks with a text field (a Say message, for example), each character typed was
-  checked and logged as a separate attempt (`h`, `ha`, `hav`, …), inflating attempt counts and
+  checked and logged as a separate attempt (`h`, `ha`, `hav`, â€¦), inflating attempt counts and
   awarding the Persistence badge too easily. Checks now run, and one attempt is logged, when the
   field edit is committed (the learner leaves the field or presses Enter), with the final text.
   Placing, moving or deleting a block still runs checks as before. See
   [scratch.md](scratch.md#scratch-check-types).
 - Session reports from before this fix overcount attempts on Scratch tasks with a text field;
   discount their attempt counts and Persistence badges when judging task difficulty.
-- Affects: scratch · Existing lessons: no changes needed · Resolves:
+- Affects: scratch Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-30-scratch-text-field-typing-logs-a-new-attempt-on-every-keystr.md
 
 ### Code Arrange: HTML entry file must be a starter file; solutions are checked
 
 - An HTML `code_arrange` task whose `entryFile` is not one of its `starterFiles` now fails
-  validation (`Task … entryFile "…" is not one of its starter files`). Before, the assembled tiles
+  validation (`Task â€¦ entryFile "â€¦" is not one of its starter files`). Before, the assembled tiles
   were silently dropped and the preview stayed blank.
 - Validation (CLI `lessons validate` and the Builder) now assembles the authored solution and
   warns when it fails the task's own `code` checks, or, for Python, when a line after a block
-  opener (`…:`) isn't indented. `output` and element checks still need a real run and aren't tried.
+  opener (`â€¦:`) isn't indented. `output` and element checks still need a real run and aren't tried.
 - Classroom fixes with no authoring change: a tutor's **Edit answers** applies once, to the task it
   was made on; tiles a task no longer has are ignored (the board isn't "complete" with them); Run
   stays disabled with a message when Python failed to load. See
   [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) and
   [validation-errors.md](validation-errors.md#code-arrange-tasks).
-- Affects: code_arrange · Existing lessons: html arrange tasks whose entryFile isn't a starter
-  file now fail validation; solutions failing their own code checks warn · Resolves: none
+- Affects: code_arrange Â· Existing lessons: html arrange tasks whose entryFile isn't a starter
+  file now fail validation; solutions failing their own code checks warn Â· Resolves: none
 
 ### Code Arrange attempts always record the assembled program
 
@@ -2693,28 +2713,28 @@ things that never work. Check existing lessons for these first:
   answer for **Complete**).
 - [lesson-schema.md](lesson-schema.md#code-arrange-task-fields) now says what an arrange attempt
   records: the assembled program text as `submission`, identical re-runs counted as retries.
-- Affects: code_arrange · Existing lessons: no changes needed · Resolves:
+- Affects: code_arrange Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-30-code-arrange-attempts-recorded-with-an-empty-submission-then.md
 
 ### Badge Summary title shown exactly as written
 
-- The Badge Summary task (`informationType: badges`) no longer adds 🎖️ in front of its `title`,
+- The Badge Summary task (`informationType: badges`) no longer adds ðŸŽ–ï¸ in front of its `title`,
   so an emoji-first title no longer shows two emojis. The title (and the first line of **Copy
   class summary**) is shown exactly as written; with no title the default is
-  "🎖️ Today's Coding Moments". See [badges.md](badges.md#badge-summary-task).
-- Affects: badges · Existing lessons: Badge Summary tasks whose title has no emoji now show
-  none — add one if wanted · Resolves: none
+  "ðŸŽ–ï¸ Today's Coding Moments". See [badges.md](badges.md#badge-summary-task).
+- Affects: badges Â· Existing lessons: Badge Summary tasks whose title has no emoji now show
+  none â€” add one if wanted Â· Resolves: none
 
 ### Line hints: a trailing marker gets its own empty line
 
-- A line-hint marker with nothing after it (`#> …` / `<!--> … -->` as the last line of the code,
+- A line-hint marker with nothing after it (`#> â€¦` / `<!--> â€¦ -->` as the last line of the code,
   a stage or a file) now shows on a **new empty last line** instead of beside the last line of
   code, so `#> Write your code here` at the end marks where the student starts typing. No extra
   blank lines are needed (YAML `code: |` strips them anyway).
-- The validator warning `Task … has a line hint with no line after it …` is removed.
+- The validator warning `Task â€¦ has a line hint with no line after it â€¦` is removed.
 - The editor's cursor now sits at the end of a hinted line (column 0 on an empty one) rather than
   floating out next to the hint text.
-- Affects: python, turtle, html · Existing lessons: no changes needed · Resolves: none
+- Affects: python, turtle, html Â· Existing lessons: no changes needed Â· Resolves: none
 
 ## 2026-09-30
 
@@ -2724,9 +2744,9 @@ things that never work. Check existing lessons for these first:
   information tasks) that edits `badgeHints.suggest` and `badgeHints.suppress` with only the ids
   validation accepts, and notes which badges the task's `taskActivity` pattern already triggers.
   The YAML field is unchanged. See [badges.md](badges.md#badgehints).
-- Admins can add manual-only badges in Admin Portal → Badges. They are awarded by tutors only;
+- Admins can add manual-only badges in Admin Portal â†’ Badges. They are awarded by tutors only;
   lessons can't name them in `badgeHints`. See [badges.md](badges.md#admin-catalogue-badges).
-- Affects: all · Existing lessons: no changes needed · Resolves: none
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### Badge Summary information task (`informationType: badges`)
 
@@ -2736,21 +2756,21 @@ things that never work. Check existing lessons for these first:
   and shows above the wall. Usually the last task.
 - Solo learners skip it, exactly as if it were `taskMode: live`; no `taskMode` is needed. See
   [badges.md](badges.md#badge-summary-task).
-- Affects: all · Existing lessons: no changes needed · Resolves: none
+- Affects: all Â· Existing lessons: no changes needed Â· Resolves: none
 
 ### `taskActivity` patterns are read; `badgeOptions` and `badgeHints` for live badges
 
 - `taskActivity` stays free text, but the platform now reads the Lesson Format Glossary pattern it
-  names (`src/shared/taskActivity.js`; `lessons capabilities` → `taskActivity`). An unrecognised
+  names (`src/shared/taskActivity.js`; `lessons capabilities` â†’ `taskActivity`). An unrecognised
   pattern is a **warning**, never an error. Case, spacing and `,` vs `:` don't matter.
-- The coming live badges use the pattern: a `Debug Code Task` can suggest 🐛 Bug Hunter, a
-  `Copy the Code` task 📋 Code Builder, `Quiz: What Is the Error?` / `Quiz: Fix a Common Bug`
-  🔍 Code Detective, and a `Challenge (Open-Ended)` 🔓 Challenge Solver. Those tasks need a `check`.
+- The coming live badges use the pattern: a `Debug Code Task` can suggest ðŸ› Bug Hunter, a
+  `Copy the Code` task ðŸ“‹ Code Builder, `Quiz: What Is the Error?` / `Quiz: Fix a Common Bug`
+  ðŸ” Code Detective, and a `Challenge (Open-Ended)` ðŸ”“ Challenge Solver. Those tasks need a `check`.
 - New optional envelope field `badgeOptions` (`quizMasterThreshold`, `quizMasterMinQuizzes`,
   `persistenceMinFails`, `readyToCodeSeconds`) and per-task `badgeHints` (`suggest`, `suppress`).
   Lessons never define badges. See [badges.md](badges.md).
-- Affects: all, cli · Existing lessons: no changes needed (fix any `taskActivity` the validator
-  warns about) · Resolves: none
+- Affects: all, cli Â· Existing lessons: no changes needed (fix any `taskActivity` the validator
+  warns about) Â· Resolves: none
 
 ## 2026-09-29
 
@@ -2761,12 +2781,12 @@ things that never work. Check existing lessons for these first:
   **Alt + Backspace** for Delete, **Alt + Search** for Caps Lock). Those presses already counted,
   because the browser reports them as the Windows key; now the words match the keyboard.
 - Fixes: on a Mac, turning Caps Lock *off* now counts for `find_key: CapsLock` (Macs send no
-  keydown then), and `edit_text` treats Cmd + ← / → as Home / End.
+  keydown then), and `edit_text` treats Cmd + â† / â†’ as Home / End.
 - Teachers see a **Mac** or **Chromebook** badge on Keyboard and Mouse work. Mac Ctrl + click and
   Chromebook Alt + click count as right-click. Known gap: `symbols` hints use the UK Windows
   layout, which differs on a UK Mac. See
   [activities/keyboard.md](activities/keyboard.md#mac-and-chromebook-keyboards).
-- Affects: keyboard, mouse, desktop · Existing lessons: no changes needed · Resolves:
+- Affects: keyboard, mouse, desktop Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-29-mac-and-chromebook-equivalents-for-taught-keys-and-right-cli.md
 
 ### Keyboard `edit_text` mode: fix a line without retyping it
@@ -2779,18 +2799,18 @@ things that never work. Check existing lessons for these first:
   per-item `requireKeys` (`Backspace`, `Delete`, `ArrowLeft`, `ArrowRight`, `Home`, `End`,
   `select`) must each be used. `showTarget: false` hides the fixed line.
 - Needs a real keyboard: the on-screen keyboard shows a note instead. The teacher card adds
-  `· n retyped`. New validation messages are in [validation-errors.md](validation-errors.md).
+  `Â· n retyped`. New validation messages are in [validation-errors.md](validation-errors.md).
   See [activities/keyboard.md](activities/keyboard.md).
-- Affects: keyboard · Existing lessons: no changes needed · Resolves:
+- Affects: keyboard Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-29-keyboard-edit-text-mode-fix-the-text-without-retyping-it.md
 
 ### CHANGELOG entries carry a tag line
 
-- From today every entry ends with `Affects: … · Existing lessons: … · Resolves: …`, naming the
+- From today every entry ends with `Affects: â€¦ Â· Existing lessons: â€¦ Â· Resolves: â€¦`, naming the
   modules/activities it touches, whether existing lessons need changing, and the authoring
   request it ships. Read the tag line first to decide whether an entry matters to a lesson.
   Older entries are not tagged. See [Entry format](#entry-format).
-- Affects: all (changelog format) · Existing lessons: no changes needed · Resolves:
+- Affects: all (changelog format) Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-29-tag-changelog-entries-with-affected-modules-lesson-impact-an.md
 
 ### `lessons capabilities`: activity modes and fields, content fields, open requests
@@ -2803,8 +2823,8 @@ things that never work. Check existing lessons for these first:
   (`file`, `title`, `kind`, `status`, `requestedBy`, `lessonsBlocked`); the old hint text moved
   to `requestsHowTo`. Lesson tooling can drop hand-kept field lists and read these instead.
 - No lesson changes. See [AUTHORING_GUIDE.md](AUTHORING_GUIDE.md).
-- Affects: all activities and modules (capabilities output only) · Existing lessons: no changes
-  needed · Resolves: authoring-requests/2026-09-29-lessons-capabilities-per-activity-modes-and-fields-and-open-.md,
+- Affects: all activities and modules (capabilities output only) Â· Existing lessons: no changes
+  needed Â· Resolves: authoring-requests/2026-09-29-lessons-capabilities-per-activity-modes-and-fields-and-open-.md,
   authoring-requests/2026-09-29-machine-readable-content-field-map-per-task-type.md
 
 ### Desktop `window_state` `moved_to` and `resized`
@@ -2820,7 +2840,7 @@ things that never work. Check existing lessons for these first:
 - New validator errors for a missing `appId`, unknown `zone` / `size`, and out-of-range limits.
   See [desktop.md](desktop.md#moving-and-resizing-windows) and
   [validation-errors.md](validation-errors.md).
-- Affects: desktop · Existing lessons: no changes needed · Resolves:
+- Affects: desktop Â· Existing lessons: no changes needed Â· Resolves:
   authoring-requests/2026-09-29-window-state-moved-to-and-resized-operators.md
 
 ### Scratch Support stages: `markdown` for students, `blocks` for replacing (docs fix)
@@ -2831,20 +2851,20 @@ things that never work. Check existing lessons for these first:
   `stageOffer` `replace`, stage reset) and are what the teacher's stage tab shows.
 - Lessons whose Scratch Support stages carry only `blocks` should add `markdown`. See
   [scratch.md](scratch.md#sprite-object).
-- Affects: scratch · Existing lessons: add `markdown` to blocks-only Support stages ·
+- Affects: scratch Â· Existing lessons: add `markdown` to blocks-only Support stages Â·
   Resolves: authoring-requests/2026-09-29-scratch-support-stage-docs-say-markdown-every-live-lesson-us.md
 
-### Line hints in starter code (`#> …` / `<!--> … -->`)
+### Line hints in starter code (`#> â€¦` / `<!--> â€¦ -->`)
 
 - Python, Turtle and HTML starter code, code stages and complete code can carry **line hints**
   instead of instruction comments: a line whose trimmed text starts with `#>` (Python, Turtle)
-  or is `<!--> … -->` (HTML) is removed from the student's code and shown beside the next line
-  (a 💡 in the gutter plus faded text after the line). Consecutive markers stack on one line.
+  or is `<!--> â€¦ -->` (HTML) is removed from the student's code and shown beside the next line
+  (a ðŸ’¡ in the gutter plus faded text after the line). Consecutive markers stack on one line.
 - Marker lines are stripped before the code is shown, saved, run, checked (including
   `code_contains` / regex checks and the validator's complete-solution check), carried or
   mirrored. Existing lessons are unaffected unless a line already starts with `#>` or is
-  `<!--> … -->`.
-- New validator warning: `Task … has a line hint with no line after it (…) — it shows on the
+  `<!--> â€¦ -->`.
+- New validator warning: `Task â€¦ has a line hint with no line after it (â€¦) â€” it shows on the
   last line`. See [python.md](python.md#line-hints), [turtle.md](turtle.md#line-hints),
   [html.md](html.md#line-hints) and
   [validation-errors.md](validation-errors.md#module-starter-state).
@@ -2880,7 +2900,7 @@ things that never work. Check existing lessons for these first:
 ### Desktop input checks (`input_gesture`, `input_shortcut`, `input_modifier`)
 
 - Desktop tasks can now check **how** the student did something: `input_gesture` (click,
-  double-click, right-click, drag, scroll, hover — optionally on a `file`, `folder`, `window` or
+  double-click, right-click, drag, scroll, hover â€” optionally on a `file`, `folder`, `window` or
   desktop `icon`, and for drags onto a `dropTargetKind`), `input_shortcut` (`combo: ctrl+c`,
   `via: keyboard | menu | any`) and `input_modifier` (Shift vs Caps Lock capitals). Put them in a
   `check` list next to an outcome check. Only Desktop tasks record input; the validator rejects
@@ -2916,12 +2936,12 @@ things that never work. Check existing lessons for these first:
     are left and answer "Did it overflow?".
   - `hex`: items `value`, `from`, `to` (`binary` / `hex` / `decimal`, different); binary is shown
     in groups of 4 bits and hex answers are marked ignoring case.
-  - `ascii`: items `text` (1–16 printable ASCII characters) and `direction` (`encode` /
+  - `ascii`: items `text` (1â€“16 printable ASCII characters) and `direction` (`encode` /
     `decode`); task options `codeFormat` (`binary` default, or `decimal`) and `showTable`.
-  - `pixels`: task `width` / `height` (1–16), items `rows` (quoted bit strings) and
+  - `pixels`: task `width` / `height` (1â€“16), items `rows` (quoted bit strings) and
     `direction` (`draw` / `encode`).
 - `requireCarries` now also applies to `overflow`.
-- The `add` message for a sum that is too big now reads "a + b is too big for … bits (use mode:
+- The `add` message for a sum that is too big now reads "a + b is too big for â€¦ bits (use mode:
   overflow for that)." New messages are listed in [validation-errors.md](validation-errors.md),
   including a size limit on a task's saved answers for the new modes.
 - Existing `make_number`, `to_binary`, `to_decimal` and `add` tasks are unchanged.
@@ -2930,7 +2950,7 @@ things that never work. Check existing lessons for these first:
 
 - Quizzes now run as activities in the classroom (one per quiz sub-type). A student's quiz
   answer is saved on their device as they answer, so it survives a page reload and is still
-  there when they return to the task. Only the answer comes back — the right/wrong banner
+  there when they return to the task. Only the answer comes back â€” the right/wrong banner
   starts fresh and the student can answer again. See [quiz-tasks.md](quiz-tasks.md).
 - Nothing changes in the lesson format: keep writing `type: quiz` (`taskType: quiz`) with
   `quizType`. Validation messages, session reports and printed quizzes are unchanged. Printed
@@ -2951,7 +2971,7 @@ things that never work. Check existing lessons for these first:
   [activities/binary.md](activities/binary.md), [activities/keyboard.md](activities/keyboard.md),
   [activities/mouse.md](activities/mouse.md). Every Binary / Keyboard / Mouse validation message
   is now listed in [validation-errors.md](validation-errors.md). Write `taskType: activity` +
-  `activityType: …` in YAML; the `type: binary` shorthand arrives with the Builder activity
+  `activityType: â€¦` in YAML; the `type: binary` shorthand arrives with the Builder activity
   gallery.
 - Go Live: on quiz and activity tasks the teacher can no longer broadcast a *student's* answers
   to the class ("Go Live for All" is hidden there). The teacher's own Presentation View
@@ -2962,25 +2982,25 @@ things that never work. Check existing lessons for these first:
 
 - `lessons validate` (and `yaml-to-json`, `upsert`, `publish-yaml`) now runs the same rules as
   the Builder, with the same messages. Lessons that only passed the CLI before may now get:
-  feedback-check errors (`… has feedback checks but no completion check`, priority and
+  feedback-check errors (`â€¦ has feedback checks but no completion check`, priority and
   stage-offer rules) and the `blocking feedback check with no hint` warning; the full Scratch
-  check rules; Python/HTML/Arcade check-field rules (`… but no CSS selector`,
-  `… enabled but no check value`, submit mode with run-only checks, …); Python `tests` rules;
-  `… references task … for carry-through but that task does not exist`; the
+  check rules; Python/HTML/Arcade check-field rules (`â€¦ but no CSS selector`,
+  `â€¦ enabled but no check value`, submit mode with run-only checks, â€¦); Python `tests` rules;
+  `â€¦ references task â€¦ for carry-through but that task does not exist`; the
   `complete breadboard` warning; and the empty-editor warning for quiz and code-arrange tasks.
   The Builder now also checks `recordingUrl`, Electronics stage labels, and `browser_visited` /
   `search_query` checks against the complete Desktop state.
 - Reworded messages (one wording for both): Builder full stops dropped from quiz and
-  code-arrange messages (`… has an empty option text field.` → `… has an empty option text`);
-  Builder envelope/fork messages now use the CLI wording (`Lesson ID is required` →
-  `id is required`, `Lesson must have at least one task` → `tasks is required and must be an
-  array` / `tasks must contain at least one task or group`, `Forked lesson ID must be …` →
-  `forked lesson id must be '…'`, …); the Builder's `may only carry work from an earlier task`
-  → `Task … carryCodeFrom must reference an earlier task in the same lesson module`; the CLI's
+  code-arrange messages (`â€¦ has an empty option text field.` â†’ `â€¦ has an empty option text`);
+  Builder envelope/fork messages now use the CLI wording (`Lesson ID is required` â†’
+  `id is required`, `Lesson must have at least one task` â†’ `tasks is required and must be an
+  array` / `tasks must contain at least one task or group`, `Forked lesson ID must be â€¦` â†’
+  `forked lesson id must be 'â€¦'`, â€¦); the Builder's `may only carry work from an earlier task`
+  â†’ `Task â€¦ carryCodeFrom must reference an earlier task in the same lesson module`; the CLI's
   Scratch and Desktop check messages now use the Builder wording (`sprite check is missing a
-  property` → `has a Scratch sprite-property check with missing property, operator, or value`,
-  `file-in-dir check but no parent folder` → `file-location check but no parent folder`, …);
-  `Group "…" has no subtasks — add at least one subtask` in both.
+  property` â†’ `has a Scratch sprite-property check with missing property, operator, or value`,
+  `file-in-dir check but no parent folder` â†’ `file-location check but no parent folder`, â€¦);
+  `Group "â€¦" has no subtasks â€” add at least one subtask` in both.
 - `taskType: activity` (with `activityType`) is accepted and validated by the activity's own
   rules; an unknown `activityType` is an error. Still-builder-only: invalid Scratch toolbox XML,
   duplicate task ids and the untested-check reminder. CLI-only: `description is required`.
@@ -3034,9 +3054,9 @@ things that never work. Check existing lessons for these first:
   source after **Run** as well as after **Check**, and a `code` check with no
   `value` is now a validation error.
 
-### Turtle: 🐢 marker, hideturtle and showturtle
+### Turtle: ðŸ¢ marker, hideturtle and showturtle
 
-The Turtle canvas now draws a 🐢 at the turtle's position, facing its heading.
+The Turtle canvas now draws a ðŸ¢ at the turtle's position, facing its heading.
 New commands: `hideturtle()`/`ht()`, `showturtle()`/`st()` and `isvisible()`.
 `turtle_command_used` accepts `command: hideturtle` and `command: showturtle`.
 
@@ -3122,7 +3142,7 @@ need their checks reviewed.
 
 ### New Turtle module task type
 
-Added `moduleType: turtle` — a single-file Python task type for turtle
+Added `moduleType: turtle` â€” a single-file Python task type for turtle
 graphics, running a hand-built shim of the real `turtle` module (`import
 turtle` works as written) inside the shared Pyodide worker, drawing onto a
 responsive canvas with a fixed logical coordinate space matching real
@@ -3133,21 +3153,21 @@ stamp, write, bgcolor, and colormode. New check types: `turtle_position`,
 `turtle_heading`, `turtle_path_closed`, `turtle_segment_count`,
 `turtle_path_length`, `turtle_command_used`, `turtle_color_used` (takes an
 optional `kind: "pen" | "fill"`), and `turtle_stamp_count`. The student's
-drawing now also syncs live to the teacher — both when watching an
+drawing now also syncs live to the teacher â€” both when watching an
 individual student and when "Go Live" broadcasts a turtle task to the whole
-class — via the same channels that already sync live code. Multiple
+class â€” via the same channels that already sync live code. Multiple
 `Turtle()` instances, per-task canvas size, and a reference-image comparison
 feature are not implemented. See `docs/authoring/turtle.md`.
 
 ### New `companionOf` lesson field links a solo challenge to its parent lesson
 
-A `soloOnly` "solo challenge" lesson can now set `companionOf: "<parent-lesson-id>"` to link it to the lesson it extends. The Admin lesson list groups a solo lesson under its linked parent (collapsible, same pattern as class forks), and students who finish the parent lesson — live or solo — are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The field is set only on the solo lesson; the parent lesson document is unchanged. Set it via the Builder's new "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, or the CLI. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`.
+A `soloOnly` "solo challenge" lesson can now set `companionOf: "<parent-lesson-id>"` to link it to the lesson it extends. The Admin lesson list groups a solo lesson under its linked parent (collapsible, same pattern as class forks), and students who finish the parent lesson â€” live or solo â€” are offered a "Try the Solo Challenge" button that drops them straight into the companion in solo mode. The field is set only on the solo lesson; the parent lesson document is unchanged. Set it via the Builder's new "Solo challenge companion of" text field in `LessonMetaPanel.jsx`, or the CLI. See "Solo Companion Metadata" in `docs/authoring/lesson-schema.md`.
 
 ## 2026-09-11
 
 ### New `allowRemoveSprite` / `allowRemoveStarterSprites` Scratch task fields
 
-Scratch tasks can now opt in to letting students remove sprites from their workspace with `allowRemoveSprite: true`. By default this only allows removing sprites the student added themselves via the existing "Add sprite" picker (`studentAdded: true`) — author-placed starter sprites stay protected. Set `allowRemoveStarterSprites: true` alongside it to also allow removing author-placed sprites; a workspace can never be emptied to zero sprites, and removal asks the student to confirm first. The Scratch Playground sets both flags so every sprite there is removable. See `docs/authoring/scratch.md`.
+Scratch tasks can now opt in to letting students remove sprites from their workspace with `allowRemoveSprite: true`. By default this only allows removing sprites the student added themselves via the existing "Add sprite" picker (`studentAdded: true`) â€” author-placed starter sprites stay protected. Set `allowRemoveStarterSprites: true` alongside it to also allow removing author-placed sprites; a workspace can never be emptied to zero sprites, and removal asks the student to confirm first. The Scratch Playground sets both flags so every sprite there is removable. See `docs/authoring/scratch.md`.
 
 ## 2026-09-05
 
@@ -3155,27 +3175,27 @@ Scratch tasks can now opt in to letting students remove sprites from their works
 
 Tasks can now opt in to student workspace sharing with `allowSharing: true`. When set, students working on that task get a **Share with class** button; the teacher is notified, previews the exact snapshot, and approves or declines it. Approved workspaces go into a class-wide **Shared work** gallery that persists across task changes until the teacher removes them, and classmates open them as a non-destructive sandbox copy they can run and edit without touching their own work.
 
-The field is off unless explicitly set, so existing lessons are unaffected and need no changes. It is valid on any code task in any lesson type, and rejected by CLI and Builder validation on `quiz` and `information` tasks, which have no workspace to share. Set it on tasks where seeing a classmate's approach helps — open-ended builds, creative tasks, "solve it your own way" problems — and leave it off where you want independent work. See `docs/authoring/lesson-schema.md`.
+The field is off unless explicitly set, so existing lessons are unaffected and need no changes. It is valid on any code task in any lesson type, and rejected by CLI and Builder validation on `quiz` and `information` tasks, which have no workspace to share. Set it on tasks where seeing a classmate's approach helps â€” open-ended builds, creative tasks, "solve it your own way" problems â€” and leave it off where you want independent work. See `docs/authoring/lesson-schema.md`.
 
 ## 2026-09-04
 
 ### Topic library removed from Scratch lessons
 
-The topic library (inline `[[wiki-links]]`, hover cards, and the browse dialog) no longer renders on Scratch lessons at all — `useTopicLibrary` now returns no topics whenever the lesson type is `scratch`, regardless of a topic's `types` field. A topic tagged `["scratch"]` (or left untagged, normally "all types") will never appear on a Scratch lesson; `[[topic-id]]` syntax in a Scratch explainer now renders as plain text instead of a link. This also removes the teacher's "📖" topic-library button from the Student Grid/Student Modal while viewing a Scratch lesson. No change for any other lesson type. Existing Scratch lessons need no changes — any `[[..]]`/`topicLinks` authored there simply stop resolving to links; authors should stop adding them for Scratch going forward. See `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
+The topic library (inline `[[wiki-links]]`, hover cards, and the browse dialog) no longer renders on Scratch lessons at all â€” `useTopicLibrary` now returns no topics whenever the lesson type is `scratch`, regardless of a topic's `types` field. A topic tagged `["scratch"]` (or left untagged, normally "all types") will never appear on a Scratch lesson; `[[topic-id]]` syntax in a Scratch explainer now renders as plain text instead of a link. This also removes the teacher's "ðŸ“–" topic-library button from the Student Grid/Student Modal while viewing a Scratch lesson. No change for any other lesson type. Existing Scratch lessons need no changes â€” any `[[..]]`/`topicLinks` authored there simply stop resolving to links; authors should stop adding them for Scratch going forward. See `docs/authoring/TOPIC_LIBRARY_SCHEMA.md`.
 
 ## 2026-09-02
 
 ### New optional `recordingUrl` field for per-class recordings
 
-Lessons can now carry an optional `recordingUrl` field: an unlisted YouTube link to that class's recorded live session. It's meant to be set per-class on a class's forked lesson (`lessons fork`), not on the shared source lesson, since each class recorded a different session. When present, solo students see a small pop-out player (bottom-right, pausable/hideable) on the lesson page; it never appears during a live session or teacher presentation. The video must be set to **Unlisted** on YouTube — students are login-less and never authenticate with Google, so a Private video would just show a "request access" screen. Only `youtube.com`/`youtu.be` links validate; Google Drive links do not, because Drive's embed has no JS control API to pause/resume the widget in place. See `docs/authoring/lesson-schema.md`.
+Lessons can now carry an optional `recordingUrl` field: an unlisted YouTube link to that class's recorded live session. It's meant to be set per-class on a class's forked lesson (`lessons fork`), not on the shared source lesson, since each class recorded a different session. When present, solo students see a small pop-out player (bottom-right, pausable/hideable) on the lesson page; it never appears during a live session or teacher presentation. The video must be set to **Unlisted** on YouTube â€” students are login-less and never authenticate with Google, so a Private video would just show a "request access" screen. Only `youtube.com`/`youtu.be` links validate; Google Drive links do not, because Drive's embed has no JS control API to pause/resume the widget in place. See `docs/authoring/lesson-schema.md`.
 
 ### Electronics `locked: true` components are now interactive
 
-A "Fixed" (`locked: true`) component previously had every one of its controls disabled for students, so a fully locked demo board was inert: the switch would not flip, the button would not press, and the potentiometer would not turn. `locked` now freezes only a part's *structure* — position, rotation, `props`, pins, and deletion — while its `controls` state stays live on the canvas and in the inspector. `push_button` (`pressed`), `slide_switch` (`closed`), `potentiometer`/`sensor` (`value`), `transistor` (`baseHigh`), and `servo_motor` (`angle`) all respond on a locked part. This makes the documented pre-wired demo board pattern work as its example already described: `controls: {}` leaves the switch open and the student flips it to light the LED. Existing lessons need no changes — a locked demo board gains its intended interactivity automatically. A read-only workspace (teacher live view, Support/Complete stage preview) remains fully inert. See `docs/authoring/electronics.md`.
+A "Fixed" (`locked: true`) component previously had every one of its controls disabled for students, so a fully locked demo board was inert: the switch would not flip, the button would not press, and the potentiometer would not turn. `locked` now freezes only a part's *structure* â€” position, rotation, `props`, pins, and deletion â€” while its `controls` state stays live on the canvas and in the inspector. `push_button` (`pressed`), `slide_switch` (`closed`), `potentiometer`/`sensor` (`value`), `transistor` (`baseHigh`), and `servo_motor` (`angle`) all respond on a locked part. This makes the documented pre-wired demo board pattern work as its example already described: `controls: {}` leaves the switch open and the student flips it to light the LED. Existing lessons need no changes â€” a locked demo board gains its intended interactivity automatically. A read-only workspace (teacher live view, Support/Complete stage preview) remains fully inert. See `docs/authoring/electronics.md`.
 
 ### Electronics wire format corrected: `from`/`to` are `componentId.pin` strings
 
-`docs/authoring/electronics.md` previously documented a wire as `from: { component: battery1, pin: positive }`. That shape does not work. The runtime uses `wire.from`/`wire.to` directly as graph keys in `buildGraph` and string-splits them in `pinPoint`, so it accepts only the flat form `from: battery1.positive`. An object-form wire produces no error — `lessons validate` still passes — but connects nothing in the simulation and draws nothing on the board, leaving the parts placed but entirely unwired and every check involving them permanently failing. The doc's only populated wire example carried the wrong shape, so any board authored from it was dead on arrival. Wires are strings; **Checks** endpoint selectors remain `{ type, pin }` objects, which is the likely source of the confusion. Existing lessons with object-form wires need their wires rewritten. No runtime change. See `docs/authoring/electronics.md`.
+`docs/authoring/electronics.md` previously documented a wire as `from: { component: battery1, pin: positive }`. That shape does not work. The runtime uses `wire.from`/`wire.to` directly as graph keys in `buildGraph` and string-splits them in `pinPoint`, so it accepts only the flat form `from: battery1.positive`. An object-form wire produces no error â€” `lessons validate` still passes â€” but connects nothing in the simulation and draws nothing on the board, leaving the parts placed but entirely unwired and every check involving them permanently failing. The doc's only populated wire example carried the wrong shape, so any board authored from it was dead on arrival. Wires are strings; **Checks** endpoint selectors remain `{ type, pin }` objects, which is the likely source of the confusion. Existing lessons with object-form wires need their wires rewritten. No runtime change. See `docs/authoring/electronics.md`.
 
 ### Electronics `controls` documented
 
@@ -3183,21 +3203,21 @@ A "Fixed" (`locked: true`) component previously had every one of its controls di
 
 ### Electronics tasks should write `starterCircuit` even when a starter stage exists
 
-The student workspace reads `codeStages[0].circuit` and falls back to `starterCircuit`, and the lesson validator follows the same fallback — but the Builder's task editor checks `starterCircuit` alone, so a draft electronics task with only a starter stage shows "This draft task has no starter breadboard yet" over an otherwise working task while `lessons validate` reports it clean. `docs/authoring/electronics.md` now says to write both, and adds a complete pre-wired demo-board example showing the whole shape. No runtime change. See `docs/authoring/electronics.md`.
+The student workspace reads `codeStages[0].circuit` and falls back to `starterCircuit`, and the lesson validator follows the same fallback â€” but the Builder's task editor checks `starterCircuit` alone, so a draft electronics task with only a starter stage shows "This draft task has no starter breadboard yet" over an otherwise working task while `lessons validate` reports it clean. `docs/authoring/electronics.md` now says to write both, and adds a complete pre-wired demo-board example showing the whole shape. No runtime change. See `docs/authoring/electronics.md`.
 
 ### Electronics pin names documented for every component type
 
-`docs/authoring/electronics.md` now lists the pin names for all 16 electronics component types, not just the seven newer parts. `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `buzzer`, and `terminal` previously had no documented pins, so authoring a `starterCircuit` meant guessing — and a wire naming a pin that does not exist silently never connects rather than failing validation. Buttons and switches use `a`/`b`, batteries `positive`/`negative`, LEDs `anode`/`cathode`, potentiometers `left`/`wiper`/`right`, and a junction has the single pin `pin`. No runtime change; `COMPONENT_PINS` in `src/modules/electronics/circuit.js` remains the source of truth. See `docs/authoring/electronics.md`.
+`docs/authoring/electronics.md` now lists the pin names for all 16 electronics component types, not just the seven newer parts. `battery`, `resistor`, `led`, `push_button`, `slide_switch`, `potentiometer`, `motor`, `buzzer`, and `terminal` previously had no documented pins, so authoring a `starterCircuit` meant guessing â€” and a wire naming a pin that does not exist silently never connects rather than failing validation. Buttons and switches use `a`/`b`, batteries `positive`/`negative`, LEDs `anode`/`cathode`, potentiometers `left`/`wiper`/`right`, and a junction has the single pin `pin`. No runtime change; `COMPONENT_PINS` in `src/modules/electronics/circuit.js` remains the source of truth. See `docs/authoring/electronics.md`.
 
 ## 2026-09-01
 
 ### New lesson-level `soloOnly` field
 
-Lessons can now set `soloOnly: true` on the envelope to hard-force solo mode always — the live/wait choice screen is never offered to students, regardless of URL (`?solo=true` becomes redundant) or whether a live session exists for the lesson. Authored via the Builder's "Solo-only lesson" checkbox next to "Draft workflow". Default is `false`/absent (unchanged live/solo behaviour). See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
+Lessons can now set `soloOnly: true` on the envelope to hard-force solo mode always â€” the live/wait choice screen is never offered to students, regardless of URL (`?solo=true` becomes redundant) or whether a live session exists for the lesson. Authored via the Builder's "Solo-only lesson" checkbox next to "Draft workflow". Default is `false`/absent (unchanged live/solo behaviour). See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md`.
 
 ### `code_arrange` lines no longer each require a blank
 
-A `code_arrange` line can now have zero `slot` parts (all `type: "text"`) — useful for fixed context like a variable declaration the student doesn't need to arrange. Validation now only requires at least one blank somewhere across the whole task, not on every individual line. See `docs/authoring/lesson-schema.md`.
+A `code_arrange` line can now have zero `slot` parts (all `type: "text"`) â€” useful for fixed context like a variable declaration the student doesn't need to arrange. Validation now only requires at least one blank somewhere across the whole task, not on every individual line. See `docs/authoring/lesson-schema.md`.
 
 ## 2026-08-20
 
@@ -3212,7 +3232,7 @@ A `code_arrange` line can now have zero `slot` parts (all `type: "text"`) — us
 New `paint` desktop app: a freehand drawing canvas (Brush/Eraser, 8-colour palette + custom
 colour, three brush sizes, Undo, Clear) with the same explicit Open/Save/Save As model as Text
 Editor. `availableApps` now also accepts `"paint"`. Saved drawings store their image as a
-`data:image/png;...` URL directly on the file entry's `content` — Image Viewer and File Manager
+`data:image/png;...` URL directly on the file entry's `content` â€” Image Viewer and File Manager
 now fall back to reading that when there's no authored `src`/asset, so a Paint drawing previews
 like any other image with no other authoring change needed. No new check type. See
 `docs/authoring/desktop.md`.
@@ -3222,34 +3242,34 @@ like any other image with no other authoring change needed. No new check type. S
 ### Added a simulated Browser + search engine to the Desktop module
 
 New `browser` desktop app: a simulated web browser (Back/Forward/Refresh/Home, editable address
-bar) over a new task field, `siteGraph` — a lesson-authored, read-only set of fake pages with
+bar) over a new task field, `siteGraph` â€” a lesson-authored, read-only set of fake pages with
 content, links, an optional `sponsored` flag, `kind: 'search'` (an inline search box), `kind:
 'broken'` (unreachable pages), and `kind: 'download'` (writes into `/Downloads/` via the existing
 Filesystem `fs` map). `availableApps` now also accepts `"browser"`.
 
 New check types: `browser_visited` (`visited`/`not_visited`, field `pageId`) and `search_query`
-(`contains`/`not_contains`/`equals`, field `text`), backed by two new desktop-state fields —
-`browserVisited` (dedup visit log) and `lastSearchQuery` — alongside the existing `fs`/`recycleBin`/
+(`contains`/`not_contains`/`equals`, field `text`), backed by two new desktop-state fields â€”
+`browserVisited` (dedup visit log) and `lastSearchQuery` â€” alongside the existing `fs`/`recycleBin`/
 `windows`. Downloads reuse `fs_path`/`fs_file_content`; no new check type was needed for them.
 
-`siteGraph` has no visual Builder editor yet — author it as JSON/YAML on the task, the same gap
+`siteGraph` has no visual Builder editor yet â€” author it as JSON/YAML on the task, the same gap
 `sandboxStarterDesktop` has. See `docs/authoring/desktop.md`.
 
 ## 2026-08-17
 
 ### Corrected Scratch `evaluation` values and documented `sprite_property_delta`/`sprite_property_changed`
 
-`docs/authoring/scratch.md` previously told authors to write `evaluation: continuous` for block-structure checks (`block_used`, `blocks_in_order`, `block_count`); the runtime only ever recognizes `after_block_placed`, `after_run`, and `manual` — `continuous` silently fell into the after-run bucket, so a check authored exactly as documented would only ever evaluate after Run, never continuously. Use `evaluation: after_block_placed` instead. No published lesson used `continuous`, so no content migration is needed.
+`docs/authoring/scratch.md` previously told authors to write `evaluation: continuous` for block-structure checks (`block_used`, `blocks_in_order`, `block_count`); the runtime only ever recognizes `after_block_placed`, `after_run`, and `manual` â€” `continuous` silently fell into the after-run bucket, so a check authored exactly as documented would only ever evaluate after Run, never continuously. Use `evaluation: after_block_placed` instead. No published lesson used `continuous`, so no content migration is needed.
 
 Also documented two previously-unlisted check types that were already implemented and available in the Builder: `sprite_property_delta` (change in a property since before Run) and `sprite_property_changed` (property differs from before Run, any amount).
 
-Added a warning to the `block_run` section: a block is marked "executed" the instant it runs, before its field values are inspected, and this app's click-to-run-a-single-block feature means a bare click into a block (e.g. to edit its text) already counts as a run. Omitting `fieldValues` on a `block_run` check for a block with student-editable input can pass on an unedited/default value — set `fieldValues` (e.g. `operator: not_equals, value: ""`) to require the student's own input.
+Added a warning to the `block_run` section: a block is marked "executed" the instant it runs, before its field values are inspected, and this app's click-to-run-a-single-block feature means a bare click into a block (e.g. to edit its text) already counts as a run. Omitting `fieldValues` on a `block_run` check for a block with student-editable input can pass on an unedited/default value â€” set `fieldValues` (e.g. `operator: not_equals, value: ""`) to require the student's own input.
 
 See `docs/authoring/scratch.md#scratch-check-types`.
 
 ### Prebuilt Scratch stacks no longer require their blocks to be in the toolbox
 
-A `prebuiltStacks` (or legacy `predefinedBlocks`) entry now appears in the correct toolbox flyout category even when the task's `toolbox` doesn't otherwise include that block type — the platform resolves the root block's category and creates it if missing. This lets a task restrict its toolbox to already-taught blocks while still handing out a scaffolded starter stack built from blocks ahead of the current lesson. The Builder's prebuilt-stack editor no longer restricts which block types an author can add to a stack.
+A `prebuiltStacks` (or legacy `predefinedBlocks`) entry now appears in the correct toolbox flyout category even when the task's `toolbox` doesn't otherwise include that block type â€” the platform resolves the root block's category and creates it if missing. This lets a task restrict its toolbox to already-taught blocks while still handing out a scaffolded starter stack built from blocks ahead of the current lesson. The Builder's prebuilt-stack editor no longer restricts which block types an author can add to a stack.
 
 This only applies to categorized toolboxes; a minimal/flat toolbox (blocks listed directly under `<xml>`) is unchanged and still requires the stack's root block type to already be present there.
 
@@ -3263,31 +3283,31 @@ New `desktop` composed-lesson module type: a windowed desktop shell (icon grid, 
 
 New check types: `fs_recycle_bin` (`is_in`/`not_in`), `window_state` (`opened`/`closed`/`minimized`/`maximized`), and `windows_arranged_side_by_side` (a tolerant two-window geometry check). All existing `fs_*` check types work unchanged against a Desktop task's `fs`.
 
-This first release ships File Manager only — Text Editor, Image Viewer, Paint, and a simulated Browser/search engine are planned for later releases. The support-stage reveal ladder is not available for Desktop tasks yet, matching the Filesystem module. See `docs/authoring/desktop.md`.
+This first release ships File Manager only â€” Text Editor, Image Viewer, Paint, and a simulated Browser/search engine are planned for later releases. The support-stage reveal ladder is not available for Desktop tasks yet, matching the Filesystem module. See `docs/authoring/desktop.md`.
 
 ### Added Text Editor and Image Viewer apps to the Desktop module
 
-Two new Desktop-module apps: **Text Editor** (plain text, no rich formatting yet) and **Image Viewer** (read-only, zoom + next/prev). Opening a file in File Manager now launches the matching app as its own window instead of showing an inline preview, regardless of `availableApps` — `availableApps` (now `fileManager`/`textEditor`/`imageViewer`, with a Builder checkbox picker) only controls which app icons appear on the desktop for standalone launch.
+Two new Desktop-module apps: **Text Editor** (plain text, no rich formatting yet) and **Image Viewer** (read-only, zoom + next/prev). Opening a file in File Manager now launches the matching app as its own window instead of showing an inline preview, regardless of `availableApps` â€” `availableApps` (now `fileManager`/`textEditor`/`imageViewer`, with a Builder checkbox picker) only controls which app icons appear on the desktop for standalone launch.
 
-Text Editor is the platform's first explicit-save UI — content lives in a window's local `draftContent` until Save/Save As/Ctrl+S commits it, unlike every other module type's continuous autosave. A window with unsaved changes shows a `•` in its title and asks for confirmation before closing. Window objects gained two optional fields: `filePath` and `draftContent`; several Text Editor windows can now be open at once (windows dedupe by `(appId, filePath)`, not `appId` alone).
+Text Editor is the platform's first explicit-save UI â€” content lives in a window's local `draftContent` until Save/Save As/Ctrl+S commits it, unlike every other module type's continuous autosave. A window with unsaved changes shows a `â€¢` in its title and asks for confirmation before closing. Window objects gained two optional fields: `filePath` and `draftContent`; several Text Editor windows can now be open at once (windows dedupe by `(appId, filePath)`, not `appId` alone).
 
-No new check types: `window_state` already worked generically by `appId`, and `fs_opened` already worked off the same `openFile` interaction context File Manager uses — both new apps just report through it. See `docs/authoring/desktop.md`.
+No new check types: `window_state` already worked generically by `appId`, and `fs_opened` already worked off the same `openFile` interaction context File Manager uses â€” both new apps just report through it. See `docs/authoring/desktop.md`.
 
 ## 2026-08-03
 
 ### Added student-added sprites/backdrops and student-created variables (Scratch)
 
-Five new optional Scratch task fields: `allowAddSprite`, `addSpritePresetIds`, `allowAddBackdrop`, `addBackdropPresetIds`, `allowCreateVariable`. When enabled, students get an "Add sprite"/"Add backdrop" picker (sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites`/`.defaultBackdrops` library, optionally narrowed per task by the `...PresetIds` fields) and/or a "Make a Variable" flyout button. Student-added sprites/backdrops and student-created variables are decorative only — they never satisfy `sprite_property`, `block_used`, `blocks_in_order`, `block_count`, `block_run`, `variable_equals`, or `variable_compare` checks, which continue to see only the author-authored sprite/variable set. They persist through save, carry-through, and remote reset the same as authored content.
+Five new optional Scratch task fields: `allowAddSprite`, `addSpritePresetIds`, `allowAddBackdrop`, `addBackdropPresetIds`, `allowCreateVariable`. When enabled, students get an "Add sprite"/"Add backdrop" picker (sourced from the admin-curated `lessonTypeAssets/scratch.defaultSprites`/`.defaultBackdrops` library, optionally narrowed per task by the `...PresetIds` fields) and/or a "Make a Variable" flyout button. Student-added sprites/backdrops and student-created variables are decorative only â€” they never satisfy `sprite_property`, `block_used`, `blocks_in_order`, `block_count`, `block_run`, `variable_equals`, or `variable_compare` checks, which continue to see only the author-authored sprite/variable set. They persist through save, carry-through, and remote reset the same as authored content.
 
 See `docs/authoring/scratch.md#student-added-sprites-backdrops-and-variables`.
 
 ### Electronics: generic code checks and lockable wires
 
-Electronics tasks with a `microcontroller` component can now use the shared generic check types — `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants — alongside the existing `circuit_*` checks. These evaluate against the Micro Controller's MicroPython source, not the raw circuit. The Builder's electronics check editor now exposes this as a **Code** subject (with the same operators and wording as the Python/HTML code check editor), so authors can add these checks without hand-editing lesson JSON/YAML. See `docs/authoring/electronics.md` (Checks section) for an example.
+Electronics tasks with a `microcontroller` component can now use the shared generic check types â€” `code`, `code_contains`, `code_equals`, `code_matches_regex`, and their negated variants â€” alongside the existing `circuit_*` checks. These evaluate against the Micro Controller's MicroPython source, not the raw circuit. The Builder's electronics check editor now exposes this as a **Code** subject (with the same operators and wording as the Python/HTML code check editor), so authors can add these checks without hand-editing lesson JSON/YAML. See `docs/authoring/electronics.md` (Checks section) for an example.
 
 Wires now support an optional `wire.locked: true` field, mirroring the existing component `locked` convention: a locked wire cannot be deleted or recolored by students (new wires can still be attached to its pins). The builder's wire inspector gained a "Fixed for students" checkbox alongside the existing color select. See `docs/authoring/electronics.md` for the field description.
 
-No lesson migration is required — omitted `wire.locked` behaves exactly as before (unlocked).
+No lesson migration is required â€” omitted `wire.locked` behaves exactly as before (unlocked).
 
 ### Arcade Kit now honours the "Web editor" asset flag
 
@@ -3304,9 +3324,9 @@ See `docs/authoring/arcade.md#assets` for details.
 
 ### Added `taskActivity` field; authoring intent now previewable
 
-Tasks may now carry an optional `taskActivity` field — a plain-text, author-only note on the intended in-class activity (e.g. "Pair-share discussion"). Like `intent`, it is stored but never shown to students, and it is always optional (not required in Draft). It rides along under the existing generic `taskLastChangedAt` timestamp; it has no dedicated `taskActivityLastChangedAt`.
+Tasks may now carry an optional `taskActivity` field â€” a plain-text, author-only note on the intended in-class activity (e.g. "Pair-share discussion"). Like `intent`, it is stored but never shown to students, and it is always optional (not required in Draft). It rides along under the existing generic `taskLastChangedAt` timestamp; it has no dedicated `taskActivityLastChangedAt`.
 
-Authoring intent (and the new `taskActivity`) are now also visible in the Builder's inline student/quiz preview and in the teacher's full read-only lesson preview, in an "Authoring metadata" section above the student-facing content. This section is visible by default while `lesson.draft: true`, and collapsed (one click to expand) once Draft is cleared. Both fields remain strictly author-only in every case — never rendered on any student-facing render path.
+Authoring intent (and the new `taskActivity`) are now also visible in the Builder's inline student/quiz preview and in the teacher's full read-only lesson preview, in an "Authoring metadata" section above the student-facing content. This section is visible by default while `lesson.draft: true`, and collapsed (one click to expand) once Draft is cleared. Both fields remain strictly author-only in every case â€” never rendered on any student-facing render path.
 
 See `docs/authoring/lesson-schema.md` and `docs/authoring/lesson-schema-yaml.md` for the field reference.
 
@@ -3316,13 +3336,13 @@ New task type for Python and HTML: `taskType: "code_arrange"`. Students assemble
 
 `code_arrange` is a distinct task type alongside `python`/`html` code tasks, not a `quiz` sub-type, since quiz tasks must not carry code/output check fields.
 
-Every line in `lines` is authored the same way: as an ordered `parts` array alternating fixed text (`{type: "text", text}`) and blanks (`{type: "slot", id, code}`) — never parsed out of a `___`-marker text blob. A line that's just a single blank with no surrounding text behaves like a traditional whole draggable line; a line mixing text and blanks reads like `for i in range(___):`. There is no separate mode/schema branch for the two — it's purely how many/which parts a line has.
+Every line in `lines` is authored the same way: as an ordered `parts` array alternating fixed text (`{type: "text", text}`) and blanks (`{type: "slot", id, code}`) â€” never parsed out of a `___`-marker text blob. A line that's just a single blank with no surrounding text behaves like a traditional whole draggable line; a line mixing text and blanks reads like `for i in range(___):`. There is no separate mode/schema branch for the two â€” it's purely how many/which parts a line has.
 
-There is exactly one shared tile pool for the whole task: every blank's own correct code, plus the task-level `distractors` list (`{id, code}[]`). Any tile in that pool can be dropped into any blank in the task — whatever tile currently sits in a blank, correct or distractor, is exactly what gets spliced into the assembled program and run.
+There is exactly one shared tile pool for the whole task: every blank's own correct code, plus the task-level `distractors` list (`{id, code}[]`). Any tile in that pool can be dropped into any blank in the task â€” whatever tile currently sits in a blank, correct or distractor, is exactly what gets spliced into the assembled program and run.
 
-New fields: `lines` (`{id, parts}[]`, one program line per entry, `parts` joined together and lines joined by newlines), `distractors` (task-level `{id, code}[]`, the shared pool's wrong tiles). HTML tasks also use the ordinary `entryFile` / `starterFiles` fields; the entry file's content is replaced by the assembled lines. There is no `prefixCode`/`suffixCode` — the assembled program is just `lines` joined by newlines, nothing wrapped around them.
+New fields: `lines` (`{id, parts}[]`, one program line per entry, `parts` joined together and lines joined by newlines), `distractors` (task-level `{id, code}[]`, the shared pool's wrong tiles). HTML tasks also use the ordinary `entryFile` / `starterFiles` fields; the entry file's content is replaced by the assembled lines. There is no `prefixCode`/`suffixCode` â€” the assembled program is just `lines` joined by newlines, nothing wrapped around them.
 
-See `docs/authoring/lesson-schema.md` ("Code Arrange Task Fields") for the full field reference and an example combining a whole-line blank and a line with an inline blank. See `docs/authoring/python.md` / `docs/authoring/html.md` for module-specific examples. Builder support: choose **Arrange** in the task format picker (composed lessons only) — a visual, reorderable line list where every line uses the same part-by-part composer, plus one shared "Distractor tiles" list, not a raw JSON-shaped form.
+See `docs/authoring/lesson-schema.md` ("Code Arrange Task Fields") for the full field reference and an example combining a whole-line blank and a line with an inline blank. See `docs/authoring/python.md` / `docs/authoring/html.md` for module-specific examples. Builder support: choose **Arrange** in the task format picker (composed lessons only) â€” a visual, reorderable line list where every line uses the same part-by-part composer, plus one shared "Distractor tiles" list, not a raw JSON-shaped form.
 
 ## 2026-07-30
 
