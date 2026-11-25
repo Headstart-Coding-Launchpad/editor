@@ -220,6 +220,21 @@ describe('planTask', () => {
     expect(task.checks[0].reason).toMatch(/input\(\)/)
   })
 
+  it('does not run a task whose Run waits for predictions', () => {
+    const predict = {
+      ...printTask,
+      id: 8,
+      starterCode: 'x = 3\nprint(x)\n',
+      codeStages: [
+        { role: 'starter', label: 'Starter', code: 'x = 3\nprint(x)\n' },
+        { role: 'complete', label: 'Complete', code: 'x = 3\nprint(x)\n' },
+      ],
+      showVariables: { mode: 'predict', predict: ['x'] },
+    }
+    const plan = planTask(pythonLesson([predict]), predict)
+    expect(plan.runs.every((r) => /predict/.test(r.skip))).toBe(true)
+  })
+
   it('reports Python tests and submit-mode tasks as not checked', () => {
     const tests = { ...printTask, id: 5, tests: [{ id: 't1', inputs: [], check: printTask.check }] }
     const submit = { ...printTask, id: 6, interactionMode: 'submit' }

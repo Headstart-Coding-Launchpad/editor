@@ -13,6 +13,8 @@ import { normalizeChecks, normalizeFeedbackChecks } from '../src/modules/checks.
 import { codeCallsInput } from '../src/shared/scrub/runOnOpen.js'
 import { getTaskSetupCode } from '../src/shared/puzzle/setupCode.js'
 import { resolveAssetsPath } from '../src/shared/assetPaths.js'
+import { getPredictRunLock } from '../src/shared/variablesPanel/variablesPanel.js'
+import { getRunCountLock } from '../src/shared/runCounts.js'
 
 export const PASS = 'pass'
 export const FAIL = 'fail'
@@ -209,11 +211,13 @@ function authoredHints(task) {
 
 const INPUT_SKIP = "the code calls input(): answers can't be guessed"
 
-function codeRun(role, code, expect, extra = {}, setupCode = null) {
+const LOCK_SKIP = 'predict mode locks Run until the child fills in their predictions'
+
+function codeRun(task, role, code, expect, extra = {}) {
   const run = { role, code, expect, ...extra }
-  if (run.skip == null && code != null && (codeCallsInput(code) || codeCallsInput(setupCode))) {
-    run.skip = INPUT_SKIP
-  }
+  if (run.skip != null || code == null) return run
+  if (codeCallsInput(code) || codeCallsInput(getTaskSetupCode(task))) run.skip = INPUT_SKIP
+  else if (getPredictRunLock(task, null) || getRunCountLock(task, null, code)) run.skip = LOCK_SKIP
   return run
 }
 
@@ -252,7 +256,7 @@ export function planTask(lesson, task) {
   }
   const runs = []
   if (hasCheck) {
-    runs.push(codeRun('starter', starter.code, 'not_pass', starterExtra, setupCode))
+    runs.push(codeRun(task, 'starter', starter.code, 'not_pass', starterExtra))
     runs.push(
       complete == null
         ? {
@@ -261,12 +265,12 @@ export function planTask(lesson, task) {
             expect: 'pass',
             skip: 'no complete code to prove the checks can pass',
           }
-        : codeRun('complete', complete, 'pass', {}, setupCode)
+        : codeRun(task, 'complete', complete, 'pass')
     )
   } else if (complete != null) {
-    runs.push(codeRun('complete', complete, 'runs_clean', {}, setupCode))
+    runs.push(codeRun(task, 'complete', complete, 'runs_clean'))
   } else {
-    runs.push(codeRun('starter', starter.code, 'runs', starterExtra, setupCode))
+    runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra))
   }
   return { ...base, setup: setupCode != null, runs, hints: authoredHints(task) }
 }
@@ -486,9 +490,9 @@ export function formatReadySummary(report) {
       lines.push(`  ${taskLabel(t)}: ${why}`)
     }
   }
-  if (report.network?.blocked?.length) {
+  if (report.network?.blockedCount) {
     lines.push(
-      `Blocked ${report.network.blocked.length} Firebase request(s) the page tried (nothing was written).`
+      `Blocked ${report.network.blockedCount} Firebase request(s) the page tried (nothing was written).`
     )
   }
   return lines
