@@ -41,7 +41,7 @@ const TASK = stripTaskLineHints(
 const DOC = TASK.codeStages[0].code
 const views = []
 
-function makeView({ task = TASK, scrub = null } = {}) {
+function makeView({ task = TASK, scrub = null, keys = [...defaultKeymap, indentWithTab] } = {}) {
   const doc = task.codeStages[0].code
   const handlers = { openPopover: vi.fn() }
   const view = new EditorView({
@@ -51,7 +51,7 @@ function makeView({ task = TASK, scrub = null } = {}) {
         lineHintsExtension(),
         lockedLinesExtension(),
         scrubExtension({ config: scrub, language: 'python', handlersRef: { current: handlers } }),
-        keymap.of([...defaultKeymap, indentWithTab]),
+        keymap.of(keys),
       ],
     }),
     parent: document.body,
@@ -86,7 +86,10 @@ const move = (view, pos) => view.dispatch({ selection: { anchor: pos }, userEven
 function key(view, k, opts = {}) {
   const event = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...opts })
   view.contentDOM.dispatchEvent(event)
+  return event
 }
+const taskOf = (code) =>
+  stripTaskLineHints({ id: 9, codeStages: [{ role: 'starter', code }] }, 'python')
 const type = (view, text) =>
   view.dispatch(view.state.replaceSelection(text), { userEvent: 'input.type' })
 const note = (view) => view.dom.ownerDocument.querySelector('.cm-lockedNote')
@@ -234,6 +237,39 @@ describe('calmer guided editor: slots and hint chips', () => {
   })
 })
 
+describe('calmer guided editor: review fixes', () => {
+  it('Tab with nowhere to go is left to the browser (no keyboard trap)', () => {
+    const { view } = makeView({ task: taskOf('#@lock-values\nx = 1'), keys: [] })
+    click(view, 4)
+    expect(selected(view)).toBe('1')
+    expect(key(view, 'Tab').defaultPrevented).toBe(false)
+    expect(key(view, 'Tab', { shiftKey: true }).defaultPrevented).toBe(false)
+  })
+
+  it('Enter in the last slot with nothing after it shows the slot note, never a silent freeze', () => {
+    const { view } = makeView({ task: taskOf('#@lock\nx = 1\n#@slot\n') })
+    click(view, line(view, 2).from)
+    type(view, 'y = 2')
+    const lines = view.state.doc.lines
+    key(view, 'Enter')
+    expect(view.state.doc.lines).toBe(lines)
+    expect(note(view)?.textContent).toContain('This space takes one line')
+  })
+
+  it('a paste over a selection across slots is refused with the note, not turned into a delete', () => {
+    const { view } = makeView()
+    click(view, line(view, SLOT1).to)
+    type(view, '    a = 1')
+    const before = view.state.doc.toString()
+    view.dispatch({
+      changes: { from: line(view, SLOT1).from, to: line(view, SLOT2).to, insert: 'z = 3' },
+      userEvent: 'input.paste',
+    })
+    expect(view.state.doc.toString()).toBe(before)
+    expect(note(view)).not.toBeNull()
+  })
+})
+
 describe('calmer guided editor: scrub only from the handle', () => {
   const SCRUB = { numbers: true, colours: true, booleans: true, ranges: [] }
   function pointer(target, type, x, opts = {}) {
@@ -283,6 +319,20 @@ describe('calmer guided editor: scrub only from the handle', () => {
     pointer(window, 'pointermove', 160)
     pointer(window, 'pointerup', 160)
     expect(line(view, IF).text).not.toBe('if fuel >= 100:')
+  })
+
+  it('3. a touch drag that starts on the handle is a scroll, not a scrub', () => {
+    const { view } = makeView({ scrub: SCRUB })
+    view.contentDOM.dispatchEvent(new FocusEvent('focus'))
+    view.dispatch({ selection: { anchor: valueFrom(view) } })
+    const handle = view.dom.querySelector('.cm-scrubHandle')
+    const down = pointer(handle, 'pointerdown', 100, { pointerType: 'touch' })
+    pointer(window, 'pointermove', 160, { pointerType: 'touch' })
+    pointer(window, 'pointerup', 160, { pointerType: 'touch' })
+    expect(down.defaultPrevented).toBe(false)
+    expect(line(view, IF).text).toBe('if fuel >= 100:')
+    const css = [...document.querySelectorAll('style')].map((el) => el.textContent).join('\n')
+    expect(css.match(/\.cm-scrubHandle[^{]*\{[^}]*\}/)[0]).not.toMatch(/touch-action/)
   })
 
   it('3. on touch a quick tap selects only; a long press opens the slider', () => {
