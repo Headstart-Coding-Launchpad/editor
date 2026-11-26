@@ -216,8 +216,8 @@ exports.updateAccountPassword = onCall(
   }
 )
 
-// Data retention (Hub #303): daily at 03:00 UK time. Dry run for now: it counts what is past
-// its limit and writes the counts to retentionLog/{date}; see functions/retention.js.
+// Data retention (Hub #303): daily at 03:00 UK time. It removes what is past its limit and
+// writes the counts to retentionLog/{date}; see functions/retention.js.
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const retention = require('./retention.js')
 

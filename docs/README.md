@@ -58,7 +58,7 @@ Change-type map for finding adjacent code, docs, and tests that usually move tog
 **Load when:** starting feature work, changing runtime contracts, adding source files, or deciding which docs/tests a change should update.
 
 ### [architecture/data-retention-plan.md](architecture/data-retention-plan.md)
-Proposal (Hub #303) for how long LaunchPad keeps session reports, class lists, share links and the old US database, and a daily retention sweep that starts as a dry run.
+Proposal (Hub #303) for how long LaunchPad keeps session reports, class lists, share links and the old US database, and the daily retention sweep (a dry run first, deleting since 26 Nov 2026).
 
 **Load when:** deciding or building data retention or deletion.
 

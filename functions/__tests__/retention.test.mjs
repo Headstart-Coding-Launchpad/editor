@@ -16,8 +16,8 @@ const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2029, 0, 1)
 
 describe('retention sweep limits (#303)', () => {
-  it('is a dry run until Ryan OKs deleting', () => {
-    expect(DELETE).toBe(false)
+  it('deletes (Ryan OK 26 Nov 2026, after 28 dry-run days)', () => {
+    expect(DELETE).toBe(true)
   })
 
   it('reads times from Timestamps, numbers and numeric ids', () => {
@@ -58,12 +58,15 @@ describe('retention sweep limits (#303)', () => {
 })
 
 // Just enough of the Admin SDK for sweep(): one class, one child, no reports or share links.
-function classDb({ createdAt, typedAt }) {
+function classDb({ createdAt, typedAt }, deleted = []) {
   const list = (docs) => ({ docs, size: docs.length })
   const collection = (docs) => ({ get: async () => list(docs) })
   const doc = (data, subcollections = {}) => ({
     data: () => data,
-    ref: { collection: (name) => collection(subcollections[name] ?? []) },
+    ref: {
+      collection: (name) => collection(subcollections[name] ?? []),
+      delete: async () => deleted.push(data),
+    },
   })
   const typing = typedAt == null ? [] : [doc({ recordedAt: typedAt })]
   const child = doc({ createdAt }, { typing })
@@ -71,6 +74,7 @@ function classDb({ createdAt, typedAt }) {
   return {
     collectionGroup: () => collection([]),
     collection: (name) => collection(name === 'classes' ? [cls] : []),
+    recursiveDelete: async (ref) => deleted.push(ref === child.ref ? 'child' : 'other'),
   }
 }
 
@@ -85,5 +89,14 @@ describe('retention sweep class activity (#303)', () => {
   it('keeps a class whose only recent activity is typing practice', async () => {
     const counts = await sweep(classDb({ createdAt: longAgo, typedAt: NOW - DAY }), NOW)
     expect(counts).toMatchObject({ classes: 0, rosterEntries: 0 })
+  })
+
+  it('removes only the children of a class past its limit, never an active one', async () => {
+    const idle = []
+    await sweep(classDb({ createdAt: longAgo }, idle), NOW)
+    expect(idle).toEqual(['child'])
+    const active = []
+    await sweep(classDb({ createdAt: longAgo, typedAt: NOW - DAY }, active), NOW)
+    expect(active).toEqual([])
   })
 })

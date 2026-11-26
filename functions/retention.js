@@ -1,9 +1,9 @@
 // Data retention sweep (Hub #303, Ryan 2026-10-27; docs/architecture/data-retention-plan.md).
-// DRY RUN: it only counts what is past its limit and writes the counts (no names) to
-// retentionLog/{date}. Deleting needs Ryan's second OK, after two weeks of counts; until then
-// DELETE stays false.
+// It removes what is past its limit and writes the counts (no names) to retentionLog/{date}.
+// Switched on with Ryan's second OK (26 Nov 2026) after 28 dry-run days that counted nothing.
+// DELETE = false turns it back into a dry run.
 
-const DELETE = false
+const DELETE = true
 
 const DAY = 24 * 60 * 60 * 1000
 const YEAR = 365 * DAY
