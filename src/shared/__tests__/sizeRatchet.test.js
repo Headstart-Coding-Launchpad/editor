@@ -6,6 +6,8 @@
 // of which +52 are the code-review fixes).
 // Raised 26 Nov 09:56 (Ryan OK) for the tutor highlight note rows and Pin (+88: 213668 -> 213756,
 // after trimming 13 dead lines and compacting 5 in the files touched).
+// Raised again 26 Nov (same Ryan OK) for the code-review fixes (+54: 213756 -> 213810, after
+// shortening the module header by 9).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
