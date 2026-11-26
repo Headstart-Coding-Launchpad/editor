@@ -117,6 +117,26 @@ function countAttemptRuns(entries) {
 const HEALTH_RETRY_LIMIT = 3
 const HEALTH_RETRY_MS = 2000
 
+// Closing the tab on an ended class removes it. A restart from any tab or device must cancel that,
+// or the next drop deletes the running class. cancel() also drops handlers queued on child paths.
+const armedCleanups = new Set()
+function queueEndedCleanup(key, action) {
+  for (const root of ['sessions', 'sharedWorkspacePayloads', 'carryInbox', 'sessionArchive']) {
+    const handler = onDisconnect(ref(db, `${root}/${key}`))
+    handler[action]().catch(() => {})
+  }
+}
+function cancelEndedCleanup(key) {
+  if (armedCleanups.delete(key)) queueEndedCleanup(key, 'cancel')
+}
+function armEndedCleanup(key) {
+  queueEndedCleanup(key, 'remove')
+  armedCleanups.add(key)
+  onValue(ref(db, `sessions/${key}/state`), (snap) => {
+    if ((snap.val() ?? 'ended') !== 'ended') cancelEndedCleanup(key)
+  })
+}
+
 /**
  * Subscribes to a Firebase session and exposes helpers for reading/writing state.
  * Used by both the teacher view and the student view.
@@ -270,6 +290,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   }
 
   async function createSession() {
+    cancelEndedCleanup(lessonId)
     await set(ref(db, `sessions/${lessonId}`), initialSessionData())
     // The payload node lives outside the session, so resetting the session
     // does not clear it on its own.
@@ -384,32 +405,11 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       // Cross-lesson carry outcomes: the report (built before this) holds them.
       carryStatus: null,
     })
+    armEndedCleanup(lessonId)
     await removeSharePayloadsQuietly(`sharedWorkspacePayloads/${lessonId}`)
     await clearCarryInbox(lessonId)
     await clearLiveInkQuietly()
     await clearPeerHelpData(lessonId)
-    // When the teacher closes the tab, remove the session entirely so the
-    // lesson becomes available for solo study without a stale "ended" record.
-    onDisconnect(ref(db, `sessions/${lessonId}`)).remove()
-    // Share payloads sit outside the session node, so they need their own
-    // disconnect cleanup or they outlive the session that owned them.
-    onDisconnect(ref(db, `sharedWorkspacePayloads/${lessonId}`))
-      .remove()
-      .catch(() => {
-        // Non-fatal: worst case a payload subtree outlives its session.
-      })
-    onDisconnect(ref(db, `carryInbox/${lessonId}`))
-      .remove()
-      .catch(() => {
-        // Non-fatal: worst case an inbox outlives its session until the next createSession.
-      })
-    // The sandbox archive has been read into the saved report by now (handleEndSession builds
-    // the report before calling this), so it goes with the session.
-    onDisconnect(ref(db, sessionArchivePath()))
-      .remove()
-      .catch(() => {
-        // Non-fatal: worst case an archive outlives its session until the next createSession.
-      })
   }
 
   // Only http(s) links are accepted — this gets rendered as a clickable link/button to

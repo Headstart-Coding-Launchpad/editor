@@ -17,6 +17,7 @@ const firebaseMocks = vi.hoisted(() => ({
   onDisconnect: vi.fn(() => ({
     set: vi.fn(() => Promise.resolve()),
     remove: vi.fn(() => Promise.resolve()),
+    cancel: vi.fn(() => Promise.resolve()),
   })),
   get: vi.fn(() => Promise.resolve({ val: () => null })),
   runTransaction: vi.fn(() => Promise.resolve({ committed: true })),

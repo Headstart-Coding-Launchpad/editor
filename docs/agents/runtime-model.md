@@ -763,6 +763,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 - `sessionArchive/{lessonId}` is likewise removed when the teacher disconnects after `endSession()` (the report has already been built from it).
+- The `endSession()` removals (session, share payloads, carry inbox, archive) are cancelled when the session stops being ended: by `createSession` in that tab, or by that tab seeing a restart from another tab or device (`useSession.js`).
 - `liveInk/{lessonId}` (Presentation annotations) is removed when the Presentation window disconnects; it registers `onDisconnect().remove()` as soon as it opens.
 
 ## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
