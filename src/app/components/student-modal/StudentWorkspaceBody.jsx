@@ -9,6 +9,7 @@ import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_LABELS, HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { PIN_NOTE_MAX, PIN_PRESETS } from '../../../shared/teacherHighlightsEditor'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
@@ -87,6 +88,8 @@ export default function StudentWorkspaceBody({
   iframeRef,
   canHighlight,
   pendingHighlight,
+  pinMode = false,
+  onPinModeChange,
   highlights,
   onMirrorSelectionChange,
   onDismissHighlight,
@@ -166,53 +169,84 @@ export default function StudentWorkspaceBody({
     { enabled: mirror === 'code' && !isSessionSandbox }
   )
 
+  const modeButton = (pin, label) => (
+    <button
+      type="button"
+      className={pinMode === pin ? 'btn-primary' : 'btn-ghost-outline'}
+      style={s.composerBtn}
+      aria-pressed={pinMode === pin}
+      onClick={() => onPinModeChange?.(pin)}
+    >
+      {label}
+    </button>
+  )
+  const canSend = !!pendingHighlight && (!pinMode || !!highlightNote.trim())
   const highlightComposer = canHighlight && (
     <div style={s.highlightComposer}>
-      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight mark">
-        <span style={s.highlightEmojiLabel} aria-hidden="true">
-          Mark:
-        </span>
-        {HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            style={{
-              ...s.highlightEmojiBtn,
-              ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
-            }}
-            aria-pressed={emoji === highlightEmoji}
-            aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-            title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-            onClick={() => onHighlightEmojiChange(emoji)}
-          >
-            {emoji}
-          </button>
-        ))}
+      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight or pin">
+        {modeButton(false, 'Highlight')}
+        {modeButton(true, '📌 Pin')}
+      </div>
+      <div style={s.highlightEmojiRow} role="group" aria-label={pinMode ? 'Quick words' : 'Mark'}>
+        {pinMode
+          ? PIN_PRESETS.map((words) => (
+              <button
+                key={words}
+                type="button"
+                className={highlightNote === words ? 'btn-primary' : 'btn-ghost-outline'}
+                style={s.composerBtn}
+                onClick={() => onHighlightNoteChange(words)}
+              >
+                {words}
+              </button>
+            ))
+          : HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                style={{
+                  ...s.highlightEmojiBtn,
+                  ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
+                }}
+                aria-pressed={emoji === highlightEmoji}
+                aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                onClick={() => onHighlightEmojiChange(emoji)}
+              >
+                {emoji}
+              </button>
+            ))}
       </div>
       <input
         type="text"
         style={s.highlightNoteInput}
-        placeholder={pendingHighlight ? 'Optional note…' : 'Select code above to highlight it…'}
+        aria-label={pinMode ? 'Pin words' : 'Highlight note'}
+        maxLength={pinMode ? PIN_NOTE_MAX : undefined}
+        placeholder={
+          pinMode
+            ? pendingHighlight
+              ? 'Type or pick the words…'
+              : 'Click a spot in the code, then type or pick…'
+            : pendingHighlight
+              ? 'Optional note…'
+              : 'Select code above to highlight it…'
+        }
         value={highlightNote}
         onChange={(e) => onHighlightNoteChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && pendingHighlight) onSendHighlight()
+          if (e.key === 'Enter' && canSend) onSendHighlight()
         }}
       />
       <button
         className="btn-primary"
-        style={{ fontSize: 12, padding: '4px 10px' }}
+        style={s.composerBtn}
         onClick={onSendHighlight}
-        disabled={!pendingHighlight}
+        disabled={!canSend}
       >
-        Send Highlight
+        {pinMode ? 'Drop pin' : 'Send Highlight'}
       </button>
       {(pendingHighlight || highlightNote) && (
-        <button
-          className="btn-ghost-outline"
-          style={{ fontSize: 12, padding: '4px 10px' }}
-          onClick={onCancelHighlight}
-        >
+        <button className="btn-ghost-outline" style={s.composerBtn} onClick={onCancelHighlight}>
           Clear
         </button>
       )}
@@ -713,8 +747,10 @@ const s = {
     border: '1px solid rgba(37,99,235,0.5)',
     boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
   },
+  composerBtn: { fontSize: 12, padding: '4px 10px' },
   highlightComposer: {
     display: 'flex',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
     padding: '6px 12px',
@@ -726,13 +762,6 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: 2,
-  },
-  highlightEmojiLabel: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    color: '#1e40af',
-    marginRight: 4,
   },
   highlightEmojiBtn: {
     border: '1px solid transparent',

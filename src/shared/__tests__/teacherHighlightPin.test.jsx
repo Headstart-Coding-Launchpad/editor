@@ -1,7 +1,6 @@
 // Fun moment (sketch OK'd 26 Nov 2026, "Tutor highlights + a new Pin"): the tutor's words
 // appear right where the child needs to type, stay while they type there, and go only when the
 // child presses "Got it ✓".
-import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { EditorView } from '@codemirror/view'
 import { CodeEditor } from '../CodeEditor'
@@ -72,5 +71,22 @@ describe('Fun moment: the tutor pins words right where the child types', () => {
     expect(rows.map((r) => r.querySelector('button').textContent)).toEqual(['Got it ✓', 'Got it ✓'])
     expect(container.textContent).toContain('Check this name')
     expect(container.textContent).not.toContain('✕')
+  })
+
+  it('shows the tutor the same pin and words live in their read-only mirror, with Remove', async () => {
+    const onHighlightDismiss = vi.fn()
+    const pin = { id: 'p1', kind: 'pin', from: pinAt, to: pinAt, note: 'Write this here' }
+    const { container } = await renderEditor({
+      readOnly: true,
+      teacherHighlights: [pin],
+      onHighlightDismiss,
+    })
+    const [row] = noteRows(container)
+    expect(row.textContent).toContain('Write this here')
+    expect(container.querySelector('.cm-teacherPin')).toBeTruthy()
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.mouseDown(row.querySelector('button'))
+    expect(row.querySelector('button').textContent).toBe('Remove')
+    expect(onHighlightDismiss).toHaveBeenCalledWith('p1')
   })
 })

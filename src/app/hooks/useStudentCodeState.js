@@ -38,6 +38,7 @@ import { DEFAULT_FS, normaliseDirPath } from '../../modules/filesystem/filesyste
 import { DEFAULT_CIRCUIT } from '../../modules/electronics/circuit'
 import { makeDefaultDesktop } from '../../modules/desktop/desktopState'
 import { decodeFileKey } from '../../shared/fileKeys'
+import { teacherHighlightsFor } from '../../shared/teacherHighlightsEditor'
 import { AUTO_CHECK_LEAVE, isAutoAttempt } from '../../shared/autoCheck'
 import {
   savePersonalSandboxCode,
@@ -853,13 +854,10 @@ export function useStudentCodeState({
     recordSupportStageReveal,
   ])
 
-  const teacherHighlights = useMemo(() => {
-    const raw = myStudentData?.teacherHighlights
-    if (!raw) return []
-    return Object.entries(raw)
-      .filter(([, h]) => decodeFileKey(h.file) === activeFile)
-      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
-  }, [myStudentData?.teacherHighlights, activeFile])
+  const teacherHighlights = useMemo(
+    () => teacherHighlightsFor(myStudentData?.teacherHighlights, activeFile),
+    [myStudentData?.teacherHighlights, activeFile]
+  )
 
   const dismissHighlight = useCallback(
     (highlightId) => {
@@ -898,11 +896,8 @@ export function useStudentCodeState({
   const {
     teacherHint,
     checkPassed,
-    setCheckPassed,
     checkAttempted,
-    setCheckAttempted,
     checkSuggestion,
-    setCheckSuggestion,
     repeatedSuggestionCount,
     checkFailCount,
     testResults,

@@ -1408,16 +1408,11 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     })
   }
 
-  async function pushTeacherHighlight(anonymousId, { file, from, to, emoji, note } = {}) {
+  async function pushTeacherHighlight(anonymousId, { file, from, to, emoji, note, kind } = {}) {
     const newRef = push(ref(db, `sessions/${lessonId}/students/${anonymousId}/teacherHighlights`))
-    await set(newRef, {
-      file: encodeFileKey(file),
-      from,
-      to,
-      emoji,
-      note: note || null,
-      createdAt: Date.now(),
-    })
+    const entry = { file: encodeFileKey(file), from, to, emoji, note: note || null }
+    // A pin (from === to) stores kind 'pin'; a highlight stores no kind.
+    await set(newRef, { ...entry, kind: kind === 'pin' ? 'pin' : null, createdAt: Date.now() })
     return newRef.key
   }
 

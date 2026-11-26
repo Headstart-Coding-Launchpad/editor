@@ -3,6 +3,7 @@ import { exampleOpenCount } from '../../shared/exampleOpens'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
+import { PIN_NOTE_MAX, teacherHighlightsFor } from '../../shared/teacherHighlightsEditor'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import {
@@ -98,7 +99,6 @@ function useNarrowWindow(width) {
     onChange()
     list.addEventListener?.('change', onChange)
     return () => list.removeEventListener?.('change', onChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
   return narrow
 }
@@ -130,7 +130,6 @@ export default function StudentModal({
   isLive,
   isLiveForAll,
   isLiveForAllPanel = false,
-  onGoLive,
   onGoLiveForAll,
   onStopLive,
   onClose,
@@ -237,8 +236,10 @@ export default function StudentModal({
   // ({ at: 'student:task', key }), so it never carries over to the next student or task.
   const [canSeePreview, setCanSeePreview] = useState(null)
 
-  // Teacher highlight: select a range in the mirrored view, tag it, send it
+  // Teacher highlight: select a range in the mirrored view, tag it, send it. In Pin mode a click
+  // marks a spot instead (from === to) and the note is required.
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
+  const [pinMode, setPinMode] = useState(false)
   const [highlightEmoji, setHighlightEmoji] = useState(HIGHLIGHT_EMOJI_OPTIONS[0])
   const [highlightNote, setHighlightNote] = useState('')
 
@@ -462,18 +463,28 @@ export default function StudentModal({
     onClose?.()
   }
 
-  function handleMirrorSelectionChange({ from, to }) {
-    setPendingHighlight(from === to ? null : { from, to })
+  function handleMirrorSelectionChange({ from, to, pointer }) {
+    // A pin follows the code once placed; only the tutor's own click places one.
+    if (pinMode) {
+      if (pointer || pendingHighlight) setPendingHighlight({ from: to, to })
+    } else setPendingHighlight(from === to ? null : { from, to })
+  }
+
+  function handleHighlightModeChange(pin) {
+    setPinMode(pin)
+    handleCancelHighlight()
   }
 
   function handleSendHighlight(activeFile) {
-    if (!pendingHighlight) return
+    const note = highlightNote.trim().slice(0, pinMode ? PIN_NOTE_MAX : undefined) || null
+    if (!pendingHighlight || (pinMode && !note)) return
     onAddHighlight?.(student.anonymousId, {
       file: activeFile,
       from: pendingHighlight.from,
       to: pendingHighlight.to,
-      emoji: highlightEmoji,
-      note: highlightNote.trim() || null,
+      emoji: pinMode ? '📌' : highlightEmoji,
+      note,
+      ...(pinMode ? { kind: 'pin' } : {}),
     })
     setPendingHighlight(null)
     setHighlightNote('')
@@ -678,13 +689,10 @@ export default function StudentModal({
     !isCodeArrangeTask &&
     !!moduleCaps?.highlights &&
     teacherEditState === 'idle'
-  const highlightsForActiveFile = useMemo(() => {
-    const raw = student.teacherHighlights
-    if (!raw) return []
-    return Object.entries(raw)
-      .filter(([, h]) => (mirror === 'code' ? true : decodeFileKey(h.file) === activeFile))
-      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
-  }, [student.teacherHighlights, mirror, activeFile])
+  const highlightsForActiveFile = useMemo(
+    () => teacherHighlightsFor(student.teacherHighlights, mirror === 'code' ? null : activeFile),
+    [student.teacherHighlights, mirror, activeFile]
+  )
 
   useEffect(() => {
     const liveFile =
@@ -2021,6 +2029,8 @@ export default function StudentModal({
                       iframeRef={iframeRef}
                       canHighlight={canHighlight}
                       pendingHighlight={pendingHighlight}
+                      pinMode={pinMode}
+                      onPinModeChange={handleHighlightModeChange}
                       highlights={highlightsForActiveFile}
                       onMirrorSelectionChange={handleMirrorSelectionChange}
                       onDismissHighlight={handleDismissHighlight}

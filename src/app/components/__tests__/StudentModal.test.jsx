@@ -4,14 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
 
+const editorSpy = vi.hoisted(() => ({ onSelectionChange: null }))
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, readOnly }) => (
-    <textarea
-      data-testid="code-editor"
-      value={value ?? ''}
-      readOnly={readOnly}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
+  CodeEditor: ({ value, onChange, readOnly, onSelectionChange }) => (
+    (editorSpy.onSelectionChange = onSelectionChange),
+    (
+      <textarea
+        data-testid="code-editor"
+        value={value ?? ''}
+        readOnly={readOnly}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    )
   ),
 }))
 
@@ -332,6 +336,29 @@ describe('StudentModal', () => {
       'Mark as a mistake'
     )
     expect(screen.getByRole('button', { name: 'Mark as great work' })).toBeInTheDocument()
+  })
+
+  it('drops a pin where the tutor clicks, with picked words (Pin mode)', async () => {
+    const { act } = await import('@testing-library/react')
+    const onAddHighlight = vi.fn()
+    render(<StudentModal {...mkProps({ isLive: true, onAddHighlight })} />)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    const drop = screen.getByRole('button', { name: 'Drop pin' })
+    // The student typing moves the mirror's cursor: that is not the tutor's click.
+    act(() => editorSpy.onSelectionChange({ from: 2, to: 2, pointer: false }))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    expect(drop).toBeDisabled()
+    act(() => editorSpy.onSelectionChange({ from: 5, to: 5, pointer: true }))
+    expect(screen.getByLabelText('Pin words')).toHaveAttribute('maxLength', '80')
+    fireEvent.click(drop)
+    expect(onAddHighlight).toHaveBeenCalledWith('student-1', {
+      file: expect.anything(),
+      from: 5,
+      to: 5,
+      emoji: '📌',
+      note: 'Write this here',
+      kind: 'pin',
+    })
   })
 
   it('renders the presence badge', () => {
