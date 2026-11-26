@@ -8,6 +8,7 @@
 // after trimming 13 dead lines and compacting 5 in the files touched).
 // Raised again 26 Nov (same Ryan OK) for the code-review fixes (+54: 213756 -> 213810, after
 // shortening the module header by 9).
+// And again 26 Nov (same Ryan OK) for the browser-pass fixes (+29: 213810 -> 213839).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
