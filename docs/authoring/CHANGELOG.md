@@ -46,11 +46,14 @@ Entries written before 2026-09-29 are not tagged.
   answer is not guessed). A Python or Turtle `code_arrange` task runs its model arrangement as
   the host module's code (it must pass), and in indent mode the lines' start depths too (they
   must not pass). A Support stage must not pass the checks (Python and Turtle runs it, Scratch
-  judges its blocks): one that does hands the child the answer, and fails. No new lesson fields.
+  judges its blocks; on a `code_arrange` task it runs too): one that does hands the child the
+  answer, and fails. A fill-in-the-gaps quiz with more blanks than `___` gaps fails. No new
+  lesson fields.
   See [lessons-ready-cli.md](lessons-ready-cli.md).
 - Affects: cli, quiz_multiple_choice, quiz_match, quiz_fill_blank, quiz_code_lines, code_arrange,
   python, turtle, scratch · Existing lessons: a Support stage that already passes the checks is
-  now reported as a failure; trim it or make it a Complete stage · Resolves: none (Deep Review
+  now reported as a failure; trim it or make it a Complete stage, and a fill-in-the-gaps quiz
+  with a blank past its last `___` fails; add the gap or drop the blank · Resolves: none (Deep Review
   C1, 10 Nov 2026)
 
 ## 2026-11-25
