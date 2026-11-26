@@ -237,7 +237,10 @@ async function runLessonReady(lesson, { base, run, assets, taskId, inputs }) {
   } else if (!run) {
     for (const p of plans) {
       results[p.id] = Object.fromEntries(
-        p.runs.map((r) => [r.role, { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' }])
+        p.runs.map((r) => [
+          ready.runKey(r),
+          { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' },
+        ])
       )
     }
   }

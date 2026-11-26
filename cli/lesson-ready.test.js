@@ -10,6 +10,7 @@ import {
   validateAsPublished,
 } from './lesson-ready.mjs'
 import { SETUP_ERROR_TEXT } from '../src/shared/puzzle/setupCode.js'
+import { getQuizActivityDefinitions } from '../src/activities/registry.pure.js'
 
 const BASE = 'https://example.test/editor/'
 
@@ -158,13 +159,24 @@ describe('lessons ready: the Fun moment (a lesson that would break in class is n
       'support:2': done('passed'),
     })
     expect(task.status).toBe('fail')
-    const support = task.checks.find((c) => c.name.endsWith('does not pass') && c.role === 'support')
+    const support = task.checks.find(
+      (c) => c.name.endsWith('does not pass') && c.role === 'support'
+    )
     expect(support).toMatchObject({ status: 'fail', name: 'Support: Nearly there does not pass' })
     expect(support.detail).toMatch(/hands the child the answer/)
   })
 })
 
 describe('quizzes: graded with the quiz’s own grader', () => {
+  it("passes every graded quiz type's own default task (the grader round trip holds)", () => {
+    for (const def of getQuizActivityDefinitions()) {
+      const task = def.defaultTask({ id: 1 })
+      const report = judgeTask(planTask(pythonLesson([task]), task))
+      if (report.status === 'nothing_to_run' || !def.solutionState) continue
+      expect([def.id, report.status, report.checks]).toEqual([def.id, 'pass', expect.any(Array)])
+    }
+  })
+
   const mc = {
     id: 30,
     title: 'Pick print',
@@ -236,7 +248,11 @@ describe('code_arrange: the model arrangement runs as the host module’s code',
     const plan = planTask(composed(indent), indent)
     expect(plan.module).toBe('turtle')
     expect(plan.runs.map((r) => [r.role, r.expect, r.code])).toEqual([
-      ['starter', 'not_pass', 'import turtle\nfor side in range(4):\nturtle.forward(100)\nturtle.left(90)'],
+      [
+        'starter',
+        'not_pass',
+        'import turtle\nfor side in range(4):\nturtle.forward(100)\nturtle.left(90)',
+      ],
       [
         'complete',
         'pass',

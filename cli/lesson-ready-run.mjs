@@ -14,6 +14,8 @@
 import { findShotTask, prepareShotLesson } from './lesson-screenshot-input.mjs'
 import { launchBrowser, withTrailingSlash } from './lesson-screenshot.mjs'
 import { SETUP_ERROR_TEXT } from '../src/shared/puzzle/setupCode.js'
+import { isModuleHostedActivityTask } from '../src/activities/registry.pure.js'
+import { runKey } from './lesson-ready.mjs'
 
 const SHOT_GLOBAL = '__HSC_SHOT__'
 // The smallest screen LaunchPad is built for (CLAUDE.md: fits 1366x768).
@@ -76,8 +78,15 @@ export function readShotVerdict([setupErrorText, runErrorSource] = []) {
   }
 }
 
-// The task as a run shows it: the run's code as its starter, shown in solo whatever its taskMode.
-function runTaskCopy(lesson, taskId, code) {
+// The fields that make a code_arrange task an arrangement rather than its host module's code task.
+const ARRANGE_FIELDS = ['taskType', 'lines', 'distractors', 'arrangeMode', 'showBlocks']
+
+/**
+ * The task as a run shows it: the run's code as its starter, shown in solo whatever its taskMode.
+ * A code_arrange task becomes its host module's code task holding the assembled program: the
+ * classroom runs an arrangement through that module's own Run and checks.
+ */
+export function runTaskCopy(lesson, taskId, code) {
   const prepared = prepareShotLesson(lesson, {
     task: String(taskId),
     openTask: null,
@@ -86,6 +95,7 @@ function runTaskCopy(lesson, taskId, code) {
   })
   const task = { ...findShotTask(prepared, taskId) }
   delete task.taskMode
+  if (isModuleHostedActivityTask(task)) for (const field of ARRANGE_FIELDS) delete task[field]
   return task
 }
 
@@ -239,7 +249,7 @@ async function runOne(page, base, key, { expectVerdict, inputs = [] }) {
 
 /**
  * Makes every planned run that isn't skipped, one at a time in one browser. Returns
- * `{ results: { [taskId]: { starter, complete } }, network: { blocked }, run }`.
+ * `{ results: { [taskId]: { [runKey]: result } }, network: { blocked }, run }`.
  */
 export async function runPlannedTasks({ lesson, plans, base, log = () => {} }) {
   const jobs = []
@@ -247,7 +257,7 @@ export async function runPlannedTasks({ lesson, plans, base, log = () => {} }) {
   for (const plan of plans) {
     for (const run of plan.runs) {
       if (run.skip) continue
-      const key = `${plan.id}:${run.role}`
+      const key = `${plan.id}:${runKey(run)}`
       variants[key] = { taskId: plan.id, task: runTaskCopy(lesson, plan.id, run.code ?? '') }
       jobs.push({ plan, run, key })
     }
@@ -266,12 +276,12 @@ export async function runPlannedTasks({ lesson, plans, base, log = () => {} }) {
         expectVerdict: run.expect === 'pass' || run.expect === 'not_pass',
         inputs: run.inputs ?? [],
       })
-      ;(results[plan.id] ??= {})[run.role] = result
+      ;(results[plan.id] ??= {})[runKey(run)] = result
       const said =
         result.status !== 'done'
           ? `not checked (${result.reason})`
           : `${result.verdict ?? 'no check result'}${result.runError ? ', error in output' : ''}`
-      log(`[${i + 1}/${jobs.length}] task ${plan.id} ${run.role}: ${said}`)
+      log(`[${i + 1}/${jobs.length}] task ${plan.id} ${runKey(run)}: ${said}`)
     }
     await context.close()
   } finally {
