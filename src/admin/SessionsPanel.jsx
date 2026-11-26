@@ -70,14 +70,14 @@ export default function SessionsPanel() {
         const studentIds = Object.keys(students)
         return {
           lessonId,
-          state: session.state,
+          state: session.state || 'Leftover', // no state: stray writes, closable here
           isPaused: !!session.isPaused,
           createdAt: session.createdAt ?? null,
           studentCount: studentIds.length,
           onlineCount: studentIds.filter((id) => students[id]?.online).length,
         }
       })
-      .filter((s) => s.state && s.state !== 'ended')
+      .filter((s) => s.state !== 'ended')
       .sort((a, b) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity))
   }, [sessionsById])
 

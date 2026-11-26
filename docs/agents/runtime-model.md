@@ -26,7 +26,7 @@ The `students.{id}.healthBeacon` field (the health beacon, deep review R1) was a
 {
   "sessions": {
     "{lessonId}": {
-      "state": "waiting | active | sandbox | ended",
+      "state": "waiting | active | sandbox | ended (a node with no state is leftover stray writes: TeacherView, when the dashboard loads, replaces it with a fresh waiting session, carrying over joiningStudents only)",
       "currentTaskId": 1,
       "createdAt": 1234567890,
       "teacherPresence": "{ [tabId]: true } | absent (each open tutor tab on a waiting/active session; removed by onDisconnect — useTeacherPresence.js)",
@@ -764,6 +764,7 @@ Live Student Badges (`docs/architecture/live-badges-plan.md`) record behaviour a
 - `joiningStudents/{tempId}` key is removed on disconnect with `onDisconnect().remove()`.
 - `sharedWorkspacePayloads/{lessonId}` is removed when the teacher disconnects. It sits outside the session node, so the session's own removal does not cover it.
 - `sessionArchive/{lessonId}` is likewise removed when the teacher disconnects after `endSession()` (the report has already been built from it).
+- The `endSession()` removals (session, share payloads, carry inbox, archive) are cancelled when the session stops being ended: by `createSession` in that tab, or by that tab seeing a restart from another tab or device (`useSession.js`). A tab that is offline or frozen when another device restarts can still remove the session.
 - `liveInk/{lessonId}` (Presentation annotations) is removed when the Presentation window disconnects; it registers `onDisconnect().remove()` as soon as it opens.
 
 ## Sealed Task Answers (`lessons/{lessonId}` tasks and `lessonOverrideTasks`)
