@@ -92,6 +92,7 @@ export default function StudentWorkspaceBody({
   onPinModeChange,
   highlights,
   onMirrorSelectionChange,
+  onMirrorPick,
   onDismissHighlight,
   highlightEmoji,
   onHighlightEmojiChange,
@@ -443,6 +444,7 @@ export default function StudentWorkspaceBody({
             runCounts={runCountsFor(student.currentCode ?? '')}
             variableLinks={variableLinks.editor}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+            onPick={canHighlight ? onMirrorPick : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{
               height: fitCode ? 'auto' : '100%',
@@ -610,6 +612,7 @@ export default function StudentWorkspaceBody({
                 teacherHighlights={highlights}
                 lineHints={lineHints}
                 onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+                onPick={canHighlight ? onMirrorPick : undefined}
                 onHighlightDismiss={onDismissHighlight}
                 style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
               />

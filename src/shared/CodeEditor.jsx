@@ -170,6 +170,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
     readOnly = false,
     onChange,
     onSelectionChange,
+    // A click or tap on the code (mouse or touch): onPick(pos), the document position under it.
+    onPick,
     onActivity,
     remoteSelection = null,
     teacherHighlights = [],
@@ -234,6 +236,13 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   onSelectionChangeRef.current = onSelectionChange
   onActivityRef.current = onActivity
   onHighlightDismissRef.current = onHighlightDismiss
+  const onPickRef = useRef(onPick)
+  onPickRef.current = onPick
+  const dismissFromGotIt = (event) => {
+    const gotIt = event.target.closest?.('.cm-teacherNoteGotIt')
+    if (gotIt) onHighlightDismissRef.current?.(gotIt.dataset.highlightId)
+    return !!gotIt
+  }
   onRunShortcutRef.current = onRunShortcut
   const badgeSignals = useContext(BadgeSignalsContext)
   const onUserEditRef = useRef(null)
@@ -352,9 +361,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             }
             if (update.docChanged || update.selectionSet) {
               const selection = update.state.selection.main
-              // `pointer`: the user placed it (a click or drag), not mapped through an edit.
-              const pointer = update.transactions.some((tr) => tr.isUserEvent('select.pointer'))
-              onSelectionChangeRef.current?.({ from: selection.from, to: selection.to, pointer })
+              onSelectionChangeRef.current?.({ from: selection.from, to: selection.to })
             }
           }),
           EditorView.domEventHandlers({
@@ -373,12 +380,20 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
               return false
             },
             mousedown: (event) => {
-              const gotIt = event.target.closest?.('.cm-teacherNoteGotIt')
-              if (gotIt) {
-                onHighlightDismissRef.current?.(gotIt.dataset.highlightId)
+              if (dismissFromGotIt(event)) return true
+              onActivityRef.current?.({ type: 'click', at: Date.now() })
+              return false
+            },
+            // A click with detail 0 is Enter/Space on a focused Got it (a mouse click on it was
+            // handled at mousedown). Any other click or tap on the code is the user's own pick
+            // of a spot (onPick, the tutor's pin), never a selection set from code.
+            click: (event, view) => {
+              if (event.target.closest?.('.cm-teacherNoteGotIt')) {
+                if (event.detail === 0) dismissFromGotIt(event)
                 return true
               }
-              onActivityRef.current?.({ type: 'click', at: Date.now() })
+              const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
+              if (pos != null) onPickRef.current?.(pos)
               return false
             },
           }),

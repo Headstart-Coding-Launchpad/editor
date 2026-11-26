@@ -463,11 +463,17 @@ export default function StudentModal({
     onClose?.()
   }
 
-  function handleMirrorSelectionChange({ from, to, pointer }) {
-    // A pin follows the code once placed; only the tutor's own click places one.
-    if (pinMode) {
-      if (pointer || pendingHighlight) setPendingHighlight({ from: to, to })
-    } else setPendingHighlight(from === to ? null : { from, to })
+  // A pending range or pin belongs to the student, task and file it was made on (`at`); it is
+  // dropped (Send disabled) once any of them changes.
+  const pendingAt = () => `${student.anonymousId}|${session?.currentTaskId}|${activeFile}`
+
+  function handleMirrorSelectionChange({ from, to }) {
+    if (!pinMode) setPendingHighlight(from === to ? null : { from, to, at: pendingAt() })
+  }
+
+  // Pin mode: only the tutor's own click or tap on the mirror places the pin.
+  function handleMirrorPick(pos) {
+    if (pinMode) setPendingHighlight({ from: pos, to: pos, at: pendingAt() })
   }
 
   function handleHighlightModeChange(pin) {
@@ -477,11 +483,11 @@ export default function StudentModal({
 
   function handleSendHighlight(activeFile) {
     const note = highlightNote.trim().slice(0, pinMode ? PIN_NOTE_MAX : undefined) || null
-    if (!pendingHighlight || (pinMode && !note)) return
+    if (!livePending || (pinMode && !note)) return
     onAddHighlight?.(student.anonymousId, {
       file: activeFile,
-      from: pendingHighlight.from,
-      to: pendingHighlight.to,
+      from: livePending.from,
+      to: livePending.to,
       emoji: pinMode ? '📌' : highlightEmoji,
       note,
       ...(pinMode ? { kind: 'pin' } : {}),
@@ -644,6 +650,7 @@ export default function StudentModal({
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find((f) => f.name === activeFile) ?? files[0]
+  const livePending = pendingHighlight?.at === pendingAt() ? pendingHighlight : null
 
   // While a share is pending, the modal shows only the frozen snapshot the
   // class would receive — not this student's live workspace.
@@ -2028,7 +2035,8 @@ export default function StudentModal({
                       iframeSrc={iframeSrc}
                       iframeRef={iframeRef}
                       canHighlight={canHighlight}
-                      pendingHighlight={pendingHighlight}
+                      pendingHighlight={livePending}
+                      onMirrorPick={handleMirrorPick}
                       pinMode={pinMode}
                       onPinModeChange={handleHighlightModeChange}
                       highlights={highlightsForActiveFile}

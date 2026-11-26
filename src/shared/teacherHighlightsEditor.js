@@ -1,17 +1,8 @@
-// Tutor highlights and pins in the CodeMirror editor (docs/agents/classroom-behaviours.md,
-// "Teacher Code Highlights"). The same field draws them in the student's own editor and in the
-// tutor's read-only mirror.
-//
-// - A highlight marks a range: a tight box when it sits on one line, one full-width band with a
-//   left bar when it spans lines. A user edit inside it clears it for good.
-// - A pin (`kind: 'pin'`, from === to) marks a spot with a thin caret. It stays while the child
-//   types there (typed text goes before it) and moves with the code.
-// - Each one gets a note row: a block widget under its last line (so it never covers code or the
-//   lesson hint chip), with the mark, the tutor's words and one "Got it ✓" button (a "Remove"
-//   button in the tutor's read-only mirror). Clicking the words does nothing. Its arrow is
-//   measured from the editor, so it points at the words on a wrapped line too.
+// Tutor highlights and pins in CodeMirror, in the student's editor and the tutor's mirror alike:
+// box / band / pin caret plus a note row with one Got it button. Behaviour and rules:
+// docs/agents/classroom-behaviours.md, "Teacher Code Highlights".
 import { StateEffect, StateField } from '@codemirror/state'
-import { Decoration, EditorView, WidgetType } from '@codemirror/view'
+import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view'
 import { decodeFileKey } from './fileKeys'
 
 export const PIN_NOTE_MAX = 80
@@ -45,6 +36,11 @@ class PinWidget extends WidgetType {
   }
 }
 
+/** Left margin (px) putting the pill under the arrow, inside the visible editor width. */
+export function noteMarginLeft(arrowX, pillWidth, visibleWidth) {
+  return Math.max(0, Math.min(arrowX - 24, visibleWidth - pillWidth - 8))
+}
+
 class NoteRowWidget extends WidgetType {
   constructor(item) {
     super()
@@ -52,13 +48,14 @@ class NoteRowWidget extends WidgetType {
   }
   eq(other) {
     const [a, b] = [this.item, other.item]
-    return a.id === b.id && a.emoji === b.emoji && a.note === b.note && a.from === b.from
+    return ['id', 'emoji', 'note', 'from', 'to'].every((key) => a[key] === b[key])
   }
   toDOM(view) {
     const { id, emoji, note, from, to } = this.item
     const row = document.createElement('div')
     row.className = 'cm-teacherNote'
     row.setAttribute('role', 'note')
+    Object.assign(row.dataset, { from, to })
     const pill = document.createElement('span')
     pill.className = 'cm-teacherNotePill'
     const mark = document.createElement('span')
@@ -74,29 +71,59 @@ class NoteRowWidget extends WidgetType {
     button.textContent = view.state.readOnly ? 'Remove' : 'Got it ✓'
     pill.append(mark, text, button)
     row.append(pill)
-    // Point the arrow at the words: the middle of a one-row highlight, else its start.
-    view.requestMeasure({
-      read: () => {
-        const start = view.coordsAtPos(from, 1)
-        const end = view.coordsAtPos(to, -1)
-        const box = row.getBoundingClientRect()
-        if (!start || !box.width) return null
-        const sameRow = end && Math.abs(end.top - start.top) < 2
-        return (sameRow ? (start.left + end.right) / 2 : start.left + 6) - box.left
-      },
-      write: (x) => {
-        if (x == null) return
-        row.style.setProperty('--note-arrow', `${Math.max(x, 12)}px`)
-        pill.style.marginLeft = `${Math.max(x - 24, 0)}px`
-      },
-    })
     return row
   }
-  // Only the button reaches the editor's handlers; a click on the words does nothing.
+  // Only a mouse press or click on the button reaches the editor's handlers (CodeEditor's
+  // mousedown, and click with detail 0 for Enter/Space). Its keys stay the button's own; a click
+  // on the words does nothing.
   ignoreEvent(event) {
-    return !event.target?.closest?.('.cm-teacherNoteGotIt')
+    const onButton = !!event.target?.closest?.('.cm-teacherNoteGotIt')
+    return !(onButton && (event.type === 'mousedown' || event.type === 'click'))
   }
 }
+
+// Points each note's arrow at its words (the middle of a one-row highlight, else its start) and
+// keeps the pill inside the visible editor. Re-measured whenever the code, the notes, the
+// editor's size or the scrolled viewport change.
+function measureNotes(view) {
+  view.requestMeasure({
+    key: measureNotes,
+    read: () => {
+      const scroller = view.scrollDOM.getBoundingClientRect()
+      return [...view.contentDOM.querySelectorAll('.cm-teacherNote')].map((row) => {
+        const box = row.getBoundingClientRect()
+        const max = view.state.doc.length
+        const start = view.coordsAtPos(Math.min(+row.dataset.from, max), 1)
+        const end = view.coordsAtPos(Math.min(+row.dataset.to, max), -1)
+        if (!start || !box.width) return { row, x: null }
+        const sameRow = end && Math.abs(end.top - start.top) < 2
+        const x = (sameRow ? (start.left + end.right) / 2 : start.left + 6) - box.left
+        const visible = scroller.left + view.scrollDOM.clientWidth - box.left
+        const pillWidth = row.firstChild.offsetWidth
+        return { row, x: Math.min(x, visible - 12), margin: noteMarginLeft(x, pillWidth, visible) }
+      })
+    },
+    write: (notes) => {
+      for (const { row, x, margin } of notes) {
+        if (x == null) continue
+        row.style.setProperty('--note-arrow', `${Math.max(x, 12)}px`)
+        row.firstChild.style.marginLeft = `${margin}px`
+      }
+    },
+  })
+}
+
+const noteMeasurer = ViewPlugin.define((view) => {
+  measureNotes(view)
+  return {
+    update(update) {
+      const notesChanged =
+        update.startState.field(teacherHighlightsField, false) !==
+        update.state.field(teacherHighlightsField, false)
+      if (notesChanged || update.geometryChanged || update.viewportChanged) measureNotes(view)
+    },
+  }
+})
 
 function buildDecorations(doc, items) {
   const ranges = []
@@ -245,6 +272,7 @@ export const teacherHighlightsField = StateField.define({
   provide: (field) => [
     EditorView.decorations.from(field, (value) => value.decorations),
     teacherHighlightsTheme,
+    noteMeasurer,
   ],
 })
 
