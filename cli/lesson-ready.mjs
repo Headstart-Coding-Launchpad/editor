@@ -508,18 +508,17 @@ function planBlocksTask(task, base) {
   if (normalizeChecks(task.check).length === 0) {
     return { ...base, status: NOTHING_TO_RUN, reason: 'no completion check' }
   }
-  const stages = getScratchVerificationStages(task, { includeSupport: true }).map(
-    ({ stage, kind, blocks }) => {
-      // A task with no starter blocks starts on an empty workspace.
-      if (blocks == null && kind !== 'starter') return { stage, kind, missing: true }
-      blocks = blocks ?? {}
-      try {
-        return { stage, kind, blocks, ...evaluateScratchStage(task, blocks) }
-      } catch (e) {
-        return { stage, kind, error: `blocks are not valid JSON (${e.message})` }
-      }
+  const toJudge = getScratchVerificationStages(task, { includeSupport: true })
+  const stages = toJudge.map(({ stage, kind, blocks }) => {
+    // A task with no starter blocks starts on an empty workspace.
+    if (blocks == null && kind !== 'starter') return { stage, kind, missing: true }
+    blocks = blocks ?? {}
+    try {
+      return { stage, kind, blocks, ...evaluateScratchStage(task, blocks) }
+    } catch (e) {
+      return { stage, kind, error: `blocks are not valid JSON (${e.message})` }
     }
-  )
+  })
   const starter = stages.find((s) => s.kind === 'starter' && !s.missing)
   const completes = stages.filter((s) => s.kind === 'complete' && !s.missing)
   // A run-and-read task: the starter is the complete blocks.
