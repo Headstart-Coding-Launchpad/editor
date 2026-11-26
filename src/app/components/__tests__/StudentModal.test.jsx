@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
 
-const editorSpy = vi.hoisted(() => ({ onSelectionChange: null }))
+const editorSpy = vi.hoisted(() => ({ onSelectionChange: null, onPick: null }))
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, readOnly, onSelectionChange }) => (
-    (editorSpy.onSelectionChange = onSelectionChange),
+  CodeEditor: ({ value, onChange, readOnly, onSelectionChange, onPick }) => (
+    Object.assign(editorSpy, { onSelectionChange, onPick }),
     (
       <textarea
         data-testid="code-editor"
@@ -344,11 +344,12 @@ describe('StudentModal', () => {
     render(<StudentModal {...mkProps({ isLive: true, onAddHighlight })} />)
     fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
     const drop = screen.getByRole('button', { name: 'Drop pin' })
-    // The student typing moves the mirror's cursor: that is not the tutor's click.
-    act(() => editorSpy.onSelectionChange({ from: 2, to: 2, pointer: false }))
+    // The student typing moves the mirror's cursor: that is not the tutor's tap.
+    act(() => editorSpy.onSelectionChange({ from: 2, to: 2 }))
     fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
     expect(drop).toBeDisabled()
-    act(() => editorSpy.onSelectionChange({ from: 5, to: 5, pointer: true }))
+    // The tutor's own tap or click on the mirror (mouse or touch) places it.
+    act(() => editorSpy.onPick(5))
     expect(screen.getByLabelText('Pin words')).toHaveAttribute('maxLength', '80')
     fireEvent.click(drop)
     expect(onAddHighlight).toHaveBeenCalledWith('student-1', {
@@ -359,6 +360,19 @@ describe('StudentModal', () => {
       note: 'Write this here',
       kind: 'pin',
     })
+  })
+
+  it('forgets a selected range when the task changes before it is sent', async () => {
+    const { act } = await import('@testing-library/react')
+    const twoTasks = { ...PYTHON_LESSON, tasks: [...PYTHON_LESSON.tasks, { id: 2, title: 'T2' }] }
+    const props = mkProps({ isLive: true, lesson: twoTasks, onAddHighlight: vi.fn() })
+    const { rerender } = render(<StudentModal {...props} />)
+    act(() => editorSpy.onSelectionChange({ from: 0, to: 5 }))
+    expect(screen.getByRole('button', { name: 'Send Highlight' })).toBeEnabled()
+    rerender(<StudentModal {...props} session={{ ...ACTIVE_SESSION, currentTaskId: 2 }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send Highlight' }))
+    expect(screen.getByRole('button', { name: 'Send Highlight' })).toBeDisabled()
+    expect(props.onAddHighlight).not.toHaveBeenCalled()
   })
 
   it('renders the presence badge', () => {

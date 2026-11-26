@@ -4,6 +4,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { EditorView } from '@codemirror/view'
 import { CodeEditor } from '../CodeEditor'
+import { noteMarginLeft } from '../teacherHighlightsEditor'
 
 const code = 'def cheer(player):\n    print("Well done " + player + "!")\n\n    return 10\n'
 const pinAt = code.indexOf('\n\n') + 1 // the blank line 3
@@ -88,5 +89,29 @@ describe('Fun moment: the tutor pins words right where the child types', () => {
     fireEvent.mouseDown(row.querySelector('button'))
     expect(row.querySelector('button').textContent).toBe('Remove')
     expect(onHighlightDismiss).toHaveBeenCalledWith('p1')
+  })
+
+  it('dismisses once from the keyboard and once from a mouse click (mousedown then click)', async () => {
+    const { fireEvent } = await import('@testing-library/react')
+    const onHighlightDismiss = vi.fn()
+    const pin = { id: 'p1', kind: 'pin', from: pinAt, to: pinAt, note: 'Write this here' }
+    const { container } = await renderEditor({ teacherHighlights: [pin], onHighlightDismiss })
+    const button = noteRows(container)[0].querySelector('button')
+    // Enter or Space on a focused button fires a click with detail 0 and no mousedown.
+    expect(fireEvent.keyDown(button, { key: 'Enter' })).toBe(true)
+    fireEvent.click(button, { detail: 0 })
+    expect(onHighlightDismiss).toHaveBeenCalledTimes(1)
+    fireEvent.mouseDown(button)
+    fireEvent.click(button, { detail: 1 })
+    expect(onHighlightDismiss).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('noteMarginLeft (the note stays inside the visible editor)', () => {
+  it('puts the pill under the arrow, but never past the left edge or the visible right edge', () => {
+    expect(noteMarginLeft(100, 120, 600)).toBe(76)
+    expect(noteMarginLeft(10, 120, 600)).toBe(0)
+    expect(noteMarginLeft(560, 120, 600)).toBe(472)
+    expect(noteMarginLeft(300, 700, 600)).toBe(0)
   })
 })

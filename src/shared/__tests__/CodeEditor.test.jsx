@@ -301,6 +301,31 @@ describe('CodeEditor teacher highlights', () => {
   })
 })
 
+describe('CodeEditor onPick and onSelectionChange (tutor pin spot)', () => {
+  it('reports a click or tap position through onPick, and only from/to to onSelectionChange', async () => {
+    const { render, fireEvent } = await import('@testing-library/react')
+    const onPick = vi.fn()
+    const onSelectionChange = vi.fn()
+    const utils = render(
+      <CodeEditor
+        value="abc
+def"
+        readOnly
+        onPick={onPick}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+    const view = EditorView.findFromDOM(utils.container.querySelector('.cm-editor'))
+    view.posAtCoords = () => 5
+    fireEvent.click(view.contentDOM, { clientX: 10, clientY: 10, detail: 1 })
+    expect(onPick).toHaveBeenCalledWith(5)
+    // A selection set from code (a remote or programmatic change) is never a pick.
+    view.dispatch({ selection: { anchor: 2 } })
+    expect(onPick).toHaveBeenCalledTimes(1)
+    expect(onSelectionChange).toHaveBeenLastCalledWith({ from: 2, to: 2 })
+  })
+})
+
 describe('CodeEditor indentAtCursor (touch Tab key)', () => {
   it('indents the current line, and every selected line, by one indent unit', async () => {
     const { render, act } = await import('@testing-library/react')
