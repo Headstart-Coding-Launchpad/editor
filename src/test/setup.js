@@ -29,6 +29,15 @@ if (typeof window !== 'undefined') {
     window.sessionStorage?.clear?.()
   })
 
+  // Blockly.inject preloads its click sounds from the internet with Node's real fetch. When
+  // that fails the rejection is unhandled and the suite exits 1 with every test passing.
+  // Answer those with an empty file; every other request goes through unchanged.
+  const realFetch = globalThis.fetch
+  globalThis.fetch = (input, init) =>
+    String(input?.url ?? input).startsWith('https://blockly-demo.appspot.com/')
+      ? Promise.resolve(new Response(new ArrayBuffer(0)))
+      : realFetch(input, init)
+
   // Query jsdom's storage instead of Node's native getter, which warns when no
   // persistence file is configured in recent Node versions.
   if (typeof window.localStorage?.clear !== 'function') {
