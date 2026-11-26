@@ -14,9 +14,30 @@ import {
 } from './lesson-backup.mjs'
 
 // A fake Firestore holding docs as { data, updateTime }. Records every read; any write throws.
-function fakeTs(seconds, nanoseconds = 0) {
-  return { seconds, nanoseconds, toDate: () => new Date(seconds * 1000) }
+// Class instances, like the Admin SDK's Timestamp / DocumentReference / GeoPoint.
+class FakeTimestamp {
+  constructor(seconds, nanoseconds) {
+    this.seconds = seconds
+    this.nanoseconds = nanoseconds
+  }
+  toDate() {
+    return new Date(this.seconds * 1000)
+  }
 }
+class FakeRef {
+  constructor(path) {
+    this.path = path
+    this.id = path.split('/').at(-1)
+    this.firestore = {}
+  }
+}
+class FakeGeoPoint {
+  constructor(latitude, longitude) {
+    this.latitude = latitude
+    this.longitude = longitude
+  }
+}
+const fakeTs = (seconds, nanoseconds = 0) => new FakeTimestamp(seconds, nanoseconds)
 
 function makeDb(initial = {}) {
   const store = new Map(
@@ -195,6 +216,53 @@ describe('lessons backup', () => {
     expect(result.saved).toBe(1)
   })
 
+  it('a partly failed run puts the counts first and attaches them to the error', async () => {
+    const fake = seed()
+    fake.failGets.add('topicLibrary/loops')
+    const error = await runLessonBackup({ db: fake.db, out }).catch((e) => e)
+    expect(error.message).toMatch(
+      /^Backup incomplete: saved 4, reads 10 \(list 5, fetch 5\), 1 problem/
+    )
+    expect(error.message).toMatch(/topicLibrary\/loops: network down/)
+    expect(error.result).toMatchObject({
+      saved: 4,
+      reads: { total: 10 },
+      errors: [expect.any(String)],
+    })
+  })
+
+  it('a missing or empty saved copy is fetched and saved again though the doc did not change', async () => {
+    const fake = seed()
+    await runLessonBackup({ db: fake.db, out })
+    const index = await readIndex()
+    await rm(join(out, index.docs.lessons.L1.versions[0].file))
+    await writeFile(join(out, index.docs.lessonLevels['level-1'].versions[0].file), '')
+    fake.calls.docGets.length = 0
+    const result = await runLessonBackup({ db: fake.db, out })
+    expect(fake.calls.docGets.sort()).toEqual(['lessonLevels/level-1', 'lessons/L1'])
+    expect(result.saved).toBe(2)
+    for (const [c, id] of [
+      ['lessons', 'L1'],
+      ['lessonLevels', 'level-1'],
+    ]) {
+      const { versions } = (await readIndex()).docs[c][id]
+      expect(versions).toHaveLength(1)
+      const saved = JSON.parse(await readFile(join(out, versions[0].file), 'utf8'))
+      expect(saved.id).toBe(id)
+    }
+  })
+
+  it('sizes only its own folders, ignores foreign ones and keeps the previous index as .bak', async () => {
+    const fake = seed()
+    const first = await runLessonBackup({ db: fake.db, out })
+    const firstIndex = await readFile(join(out, 'index.json'), 'utf8')
+    await mkdir(join(out, 'someone-elses'), { recursive: true })
+    await writeFile(join(out, 'someone-elses', 'big.bin'), 'x'.repeat(5000))
+    const second = await runLessonBackup({ db: fake.db, out })
+    expect(second.backupBytes).toBeLessThan(first.backupBytes + 5000)
+    expect(await readFile(join(out, 'index.json.bak'), 'utf8')).toBe(firstIndex)
+  })
+
   it('refuses to run over an unreadable index rather than replacing it', async () => {
     const fake = seed()
     await writeFile(join(out, 'index.json'), '{ not json')
@@ -230,15 +298,36 @@ describe('backup JSON', () => {
   it('tags Firestore timestamps, references and bytes so they can be restored', () => {
     const json = toBackupJson({
       at: fakeTs(5, 7),
-      ref: { path: 'lessons/L1', firestore: {}, id: 'L1' },
+      ref: new FakeRef('lessons/L1'),
+      geo: new FakeGeoPoint(51.5, -0.1),
       raw: Buffer.from('hi'),
       list: [fakeTs(1)],
     })
     expect(json).toEqual({
       at: { __firestore: 'timestamp', seconds: 5, nanoseconds: 7 },
       ref: { __firestore: 'reference', path: 'lessons/L1' },
+      geo: { __firestore: 'geopoint', latitude: 51.5, longitude: -0.1 },
       raw: { __firestore: 'bytes', base64: 'aGk=' },
       list: [{ __firestore: 'timestamp', seconds: 1, nanoseconds: 0 }],
+    })
+  })
+
+  it('keeps plain maps whole even when their keys look like a GeoPoint, reference or timestamp', () => {
+    const maps = {
+      sprite: { latitude: 3, longitude: 4, name: 'Cat' },
+      bare: { latitude: 1, longitude: 2 },
+      link: { path: 'a/b', firestore: 'x', label: 'y' },
+      time: { seconds: 1, nanoseconds: 2, toDate: 'not a function' },
+    }
+    expect(toBackupJson(maps)).toEqual(maps)
+  })
+
+  it('tags NaN and the infinities, which JSON would turn into null', () => {
+    expect(toBackupJson({ a: NaN, b: Infinity, c: [-Infinity], d: 1.5 })).toEqual({
+      a: { __firestore: 'number', value: 'NaN' },
+      b: { __firestore: 'number', value: 'Infinity' },
+      c: [{ __firestore: 'number', value: '-Infinity' }],
+      d: 1.5,
     })
   })
 

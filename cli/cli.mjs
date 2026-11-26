@@ -326,7 +326,12 @@ await yargs(hideBin(process.argv))
             import('./lesson-backup.mjs'),
           ])
           const log = (line) => process.stderr.write(`${line}\n`)
-          print(await backup.runLessonBackup({ db, out: out ?? backup.DEFAULT_BACKUP_DIR, log }))
+          try {
+            print(await backup.runLessonBackup({ db, out: out ?? backup.DEFAULT_BACKUP_DIR, log }))
+          } catch (e) {
+            if (e.result) print(e.result) // a partly failed run still prints its counts
+            throw e
+          }
         })
       )
 

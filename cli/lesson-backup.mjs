@@ -6,7 +6,7 @@
 // the module runs from any checkout; the Firestore handle is passed in.
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, open, readFile, readdir, rename, stat } from 'node:fs/promises'
 import { dirname, join, parse, resolve } from 'node:path'
 
 export const DEFAULT_BACKUP_DIR = 'D:\\LaunchPad-backups\\lessons'
@@ -26,10 +26,22 @@ export function checkBackupRoot(out, exists = existsSync) {
   }
 }
 
-// Firestore values JSON cannot hold, tagged so a restore can rebuild them.
+const isPlainObject = (value) => {
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+// Firestore values JSON cannot hold, tagged so a restore can rebuild them. Plain objects are
+// always maps (recursed, never guessed at); only SDK class instances are tagged.
 export function toBackupJson(value) {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    return { __firestore: 'number', value: String(value) }
+  }
   if (value == null || typeof value !== 'object') return value
   if (Array.isArray(value)) return value.map(toBackupJson)
+  if (isPlainObject(value)) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, toBackupJson(v)]))
+  }
   if (typeof value.toDate === 'function' && 'seconds' in value && 'nanoseconds' in value) {
     return { __firestore: 'timestamp', seconds: value.seconds, nanoseconds: value.nanoseconds }
   }
@@ -42,7 +54,7 @@ export function toBackupJson(value) {
   if (typeof value.latitude === 'number' && typeof value.longitude === 'number') {
     return { __firestore: 'geopoint', latitude: value.latitude, longitude: value.longitude }
   }
-  return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, toBackupJson(v)]))
+  throw new Error(`unknown Firestore value type ${value.constructor?.name ?? '?'}`)
 }
 
 export function stableStringify(value) {
@@ -78,10 +90,25 @@ function updateTimeOf(snap) {
   return String(t)
 }
 
+// Temp file, flushed to disk, then renamed over the target.
 async function writeAtomic(file, text) {
   const tmp = `${file}.tmp-${process.pid}`
-  await writeFile(tmp, text, 'utf8')
+  const handle = await open(tmp, 'w')
+  try {
+    await handle.writeFile(text, 'utf8')
+    await handle.sync()
+  } finally {
+    await handle.close()
+  }
   await rename(tmp, file)
+}
+
+async function hasContent(path) {
+  try {
+    return (await stat(path)).size > 0
+  } catch {
+    return false
+  }
 }
 
 async function loadIndex(out) {
@@ -96,13 +123,23 @@ async function loadIndex(out) {
   }
 }
 
-async function folderBytes(dir) {
-  let total = 0
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const p = join(dir, entry.name)
-    total += entry.isDirectory() ? await folderBytes(p) : (await stat(p)).size
+async function folderBytes(path) {
+  try {
+    const info = await stat(path)
+    if (!info.isDirectory()) return info.size
+    let total = 0
+    for (const name of await readdir(path)) total += await folderBytes(join(path, name))
+    return total
+  } catch {
+    return 0 // sizing is a report, never a reason to fail
   }
-  return total
+}
+
+// Bytes of the backup's own files only: the collection folders and the index.
+async function backupBytes(out) {
+  const parts = [...BACKUP_COLLECTIONS, INDEX_FILE, `${INDEX_FILE}.bak`]
+  const sizes = await Promise.all(parts.map((p) => folderBytes(join(out, p))))
+  return sizes.reduce((a, b) => a + b, 0)
 }
 
 async function pool(items, size, fn) {
@@ -120,16 +157,15 @@ function prepareVersion({ collection, id, updateTime, data, savedAt }) {
   // lands on the same name and finds it already there.
   const stamp = (updateTime ?? savedAt).replace(/:/g, '-')
   const file = `${collection}/${safeFileName(id)}/${stamp}_${hash.slice(0, 12)}.json`
-  const text = `${JSON.stringify({ collection, id, updateTime, savedAt, hash, data: json }, null, 2)}
-`
+  const text = `${JSON.stringify({ collection, id, updateTime, savedAt, hash, data: json }, null, 2)}\n`
   return { file, hash, text }
 }
 
-// Writes the version file unless it is already there; returns true when it wrote one.
+// Writes the version file unless a non-empty one is already there; true when it wrote one.
 async function writeVersion(out, { file, text }) {
   const path = join(out, file)
   await mkdir(dirname(path), { recursive: true })
-  if (existsSync(path)) return false
+  if (await hasContent(path)) return false
   await writeAtomic(path, text)
   return true
 }
@@ -142,6 +178,10 @@ export async function runLessonBackup({ db, out = DEFAULT_BACKUP_DIR, log = () =
   checkBackupRoot(out)
   await mkdir(out, { recursive: true })
   const index = await loadIndex(out)
+  // The previous run's index, kept in case this run's index is ever damaged.
+  if (existsSync(join(out, INDEX_FILE))) {
+    await copyFile(join(out, INDEX_FILE), join(out, `${INDEX_FILE}.bak`))
+  }
   const savedAt = new Date().toISOString()
   const reads = { list: 0, fetch: 0, total: 0 }
   const summary = { saved: 0, unchanged: 0, markedDeleted: 0, collections: {} }
@@ -167,9 +207,11 @@ export async function runLessonBackup({ db, out = DEFAULT_BACKUP_DIR, log = () =
       present.add(doc.id)
       const entry = known[doc.id]
       const time = updateTimeOf(doc)
-      if (!entry || entry.deletedAt || time == null || entry.updateTime !== time)
-        toFetch.push(doc.id)
-      else summary.unchanged += 1
+      const last = entry?.versions?.at(-1)
+      const current = entry && !entry.deletedAt && time != null && entry.updateTime === time && last
+      // A matching update time is trusted only while its saved copy is still there.
+      if (current && (await hasContent(join(out, last.file)))) summary.unchanged += 1
+      else toFetch.push(doc.id)
     }
 
     await pool(toFetch, FETCH_POOL, async (id) => {
@@ -181,7 +223,14 @@ export async function runLessonBackup({ db, out = DEFAULT_BACKUP_DIR, log = () =
         const updateTime = updateTimeOf(snap)
         const version = prepareVersion({ collection, id, updateTime, data: snap.data(), savedAt })
         const entry = known[id] ?? { versions: [] }
-        if (entry.versions.at(-1)?.hash !== version.hash) {
+        const last = entry.versions.at(-1)
+        if (last?.hash === version.hash && !(await hasContent(join(out, last.file)))) {
+          // Same content as the indexed copy, but that file is gone or empty: write it again.
+          await writeVersion(out, { ...version, file: last.file })
+          summary.saved += 1
+          counts.saved += 1
+          log(`re-saved missing copy ${collection}/${id}`)
+        } else if (last?.hash !== version.hash) {
           if (await writeVersion(out, version)) {
             summary.saved += 1
             counts.saved += 1
@@ -215,11 +264,15 @@ export async function runLessonBackup({ db, out = DEFAULT_BACKUP_DIR, log = () =
   reads.total = reads.list + reads.fetch
   index.lastRun = { at: savedAt, reads, ...summary, errors: errors.length }
   await writeAtomic(join(out, INDEX_FILE), `${JSON.stringify(index, null, 2)}\n`)
-  const result = { out: resolve(out), reads, ...summary, backupBytes: await folderBytes(out) }
+  const result = { out: resolve(out), reads, ...summary, backupBytes: await backupBytes(out) }
   if (errors.length) {
-    throw new Error(
-      `Backup incomplete, ${errors.length} problem(s) (saved copies kept):\n  ${errors.join('\n  ')}`
+    const error = new Error(
+      `Backup incomplete: saved ${summary.saved}, reads ${reads.total} (list ${reads.list}, ` +
+        `fetch ${reads.fetch}), ${errors.length} problem(s); saved copies kept:\n  ` +
+        errors.join('\n  ')
     )
+    error.result = { ...result, errors }
+    throw error
   }
   return result
 }
