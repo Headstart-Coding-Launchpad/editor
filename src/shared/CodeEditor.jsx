@@ -35,13 +35,20 @@ import { useEditorScrub } from './scrub/useEditorScrub.jsx'
 import { useIsTouchDevice } from './useIsTouchDevice'
 import { isScrubPreviewUpdate, SCRUB_USER_EVENT } from './scrub/scrubExtension.js'
 import { errorLineField, setErrorLine } from './errorLine.js'
+import {
+  USER_EDIT_EVENTS,
+  highlightsClearedByUserEdit,
+  setTeacherHighlights,
+  teacherHighlightsField,
+} from './teacherHighlightsEditor.js'
 
-// The CodeMirror user-event types that are the student's own editing (typing, pasting,
-// deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry-through,
-// a sandbox push, a teacher edit) is dispatched without a user event, so it never matches.
-const USER_EDIT_EVENTS = ['input', 'delete', 'move', 'undo', 'redo']
+export { setTeacherHighlights, teacherHighlightsField }
 
-/** Whether a CodeMirror view update contains a document change the user made. */
+/**
+ * Whether a CodeMirror view update contains a document change the user made (typing, pasting,
+ * deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry, a
+ * sandbox push, a teacher edit) is dispatched without a user event, so it never matches.
+ */
 export function isUserEditUpdate(update) {
   return (
     !!update?.docChanged &&
@@ -123,168 +130,6 @@ const remoteSelectionField = StateField.define({
   },
   provide: (field) => EditorView.decorations.from(field),
 })
-
-// Teacher-authored markup highlights: unlike remoteSelection, this holds
-// any number of ranges at once. Each range gets an inline background mark,
-// and each highlighted line gets emoji "badges" the student clicks to
-// dismiss. The badges float in the empty space past the end of the line from
-// a zero-width anchor, so they never push code sideways, make the line
-// taller, or cover any of the student's code.
-export const setTeacherHighlights = StateEffect.define()
-
-class TeacherHighlightBadgesWidget extends WidgetType {
-  constructor(badges) {
-    super()
-    this.badges = badges
-  }
-  eq(other) {
-    return (
-      other.badges.length === this.badges.length &&
-      other.badges.every(
-        (b, i) =>
-          b.id === this.badges[i].id &&
-          b.emoji === this.badges[i].emoji &&
-          b.note === this.badges[i].note
-      )
-    )
-  }
-  toDOM() {
-    const anchor = document.createElement('span')
-    anchor.className = 'cm-teacherHighlightAnchor'
-    const row = document.createElement('span')
-    row.className = 'cm-teacherHighlightBadges'
-    anchor.appendChild(row)
-
-    for (const highlight of this.badges) {
-      const badge = document.createElement('button')
-      badge.type = 'button'
-      badge.className = 'cm-teacherHighlightBadge'
-      badge.title = highlight.note
-        ? `${highlight.note} (click to dismiss)`
-        : 'Dismiss this highlight'
-      badge.setAttribute('aria-label', badge.title)
-      badge.dataset.highlightId = highlight.id
-
-      const emojiSpan = document.createElement('span')
-      emojiSpan.textContent = highlight.emoji || '★'
-      badge.appendChild(emojiSpan)
-
-      const labelSpan = document.createElement('span')
-      labelSpan.className = 'cm-teacherHighlightBadgeLabel'
-      labelSpan.textContent = '✕'
-      badge.appendChild(labelSpan)
-
-      row.appendChild(badge)
-    }
-    return anchor
-  }
-  ignoreEvent() {
-    return false
-  }
-}
-
-function buildTeacherHighlightDecorations(doc, highlights) {
-  const ranges = []
-  const badgesByLineEnd = new Map()
-  for (const h of highlights) {
-    ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(h.from, h.to))
-    // A selection ending at the very start of a line (e.g. a whole line
-    // including its newline) belongs to the previous line.
-    const endsAtLineStart = doc.lineAt(h.to).from === h.to
-    const line = doc.lineAt(endsAtLineStart ? h.to - 1 : h.to)
-    if (!badgesByLineEnd.has(line.to)) badgesByLineEnd.set(line.to, [])
-    badgesByLineEnd.get(line.to).push(h)
-  }
-  for (const [lineEnd, badges] of badgesByLineEnd) {
-    ranges.push(
-      Decoration.widget({ widget: new TeacherHighlightBadgesWidget(badges), side: 1 }).range(
-        lineEnd
-      )
-    )
-  }
-  return Decoration.set(ranges, true)
-}
-
-// Whether a change (the span fromA..toA of the old document was inserted at, deleted or
-// replaced) touches the highlighted text itself. Typing right at either edge, or deleting
-// text that only borders the range, does not: the highlight just moves with its code.
-function changeTouchesHighlight(fromA, toA, h) {
-  return fromA < h.to && toA > h.from
-}
-
-export const teacherHighlightsField = StateField.define({
-  create() {
-    return { decorations: Decoration.none, highlights: [] }
-  },
-  update(value, transaction) {
-    let highlights = value.highlights
-    let changed = false
-    if (transaction.docChanged && highlights.length > 0) {
-      // The user's own edit (typing, deleting, pasting, undo) inside a highlighted range
-      // clears that highlight for good: the code it marked has changed. Every other
-      // highlight, and every highlight under an outside change (task switch, a live mirror
-      // update), is mapped so it stays on the code it marks.
-      const touched = new Set()
-      if (USER_EDIT_EVENTS.some((type) => transaction.isUserEvent(type))) {
-        transaction.changes.iterChangedRanges((fromA, toA) => {
-          for (const h of highlights) {
-            if (changeTouchesHighlight(fromA, toA, h)) touched.add(h.id)
-          }
-        })
-      }
-      highlights = highlights
-        .filter((h) => !touched.has(h.id))
-        .map((h) => ({
-          ...h,
-          from: transaction.changes.mapPos(h.from, 1),
-          to: transaction.changes.mapPos(h.to, -1),
-        }))
-        .filter((h) => h.from < h.to)
-      changed = true
-    }
-    for (const effect of transaction.effects) {
-      if (!effect.is(setTeacherHighlights)) continue
-      // The incoming list says which highlights exist. One the editor already shows keeps
-      // the position it has been mapped to (the stored one predates the latest edits); a new
-      // one is placed at its stored position; the rest are removed.
-      const max = transaction.state.doc.length
-      const current = new Map(highlights.map((h) => [h.id, h]))
-      highlights = []
-      for (const h of effect.value ?? []) {
-        const existing = current.get(h.id)
-        if (existing) {
-          highlights.push({ ...existing, emoji: h.emoji, note: h.note })
-          continue
-        }
-        const from = Math.min(Math.max(h.from ?? 0, 0), max)
-        const to = Math.min(Math.max(h.to ?? from, 0), max)
-        if (from >= to) continue
-        highlights.push({ id: h.id, emoji: h.emoji, note: h.note, from, to })
-      }
-      changed = true
-    }
-    if (!changed) return value
-    return {
-      highlights,
-      decorations: buildTeacherHighlightDecorations(transaction.state.doc, highlights),
-    }
-  },
-  provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
-})
-
-/**
- * The ids of the teacher highlights a view update cleared because the user edited inside
- * them (see teacherHighlightsField); the editor reports each through onHighlightDismiss.
- */
-export function highlightsClearedByUserEdit(update) {
-  if (!isUserEditUpdate(update)) return []
-  const before = update.startState.field(teacherHighlightsField, false)?.highlights ?? []
-  if (before.length === 0) return []
-  const after = new Set(
-    (update.state.field(teacherHighlightsField, false)?.highlights ?? []).map((h) => h.id)
-  )
-  return before.filter((h) => !after.has(h.id)).map((h) => h.id)
-}
 
 /**
  * The smallest single change turning `current` into `next`: the shared prefix and suffix are
@@ -502,14 +347,16 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
               if (typedChars > 0) {
                 onTypingRef.current?.({ kind: 'insert', chars: typedChars, at: Date.now() })
               }
-              for (const id of highlightsClearedByUserEdit(update)) {
+              for (const id of userEdit ? highlightsClearedByUserEdit(update) : []) {
                 clearedHighlightIdsRef.current.add(id)
                 onHighlightDismissRef.current?.(id)
               }
             }
             if (update.docChanged || update.selectionSet) {
               const selection = update.state.selection.main
-              onSelectionChangeRef.current?.({ from: selection.from, to: selection.to })
+              // `pointer`: the user placed it (a click or drag), not mapped through an edit.
+              const pointer = update.transactions.some((tr) => tr.isUserEvent('select.pointer'))
+              onSelectionChangeRef.current?.({ from: selection.from, to: selection.to, pointer })
             }
           }),
           EditorView.domEventHandlers({
@@ -528,9 +375,9 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
               return false
             },
             mousedown: (event) => {
-              const badge = event.target.closest?.('.cm-teacherHighlightBadge')
-              if (badge) {
-                onHighlightDismissRef.current?.(badge.dataset.highlightId)
+              const gotIt = event.target.closest?.('.cm-teacherNoteGotIt')
+              if (gotIt) {
+                onHighlightDismissRef.current?.(gotIt.dataset.highlightId)
                 return true
               }
               onActivityRef.current?.({ type: 'click', at: Date.now() })
