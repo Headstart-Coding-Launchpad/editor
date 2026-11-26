@@ -4,7 +4,12 @@ import { useSession } from '../useSession'
 
 // A small stand-in for the server: the stored session states and the onDisconnect handlers this
 // connection has queued. cancel() drops a location's handlers and its children's, as Firebase does.
-const server = vi.hoisted(() => ({ states: {}, listeners: new Map(), queued: new Set() }))
+const server = vi.hoisted(() => ({
+  states: {},
+  listeners: new Map(),
+  errors: new Map(),
+  queued: new Set(),
+}))
 
 vi.mock('firebase/database', () => {
   const emit = (path) =>
@@ -24,7 +29,8 @@ vi.mock('firebase/database', () => {
     get: () => Promise.resolve({ val: () => null, exists: () => false }),
     serverTimestamp: () => 0,
     runTransaction: () => Promise.resolve({ committed: true }),
-    onValue: (r, cb) => {
+    onValue: (r, cb, onError) => {
+      server.errors.set(r.path, onError)
       const set = server.listeners.get(r.path) ?? new Set()
       server.listeners.set(r.path, set.add(cb))
       if (r.path.endsWith('/state')) cb({ val: () => server.states[r.path] ?? null })
@@ -59,6 +65,8 @@ async function endedSession(key) {
   return result
 }
 
+const stateListeners = (key) => server.listeners.get(`sessions/${key}/state`)?.size ?? 0
+
 // Another tab or tutor device writing the session: this tab only sees the new state.
 function remoteState(key, state) {
   const path = `sessions/${key}/state`
@@ -70,6 +78,7 @@ describe('endSession disconnect cleanup', () => {
   beforeEach(() => {
     server.states = {}
     server.listeners.clear()
+    server.errors.clear()
     server.queued.clear()
   })
 
@@ -107,5 +116,29 @@ describe('endSession disconnect cleanup', () => {
     await act(() => result.current.restartSession())
     await act(() => result.current.endSession())
     expect([...server.queued]).toEqual(cleanupPaths('again'))
+  })
+  it('stops watching the state once the cleanup is cancelled', async () => {
+    const result = await endedSession('unwatch')
+    await act(() => result.current.endSession())
+    expect(stateListeners('unwatch')).toBe(1)
+    act(() => remoteState('unwatch', 'waiting'))
+    expect(stateListeners('unwatch')).toBe(0)
+  })
+
+  it('stops watching when the state is already restarted as the watch starts', async () => {
+    const { result } = renderHook(() => useSession('early'))
+    await act(async () => {
+      const ending = result.current.endSession()
+      await result.current.restartSession()
+      await ending
+    })
+    expect(stateListeners('early')).toBe(0)
+  })
+
+  it('is cancelled when the state listener is revoked, for example by signing out', async () => {
+    await endedSession('signed-out')
+    act(() => server.errors.get('sessions/signed-out/state')?.(new Error('permission_denied')))
+    expect([...server.queued]).toEqual([])
+    expect(stateListeners('signed-out')).toBe(0)
   })
 })

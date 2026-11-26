@@ -119,7 +119,7 @@ const HEALTH_RETRY_MS = 2000
 
 // Closing the tab on an ended class removes it. A restart from any tab or device must cancel that,
 // or the next drop deletes the running class. cancel() also drops handlers queued on child paths.
-const armedCleanups = new Set()
+const endedWatches = new Map() // session key → stops its state listener
 function queueEndedCleanup(key, action) {
   for (const root of ['sessions', 'sharedWorkspacePayloads', 'carryInbox', 'sessionArchive']) {
     const handler = onDisconnect(ref(db, `${root}/${key}`))
@@ -127,14 +127,20 @@ function queueEndedCleanup(key, action) {
   }
 }
 function cancelEndedCleanup(key) {
-  if (armedCleanups.delete(key)) queueEndedCleanup(key, 'cancel')
+  if (!endedWatches.has(key)) return
+  endedWatches.get(key)?.()
+  endedWatches.delete(key)
+  queueEndedCleanup(key, 'cancel')
 }
 function armEndedCleanup(key) {
   queueEndedCleanup(key, 'remove')
-  armedCleanups.add(key)
-  onValue(ref(db, `sessions/${key}/state`), (snap) => {
-    if ((snap.val() ?? 'ended') !== 'ended') cancelEndedCleanup(key)
-  })
+  endedWatches.get(key)?.()
+  endedWatches.set(key, null)
+  const cancel = () => cancelEndedCleanup(key) // also when the listener is revoked (sign-out)
+  const onState = (snap) => (snap.val() ?? 'ended') !== 'ended' && cancel()
+  const stop = onValue(ref(db, `sessions/${key}/state`), onState, cancel)
+  if (endedWatches.has(key)) endedWatches.set(key, stop)
+  else stop() // cancelled before onValue returned
 }
 
 /**
@@ -161,8 +167,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
   const healthInFlightRef = useRef({})
   const healthSentRef = useRef({})
   const healthPendingRef = useRef({})
-  // A rejected write's retries, per student: { health, tries, timer } (at most
-  // HEALTH_RETRY_LIMIT, HEALTH_RETRY_MS apart).
+  // A rejected write's retries, per student: { health, tries, timer }.
   const healthRetryRef = useRef({})
   // The latest snapshot, for the stable writeStudentHealth.
   const sessionValueRef = useRef(null)
@@ -220,8 +225,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   // ─── Teacher helpers ──────────────────────────────────────────────────────
 
-  // The fields of a fresh session. createSession (Restart) writes them unconditionally;
-  // createSessionIfAbsent only when nothing is there.
+  // A fresh session's fields: Restart always writes them, createSessionIfAbsent only if absent.
   function initialSessionData() {
     return {
       lessonId: lessonIdOfKey(lessonId),
@@ -264,9 +268,7 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       showIt: null,
       // Shown short answers (src/shared/shownResponses.js) belong to one session.
       shownResponses: null,
-      // Live badges: decisions, the tutor's badge toggles and the students' signals are
-      // session-scoped, so a new session starts without them (set() replaces the node anyway;
-      // listed so the reset is explicit).
+      // Live badge decisions, toggles and signals are session-scoped (listed to be explicit).
       badges: null,
       badgeSettings: null,
       studentSignals: null,
@@ -276,15 +278,13 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
       exampleOpenLog: null,
       // Unsubmitted answer drafts kept for the report (src/shared/answerDrafts.js).
       draftLog: null,
-      // Class roster (src/shared/roster/): a stock lesson's class is picked again for each
-      // session, and matches belong to this session's anonymous students.
+      // Class roster (src/shared/roster/): class and matches are per session.
       classId: null,
       classChosenAt: null,
       rosterMatches: null,
       // Typing history pushed to matched students (src/shared/typingHistory.js).
       typingHistory: null,
-      // Cross-lesson carry statuses (src/shared/roster/crossLessonCarry.js) belong to this
-      // session's anonymous students.
+      // Per session (src/shared/roster/crossLessonCarry.js).
       carryStatus: null,
     }
   }
