@@ -174,7 +174,7 @@ export default function StudentWorkspaceBody({
     <button
       type="button"
       className={pinMode === pin ? 'btn-primary' : 'btn-ghost-outline'}
-      style={s.composerBtn}
+      style={s.composerChip}
       aria-pressed={pinMode === pin}
       onClick={() => onPinModeChange?.(pin)}
     >
@@ -185,7 +185,7 @@ export default function StudentWorkspaceBody({
   const highlightComposer = canHighlight && (
     // Two fixed-height rows in both modes, so switching Highlight / Pin never moves the code.
     <div style={s.highlightComposer} data-testid="highlight-composer">
-      <div style={{ ...s.composerRow, overflowX: 'auto' }}>
+      <div style={{ ...s.composerRow, gap: 6, overflowX: 'auto' }}>
         <div style={s.highlightEmojiRow} role="group" aria-label="Highlight or pin">
           {modeButton(false, 'Highlight')}
           {modeButton(true, '📌 Pin')}
@@ -197,7 +197,7 @@ export default function StudentWorkspaceBody({
                   key={words}
                   type="button"
                   className={highlightNote === words ? 'btn-primary' : 'btn-ghost-outline'}
-                  style={s.composerBtn}
+                  style={s.composerChip}
                   onClick={() => onHighlightNoteChange(words)}
                 >
                   {words}
@@ -756,6 +756,8 @@ const s = {
     boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
   },
   composerBtn: { fontSize: 12, padding: '4px 10px', whiteSpace: 'nowrap' },
+  // Row 1 must fit 597px, its width at 1366x768 (636px with composerBtn): no scrollbar there.
+  composerChip: { fontSize: 11.5, padding: '4px 6px', whiteSpace: 'nowrap' },
   composerRow: { display: 'flex', alignItems: 'center', gap: 8, height: 30, minWidth: 0 },
   highlightComposer: {
     display: 'flex',
