@@ -481,7 +481,7 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     if (loading || !lesson) return
     if (!session?.state) createSessionIfAbsent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, lesson, !!session && !session.state])
+  }, [loading, lesson])
 
   useEffect(() => {
     if (!session?.currentTaskId || sandboxStaging) return

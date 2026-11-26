@@ -398,19 +398,22 @@ describe('useSession', () => {
 
     // A node with no `state` (left by a stale student tab writing after the session was
     // removed) has no Start or End button, so it counts as no session.
-    it('createSessionIfAbsent replaces a node with no state, keeping only named students', async () => {
+    it('createSessionIfAbsent replaces a node with no state, keeping only joining markers', async () => {
       const { result } = renderHook(() => useSession('lesson-1', { enabled: true }))
       firebaseMocks.runTransaction.mockImplementation(async () => ({ committed: true }))
       await act(async () => {
         await result.current.createSessionIfAbsent()
       })
       const updater = firebaseMocks.runTransaction.mock.calls[0][1]
+      const joiningStudents = { temp1: { joinedAt: 7, typedName: 'Bo' } }
       const next = updater({
         teacherLeftAt: 5,
+        joiningStudents,
         students: { junk: { currentCode: 'x' }, ada: { displayName: 'Ada', currentCode: 'y' } },
       })
       expect(next).toMatchObject({ state: 'waiting', currentTaskId: 1 })
-      expect(next.students).toEqual({ ada: { displayName: 'Ada', currentCode: 'y' } })
+      expect(next.students).toEqual({})
+      expect(next.joiningStudents).toEqual(joiningStudents)
       expect(next).not.toHaveProperty('teacherLeftAt')
       for (const state of ['waiting', 'active', 'sandbox', 'ended']) {
         expect(updater({ state })).toBeUndefined()

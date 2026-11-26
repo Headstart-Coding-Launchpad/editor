@@ -308,13 +308,13 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
 
   // TeacherView's "no session yet" path. A transaction, so two tutor tabs or a transient null
   // snapshot can't overwrite a class (#242). A node with no `state` is leftover student writes:
-  // it is replaced, keeping only named students. Resolves to whether this call created it.
+  // only its joiningStudents are carried over. Resolves to whether this call created it.
   async function createSessionIfAbsent() {
-    const result = await runTransaction(ref(db, `sessions/${lessonId}`), (current) => {
-      if (current?.state) return undefined
-      const named = Object.entries(current?.students ?? {}).filter(([, s]) => s?.displayName)
-      return { ...initialSessionData(), students: Object.fromEntries(named) }
-    })
+    const result = await runTransaction(ref(db, `sessions/${lessonId}`), (current) =>
+      current?.state
+        ? undefined
+        : { ...initialSessionData(), joiningStudents: current?.joiningStudents ?? null }
+    )
     return result.committed
   }
 

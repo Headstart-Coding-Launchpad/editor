@@ -163,21 +163,20 @@ describe('TeacherView opening a session', () => {
     expect(sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0).toBe(calls)
   })
 
-  it('replaces a node that turns stateless while open, but not one that is removed', async () => {
+  // Repair happens when the dashboard loads only: a stray write after an Admin close must not
+  // reopen the session from a tutor tab left open.
+  it('does not reopen a session removed while open, even if a stray write follows', async () => {
     mockSession = { state: 'active', currentTaskId: 1, students: {} }
     const lesson = turtleLesson()
     getDoc.mockResolvedValue({ exists: () => true, data: () => lesson })
     const view = render(<TeacherView lessonId={lesson.id} />)
     await waitFor(() => expect(captured.editor?.task).toBeTruthy())
-    const calls = () => sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0
 
-    mockSession = null // Closed from Admin: stays closed.
+    mockSession = null // Closed from Admin.
     view.rerender(<TeacherView lessonId={lesson.id} />)
-    expect(calls()).toBe(0)
-
     mockSession = { students: { a: { currentCode: 'x' } } } // A stale student write.
-    view.rerender(<TeacherView lessonId={lesson.id} />)
-    await waitFor(() => expect(calls()).toBe(1))
+    await act(async () => view.rerender(<TeacherView lessonId={lesson.id} />))
+    expect(sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0).toBe(0)
   })
 })
 

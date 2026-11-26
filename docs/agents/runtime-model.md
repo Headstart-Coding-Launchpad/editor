@@ -26,7 +26,7 @@ The `students.{id}.healthBeacon` field (the health beacon, deep review R1) was a
 {
   "sessions": {
     "{lessonId}": {
-      "state": "waiting | active | sandbox | ended (a node with no state is leftover stray writes: TeacherView replaces it with a fresh waiting session, keeping only students with a displayName)",
+      "state": "waiting | active | sandbox | ended (a node with no state is leftover stray writes: TeacherView, when the dashboard loads, replaces it with a fresh waiting session, carrying over joiningStudents only)",
       "currentTaskId": 1,
       "createdAt": 1234567890,
       "teacherPresence": "{ [tabId]: true } | absent (each open tutor tab on a waiting/active session; removed by onDisconnect — useTeacherPresence.js)",
