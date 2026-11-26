@@ -8,10 +8,9 @@ import {
   isCorrectionKey,
   isUserEditUpdate,
   minimalReplace,
-  setTeacherHighlights,
-  teacherHighlightsField,
   typedCharsInUpdate,
 } from '../CodeEditor'
+import { setTeacherHighlights, teacherHighlightsField } from '../teacherHighlightsEditor'
 import { errorLineField, setErrorLine } from '../errorLine.js'
 
 // Per docs/TESTING.md, CodeMirror editor internals (EditorView/DOM) are not

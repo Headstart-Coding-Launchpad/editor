@@ -42,8 +42,6 @@ import {
   teacherHighlightsField,
 } from './teacherHighlightsEditor.js'
 
-export { setTeacherHighlights, teacherHighlightsField }
-
 /**
  * Whether a CodeMirror view update contains a document change the user made (typing, pasting,
  * deleting, dragging text, undo/redo). A value replaced from outside (task switch, carry, a
