@@ -204,11 +204,53 @@ describe('quizzes: graded with the quiz’s own grader', () => {
       title: 'Fill',
       taskType: 'quiz',
       quizType: 'fill_blank',
-      text: 'Use {{b1}} to show text.',
+      text: 'Use ___ to show text.',
       blanks: [{ id: 'b1', answer: 'print' }],
       distractors: [{ id: 'd1', text: 'input' }],
     }
     expect(judgeTask(planTask(pythonLesson([gaps]), gaps)).status).toBe('pass')
+  })
+
+  it('fails a fill-in-the-gaps quiz with more blanks than ___ gaps (one can never be filled)', () => {
+    const gaps = {
+      id: 34,
+      title: 'Fill',
+      taskType: 'quiz',
+      quizType: 'fill_blank',
+      text: 'Use ___ to show text.',
+      blanks: [
+        { id: 'b1', answer: 'print' },
+        { id: 'b2', answer: 'input' },
+      ],
+    }
+    const task = judgeTask(planTask(pythonLesson([gaps]), gaps))
+    expect(task.status).toBe('fail')
+    const check = task.checks.find((c) => c.name === 'every blank has a gap')
+    expect(check).toMatchObject({
+      status: 'fail',
+      detail: expect.stringMatching(/2 blanks.*1 ___/),
+    })
+    // A gap in inline code and in a code block counts, as the student view draws them.
+    const inCode = { ...gaps, id: 35, text: 'Use `___("hi")` then:\n```python\nx = ___()\n```' }
+    expect(judgeTask(planTask(pythonLesson([inCode]), inCode)).status).toBe('pass')
+  })
+
+  it('accepts a numeric answer for an option id written as a number', () => {
+    const numbered = {
+      ...mc,
+      id: 36,
+      options: [
+        { id: '1', text: 'print' },
+        { id: '2', text: 'input' },
+      ],
+      check: { type: 'answer_equals', value: 1 },
+    }
+    expect(validateAsPublished(pythonLesson([numbered])).status).toBe('pass')
+    const task = judgeTask(planTask(pythonLesson([numbered]), numbered))
+    expect(task.checks.map((c) => [c.name, c.status])).toEqual([
+      ['blank answer does not pass', 'pass'],
+      ['model answer passes', 'pass'],
+    ])
   })
 
   it('has nothing to judge on an ungraded quiz, and does not guess a typed answer', () => {
@@ -261,6 +303,62 @@ describe('code_arrange: the model arrangement runs as the host module’s code',
     ])
     const task = judgeTask(plan, { starter: done('failed'), complete: done('passed') })
     expect(task.status).toBe('pass')
+  })
+
+  it('runs a Support stage on an arrangement: it must not pass the checks', () => {
+    const withSupport = {
+      ...indent,
+      codeStages: [
+        {
+          role: 'support',
+          label: 'Nearly',
+          code: 'import turtle\nfor side in range(4):\n    turtle.forward(100)\n    turtle.left(90)',
+        },
+      ],
+    }
+    const plan = planTask(composed(withSupport), withSupport)
+    expect(plan.runs.map((r) => [r.key, r.expect])).toEqual([
+      ['starter', 'not_pass'],
+      ['complete', 'pass'],
+      ['support:0', 'not_pass'],
+    ])
+    const task = judgeTask(plan, {
+      starter: done('failed'),
+      complete: done('passed'),
+      'support:0': done('passed'),
+    })
+    expect(task.status).toBe('fail')
+    expect(task.checks.find((c) => c.role === 'support').detail).toMatch(/hands the child/)
+  })
+
+  it('treats an indent arrangement checked only by run_attempted as run and read', () => {
+    const runAttempted = { ...indent, id: 42, check: { type: 'run_attempted' } }
+    const plan = planTask(composed(runAttempted), runAttempted)
+    // Any run passes, so the start depths are not expected to fail; the model is run for errors.
+    expect(plan.runs.map((r) => [r.role, r.expect])).toEqual([['complete', 'runs_clean']])
+    expect(judgeTask(plan, { complete: done('passed') }).status).toBe('pass')
+    // requireSuccess: an error fails the run, so the start depths must still not pass.
+    const strict = { ...indent, id: 43, check: { type: 'run_attempted', requireSuccess: true } }
+    expect(planTask(composed(strict), strict).runs.map((r) => r.expect)).toEqual([
+      'not_pass',
+      'pass',
+    ])
+  })
+
+  it('carries the model arrangement into a task that carries code from an arrangement', () => {
+    const next = {
+      id: 44,
+      title: 'Then',
+      moduleType: 'turtle',
+      carryCodeFrom: 40,
+      codeStages: [{ role: 'complete', label: 'Complete', code: 'import turtle\n' }],
+      check: { type: 'turtle_segment_count', operator: 'equals', value: '8' },
+    }
+    const plan = planTask(composed(indent), next)
+    const starter = plan.runs.find((r) => r.role === 'starter')
+    expect(starter.skip).toBeUndefined()
+    expect(starter.code).toMatch(/^ {4}turtle\.forward\(100\)$/m)
+    expect(starter.note).toMatch(/model arrangement/)
   })
 
   it('reports an HTML arrangement as not checked (a frozen module)', () => {
@@ -595,6 +693,35 @@ describe('Scratch tasks: block checks judged on each stage', () => {
     const report = judgeTask(planTask(lesson(task), task))
     expect(report.status).toBe('not_checked')
     expect(report.checks.find((c) => c.name === 'complete blocks pass').reason).toMatch(/run/)
+  })
+
+  it('never says block checks passed when only run-time checks were left to judge', () => {
+    const task = scratchTask({
+      check: [{ type: 'sprite_property', property: 'x', operator: 'greater_than', value: 5 }],
+      feedbackChecks: [],
+      codeStages: [
+        {
+          role: 'support',
+          label: 'Hint',
+          blocks: blocksFor(stack('event_whenflagclicked', 'motion_movesteps')),
+        },
+      ],
+    })
+    const report = judgeTask(planTask(lesson(task), task))
+    const support = report.checks.find((c) => c.name === 'support:Hint does not pass')
+    expect(support.status).toBe('not_checked')
+    expect(support.reason).not.toMatch(/block checks pass/)
+    expect(support.reason).toMatch(/only run-time checks/)
+    // With a block check that passes as well, that one is named as judged.
+    const mixed = scratchTask({
+      check: [
+        { type: 'block_used', opcode: 'event_whenflagclicked' },
+        { type: 'sprite_property', property: 'x', operator: 'greater_than', value: 5 },
+      ],
+      feedbackChecks: [],
+    })
+    const starter = judgeTask(planTask(lesson(mixed), mixed)).checks[0]
+    expect(starter.reason).toMatch(/block checks pass; run-time checks not judged/)
   })
 })
 

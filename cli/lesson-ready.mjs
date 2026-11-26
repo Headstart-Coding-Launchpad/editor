@@ -18,6 +18,7 @@ import { assembleCodeArrangement, buildSolutionSlotState } from '../src/shared/c
 import { isIndentArrangeTask } from '../src/shared/codeArrangeIndent.js'
 import { formatStageLabel, getStageRole } from '../src/shared/taskStages.js'
 import {
+  completionToleratesRunError,
   isRunAttemptedCheck,
   normalizeChecks,
   normalizeFeedbackChecks,
@@ -217,14 +218,21 @@ function starterFor(lesson, task) {
     const from = flattenTasks(lesson.tasks).find(
       (t) => String(t?.id) === String(task.carryCodeFrom)
     )
-    const code = from ? stage(from, 'complete') : null
+    // An arrangement's assembled program is its work, so it carries the model arrangement.
+    const arranged = from && isModuleHostedActivityTask(from)
+    const code = !from
+      ? null
+      : arranged
+        ? assembleCodeArrangement(from, buildSolutionSlotState(from))
+        : stage(from, 'complete')
     if (code == null) {
       return {
         code: null,
         skip: `the starter is carried from task ${task.carryCodeFrom}, which has no complete code`,
       }
     }
-    return { code, note: `carried from task ${task.carryCodeFrom}'s complete code` }
+    const what = arranged ? 'model arrangement' : 'complete code'
+    return { code, note: `carried from task ${task.carryCodeFrom}'s ${what}` }
   }
   return { code: stage(task, 'starter') ?? '' }
 }
@@ -354,15 +362,19 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   } else {
     runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra, inputs))
   }
-  // A Support stage is a hint a child (or tutor) can take over: it must not pass the checks.
-  if (hasCheck && !runAndRead) {
-    ;(Array.isArray(task.codeStages) ? task.codeStages : []).forEach((s, i) => {
-      if (getStageRole(s) !== 'support' || s?.code == null) return
-      runs.push(codeRun(task, 'support', String(s.code), 'not_pass', supportRunExtra(s, i), inputs))
-    })
-  }
+  if (hasCheck && !runAndRead) runs.push(...supportRuns(task, inputs))
   const hints = authoredHints(task).map(({ index: _index, ...h }) => h)
   return { ...base, setup: setupCode != null, runs, hints }
+}
+
+// A Support stage is a hint a child (or tutor) can take over: it must not pass the checks.
+function supportRuns(task, inputs) {
+  const stages = Array.isArray(task.codeStages) ? task.codeStages : []
+  return stages.flatMap((s, i) =>
+    getStageRole(s) !== 'support' || s?.code == null
+      ? []
+      : [codeRun(task, 'support', String(s.code), 'not_pass', supportRunExtra(s, i), inputs)]
+  )
 }
 
 const SUPPORT_PASSES = 'already passes the checks: offering it hands the child the answer'
@@ -382,12 +394,16 @@ function supportRunExtra(stage, index) {
 // Run and checks, so the model arrangement (every blank holding its own tile, or every line at
 // its authored depth) runs as that module's code task (lesson-ready-run.mjs runTaskCopy). In
 // indent mode the lines' start depths are a runnable program too, which must not pass. A slot
-// board can't Run until every blank is filled, so it has no starter run.
+// board can't Run until every blank is filled, so it has no starter run. Support stages (the
+// classroom reveals them on an arrangement as on a code task) must not pass either.
 function planArrangeTask(task, base, inputs) {
   const hasCheck = normalizeChecks(task.check).length > 0
+  // Run and read: every check passes on any run, so no arrangement can fail and the model
+  // arrangement is only checked for errors (as on a code task).
+  const runAndRead = completionToleratesRunError(task.check)
   const model = assembleCodeArrangement(task, buildSolutionSlotState(task))
   const runs = []
-  if (hasCheck && isIndentArrangeTask(task)) {
+  if (hasCheck && !runAndRead && isIndentArrangeTask(task)) {
     const start = assembleCodeArrangement(task, {})
     runs.push(
       codeRun(
@@ -404,9 +420,10 @@ function planArrangeTask(task, base, inputs) {
       )
     )
   }
-  const expect = hasCheck ? 'pass' : 'runs_clean'
+  const expect = hasCheck && !runAndRead ? 'pass' : 'runs_clean'
   const extra = {
-    name: hasCheck ? 'model arrangement passes' : 'model arrangement runs without an error',
+    name:
+      expect === 'pass' ? 'model arrangement passes' : 'model arrangement runs without an error',
     what: 'model arrangement',
   }
   runs.push(
@@ -421,6 +438,7 @@ function planArrangeTask(task, base, inputs) {
         }
       : codeRun(task, 'complete', model, expect, extra, inputs)
   )
+  if (hasCheck && !runAndRead) runs.push(...supportRuns(task, inputs))
   const hints = authoredHints(task).map(({ index: _index, ...h }) => h)
   return { ...base, setup: getTaskSetupCode(task) != null, runs, hints }
 }
@@ -454,6 +472,8 @@ function planQuizTask(task, base, stop) {
       ? { name, status: PASS }
       : { name, status: FAIL, detail: failDetail }
   }
+  // A numeric answer (`value: 1` for option id "1") is what a child's pick stores as text.
+  const model = def.solutionState(task)
   const checks = [
     graded(
       'blank answer does not pass',
@@ -463,12 +483,28 @@ function planQuizTask(task, base, stop) {
     ),
     graded(
       'model answer passes',
-      def.solutionState(task),
+      typeof model === 'number' ? String(model) : model,
       true,
       "the quiz's own answer is marked wrong: no child can pass it"
     ),
   ]
+  if (task.quizType === 'fill_blank') checks.push(gapsCheck(task))
   return { ...base, method: 'grade', gradeChecks: checks }
+}
+
+// The student view draws one gap per `___` (in text, inline code or a code block) and fills the
+// blanks in order, so a blank past the last gap can never be filled and the quiz never passes.
+// Counted as the Builder's fill-blank editor counts them.
+function gapsCheck(task) {
+  const name = 'every blank has a gap'
+  const gaps = (String(task.text ?? '').match(/___/g) ?? []).length
+  const blanks = (task.blanks ?? []).length
+  if (blanks <= gaps) return { name, status: PASS }
+  return {
+    name,
+    status: FAIL,
+    detail: `${blanks} blanks but ${gaps} ___ gap(s) in the text: a child can never fill them all`,
+  }
 }
 
 // ── Scratch: the checks judged on each stage's blocks ─────────────────────────
@@ -488,9 +524,13 @@ function blocksCheck(
   const result = entry.completion.result
   if (result === 'none') return { name, status: NOT_CHECKED, reason: 'no completion check' }
   if (result === 'incomplete') {
-    return expectPass
-      ? { name, status: NOT_CHECKED, reason: 'its run-time checks need a run, which is not made' }
-      : { name, status: NOT_CHECKED, reason: 'the block checks pass; run-time checks not judged' }
+    const judged = entry.completion.checks.some((c) => c.result !== 'skipped')
+    const reason = expectPass
+      ? 'its run-time checks need a run, which is not made'
+      : judged
+        ? 'the block checks pass; run-time checks not judged'
+        : 'only run-time checks, which need a run (not made)'
+    return { name, status: NOT_CHECKED, reason }
   }
   const passed = result === 'pass'
   if (passed === expectPass) return { name, status: PASS, note: BLOCKS_NOTE }

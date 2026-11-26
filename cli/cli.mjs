@@ -863,7 +863,7 @@ await yargs(hideBin(process.argv))
           inputs: {
             type: 'string',
             describe:
-              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...] } }',
+              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...], support: [...] } } (support: every Support stage run)',
           },
           out: { type: 'string', describe: 'Also write the JSON report to this file' },
         },
