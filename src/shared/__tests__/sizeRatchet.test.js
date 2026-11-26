@@ -11,6 +11,7 @@
 // And again 26 Nov (same Ryan OK) for the browser-pass fixes (+29: 213810 -> 213839).
 // And for the tutor-side fixes (+24: 213839 -> 213863), same Ryan OK.
 // And for Drop pin following the student's typing (+21: 213863 -> 213884), same Ryan OK.
+// And for the compact Pin row at 1366 (+2: 213884 -> 213886), same Ryan OK.
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
