@@ -313,6 +313,24 @@ await yargs(hideBin(process.argv))
       )
 
       .command(
+        'backup',
+        'Read-only: save a new copy of every lesson (forks too), level, topic and type-assets doc that changed since the last run; never overwrites. Prints read counts',
+        (y) =>
+          y.option('out', {
+            type: 'string',
+            describe: 'Backup folder (default D:\\LaunchPad-backups\\lessons)',
+          }),
+        cmd(async ({ out }) => {
+          const [{ db }, backup] = await Promise.all([
+            import('./firebase.mjs'),
+            import('./lesson-backup.mjs'),
+          ])
+          const log = (line) => process.stderr.write(`${line}\n`)
+          print(await backup.runLessonBackup({ db, out: out ?? backup.DEFAULT_BACKUP_DIR, log }))
+        })
+      )
+
+      .command(
         'get <id>',
         'Fetch the full lesson JSON',
         {},
