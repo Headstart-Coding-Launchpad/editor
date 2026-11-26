@@ -37,6 +37,22 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-26
+
+- **`lessons ready` now checks quizzes, `code_arrange` tasks and Support stages.** A graded quiz
+  is marked with the quiz's own grader: its model answer must pass and a blank answer must not
+  (an answer naming an option the quiz no longer offers fails). Polls, confidence ratings and
+  open short answers have nothing to judge; a short answer with a check is not checked (a typed
+  answer is not guessed). A Python or Turtle `code_arrange` task runs its model arrangement as
+  the host module's code (it must pass), and in indent mode the lines' start depths too (they
+  must not pass). A Support stage must not pass the checks (Python and Turtle runs it, Scratch
+  judges its blocks): one that does hands the child the answer, and fails. No new lesson fields.
+  See [lessons-ready-cli.md](lessons-ready-cli.md).
+- Affects: cli, quiz_multiple_choice, quiz_match, quiz_fill_blank, quiz_code_lines, code_arrange,
+  python, turtle, scratch · Existing lessons: a Support stage that already passes the checks is
+  now reported as a failure; trim it or make it a Complete stage · Resolves: none (Deep Review
+  C1, 10 Nov 2026)
+
 ## 2026-11-25
 
 - **`lessons ready`: is a lesson ready for class?** A new CLI command, `lessons ready <file|id>`,

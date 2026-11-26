@@ -27,28 +27,32 @@ A lesson with anything not checked is never reported as `ready`.
    - **the complete code must pass**, and its failure shows the hint the child would see;
    - **`setupCode` must run clean** (no "This task's setup has a problem");
    - a task with no check: its complete code must run without an error;
+   - **each Support stage must not pass** (one that does hands the child the answer when it is offered or taken over). Run-and-read tasks and tasks with no check skip this;
    - **each authored hint** (on a check or a feedback check) is looked for in the banner after each run. A hint no run showed is listed as not checked.
-4. **Scratch tasks** are judged on each stage's blocks without a run, as the classroom judges block checks: the starter must not pass and each complete stage must pass (the shared stage verification `lessons test-checks` uses). Run-time checks (`sprite_property`…) are not checked.
+4. **Scratch tasks** are judged on each stage's blocks without a run, as the classroom judges block checks: the starter must not pass, each complete stage must pass and each Support stage with blocks must not pass (the shared stage verification `lessons test-checks` uses). Run-time checks (`sprite_property`…) are not checked.
+5. **`code_arrange` tasks** (Python and Turtle) run in the browser as the host module's code task, as the classroom runs an arrangement through that module's Run and checks: **the model arrangement** (every blank holding its own tile, or every line at its authored depth) must pass, or run without an error when the task has no check. In indent mode **the start depths** must not pass (a child could otherwise finish without moving a line). A slot board can't Run until every blank is filled, so it has no starter run; a check's hint is then shown by no run and is listed as not checked.
+6. **Graded quizzes** (multiple choice, match, fill in the gaps, click the lines) are marked with the quiz's own grader, as the classroom marks a submitted answer: **the model answer must pass** (read back as a stored answer is, so an answer naming an option the quiz no longer offers fails) and **a blank answer must not**. Polls, confidence ratings and short answers with no check are ungraded: nothing to judge.
 
 ## What it does not check
 
 Each of these is reported as not checked, with its reason:
 
-- quizzes, activities and `code_arrange` tasks;
+- activities, and short-answer quizzes with a check (a typed answer is not guessed);
+- HTML `code_arrange` tasks (HTML is a frozen module);
 - Arcade and Electronics tasks; HTML, Filesystem and Desktop tasks (frozen modules);
 - Python `tests` (Run Tests) and submit-mode tasks;
 - code that calls `input()`, unless you give the answers with `--inputs`;
 - predict-mode tasks whose Run waits for the child's predictions;
 - `carryCodeFromLesson` starters (the child's own work from an earlier lesson).
 
-Never looked at: Topic Library links (use `lessons preflight`), tutor views and live sessions, how the lesson reads or looks (use `lessons screenshot`), code stages other than starter and complete.
+Never looked at: Topic Library links (use `lessons preflight`), tutor views and live sessions, how the lesson reads or looks (use `lessons screenshot`), Starter stages after the first and Python or Turtle Complete stages after the first, quiz feedback and hints, and `code_arrange` arrangements other than the model one (wrong tiles, tile hints).
 
 ## Options
 
 | Option | Meaning |
 |---|---|
 | `<lesson>` | A JSON or YAML file, or a published lesson id (needs CLI credentials, one Firestore read). |
-| `--inputs <file>` | Answers to `input()` questions, JSON or YAML: `{ "8": ["Ava", "7"] }` for every run of task 8, or `{ "8": { starter: [...], complete: [...] } }`. A run that asks more questions than were given is not checked; nothing is made up. |
+| `--inputs <file>` | Answers to `input()` questions, JSON or YAML: `{ "8": ["Ava", "7"] }` for every run of task 8, or `{ "8": { starter: [...], complete: [...], support: [...] } }` (`support`: every Support stage's run). A run that asks more questions than were given is not checked; nothing is made up. |
 | `--task <id>` | Only this task. |
 | `--out <file>` | Also write the JSON report to this file. |
 | `--base <url>` | The LaunchPad site to run on. The default is the live site; `--base http://localhost:5173/editor/` uses a local `npm run dev`. |
