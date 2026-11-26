@@ -700,6 +700,15 @@ export default function StudentModal({
     () => teacherHighlightsFor(student.teacherHighlights, mirror === 'code' ? null : activeFile),
     [student.teacherHighlights, mirror, activeFile]
   )
+  // In Pin mode the clicked spot shows in the mirror as a marker until Drop pin, Clear or a mode
+  // change (a new id per spot, so a new click re-places it).
+  const mirrorHighlights =
+    pinMode && livePending
+      ? [
+          ...highlightsForActiveFile,
+          { id: `pending-pin-${livePending.from}`, kind: 'pin', pending: true, ...livePending },
+        ]
+      : highlightsForActiveFile
 
   useEffect(() => {
     const liveFile =
@@ -2039,7 +2048,7 @@ export default function StudentModal({
                       onMirrorPick={handleMirrorPick}
                       pinMode={pinMode}
                       onPinModeChange={handleHighlightModeChange}
-                      highlights={highlightsForActiveFile}
+                      highlights={mirrorHighlights}
                       onMirrorSelectionChange={handleMirrorSelectionChange}
                       onDismissHighlight={handleDismissHighlight}
                       highlightEmoji={highlightEmoji}

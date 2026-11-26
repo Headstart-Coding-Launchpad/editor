@@ -183,74 +183,79 @@ export default function StudentWorkspaceBody({
   )
   const canSend = !!pendingHighlight && (!pinMode || !!highlightNote.trim())
   const highlightComposer = canHighlight && (
-    <div style={s.highlightComposer}>
-      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight or pin">
-        {modeButton(false, 'Highlight')}
-        {modeButton(true, '📌 Pin')}
+    // Two fixed-height rows in both modes, so switching Highlight / Pin never moves the code.
+    <div style={s.highlightComposer} data-testid="highlight-composer">
+      <div style={{ ...s.composerRow, overflowX: 'auto' }}>
+        <div style={s.highlightEmojiRow} role="group" aria-label="Highlight or pin">
+          {modeButton(false, 'Highlight')}
+          {modeButton(true, '📌 Pin')}
+        </div>
+        <div style={s.highlightEmojiRow} role="group" aria-label={pinMode ? 'Quick words' : 'Mark'}>
+          {pinMode
+            ? PIN_PRESETS.map((words) => (
+                <button
+                  key={words}
+                  type="button"
+                  className={highlightNote === words ? 'btn-primary' : 'btn-ghost-outline'}
+                  style={s.composerBtn}
+                  onClick={() => onHighlightNoteChange(words)}
+                >
+                  {words}
+                </button>
+              ))
+            : HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  style={{
+                    ...s.highlightEmojiBtn,
+                    ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
+                  }}
+                  aria-pressed={emoji === highlightEmoji}
+                  aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                  title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                  onClick={() => onHighlightEmojiChange(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+        </div>
       </div>
-      <div style={s.highlightEmojiRow} role="group" aria-label={pinMode ? 'Quick words' : 'Mark'}>
-        {pinMode
-          ? PIN_PRESETS.map((words) => (
-              <button
-                key={words}
-                type="button"
-                className={highlightNote === words ? 'btn-primary' : 'btn-ghost-outline'}
-                style={s.composerBtn}
-                onClick={() => onHighlightNoteChange(words)}
-              >
-                {words}
-              </button>
-            ))
-          : HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                style={{
-                  ...s.highlightEmojiBtn,
-                  ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
-                }}
-                aria-pressed={emoji === highlightEmoji}
-                aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-                title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-                onClick={() => onHighlightEmojiChange(emoji)}
-              >
-                {emoji}
-              </button>
-            ))}
-      </div>
-      <input
-        type="text"
-        style={s.highlightNoteInput}
-        aria-label={pinMode ? 'Pin words' : 'Highlight note'}
-        maxLength={pinMode ? PIN_NOTE_MAX : undefined}
-        placeholder={
-          pinMode
-            ? pendingHighlight
-              ? 'Type or pick the words…'
-              : 'Click a spot in the code, then type or pick…'
-            : pendingHighlight
-              ? 'Optional note…'
-              : 'Select code above to highlight it…'
-        }
-        value={highlightNote}
-        onChange={(e) => onHighlightNoteChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && canSend) onSendHighlight()
-        }}
-      />
-      <button
-        className="btn-primary"
-        style={s.composerBtn}
-        onClick={onSendHighlight}
-        disabled={!canSend}
-      >
-        {pinMode ? 'Drop pin' : 'Send Highlight'}
-      </button>
-      {(pendingHighlight || highlightNote) && (
-        <button className="btn-ghost-outline" style={s.composerBtn} onClick={onCancelHighlight}>
-          Clear
+      <div style={s.composerRow}>
+        <input
+          type="text"
+          style={s.highlightNoteInput}
+          aria-label={pinMode ? 'Pin words' : 'Highlight note'}
+          maxLength={pinMode ? PIN_NOTE_MAX : undefined}
+          placeholder={
+            pinMode
+              ? pendingHighlight
+                ? 'Type or pick the words…'
+                : 'Click a spot, then type or pick…'
+              : pendingHighlight
+                ? 'Optional note…'
+                : 'Select code to highlight…'
+          }
+          value={highlightNote}
+          onChange={(e) => onHighlightNoteChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canSend) onSendHighlight()
+          }}
+        />
+        <button
+          className="btn-primary"
+          style={s.composerBtn}
+          onClick={onSendHighlight}
+          disabled={!canSend}
+        >
+          {pinMode ? 'Drop pin' : 'Send Highlight'}
         </button>
-      )}
+        {(pendingHighlight || highlightNote) && (
+          <button className="btn-ghost-outline" style={s.composerBtn} onClick={onCancelHighlight}>
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   )
 
@@ -750,12 +755,12 @@ const s = {
     border: '1px solid rgba(37,99,235,0.5)',
     boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
   },
-  composerBtn: { fontSize: 12, padding: '4px 10px' },
+  composerBtn: { fontSize: 12, padding: '4px 10px', whiteSpace: 'nowrap' },
+  composerRow: { display: 'flex', alignItems: 'center', gap: 8, height: 30, minWidth: 0 },
   highlightComposer: {
     display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 4,
     padding: '6px 12px',
     background: '#eff6ff',
     borderBottom: '1px solid #bfdbfe',

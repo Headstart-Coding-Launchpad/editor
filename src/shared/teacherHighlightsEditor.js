@@ -27,10 +27,18 @@ export function teacherHighlightsFor(raw, file = null) {
     .map(([id, h]) => ({ id, kind: h.kind, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
 }
 
+// A pin's caret; `pending` is the tutor's clicked spot before Drop pin (mirror only, no note).
 class PinWidget extends WidgetType {
+  constructor(pending) {
+    super()
+    this.pending = !!pending
+  }
+  eq(other) {
+    return other.pending === this.pending
+  }
   toDOM() {
     const caret = document.createElement('span')
-    caret.className = 'cm-teacherPin'
+    caret.className = this.pending ? 'cm-teacherPin cm-teacherPinPending' : 'cm-teacherPin'
     caret.setAttribute('aria-hidden', 'true')
     return caret
   }
@@ -145,7 +153,8 @@ function buildDecorations(doc, items) {
     const first = doc.lineAt(h.from)
     const last = doc.lineAt(endsAtLineStart ? h.to - 1 : h.to)
     if (isPin(h)) {
-      ranges.push(Decoration.widget({ widget: new PinWidget(), side: 1 }).range(h.from))
+      ranges.push(Decoration.widget({ widget: new PinWidget(h.pending), side: 1 }).range(h.from))
+      if (h.pending) continue
     } else if (first.number === last.number) {
       ranges.push(Decoration.mark({ class: 'cm-teacherHighlight' }).range(h.from, h.to))
     } else {
@@ -178,6 +187,7 @@ const teacherHighlightsTheme = EditorView.baseTheme({
     borderLeft: '2px solid #2563eb',
     verticalAlign: 'text-bottom',
   },
+  '.cm-teacherPinPending': { borderLeft: '3px solid #6222CC', boxShadow: '0 0 0 2px #ede9fe' },
   '.cm-teacherNote': {
     position: 'relative',
     padding: '7px 0 3px',
@@ -287,7 +297,8 @@ export const teacherHighlightsField = StateField.define({
         const from = Math.min(Math.max(placed.from ?? 0, 0), max)
         const to = isPin(h) ? from : Math.min(Math.max(placed.to ?? from, 0), max)
         if (!isPin(h) && from >= to) continue
-        highlights.push({ id: h.id, kind: h.kind, emoji: h.emoji, note: h.note, from, to })
+        const { id, kind, emoji, note, pending } = h
+        highlights.push({ id, kind, emoji, note, pending, from, to })
       }
       changed = true
     }
