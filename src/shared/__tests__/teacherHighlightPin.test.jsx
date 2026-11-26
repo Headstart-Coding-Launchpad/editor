@@ -127,6 +127,15 @@ describe('Fun moment: the tutor pins words right where the child types', () => {
   })
 })
 
+describe("the tutor's pin spot before Drop pin", () => {
+  it('shows a pending pin as a marker only: no note row, no button', async () => {
+    const pending = { id: 'pending-pin', kind: 'pin', pending: true, from: pinAt, to: pinAt }
+    const { container } = await renderEditor({ readOnly: true, teacherHighlights: [pending] })
+    expect(container.querySelector('.cm-teacherPin.cm-teacherPinPending')).toBeTruthy()
+    expect(noteRows(container)).toHaveLength(0)
+  })
+})
+
 describe('noteMarginLeft (the note stays inside the visible editor)', () => {
   it('puts the pill under the arrow, but never past the left edge or the visible right edge', () => {
     expect(noteMarginLeft(100, 120, 600)).toBe(76)

@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
 
-const editorSpy = vi.hoisted(() => ({ onSelectionChange: null, onPick: null }))
+const editorSpy = vi.hoisted(() => ({ onSelectionChange: null, onPick: null, highlights: [] }))
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, readOnly, onSelectionChange, onPick }) => (
-    Object.assign(editorSpy, { onSelectionChange, onPick }),
+  CodeEditor: ({ value, onChange, readOnly, onSelectionChange, onPick, teacherHighlights }) => (
+    Object.assign(editorSpy, { onSelectionChange, onPick, highlights: teacherHighlights ?? [] }),
     (
       <textarea
         data-testid="code-editor"
@@ -360,6 +360,40 @@ describe('StudentModal', () => {
       note: 'Write this here',
       kind: 'pin',
     })
+  })
+
+  it('marks the clicked pin spot in the mirror until Drop pin, Clear or a mode change', async () => {
+    const { act } = await import('@testing-library/react')
+    render(<StudentModal {...mkProps({ isLive: true, onAddHighlight: vi.fn() })} />)
+    const pending = () => editorSpy.highlights.filter((h) => h.pending)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(5))
+    expect(pending()).toEqual([expect.objectContaining({ kind: 'pin', from: 5, to: 5 })])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: 'Highlight' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Drop pin' }))
+    expect(pending()).toEqual([])
+  })
+
+  it('keeps the highlight bar the same two fixed rows in Highlight and Pin mode', () => {
+    render(<StudentModal {...mkProps({ isLive: true })} />)
+    const rows = () => [...screen.getByTestId('highlight-composer').children]
+    expect(screen.getByLabelText('Highlight note')).toHaveAttribute(
+      'placeholder',
+      'Select code to highlight…'
+    )
+    const highlightRows = rows().map((row) => row.style.height)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    expect(rows().map((row) => row.style.height)).toEqual(highlightRows)
+    expect(highlightRows).toEqual(['30px', '30px'])
   })
 
   it('forgets a selected range when the task changes before it is sent', async () => {
