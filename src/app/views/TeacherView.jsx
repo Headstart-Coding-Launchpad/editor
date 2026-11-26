@@ -476,12 +476,12 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
     }
   }, [lessonId])
 
-  // Create session only if none exists — don't auto-restart an ended session
+  // Create a session only if none has a state — don't auto-restart an ended session
   useEffect(() => {
     if (loading || !lesson) return
-    if (!session) createSessionIfAbsent()
+    if (!session?.state) createSessionIfAbsent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, lesson])
+  }, [loading, lesson, !!session && !session.state])
 
   useEffect(() => {
     if (!session?.currentTaskId || sandboxStaging) return

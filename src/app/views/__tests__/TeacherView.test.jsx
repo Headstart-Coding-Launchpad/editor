@@ -146,6 +146,41 @@ describe('TeacherView with a Python Turtle task', () => {
   })
 })
 
+describe('TeacherView opening a session', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(captured)) delete captured[key]
+    for (const key of Object.keys(sessionCommands)) delete sessionCommands[key]
+  })
+
+  it.each([
+    ['no node', null, 1],
+    ['a node with no state', { students: { a: { currentCode: 'x' } } }, 1],
+    ['a running session', { state: 'active', currentTaskId: 1, students: {} }, 0],
+    ['an ended session', { state: 'ended', currentTaskId: 1, students: {} }, 0],
+  ])('asks for a fresh session for %s: %#', async (_name, session, calls) => {
+    mockSession = session
+    await renderTeacherView(turtleLesson())
+    expect(sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0).toBe(calls)
+  })
+
+  it('replaces a node that turns stateless while open, but not one that is removed', async () => {
+    mockSession = { state: 'active', currentTaskId: 1, students: {} }
+    const lesson = turtleLesson()
+    getDoc.mockResolvedValue({ exists: () => true, data: () => lesson })
+    const view = render(<TeacherView lessonId={lesson.id} />)
+    await waitFor(() => expect(captured.editor?.task).toBeTruthy())
+    const calls = () => sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0
+
+    mockSession = null // Closed from Admin: stays closed.
+    view.rerender(<TeacherView lessonId={lesson.id} />)
+    expect(calls()).toBe(0)
+
+    mockSession = { students: { a: { currentCode: 'x' } } } // A stale student write.
+    view.rerender(<TeacherView lessonId={lesson.id} />)
+    await waitFor(() => expect(calls()).toBe(1))
+  })
+})
+
 describe('TeacherView task slide', () => {
   beforeEach(() => {
     for (const key of Object.keys(captured)) delete captured[key]

@@ -306,20 +306,19 @@ export function useSession(lessonId, { enabled = true, keepPresenter = false } =
     await clearPeerHelpData(lessonId)
   }
 
-  // The dashboard's "no session yet" path (TeacherView). A transaction creates the node
-  // only when it is absent, so two tutor tabs opening together, or one transient null
-  // snapshot, can't overwrite a class that has already joined (#242). Resolves to whether
-  // this call created it.
+  // TeacherView's "no session yet" path. A transaction, so two tutor tabs or a transient null
+  // snapshot can't overwrite a class (#242). A node with no `state` is leftover student writes:
+  // it is replaced, keeping only named students. Resolves to whether this call created it.
   async function createSessionIfAbsent() {
-    const result = await runTransaction(ref(db, `sessions/${lessonId}`), (current) =>
-      current ? undefined : initialSessionData()
-    )
+    const result = await runTransaction(ref(db, `sessions/${lessonId}`), (current) => {
+      if (current?.state) return undefined
+      const named = Object.entries(current?.students ?? {}).filter(([, s]) => s?.displayName)
+      return { ...initialSessionData(), students: Object.fromEntries(named) }
+    })
     return result.committed
   }
 
-  async function restartSession() {
-    await createSession()
-  }
+  const restartSession = createSession
 
   // The session report's `taskTimeline` (sessions/{lessonId}/taskTimeline/{pushId}:
   // { taskId, startedAt }): one entry each time the class's current task changes, information

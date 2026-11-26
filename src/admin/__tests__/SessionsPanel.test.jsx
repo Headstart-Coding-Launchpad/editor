@@ -81,6 +81,17 @@ describe('SessionsPanel', () => {
     expect(screen.queryAllByText('html-1').length).toBe(0)
   })
 
+  it('lists a leftover session with no state, so it can be closed', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SessionsPanel />)
+    fireSessions({ 'py-intro': { students: { a: { currentCode: 'x' } } } })
+
+    expect(screen.getByText('Leftover')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close Session' }))
+    expect(firebaseDbMocks.remove).toHaveBeenCalledWith({ path: 'sessions/py-intro' })
+  })
+
   it('shows the lesson title when known', () => {
     render(<SessionsPanel />)
     fireLessons([{ id: 'py-intro', title: 'Intro to Python' }])
