@@ -98,6 +98,159 @@ describe('lessons ready: the Fun moment (a lesson that would break in class is n
     expect(report.result).toBe('ready')
     expect(report.exitCode).toBe(0)
   })
+
+  it('fails a quiz whose own answer is marked wrong', () => {
+    // The answer names an option the quiz no longer offers: no child can ever pick it.
+    const quiz = {
+      id: 20,
+      title: 'Which prints?',
+      taskType: 'quiz',
+      quizType: 'multiple_choice',
+      options: [
+        { id: 'a', text: 'print' },
+        { id: 'b', text: 'input' },
+      ],
+      check: { type: 'answer_equals', value: 'c' },
+    }
+    const task = judgeTask(planTask(pythonLesson([quiz]), quiz))
+    expect(task.status).toBe('fail')
+    expect(task.checks.find((c) => c.name === 'model answer passes').status).toBe('fail')
+  })
+
+  it('fails a code_arrange task whose model arrangement fails its check', () => {
+    const arrange = {
+      id: 21,
+      title: 'Arrange hello',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{ id: 'l1', parts: [{ type: 'slot', id: 's1', code: 'print("hi")' }] }],
+      distractors: [{ id: 'd1', code: 'input("hi")' }],
+      check: { type: 'output', operator: 'contains', value: 'hello' },
+    }
+    const lesson = { ...pythonLesson([arrange]), type: 'composed' }
+    const plan = planTask(lesson, arrange)
+    expect(plan.status).toBeUndefined()
+    expect(plan.runs).toEqual([
+      expect.objectContaining({ role: 'complete', code: 'print("hi")', expect: 'pass' }),
+    ])
+    const task = judgeTask(plan, { complete: done('failed') })
+    expect(task.status).toBe('fail')
+    expect(task.checks[0]).toMatchObject({ name: 'model arrangement passes', status: 'fail' })
+  })
+
+  it('fails a Support stage that already passes: offering it hands over the answer', () => {
+    const withSupport = {
+      ...printTask,
+      codeStages: [
+        ...printTask.codeStages,
+        { role: 'support', label: 'Nearly there', code: 'print("hello")\n' },
+      ],
+    }
+    const plan = planTask(pythonLesson([withSupport]), withSupport)
+    expect(plan.runs.map((r) => [r.key, r.expect])).toEqual([
+      ['starter', 'not_pass'],
+      ['complete', 'pass'],
+      ['support:2', 'not_pass'],
+    ])
+    const task = judgeTask(plan, {
+      starter: done('failed', { hintShown: 'Print the word hello.' }),
+      complete: done('passed'),
+      'support:2': done('passed'),
+    })
+    expect(task.status).toBe('fail')
+    const support = task.checks.find((c) => c.name.endsWith('does not pass') && c.role === 'support')
+    expect(support).toMatchObject({ status: 'fail', name: 'Support: Nearly there does not pass' })
+    expect(support.detail).toMatch(/hands the child the answer/)
+  })
+})
+
+describe('quizzes: graded with the quiz’s own grader', () => {
+  const mc = {
+    id: 30,
+    title: 'Pick print',
+    taskType: 'quiz',
+    quizType: 'multiple_choice',
+    options: [
+      { id: 'a', text: 'print' },
+      { id: 'b', text: 'input' },
+    ],
+    check: { type: 'answer_equals', value: 'a' },
+  }
+
+  it('passes when the model answer passes and a blank answer does not', () => {
+    const task = judgeTask(planTask(pythonLesson([mc]), mc))
+    expect(task.checks.map((c) => [c.name, c.status])).toEqual([
+      ['blank answer does not pass', 'pass'],
+      ['model answer passes', 'pass'],
+    ])
+    expect(task.status).toBe('pass')
+  })
+
+  it('judges fill-in-the-gaps answers', () => {
+    const gaps = {
+      id: 31,
+      title: 'Fill',
+      taskType: 'quiz',
+      quizType: 'fill_blank',
+      text: 'Use {{b1}} to show text.',
+      blanks: [{ id: 'b1', answer: 'print' }],
+      distractors: [{ id: 'd1', text: 'input' }],
+    }
+    expect(judgeTask(planTask(pythonLesson([gaps]), gaps)).status).toBe('pass')
+  })
+
+  it('has nothing to judge on an ungraded quiz, and does not guess a typed answer', () => {
+    const poll = { ...mc, id: 32, quizType: 'poll', check: undefined }
+    expect(planTask(pythonLesson([poll]), poll).status).toBe('nothing_to_run')
+    const typed = {
+      id: 33,
+      title: 'Name it',
+      taskType: 'quiz',
+      quizType: 'short_answer',
+      check: { type: 'answer_equals', value: 'print' },
+    }
+    const plan = planTask(pythonLesson([typed]), typed)
+    expect(plan.status).toBe('not_checked')
+    expect(plan.reason).toMatch(/model answer/)
+  })
+})
+
+describe('code_arrange: the model arrangement runs as the host module’s code', () => {
+  const indent = {
+    id: 40,
+    title: 'Square',
+    taskType: 'code_arrange',
+    moduleType: 'turtle',
+    arrangeMode: 'indent',
+    lines: [
+      { id: 'L1', code: 'import turtle', depth: 0, locked: true },
+      { id: 'L2', code: 'for side in range(4):', depth: 0, locked: true },
+      { id: 'L3', code: 'turtle.forward(100)', depth: 1 },
+      { id: 'L4', code: 'turtle.left(90)', depth: 1 },
+    ],
+    check: { type: 'turtle_segment_count', operator: 'equals', value: '4' },
+  }
+  const composed = (task) => ({ ...pythonLesson([task]), type: 'composed' })
+
+  it('runs the start depths (must not pass) and the model depths (must pass) in indent mode', () => {
+    const plan = planTask(composed(indent), indent)
+    expect(plan.module).toBe('turtle')
+    expect(plan.runs.map((r) => [r.role, r.expect, r.code])).toEqual([
+      ['starter', 'not_pass', 'import turtle\nfor side in range(4):\nturtle.forward(100)\nturtle.left(90)'],
+      [
+        'complete',
+        'pass',
+        'import turtle\nfor side in range(4):\n    turtle.forward(100)\n    turtle.left(90)',
+      ],
+    ])
+    const task = judgeTask(plan, { starter: done('failed'), complete: done('passed') })
+    expect(task.status).toBe('pass')
+  })
+
+  it('reports an HTML arrangement as not checked (a frozen module)', () => {
+    const html = { ...indent, id: 41, moduleType: 'html', arrangeMode: undefined }
+    expect(planTask(composed(html), html).status).toBe('not_checked')
+  })
 })
 
 describe('validateAsPublished', () => {
@@ -400,6 +553,22 @@ describe('Scratch tasks: block checks judged on each stage', () => {
     const report = judgeTask(planTask(lesson(task), task))
     expect(report.status).toBe('fail')
     expect(report.checks[0].detail).toMatch(/already pass/)
+  })
+
+  it('fails a Support stage whose blocks already pass', () => {
+    const task = scratchTask({
+      codeStages: [
+        {
+          role: 'support',
+          label: 'Hint',
+          blocks: blocksFor(stack('event_whenflagclicked', 'motion_movesteps')),
+        },
+      ],
+    })
+    const report = judgeTask(planTask(lesson(task), task))
+    const support = report.checks.find((c) => c.name === 'support:Hint does not pass')
+    expect(support).toMatchObject({ status: 'fail', detail: expect.stringMatching(/answer/) })
+    expect(report.status).toBe('fail')
   })
 
   it('reports run-time checks as not checked', () => {
