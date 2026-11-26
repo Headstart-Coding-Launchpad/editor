@@ -162,7 +162,7 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list [--light]|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics|screenshot` (`screenshot`: PNGs of tasks for lesson images; needs the root dev dependencies and Playwright Chromium, see `docs/authoring/lesson-screenshot-cli.md`) `lessons list --light` returns only id, title, draft, version, levelId, companionOf via a field-select read (cheap; use it for syncs).
+- `lessons list [--light]|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics|screenshot` (`screenshot`: PNGs of tasks for lesson images; needs the root dev dependencies and Playwright Chromium, see `docs/authoring/lesson-screenshot-cli.md`) `lessons list --light` returns only id, title, draft, version, levelId, companionOf via a field-select read (cheap; use it for syncs). `lessons backup [--out]` is the read-only nightly versioned copy to `D:\LaunchPad-backups\lessons` (`docs/authoring/lesson-backup-cli.md`).
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`

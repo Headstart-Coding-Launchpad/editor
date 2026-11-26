@@ -278,6 +278,11 @@ Every lesson validation error and warning from the CLI and shared validators, wi
 
 **Load when:** `lessons validate`, `yaml-to-json`, `upsert` or `publish-yaml` reports errors or warnings.
 
+### [authoring/lesson-backup-cli.md](authoring/lesson-backup-cli.md)
+`lessons backup`: the read-only nightly copy of every changed lesson, level, topic and type-assets doc to `D:\LaunchPad-backups\lessons`, what it does not cover (Storage files, anything about children), the folder layout, read counts and how Dev restores a version by hand.
+
+**Load when:** running or changing the lesson backup, or putting back a lost or broken lesson.
+
 ### [authoring/feedback-cli.md](authoring/feedback-cli.md)
 Reading, adding and archiving teacher feedback (lesson and platform) with the CLI, preview review notes (`lessons notes`: an admin's per-task notes from the lesson preview, and moving them to picked up or done), and a suggested loop for revising a lesson from feedback.
 
