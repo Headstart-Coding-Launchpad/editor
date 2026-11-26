@@ -140,6 +140,27 @@ describe('teacherHighlightsField', () => {
     ])
   })
 
+  it('brings a hidden pin or highlight back where it had moved to, not its stored offset', () => {
+    let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
+    const pin = { id: 'p', kind: 'pin', from: 15, to: 15, note: 'Write this here' }
+    state = state.update({ effects: setTeacherHighlights.of([pin, highlight]) }).state
+    state = state.update({ changes: { from: 0, insert: 'ab' }, userEvent: 'input.type' }).state
+    // Hidden (tutor editing, broadcast), then shown again with the stored offsets.
+    state = state.update({ effects: setTeacherHighlights.of([]) }).state
+    state = state.update({ effects: setTeacherHighlights.of([pin, highlight]) }).state
+    expect(positions(state)).toEqual([
+      ['p', 17, 17],
+      ['h1', 9, 14],
+    ])
+    // Hidden while other code is shown (a previous task), then the same code comes back.
+    const moved = state.doc.toString()
+    state = state.update({ effects: setTeacherHighlights.of([]) }).state
+    state = state.update({ changes: { from: 0, to: state.doc.length, insert: 'other' } }).state
+    state = state.update({ changes: { from: 0, to: state.doc.length, insert: moved } }).state
+    state = state.update({ effects: setTeacherHighlights.of([pin]) }).state
+    expect(positions(state)).toEqual([['p', 17, 17]])
+  })
+
   it('keeps a pin (from === to) through typing at it, with the typed text before it', () => {
     let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
     const pin = { id: 'p', kind: 'pin', from: 15, to: 15, note: 'Write this here' }

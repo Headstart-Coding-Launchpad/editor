@@ -105,6 +105,26 @@ describe('Fun moment: the tutor pins words right where the child types', () => {
     fireEvent.click(button, { detail: 1 })
     expect(onHighlightDismiss).toHaveBeenCalledTimes(2)
   })
+
+  it('keeps the editor focused and typing working after a press on the words, the row or Got it', async () => {
+    const { fireEvent } = await import('@testing-library/react')
+    const pin = { id: 'p1', kind: 'pin', from: pinAt, to: pinAt, note: 'Write this here' }
+    const { container, view } = await renderEditor({ teacherHighlights: [pin] })
+    const row = noteRows(container)[0]
+    for (const target of [row.querySelector('.cm-teacherNoteText'), row]) {
+      view.contentDOM.blur()
+      // A press there must not take focus or the caret away from the code.
+      expect(fireEvent.mouseDown(target)).toBe(false)
+      expect(view.hasFocus).toBe(true)
+    }
+    view.contentDOM.blur()
+    fireEvent.mouseDown(row.querySelector('button'))
+    expect(view.hasFocus).toBe(true)
+    // From the keyboard: focus is on the button, and goes back to the code.
+    row.querySelector('button').focus()
+    fireEvent.click(row.querySelector('button'), { detail: 0 })
+    expect(view.hasFocus).toBe(true)
+  })
 })
 
 describe('noteMarginLeft (the note stays inside the visible editor)', () => {
