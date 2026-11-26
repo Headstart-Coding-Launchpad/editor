@@ -383,6 +383,27 @@ describe('StudentModal', () => {
     expect(pending()).toEqual([])
   })
 
+  it('drops the pin where the marker now is after the student typed before the spot', async () => {
+    const { act } = await import('@testing-library/react')
+    const onAddHighlight = vi.fn()
+    const props = mkProps({ isLive: true, onAddHighlight })
+    const { rerender } = render(<StudentModal {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    act(() => editorSpy.onPick(6))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    // The student types "# " at the start of the mirrored code before the tutor drops it.
+    const typed = { ...props.student, currentCode: '# print("hello")' }
+    rerender(<StudentModal {...props} student={typed} />)
+    expect(editorSpy.highlights.filter((h) => h.pending)).toEqual([
+      expect.objectContaining({ from: 8, to: 8 }),
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Drop pin' }))
+    expect(onAddHighlight).toHaveBeenCalledWith(
+      'student-1',
+      expect.objectContaining({ from: 8, to: 8, kind: 'pin' })
+    )
+  })
+
   it('keeps the highlight bar the same two fixed rows in Highlight and Pin mode', () => {
     render(<StudentModal {...mkProps({ isLive: true })} />)
     const rows = () => [...screen.getByTestId('highlight-composer').children]

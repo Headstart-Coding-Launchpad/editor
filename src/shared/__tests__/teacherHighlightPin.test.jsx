@@ -4,7 +4,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { EditorView } from '@codemirror/view'
 import { CodeEditor } from '../CodeEditor'
-import { noteMarginLeft } from '../teacherHighlightsEditor'
+import { mapThroughText, noteMarginLeft } from '../teacherHighlightsEditor'
 
 const code = 'def cheer(player):\n    print("Well done " + player + "!")\n\n    return 10\n'
 const pinAt = code.indexOf('\n\n') + 1 // the blank line 3
@@ -142,5 +142,17 @@ describe('noteMarginLeft (the note stays inside the visible editor)', () => {
     expect(noteMarginLeft(10, 120, 600)).toBe(0)
     expect(noteMarginLeft(560, 120, 600)).toBe(472)
     expect(noteMarginLeft(300, 700, 600)).toBe(0)
+  })
+})
+
+describe('mapThroughText (a pending spot or range follows the mirrored code)', () => {
+  it('moves like the editor: text typed at a pin goes before it; a deleted range is gone', () => {
+    const pin = { kind: 'pin', from: 3, to: 3 }
+    expect(mapThroughText(pin, 'abcdef', 'XXabcdef')).toEqual({ ...pin, from: 5, to: 5 })
+    expect(mapThroughText(pin, 'abcdef', 'abcZdef')).toEqual({ ...pin, from: 4, to: 4 })
+    expect(mapThroughText(pin, 'abcdef', 'abcdefZ')).toEqual(pin)
+    const range = { from: 1, to: 4 }
+    expect(mapThroughText(range, 'abcdef', '#abcdef')).toEqual({ from: 2, to: 5 })
+    expect(mapThroughText(range, 'abcdef', 'af')).toBeNull()
   })
 })
