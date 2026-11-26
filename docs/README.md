@@ -438,6 +438,11 @@ How to write a Scratch toolbox XML string: XML structure, all categories with th
 
 **Load when:** taking screenshots for lesson images, or changing the screenshot command or the panels it crops.
 
+### [authoring/lessons-ready-cli.md](authoring/lessons-ready-cli.md)
+`hsc lessons ready`: is a lesson ready for class? Validates it as published (Draft flag ignored), fetches every asset URL, runs each Python and Turtle task's starter and complete code in a browser (starter must not pass, complete must pass, setupCode clean, hints shown) and judges Scratch block checks per stage. JSON report plus a plain summary; anything not run is "not checked", never "ready".
+
+**Load when:** checking a lesson before class, reading a `lessons ready` report, or changing the command or the banner and output panel it reads.
+
 ### [authoring/scratch-render-cli.md](authoring/scratch-render-cli.md)
 `hsc scratch render`: draw a lesson's Scratch script as the classroom shows it and save a standalone SVG plus a block map with a stable id on each block.
 

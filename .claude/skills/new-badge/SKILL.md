@@ -113,7 +113,7 @@ A tutor-only badge is done once the blurb is written: skip to §6.
 
 A rule may only read the timeline events in `src/badges/timeline.js`. If the behaviour isn't one
 of them, a new signal means a new logged field, and **every new Firebase field or node needs the
-user's explicit data-model sign-off before any code** (AGENTS.md: don't deviate from the data
+user's explicit data-model sign-off before any code** (CLAUDE.md: don't change from the data
 model). Stop and ask, with the exact path, shape, who writes it and how often.
 
 Once approved:
@@ -139,9 +139,9 @@ Once approved:
 ## 7. Verify (all must pass)
 
 ```bash
-npm test
+npx vitest run <your test files>  # targeted only; the full suite goes through test-runner (CLAUDE.md)
 npx eslint src cli scripts
-npx prettier --write <changed files> && npm run format:check
+npx prettier --check <changed files>  # --write to fix
 npm run docs:check
 npx vite build
 node cli/cli.mjs lessons capabilities   # the badge is listed; CLI imports stay Node-safe
