@@ -4,14 +4,18 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import StudentModal from '../StudentModal'
 
+const editorSpy = vi.hoisted(() => ({ onSelectionChange: null, onPick: null, highlights: [] }))
 vi.mock('../../../shared/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange, readOnly }) => (
-    <textarea
-      data-testid="code-editor"
-      value={value ?? ''}
-      readOnly={readOnly}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
+  CodeEditor: ({ value, onChange, readOnly, onSelectionChange, onPick, teacherHighlights }) => (
+    Object.assign(editorSpy, { onSelectionChange, onPick, highlights: teacherHighlights ?? [] }),
+    (
+      <textarea
+        data-testid="code-editor"
+        value={value ?? ''}
+        readOnly={readOnly}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    )
   ),
 }))
 
@@ -332,6 +336,98 @@ describe('StudentModal', () => {
       'Mark as a mistake'
     )
     expect(screen.getByRole('button', { name: 'Mark as great work' })).toBeInTheDocument()
+  })
+
+  it('drops a pin where the tutor clicks, with picked words (Pin mode)', async () => {
+    const { act } = await import('@testing-library/react')
+    const onAddHighlight = vi.fn()
+    render(<StudentModal {...mkProps({ isLive: true, onAddHighlight })} />)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    const drop = screen.getByRole('button', { name: 'Drop pin' })
+    // The student typing moves the mirror's cursor: that is not the tutor's tap.
+    act(() => editorSpy.onSelectionChange({ from: 2, to: 2 }))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    expect(drop).toBeDisabled()
+    // The tutor's own tap or click on the mirror (mouse or touch) places it.
+    act(() => editorSpy.onPick(5))
+    expect(screen.getByLabelText('Pin words')).toHaveAttribute('maxLength', '80')
+    fireEvent.click(drop)
+    expect(onAddHighlight).toHaveBeenCalledWith('student-1', {
+      file: expect.anything(),
+      from: 5,
+      to: 5,
+      emoji: '📌',
+      note: 'Write this here',
+      kind: 'pin',
+    })
+  })
+
+  it('marks the clicked pin spot in the mirror until Drop pin, Clear or a mode change', async () => {
+    const { act } = await import('@testing-library/react')
+    render(<StudentModal {...mkProps({ isLive: true, onAddHighlight: vi.fn() })} />)
+    const pending = () => editorSpy.highlights.filter((h) => h.pending)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(5))
+    expect(pending()).toEqual([expect.objectContaining({ kind: 'pin', from: 5, to: 5 })])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: 'Highlight' }))
+    expect(pending()).toEqual([])
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    act(() => editorSpy.onPick(7))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Drop pin' }))
+    expect(pending()).toEqual([])
+  })
+
+  it('drops the pin where the marker now is after the student typed before the spot', async () => {
+    const { act } = await import('@testing-library/react')
+    const onAddHighlight = vi.fn()
+    const props = mkProps({ isLive: true, onAddHighlight })
+    const { rerender } = render(<StudentModal {...props} />)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    act(() => editorSpy.onPick(6))
+    fireEvent.click(screen.getByRole('button', { name: 'Write this here' }))
+    // The student types "# " at the start of the mirrored code before the tutor drops it.
+    const typed = { ...props.student, currentCode: '# print("hello")' }
+    rerender(<StudentModal {...props} student={typed} />)
+    expect(editorSpy.highlights.filter((h) => h.pending)).toEqual([
+      expect.objectContaining({ from: 8, to: 8 }),
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'Drop pin' }))
+    expect(onAddHighlight).toHaveBeenCalledWith(
+      'student-1',
+      expect.objectContaining({ from: 8, to: 8, kind: 'pin' })
+    )
+  })
+
+  it('keeps the highlight bar the same two fixed rows in Highlight and Pin mode', () => {
+    render(<StudentModal {...mkProps({ isLive: true })} />)
+    const rows = () => [...screen.getByTestId('highlight-composer').children]
+    expect(screen.getByLabelText('Highlight note')).toHaveAttribute(
+      'placeholder',
+      'Select code to highlight…'
+    )
+    const highlightRows = rows().map((row) => row.style.height)
+    fireEvent.click(screen.getByRole('button', { name: '📌 Pin' }))
+    expect(rows().map((row) => row.style.height)).toEqual(highlightRows)
+    expect(highlightRows).toEqual(['30px', '30px'])
+  })
+
+  it('forgets a selected range when the task changes before it is sent', async () => {
+    const { act } = await import('@testing-library/react')
+    const twoTasks = { ...PYTHON_LESSON, tasks: [...PYTHON_LESSON.tasks, { id: 2, title: 'T2' }] }
+    const props = mkProps({ isLive: true, lesson: twoTasks, onAddHighlight: vi.fn() })
+    const { rerender } = render(<StudentModal {...props} />)
+    act(() => editorSpy.onSelectionChange({ from: 0, to: 5 }))
+    expect(screen.getByRole('button', { name: 'Send Highlight' })).toBeEnabled()
+    rerender(<StudentModal {...props} session={{ ...ACTIVE_SESSION, currentTaskId: 2 }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send Highlight' }))
+    expect(screen.getByRole('button', { name: 'Send Highlight' })).toBeDisabled()
+    expect(props.onAddHighlight).not.toHaveBeenCalled()
   })
 
   it('renders the presence badge', () => {

@@ -1973,7 +1973,25 @@ describe('useSession', () => {
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ note: null })
+        expect.objectContaining({ note: null, kind: null })
+      )
+    })
+
+    it("stores kind 'pin' for a pin and nothing else for it", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherHighlight('student-xyz', {
+          file: 'main.py',
+          from: 5,
+          to: 5,
+          emoji: '📌',
+          note: 'Write this here',
+          kind: 'pin',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ from: 5, to: 5, kind: 'pin', note: 'Write this here' })
       )
     })
   })

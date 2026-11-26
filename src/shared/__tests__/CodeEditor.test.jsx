@@ -7,11 +7,13 @@ import {
   isAutocompletePick,
   isCorrectionKey,
   isUserEditUpdate,
+  typedCharsInUpdate,
+} from '../CodeEditor'
+import {
   minimalReplace,
   setTeacherHighlights,
   teacherHighlightsField,
-  typedCharsInUpdate,
-} from '../CodeEditor'
+} from '../teacherHighlightsEditor'
 import { errorLineField, setErrorLine } from '../errorLine.js'
 
 // Per docs/TESTING.md, CodeMirror editor internals (EditorView/DOM) are not
@@ -87,37 +89,37 @@ describe('teacherHighlightsField', () => {
     state
       .field(teacherHighlightsField)
       .decorations.between(0, state.doc.length, (from, to, deco) => {
-        out.push(
-          deco.spec.widget
-            ? { at: from, badges: deco.spec.widget.badges.map((b) => b.id) }
-            : { from, to, class: deco.spec.class }
-        )
+        const { widget, class: cls } = deco.spec
+        if (widget?.item) out.push({ at: from, note: widget.item.id })
+        else if (widget) out.push({ at: from, pin: true })
+        else out.push({ from, to, class: cls })
       })
     return out
   }
 
-  it('marks the range and anchors the badge at the end of the line, not inside the code', () => {
+  it('boxes a one-line highlight and puts its note row after the line, not inside the code', () => {
     let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
     state = state.update({ effects: setTeacherHighlights.of([highlight]) }).state
     expect(decorations(state)).toEqual([
       { from: 7, to: 12, class: 'cm-teacherHighlight' },
-      { at: 14, badges: ['h1'] },
+      { at: 14, note: 'h1' },
     ])
   })
 
-  it('groups badges for highlights on the same line into one anchor', () => {
+  it('gives each highlight its own note row and bands every line of a multi-line one', () => {
     let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
     state = state.update({
-      effects: setTeacherHighlights.of([
-        highlight,
-        { id: 'h2', from: 0, to: 4 },
-        { id: 'h3', from: 15, to: 29 },
-      ]),
+      effects: setTeacherHighlights.of([highlight, { id: 'h2', from: 0, to: 4 }]),
     }).state
-    const anchors = decorations(state).filter((d) => d.badges)
-    expect(anchors).toEqual([
-      { at: 14, badges: ['h1', 'h2'] },
-      { at: 29, badges: ['h3'] },
+    expect(decorations(state).filter((d) => d.note)).toEqual([
+      { at: 14, note: 'h1' },
+      { at: 14, note: 'h2' },
+    ])
+    state = state.update({ effects: setTeacherHighlights.of([{ id: 'm', from: 2, to: 20 }]) }).state
+    expect(decorations(state)).toEqual([
+      { from: 0, to: 0, class: 'cm-teacherHighlightBand' },
+      { from: 15, to: 15, class: 'cm-teacherHighlightBand' },
+      { at: 29, note: 'm' },
     ])
   })
 
@@ -126,10 +128,10 @@ describe('teacherHighlightsField', () => {
     state = state.update({
       effects: setTeacherHighlights.of([{ id: 'line', from: 0, to: 15 }]),
     }).state
-    expect(decorations(state).filter((d) => d.badges)).toEqual([{ at: 14, badges: ['line'] }])
+    expect(decorations(state).filter((d) => d.note)).toEqual([{ at: 14, note: 'line' }])
   })
 
-  it('drops empty ranges and keeps badges anchored as the student edits', () => {
+  it('drops empty highlight ranges and keeps note rows anchored as the student edits', () => {
     let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
     state = state.update({
       effects: setTeacherHighlights.of([highlight, { id: 'empty', from: 3, to: 3 }]),
@@ -137,8 +139,46 @@ describe('teacherHighlightsField', () => {
     state = state.update({ changes: { from: 0, insert: '# hi\n' } }).state
     expect(decorations(state)).toEqual([
       { from: 12, to: 17, class: 'cm-teacherHighlight' },
-      { at: 19, badges: ['h1'] },
+      { at: 19, note: 'h1' },
     ])
+  })
+
+  it('brings a hidden pin or highlight back where it had moved to, not its stored offset', () => {
+    let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
+    const pin = { id: 'p', kind: 'pin', from: 15, to: 15, note: 'Write this here' }
+    state = state.update({ effects: setTeacherHighlights.of([pin, highlight]) }).state
+    state = state.update({ changes: { from: 0, insert: 'ab' }, userEvent: 'input.type' }).state
+    // Hidden (tutor editing, broadcast), then shown again with the stored offsets.
+    state = state.update({ effects: setTeacherHighlights.of([]) }).state
+    state = state.update({ effects: setTeacherHighlights.of([pin, highlight]) }).state
+    expect(positions(state)).toEqual([
+      ['p', 17, 17],
+      ['h1', 9, 14],
+    ])
+    // Hidden while other code is shown (a previous task), then the same code comes back.
+    const moved = state.doc.toString()
+    state = state.update({ effects: setTeacherHighlights.of([]) }).state
+    state = state.update({ changes: { from: 0, to: state.doc.length, insert: 'other' } }).state
+    state = state.update({ changes: { from: 0, to: state.doc.length, insert: moved } }).state
+    state = state.update({ effects: setTeacherHighlights.of([pin]) }).state
+    expect(positions(state)).toEqual([['p', 17, 17]])
+  })
+
+  it('keeps a pin (from === to) through typing at it, with the typed text before it', () => {
+    let state = EditorState.create({ doc, extensions: [teacherHighlightsField] })
+    const pin = { id: 'p', kind: 'pin', from: 15, to: 15, note: 'Write this here' }
+    state = state.update({ effects: setTeacherHighlights.of([pin]) }).state
+    expect(decorations(state)).toEqual([
+      { at: 15, pin: true },
+      { at: 29, note: 'p' },
+    ])
+    state = state.update({
+      changes: { from: 15, insert: 'x = 1\n' },
+      userEvent: 'input.type',
+    }).state
+    expect(positions(state)).toEqual([['p', 21, 21]])
+    state = state.update({ changes: { from: 0, to: 30 }, userEvent: 'delete' }).state
+    expect(positions(state)).toEqual([['p', 0, 0]])
   })
 
   function positions(state) {
@@ -282,6 +322,31 @@ describe('CodeEditor teacher highlights', () => {
     expect(view.state.doc.toString()).toBe(`# hi\n${code}`)
     expect(positions()).toEqual([['h1', 12, 17]])
     expect(onHighlightDismiss).not.toHaveBeenCalled()
+  })
+})
+
+describe('CodeEditor onPick and onSelectionChange (tutor pin spot)', () => {
+  it('reports a click or tap position through onPick, and only from/to to onSelectionChange', async () => {
+    const { render, fireEvent } = await import('@testing-library/react')
+    const onPick = vi.fn()
+    const onSelectionChange = vi.fn()
+    const utils = render(
+      <CodeEditor
+        value="abc
+def"
+        readOnly
+        onPick={onPick}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+    const view = EditorView.findFromDOM(utils.container.querySelector('.cm-editor'))
+    view.posAtCoords = () => 5
+    fireEvent.click(view.contentDOM, { clientX: 10, clientY: 10, detail: 1 })
+    expect(onPick).toHaveBeenCalledWith(5)
+    // A selection set from code (a remote or programmatic change) is never a pick.
+    view.dispatch({ selection: { anchor: 2 } })
+    expect(onPick).toHaveBeenCalledTimes(1)
+    expect(onSelectionChange).toHaveBeenLastCalledWith({ from: 2, to: 2 })
   })
 })
 
