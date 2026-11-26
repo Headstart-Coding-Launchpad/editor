@@ -238,10 +238,14 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
   onHighlightDismissRef.current = onHighlightDismiss
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
-  const dismissFromGotIt = (event) => {
+  // Got it / Remove: dismiss, and keep focus in the code (not on the button about to go).
+  const dismissFromGotIt = (event, view) => {
     const gotIt = event.target.closest?.('.cm-teacherNoteGotIt')
-    if (gotIt) onHighlightDismissRef.current?.(gotIt.dataset.highlightId)
-    return !!gotIt
+    if (!gotIt) return false
+    event.preventDefault()
+    onHighlightDismissRef.current?.(gotIt.dataset.highlightId)
+    view.focus()
+    return true
   }
   onRunShortcutRef.current = onRunShortcut
   const badgeSignals = useContext(BadgeSignalsContext)
@@ -379,8 +383,8 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
               onActivityRef.current?.({ type: 'paste', at: Date.now() })
               return false
             },
-            mousedown: (event) => {
-              if (dismissFromGotIt(event)) return true
+            mousedown: (event, view) => {
+              if (dismissFromGotIt(event, view)) return true
               onActivityRef.current?.({ type: 'click', at: Date.now() })
               return false
             },
@@ -389,7 +393,7 @@ export const CodeEditor = React.forwardRef(function CodeEditor(
             // of a spot (onPick, the tutor's pin), never a selection set from code.
             click: (event, view) => {
               if (event.target.closest?.('.cm-teacherNoteGotIt')) {
-                if (event.detail === 0) dismissFromGotIt(event)
+                if (event.detail === 0) dismissFromGotIt(event, view)
                 return true
               }
               const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })

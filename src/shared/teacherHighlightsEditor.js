@@ -71,6 +71,13 @@ class NoteRowWidget extends WidgetType {
     button.textContent = view.state.readOnly ? 'Remove' : 'Got it ✓'
     pill.append(mark, text, button)
     row.append(pill)
+    // A press on the words or the row's empty space keeps the caret and focus in the code, so
+    // typing goes on working (the button's own press is CodeEditor's).
+    row.addEventListener('mousedown', (event) => {
+      if (event.target.closest('.cm-teacherNoteGotIt')) return
+      event.preventDefault()
+      view.focus()
+    })
     return row
   }
   // Only a mouse press or click on the button reaches the editor's handlers (CodeEditor's
@@ -97,16 +104,20 @@ function measureNotes(view) {
         const end = view.coordsAtPos(Math.min(+row.dataset.to, max), -1)
         if (!start || !box.width) return { row, x: null }
         const sameRow = end && Math.abs(end.top - start.top) < 2
-        const x = (sameRow ? (start.left + end.right) / 2 : start.left + 6) - box.left
+        const pin = row.dataset.from === row.dataset.to
+        const x =
+          (pin ? start.left : sameRow ? (start.left + end.right) / 2 : start.left + 6) - box.left
         const visible = scroller.left + view.scrollDOM.clientWidth - box.left
         const pillWidth = row.firstChild.offsetWidth
-        return { row, x: Math.min(x, visible - 12), margin: noteMarginLeft(x, pillWidth, visible) }
+        const margin = noteMarginLeft(x, pillWidth, visible)
+        // The arrow stays on the pill's top edge, clear of its rounded corners.
+        return { row, margin, x: Math.max(margin + 12, Math.min(x, margin + pillWidth - 12)) }
       })
     },
     write: (notes) => {
       for (const { row, x, margin } of notes) {
         if (x == null) continue
-        row.style.setProperty('--note-arrow', `${Math.max(x, 12)}px`)
+        row.style.setProperty('--note-arrow', `${x}px`)
         row.firstChild.style.marginLeft = `${margin}px`
       }
     },
@@ -216,14 +227,21 @@ const teacherHighlightsTheme = EditorView.baseTheme({
   },
 })
 
+// Moves a highlight (from forward, to back) or a pin (typed text goes before it) through a change.
+function mapItem(h, changes) {
+  const from = changes.mapPos(h.from, 1)
+  return { ...h, from, to: isPin(h) ? from : changes.mapPos(h.to, -1) }
+}
+
 export const teacherHighlightsField = StateField.define({
   create() {
-    return { decorations: Decoration.none, highlights: [] }
+    return { decorations: Decoration.none, highlights: [], hidden: new Map() }
   },
   update(value, transaction) {
-    let highlights = value.highlights
+    let { highlights, hidden } = value
     let changed = false
-    if (transaction.docChanged && highlights.length > 0) {
+    const { doc } = transaction.state
+    if (transaction.docChanged && (highlights.length > 0 || hidden.size > 0)) {
       // The user's own edit inside a highlighted range clears that highlight for good. A pin,
       // every other highlight, and everything under an outside change (task switch, a live
       // mirror update) is mapped so it stays on its code.
@@ -235,23 +253,27 @@ export const teacherHighlightsField = StateField.define({
           }
         })
       }
-      const map = (pos, assoc) => transaction.changes.mapPos(pos, assoc)
       highlights = highlights
         .filter((h) => !touched.has(h.id))
-        .map((h) => {
-          if (!isPin(h)) return { ...h, from: map(h.from, 1), to: map(h.to, -1) }
-          const at = map(h.from, 1)
-          return { ...h, from: at, to: at }
-        })
+        .map((h) => mapItem(h, transaction.changes))
         .filter((h) => isPin(h) || h.from < h.to)
+      hidden = new Map([...hidden].map(([id, h]) => [id, mapItem(h, transaction.changes)]))
       changed = true
     }
     for (const effect of transaction.effects) {
       if (!effect.is(setTeacherHighlights)) continue
       // The incoming list says which exist. One already shown keeps its mapped position (the
-      // stored one predates the latest edits); a new one is placed at its stored position.
-      const max = transaction.state.doc.length
+      // stored one predates the latest edits). One hidden for a while (the caller passed [] during
+      // a tutor edit, a broadcast or a previous task's view) comes back where it had moved to:
+      // its spot when hidden if the code is the same again, else that spot mapped through the
+      // changes since. Only a new one is placed at its stored position.
+      const max = doc.length
       const current = new Map(highlights.map((h) => [h.id, h]))
+      const incoming = new Set((effect.value ?? []).map((h) => h.id))
+      hidden = new Map(hidden)
+      for (const h of highlights) {
+        if (!incoming.has(h.id)) hidden.set(h.id, { ...h, at: h, doc })
+      }
       highlights = []
       for (const h of effect.value ?? []) {
         const existing = current.get(h.id)
@@ -259,15 +281,18 @@ export const teacherHighlightsField = StateField.define({
           highlights.push({ ...existing, emoji: h.emoji, note: h.note })
           continue
         }
-        const from = Math.min(Math.max(h.from ?? 0, 0), max)
-        const to = isPin(h) ? from : Math.min(Math.max(h.to ?? from, 0), max)
+        const back = hidden.get(h.id)
+        hidden.delete(h.id)
+        const placed = back ? (back.doc.eq(doc) ? back.at : back) : h
+        const from = Math.min(Math.max(placed.from ?? 0, 0), max)
+        const to = isPin(h) ? from : Math.min(Math.max(placed.to ?? from, 0), max)
         if (!isPin(h) && from >= to) continue
         highlights.push({ id: h.id, kind: h.kind, emoji: h.emoji, note: h.note, from, to })
       }
       changed = true
     }
     if (!changed) return value
-    return { highlights, decorations: buildDecorations(transaction.state.doc, highlights) }
+    return { highlights, hidden, decorations: buildDecorations(doc, highlights) }
   },
   provide: (field) => [
     EditorView.decorations.from(field, (value) => value.decorations),
