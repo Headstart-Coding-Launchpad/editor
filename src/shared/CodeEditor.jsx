@@ -38,6 +38,7 @@ import { errorLineField, setErrorLine } from './errorLine.js'
 import {
   USER_EDIT_EVENTS,
   highlightsClearedByUserEdit,
+  minimalReplace,
   setTeacherHighlights,
   teacherHighlightsField,
 } from './teacherHighlightsEditor.js'
@@ -128,25 +129,6 @@ const remoteSelectionField = StateField.define({
   },
   provide: (field) => EditorView.decorations.from(field),
 })
-
-/**
- * The smallest single change turning `current` into `next`: the shared prefix and suffix are
- * left alone, so decorations on untouched text (teacher highlights, the remote selection) map
- * through an outside update instead of being wiped by a whole-document replace.
- */
-export function minimalReplace(current, next) {
-  const max = Math.min(current.length, next.length)
-  let start = 0
-  while (start < max && current.charCodeAt(start) === next.charCodeAt(start)) start++
-  let end = 0
-  while (
-    end < max - start &&
-    current.charCodeAt(current.length - 1 - end) === next.charCodeAt(next.length - 1 - end)
-  ) {
-    end++
-  }
-  return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) }
-}
 
 // Python block brackets (./blockGuides.js), on only while the `blockGuides` prop is set.
 const blockGuidesCompartment = new Compartment()

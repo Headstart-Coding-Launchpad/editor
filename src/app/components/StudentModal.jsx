@@ -3,7 +3,11 @@ import { exampleOpenCount } from '../../shared/exampleOpens'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
-import { PIN_NOTE_MAX, teacherHighlightsFor } from '../../shared/teacherHighlightsEditor'
+import {
+  mapThroughText,
+  PIN_NOTE_MAX,
+  teacherHighlightsFor,
+} from '../../shared/teacherHighlightsEditor'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import {
@@ -464,16 +468,18 @@ export default function StudentModal({
   }
 
   // A pending range or pin belongs to the student, task and file it was made on (`at`); it is
-  // dropped (Send disabled) once any of them changes.
+  // dropped (Send disabled) once any of them changes. It keeps the mirrored code it was made on
+  // (`text`), so it moves with the student's typing like the marker does (livePending).
   const pendingAt = () => `${student.anonymousId}|${session?.currentTaskId}|${activeFile}`
+  const pending = (from, to) => ({ from, to, at: pendingAt(), text: mirroredText })
 
   function handleMirrorSelectionChange({ from, to }) {
-    if (!pinMode) setPendingHighlight(from === to ? null : { from, to, at: pendingAt() })
+    if (!pinMode) setPendingHighlight(from === to ? null : pending(from, to))
   }
 
   // Pin mode: only the tutor's own click or tap on the mirror places the pin.
   function handleMirrorPick(pos) {
-    if (pinMode) setPendingHighlight({ from: pos, to: pos, at: pendingAt() })
+    if (pinMode) setPendingHighlight({ ...pending(pos, pos), kind: 'pin' })
   }
 
   function handleHighlightModeChange(pin) {
@@ -650,7 +656,11 @@ export default function StudentModal({
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find((f) => f.name === activeFile) ?? files[0]
-  const livePending = pendingHighlight?.at === pendingAt() ? pendingHighlight : null
+  const mirroredText = (mirror === 'code' ? student.currentCode : activeFileObj?.content) ?? ''
+  const livePending =
+    pendingHighlight?.at === pendingAt()
+      ? mapThroughText(pendingHighlight, pendingHighlight.text, mirroredText)
+      : null
 
   // While a share is pending, the modal shows only the frozen snapshot the
   // class would receive — not this student's live workspace.
@@ -706,7 +716,7 @@ export default function StudentModal({
     pinMode && livePending
       ? [
           ...highlightsForActiveFile,
-          { id: `pending-pin-${livePending.from}`, kind: 'pin', pending: true, ...livePending },
+          { ...livePending, id: `pending-pin-${livePending.from}`, pending: true, text: null },
         ]
       : highlightsForActiveFile
 

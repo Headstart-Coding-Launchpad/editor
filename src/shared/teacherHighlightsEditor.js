@@ -1,7 +1,7 @@
 // Tutor highlights and pins in CodeMirror, in the student's editor and the tutor's mirror alike:
 // box / band / pin caret plus a note row with one Got it button. Behaviour and rules:
 // docs/agents/classroom-behaviours.md, "Teacher Code Highlights".
-import { StateEffect, StateField } from '@codemirror/state'
+import { ChangeSet, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, WidgetType } from '@codemirror/view'
 import { decodeFileKey } from './fileKeys'
 
@@ -25,6 +25,35 @@ export function teacherHighlightsFor(raw, file = null) {
   return Object.entries(raw ?? {})
     .filter(([, h]) => file === null || decodeFileKey(h.file) === file)
     .map(([id, h]) => ({ id, kind: h.kind, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
+}
+
+/**
+ * The smallest single change turning `current` into `next`: the shared prefix and suffix are
+ * left alone, so decorations on untouched text (teacher highlights, the remote selection) map
+ * through an outside update instead of being wiped by a whole-document replace.
+ */
+export function minimalReplace(current, next) {
+  const max = Math.min(current.length, next.length)
+  let start = 0
+  while (start < max && current.charCodeAt(start) === next.charCodeAt(start)) start++
+  let end = 0
+  while (
+    end < max - start &&
+    current.charCodeAt(current.length - 1 - end) === next.charCodeAt(next.length - 1 - end)
+  ) {
+    end++
+  }
+  return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) }
+}
+
+/**
+ * A pending spot or range made on `prevText`, moved through the change to `nextText` the way the
+ * editor moves it (so what Drop pin sends matches the marker); null once a range's code is gone.
+ */
+export function mapThroughText(item, prevText, nextText) {
+  if (prevText === nextText) return item
+  const moved = mapItem(item, ChangeSet.of([minimalReplace(prevText, nextText)], prevText.length))
+  return isPin(moved) || moved.from < moved.to ? moved : null
 }
 
 // A pin's caret; `pending` is the tutor's clicked spot before Drop pin (mirror only, no note).

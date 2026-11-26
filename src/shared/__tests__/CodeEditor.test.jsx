@@ -7,10 +7,13 @@ import {
   isAutocompletePick,
   isCorrectionKey,
   isUserEditUpdate,
-  minimalReplace,
   typedCharsInUpdate,
 } from '../CodeEditor'
-import { setTeacherHighlights, teacherHighlightsField } from '../teacherHighlightsEditor'
+import {
+  minimalReplace,
+  setTeacherHighlights,
+  teacherHighlightsField,
+} from '../teacherHighlightsEditor'
 import { errorLineField, setErrorLine } from '../errorLine.js'
 
 // Per docs/TESTING.md, CodeMirror editor internals (EditorView/DOM) are not
