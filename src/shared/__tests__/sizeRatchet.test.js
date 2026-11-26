@@ -4,6 +4,8 @@
 // and commit sizeRatchet.baseline.json. Never raise a number to make this pass; split the file instead.
 // Project total lines raised 24 Nov by Ryan for the code_lines quiz (+318: 213320 -> 213638,
 // of which +52 are the code-review fixes).
+// Raised 26 Nov 09:56 (Ryan OK) for the tutor highlight note rows and Pin (+88: 213668 -> 213756,
+// after trimming 13 dead lines and compacting 5 in the files touched).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
