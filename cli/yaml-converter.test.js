@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import yaml from 'js-yaml'
 import { lessonToYamlText, parseYamlLesson } from './yaml-converter.mjs'
+import { buildCapabilities } from './capabilities.mjs'
 import {
   ALL_LEGACY_ACTIVITY_TASKS,
   CONFIDENCE_TASK,
@@ -67,6 +68,31 @@ tasks:
     const exported = yaml.load(lessonToYamlText(lesson))
     expect(exported.tasks[0].intentLastChangedAt).toBe('2026-07-25T10:00:00.000Z')
     expect(exported.tasks[0].taskLastChangedAt).toBe('2026-07-25T09:00:00.000Z')
+  })
+
+  it('keeps a code stage changeNote and show through YAML, and lists changeNote as authored', () => {
+    const source = `
+id: change-note
+type: composed
+title: Change note
+description: A stage with a note
+tasks:
+  - title: Say it
+    moduleType: python
+    codeStages:
+      - { label: Starter, role: starter, code: "x = 1" }
+      - label: Complete
+        role: complete
+        show: full
+        changeNote: Add a line that prints x.
+        code: "x = 1\nprint(x)"
+`
+    const stage = parseYamlLesson(source).tasks[0].codeStages[1]
+    expect(stage).toMatchObject({ show: 'full', changeNote: 'Add a line that prints x.' })
+    const exported = yaml.load(lessonToYamlText(parseYamlLesson(source)))
+    expect(exported.tasks[0].codeStages[1].changeNote).toBe('Add a line that prints x.')
+    const python = buildCapabilities().modules.find((m) => m.type === 'python')
+    expect(python.authoredFields).toContain('codeStages[].changeNote')
   })
 })
 

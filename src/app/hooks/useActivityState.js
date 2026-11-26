@@ -117,6 +117,7 @@ export function useActivityState({
   const phaseRef = useLatestRef(phase)
   const sessionRef = useLatestRef(session)
   const currentTaskIdRef = useLatestRef(currentTaskId)
+  const checkedTaskRef = useRef(null) // the task whose answer was last submitted (retryClearsCheck)
   const actorIdRef = useLatestRef(actorId)
   const identityIdRef = useLatestRef(identity?.anonymousId ?? null)
   const viewingTaskIdRef = useLatestRef(viewingTaskId ?? null)
@@ -328,6 +329,7 @@ export function useActivityState({
     if (def.completion === 'none' && stateArg === undefined) return null
     if (supersede && !fromTeacher) supersedeTeacherAnswerEdit()
     if (stateArg !== undefined && stateArg !== stateRef.current) commit(stateArg)
+    checkedTaskRef.current = currentTaskIdRef.current
     const submitted = stateArg ?? stateRef.current
     const result = def.grade(currentTask, submitted) ?? {}
     const passed = !!result.passed
@@ -380,6 +382,19 @@ export function useActivityState({
     if (next === prev || next === undefined) return
     supersedeTeacherAnswerEdit()
     commit(next)
+    // The first change after a Check (the click-the-line quiz's Try again) is a draft again: the
+    // run status and check go, so the tutor's view stops marking it (`retryClearsCheck`).
+    if (def.retryClearsCheck && checkedTaskRef.current === currentTaskIdRef.current) {
+      checkedTaskRef.current = null
+      callbacksRef.current.resetCheckFeedback()
+      callbacksRef.current.setRunStatus?.(null)
+      if (writesToSession())
+        callbacksRef.current.writeStudentRun(actorIdRef.current, {
+          answer: def.serializeShared(next),
+          status: null,
+          checkPassed: null,
+        })
+    }
     const kind =
       def.classifyChange(prev, next, taskRef.current) === 'continuous' ? 'continuous' : 'discrete'
     sync(kind)

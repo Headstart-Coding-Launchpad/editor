@@ -152,7 +152,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 
 **CLI credentials:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path, in your shell or in `cli/.env` (gitignored; loaded by `cli/cli.mjs`). A relative path in `cli/.env` resolves from `cli/`.
-- `lessons validate`, `lessons yaml-to-json`, `lessons json-to-yaml` and `lessons test-checks` work **without** credentials. Everything that reads or writes Firestore or Storage needs them, including `lessons preflight`.
+- `lessons validate`, `lessons yaml-to-json`, `lessons json-to-yaml`, `lessons test-checks` and `lessons ready <file>` work **without** credentials (`lessons ready <id>` reads Firestore). Everything that reads or writes Firestore or Storage needs them, including `lessons preflight`.
 - Download from Firebase Console > Project Settings > Service Accounts.
 - Do not commit or copy service account keys.
 

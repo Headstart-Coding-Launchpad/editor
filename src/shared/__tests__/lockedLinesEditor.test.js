@@ -191,9 +191,11 @@ describe('locked lines cursor', () => {
     expect(move(atEnd, 10)).toBe(6)
   })
 
-  it('leaves a click or tap on a locked line where it lands', () => {
+  it('moves a click or tap on a locked line to the nearest line that can change (below first)', () => {
     const start = lockedState().update({ selection: { anchor: 2 } }).state
-    expect(move(start, 8, 'select.pointer')).toBe(8)
+    expect(move(start, 8, 'select.pointer')).toBe(14)
+    const allLocked = lockedState('b = 2', [[{ line: 1, target: 'b = 2' }]])
+    expect(move(allLocked, 2, 'select.pointer')).toBe(2)
   })
 })
 

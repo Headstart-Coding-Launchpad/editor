@@ -9,6 +9,7 @@ export const LEGACY_QUIZ_TYPES = [
   'short_answer',
   'confidence',
   'poll',
+  'code_lines',
 ]
 
 export const UNKNOWN_ACTIVITY_ID = 'unknown'

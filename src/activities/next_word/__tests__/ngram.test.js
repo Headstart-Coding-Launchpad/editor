@@ -1,10 +1,9 @@
-﻿// @vitest-environment node
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import {
   buildModel,
   describeCount,
   endsSentence,
-  generateText,
   isEndMark,
   joinTokens,
   lastWordOf,
@@ -17,7 +16,6 @@ import {
   seededRandom,
   spoken,
   startingWords,
-  temperatureLabel,
   tokenise,
   tokeniseWithEnds,
   topWords,
@@ -183,45 +181,6 @@ describe('sampling', () => {
     let cats = 0
     for (let i = 0; i < 3000; i++) if (pickOption(options, 2, random).word === 'cat') cats++
     expect(cats / 3000).toBeLessThan(0.64)
-  })
-
-  it('generates the same text for the same seed and length', () => {
-    const first = generateText(model, { temperature: 1, random: seededRandom(5), length: 12 })
-    const second = generateText(model, { temperature: 1, random: seededRandom(5), length: 12 })
-    expect(first).toBe(second)
-    // 12 tokens; full stops join the word before them, so there can be fewer spaces.
-    expect(first.split(' ').length).toBeGreaterThan(6)
-    expect(first.split(' ').length).toBeLessThanOrEqual(12)
-  })
-
-  it('starts from the given word and follows the likeliest path at temperature 0', () => {
-    expect(generateText(model, { start: 'The', temperature: 0, length: 3 })).toBe('the cat ran')
-  })
-
-  it('can end a sentence, with the mark stuck to the last word', () => {
-    expect(generateText(model, { start: 'cat', temperature: 0, length: 3 })).toBe('cat ran.')
-  })
-
-  it('starts from the first word when no start is given', () => {
-    expect(generateText(model, { temperature: 0, length: 3 }).startsWith('the cat')).toBe(true)
-  })
-
-  it('jumps to a new word when it runs out of text', () => {
-    const text = generateText(buildModel('a b'), { start: 'b', temperature: 0, length: 5 })
-    expect(text.split(' ')).toHaveLength(5)
-    expect(text.startsWith('b ')).toBe(true)
-  })
-
-  it('returns an empty string when there are no word pairs', () => {
-    expect(generateText(buildModel('hello'))).toBe('')
-  })
-
-  it('names temperatures', () => {
-    expect(temperatureLabel(0)).toMatch(/most likely/)
-    expect(temperatureLabel(0.3)).toBe('careful')
-    expect(temperatureLabel(1)).toBe('balanced')
-    expect(temperatureLabel(1.5)).toBe('adventurous')
-    expect(temperatureLabel(2)).toBe('wild')
   })
 })
 

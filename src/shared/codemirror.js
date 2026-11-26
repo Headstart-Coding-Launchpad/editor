@@ -209,8 +209,9 @@ export function createBaseExtensions(
 
 // ─── Line hints ──────────────────────────────────────────────────────────────
 // Author hints attached to lines of starter code (see ./lineHints.js for the authoring syntax
-// and anchoring). Each hinted line gets the hint as a note box on the line above it (no gutter
-// icon: the note itself is the hint's one mark). It is not part of the document, so hints never
+// and anchoring). Each hinted line gets the hint as a small chip at its end, inside the row (so
+// the gutter numbers stay level with the code; calmer guided editor, 25 Nov). A tap on the chip
+// puts the caret on its line and shows the full hint. It is not part of the document, so hints never
 // reach the student's code, the clipboard or the undo history. A hint follows its line through
 // edits and disappears when the line itself is deleted (its text and a line break removed);
 // clearing the line's text keeps it, so the student can rewrite the line with the hint in view.
@@ -283,7 +284,7 @@ export function getLineHints(state) {
   }))
 }
 
-class LineHintNoteWidget extends WidgetType {
+class LineHintChipWidget extends WidgetType {
   constructor(text) {
     super()
     this.text = text
@@ -292,59 +293,66 @@ class LineHintNoteWidget extends WidgetType {
     return other.text === this.text
   }
   toDOM() {
-    const note = document.createElement('div')
-    note.className = 'cm-lineHintNote'
-    note.textContent = `Hint: ${this.text}`
-    note.title = `Hint: ${this.text}`
-    note.setAttribute('role', 'note')
-    return note
+    const chip = document.createElement('span')
+    chip.className = 'cm-lineHintChip'
+    chip.textContent = chip.title = `Hint: ${this.text}`
+    chip.setAttribute('role', 'note')
+    return chip
   }
-  // A one-line guess so the height map barely moves when the real height is measured.
-  get estimatedHeight() {
-    return 26
-  }
-  // The note is display only: clicks and the cursor pass straight through it.
   ignoreEvent() {
-    return true
+    return false
   }
 }
 
 const lineHintDecorations = EditorView.decorations.compute([lineHintsField], (state) =>
   Decoration.set(
     hintsByLine(state).map(({ line, texts }) =>
-      Decoration.widget({
-        widget: new LineHintNoteWidget(texts.join(' · ')),
-        block: true,
-        side: -1,
-      }).range(line.from)
+      Decoration.widget({ widget: new LineHintChipWidget(texts.join(' · ')), side: 2 }).range(
+        line.to
+      )
     )
   )
 )
 
+// A tap on a chip: the caret to its line's end (a values line then selects its value), full text.
+const lineHintChipClick = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    const chip = event.target.closest?.('.cm-lineHintChip')
+    if (!chip) return false
+    event.preventDefault()
+    chip.classList.toggle('cm-lineHintChip-open')
+    const anchor = view.state.doc.lineAt(view.posAtDOM(chip)).to
+    view.dispatch({ selection: { anchor }, userEvent: 'select.pointer' })
+    view.focus()
+    return true
+  },
+})
+
 const lineHintTheme = EditorView.baseTheme({
-  // A small note box on the line above the hinted line; long hints wrap inside the box.
-  '.cm-lineHintNote': {
-    margin: '2px 8px 2px 4px',
-    padding: '2px 8px',
+  '.cm-lineHintChip': {
+    display: 'inline-block',
+    textIndent: 0,
+    marginLeft: '1em',
+    padding: '0 8px',
+    lineHeight: '1.35',
+    verticalAlign: 'text-bottom',
     background: '#fff7e0',
     border: '1px solid #f5c542',
-    borderRadius: '4px',
+    borderRadius: '999px',
     color: '#7a5b00',
-    fontStyle: 'italic',
     fontFamily: 'var(--font-body, sans-serif)',
-    fontSize: '0.88em',
-    width: 'fit-content',
-    maxWidth: 'min(60ch, calc(100% - 12px))',
-    boxSizing: 'border-box',
-    whiteSpace: 'normal',
-    overflowWrap: 'anywhere',
+    fontSize: '0.78em',
+    maxWidth: '36ch',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
     userSelect: 'none',
-    WebkitUserSelect: 'none',
-    pointerEvents: 'none',
   },
+  '.cm-lineHintChip.cm-lineHintChip-open': { maxWidth: 'none', whiteSpace: 'normal' },
 })
 
 // The line-hint extension: add it to an editor, then dispatch setLineHints.
 export function lineHintsExtension() {
-  return [lineHintsField, lineHintDecorations, lineHintTheme]
+  return [lineHintsField, lineHintDecorations, lineHintChipClick, lineHintTheme]
 }

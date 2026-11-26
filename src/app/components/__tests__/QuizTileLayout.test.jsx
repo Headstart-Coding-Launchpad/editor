@@ -82,7 +82,7 @@ describe('quiz tiles: no orphan tile', () => {
     unmount()
     render(<QuizTask task={quiz(4)} />)
     expect(grid()).toHaveAttribute('data-quiz-cols', '2')
-    expect(grid().style.getPropertyValue('--quiz-row-max')).toBe('250px')
+    expect(grid().style.getPropertyValue('--quiz-row-max')).toBe('180px')
   })
 
   it('stacks 3 long answers even on a wide frame', () => {
@@ -104,7 +104,48 @@ describe('quiz tiles: no orphan tile', () => {
     expect(start).toBeGreaterThanOrEqual(0)
     const rule = css.slice(start, css.indexOf('}', start))
     expect(rule).toContain('repeat(var(--quiz-cols, 2), minmax(0, 1fr))')
-    expect(rule).toContain('minmax(min-content, var(--quiz-row-max, 1fr))')
+    expect(rule).toContain('minmax(min-content, var(--quiz-row-cap, var(--quiz-row-max, 1fr)))')
+  })
+})
+
+describe('quiz tiles: the row cap shrinks with the fit (Ryan 24 Nov, tiles C and D clipped)', () => {
+  it('sets a row cap that follows --quiz-option-scale, so shrink-to-fit can pull rows in', () => {
+    frameWidth(1300)
+    render(<QuizTask task={quiz(4)} />)
+    const cap = grid().style.getPropertyValue('--quiz-row-cap')
+    expect(cap).toContain('180px')
+    expect(cap).toContain('var(--quiz-option-scale')
+  })
+})
+
+describe('quiz tiles: a tall question never squeezes the answers out (Ryan 24 Nov)', () => {
+  const heights = (scrollHeight, clientHeight) => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => scrollHeight,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => clientHeight,
+    })
+  }
+  afterEach(() => {
+    delete HTMLElement.prototype.scrollHeight
+    delete HTMLElement.prototype.clientHeight
+  })
+
+  it('keeps the frame as tall as the tiles once shrinking is used up, so the pane scrolls', () => {
+    frameWidth(1300)
+    heights(370, 0)
+    render(<QuizTask task={quiz(4)} />)
+    expect(grid().parentElement.style.minHeight).toBe('370px')
+  })
+
+  it('leaves the frame free to shrink when the tiles fit', () => {
+    frameWidth(1300)
+    heights(200, 300)
+    render(<QuizTask task={quiz(4)} />)
+    expect(grid().parentElement.style.minHeight).toBe('0px')
   })
 })
 
@@ -121,7 +162,7 @@ describe('quizWordLayout', () => {
   })
 
   it('6 options are 3x2 wide and 2x3 narrow; one option is one tile', () => {
-    expect(quizWordLayout(6, 1300, true)).toMatchObject({ cols: 3, rowMax: 250 })
+    expect(quizWordLayout(6, 1300, true)).toMatchObject({ cols: 3, rowMax: 180 })
     expect(quizWordLayout(6, 500, false)).toMatchObject({ cols: 2, rowMax: 160 })
     expect(quizWordLayout(1, 1300, true).cols).toBe(1)
   })

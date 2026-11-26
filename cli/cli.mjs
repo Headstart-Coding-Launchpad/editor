@@ -198,6 +198,60 @@ const loadScratchRenderInput = () => import('./scratch-render-input.mjs')
 const loadScratchRender = () => import('./scratch-render.mjs')
 const loadLessonScreenshotInput = () => import('./lesson-screenshot-input.mjs')
 const loadLessonScreenshot = () => import('./lesson-screenshot.mjs')
+const loadLessonReady = () => import('./lesson-ready.mjs')
+
+// `lessons ready`: validate as published, fetch assets, run the tasks, one report.
+async function runLessonReady(lesson, { base, run, assets, taskId, inputs }) {
+  const ready = await loadLessonReady()
+  const appBase = base ?? (await loadLessonScreenshot()).DEFAULT_BASE
+  const validation = ready.validateAsPublished(lesson)
+  const refs = ready.collectAssetRefs(lesson, { base: appBase })
+  const assetResult = assets
+    ? await ready.checkAssets(refs)
+    : {
+        status: refs.length ? ready.NOT_CHECKED : ready.PASS,
+        checked: 0,
+        broken: [],
+        notChecked: refs.map(({ ref, where }) => ({ ref, where, reason: '--no-assets' })),
+      }
+  let plans = ready.planTasks(lesson, { inputs })
+  if (taskId != null) {
+    plans = plans.filter((p) => String(p.id) === String(taskId))
+    if (plans.length === 0) throw new Error(`Task ${taskId} is not in lesson ${lesson.id}`)
+  }
+  let results = {}
+  let network = null
+  let runInfo = null
+  if (run && plans.some((p) => p.runs.some((r) => !r.skip))) {
+    const { runPlannedTasks } = await import('./lesson-ready-run.mjs')
+    ;({
+      results,
+      network,
+      run: runInfo,
+    } = await runPlannedTasks({
+      lesson,
+      plans,
+      base: appBase,
+      log: (line) => process.stderr.write(`${line}\n`),
+    }))
+  } else if (!run) {
+    for (const p of plans) {
+      results[p.id] = Object.fromEntries(
+        p.runs.map((r) => [r.role, { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' }])
+      )
+    }
+  }
+  const tasks = plans.map((p) => ready.judgeTask(p, results[p.id] ?? {}))
+  return ready.buildReadyReport({
+    lesson,
+    validation,
+    assets: assetResult,
+    tasks,
+    base: appBase,
+    network,
+    run: runInfo,
+  })
+}
 
 // A lesson or block file for `scratch render`: JSON, lesson YAML, or plain YAML blocks.
 async function readScratchSource(file) {
@@ -785,6 +839,53 @@ await yargs(hideBin(process.argv))
       )
 
       .command(
+        'ready <lesson>',
+        'Is the lesson ready for class? Validates it as published (Draft flag ignored), fetches every image and asset URL, and runs each Python and Turtle task in a browser (starter must not pass, complete code must pass, setupCode runs clean, hints shown). Prints a JSON report and a plain summary; exit 0 ready, 1 not ready, 2 nothing failed but something was not checked',
+        {
+          base: {
+            type: 'string',
+            describe: 'LaunchPad URL to run tasks on (default: the live site)',
+          },
+          run: {
+            type: 'boolean',
+            default: true,
+            describe: 'Run tasks in a browser; --no-run reports every run as not checked',
+          },
+          assets: {
+            type: 'boolean',
+            default: true,
+            describe: 'Fetch asset URLs; --no-assets reports them as not checked',
+          },
+          task: { type: 'string', describe: 'Only this task id' },
+          inputs: {
+            type: 'string',
+            describe:
+              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...] } }',
+          },
+          out: { type: 'string', describe: 'Also write the JSON report to this file' },
+        },
+        cmd(async (argv) => {
+          const { existsSync } = await import('node:fs')
+          const lesson = existsSync(argv.lesson)
+            ? parseLessonJsonOrYaml(argv.lesson, await readText(argv.lesson))
+            : await (await loadLessons()).getLesson(argv.lesson)
+          const report = await runLessonReady(lesson, {
+            base: argv.base,
+            run: argv.run,
+            assets: argv.assets,
+            taskId: argv.task,
+            inputs: argv.inputs ? parseJsonOrYaml(argv.inputs, await readText(argv.inputs)) : {},
+          })
+          if (argv.out) await writeText(resolve(argv.out), JSON.stringify(report, null, 2))
+          print(report)
+          const { formatReadySummary } = await loadLessonReady()
+          process.stderr.write(`${formatReadySummary(report).join('\n')}\n`)
+          // exitCode, not exit(): exiting while fetch's sockets close crashes Node on Windows.
+          process.exitCode = report.exitCode
+        })
+      )
+
+      .command(
         'topics <id>',
         'Audit lesson topic references against the Firestore Topic Library',
         {},
@@ -796,7 +897,7 @@ await yargs(hideBin(process.argv))
 
       .demandCommand(
         1,
-        'Specify a subcommand: list | get | skeleton | validate | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics | screenshot'
+        'Specify a subcommand: list | get | skeleton | validate | ready | upsert | delete | fork | forks | lineage | yaml-to-json | json-to-yaml | preflight | publish-yaml | topics | screenshot'
       )
       .help()
   )

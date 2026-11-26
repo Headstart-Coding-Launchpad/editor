@@ -1,17 +1,17 @@
 import React, { useContext } from 'react'
 import { InlineMarkdown } from '../../../shared/markdown'
 import { parsePollChoice, tallyPollTask } from '../../../shared/classPolls'
-import PollResultBars from '../polls/PollResultBars'
+import PollTileResult from '../polls/PollTileResult'
 import { PollTaskClassContext } from './PollTaskClassContext'
 import MultipleChoiceQuiz from './MultipleChoiceQuiz'
 import { normalizeQuizAnswerText } from './quizUtils'
 
 // A poll task (`quizType: poll`): the multiple-choice grid with no right answer. Choosing an
 // option records it (never marked, so never a verdict banner or a revealed answer) and the
-// student can change it at any time. In a live lesson the class split (percentages, never who
-// chose what) shows once the student has chosen, and live on the presentation window, unless
-// the task sets `showResults: false`. The teacher sees each student's choice on their card and
-// the option counts in the session report.
+// student can change it at any time. In a live lesson the class split (counts and percentages on
+// each tile, never who chose what) shows once the student has chosen, and live on the
+// presentation window, unless the task sets `showResults: false`. The teacher sees each
+// student's choice on their card and the option counts in the session report.
 export default function PollQuiz(props) {
   const { task, selectedAnswer, disabled } = props
   const classView = useContext(PollTaskClassContext)
@@ -29,10 +29,21 @@ export default function PollQuiz(props) {
         choice: multiple ? (chosenList.length ? selectedAnswer : null) : (chosen?.id ?? null),
       })
     : null
-  const hint = multiple && !disabled ? <div style={hintStyle}>Pick all that apply.</div> : null
+  // Each tile shows its own share (PollTileResult), "(your answer)" on the student's own pick.
+  const large = !!classView?.presentation
+  const tileResult = tally
+    ? (option, look) => {
+        const row = tally.options.find((candidate) => candidate.id === option.id)
+        const mine = !large && (multiple ? chosenList.includes(option) : chosen === option)
+        const shared = { respondedCount: tally.respondedCount, multiple, large, mine }
+        return row && <PollTileResult count={row.count} {...shared} {...look} />
+      }
+    : null
+  const hint =
+    multiple && !disabled ? <div className="poll-quiz__hint">Pick all that apply.</div> : null
   const note =
     hasChosen && !disabled ? (
-      <div style={noteStyle} role="status">
+      <div className="poll-quiz__note" role="status">
         {multiple ? (
           <>You picked {chosenList.length}. You can change your answers.</>
         ) : (
@@ -49,26 +60,9 @@ export default function PollQuiz(props) {
         {hint}
         {note}
         {tally && (
-          <div style={splitStyle}>
-            <div style={splitHeadingStyle}>
-              {multiple ? 'What the class picked' : 'How the class voted'} · {tally.respondedCount}{' '}
-              answered
-            </div>
-            <PollResultBars
-              options={tally.options}
-              respondedCount={tally.respondedCount}
-              multiple={multiple}
-              highlight={
-                classView.presentation
-                  ? null
-                  : multiple
-                    ? chosenList.map((option) => task.options.indexOf(option))
-                    : chosen
-                      ? task.options.indexOf(chosen)
-                      : null
-              }
-              large={classView.presentation}
-            />
+          <div className="poll-quiz__answered">
+            {multiple ? 'What the class picked' : 'How the class voted'} · {tally.respondedCount}{' '}
+            answered
           </div>
         )}
       </>
@@ -77,6 +71,7 @@ export default function PollQuiz(props) {
     <MultipleChoiceQuiz
       {...props}
       multiple={multiple}
+      optionExtra={tileResult}
       // Never locked by a "pass", never judged.
       checkPassed={false}
       showResult={false}
@@ -84,38 +79,4 @@ export default function PollQuiz(props) {
       footer={footer}
     />
   )
-}
-
-const splitStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  flexShrink: 0,
-}
-
-const splitHeadingStyle = {
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.82rem',
-  fontWeight: 700,
-  color: 'var(--colour-primary-dark)',
-}
-
-const hintStyle = {
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.88rem',
-  fontWeight: 700,
-  color: 'var(--colour-primary-dark)',
-  flexShrink: 0,
-}
-
-const noteStyle = {
-  padding: '8px 12px',
-  borderRadius: 6,
-  background: 'var(--ui-surface-tint)',
-  border: '1px solid var(--ui-border-strong)',
-  color: 'var(--colour-primary-dark)',
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.88rem',
-  fontWeight: 600,
-  flexShrink: 0,
 }

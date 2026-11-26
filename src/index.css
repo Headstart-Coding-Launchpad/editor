@@ -2001,14 +2001,14 @@ select {
 /* ── Calm screens: word answer tiles (MultipleChoiceQuiz, 21 Nov 2026) ──
    No orphan tile and no stretched tile. MultipleChoiceQuiz sets --quiz-cols (2 side by side;
    3 in a row, or bars on a screen under 900px or a quiz frame under ~600px; 4 as 2x2; 5 as
-   bars) and --quiz-row-max (320px for one row, 250px for two, 110px or 76px for bars) from the
+   bars) and --quiz-row-max (320px for one row, 180px for two, 110px or 76px for bars) from the
    widths before the shrink-to-fit step (quizUtils quizWordLayout). The tile and badge base
    styles are classes, not inline: no rule in this file but the global `button` (a lower
    specificity) touches these selectors (tested in QuizTileLayout.test.jsx). Rows grow into the frame up to the cap, then stop; the
    tiles sit at the top. */
 .quiz-word-grid {
   grid-template-columns: repeat(var(--quiz-cols, 2), minmax(0, 1fr));
-  grid-auto-rows: minmax(min-content, var(--quiz-row-max, 1fr));
+  grid-auto-rows: minmax(min-content, var(--quiz-row-cap, var(--quiz-row-max, 1fr)));
   align-content: start;
 }
 
@@ -2545,6 +2545,195 @@ select {
 .hljs {
   background: transparent;
   color: var(--colour-text);
+}
+
+/* Numbered code blocks, ```python {lines=3} (src/shared/markdown/codeLines.js). The number and
+   the marked line's arrow are CSS content, so copying the code never picks them up. */
+.md-code-lines__code {
+  display: inline-block;
+  min-width: 100%;
+}
+.md-code-lines__row {
+  display: block;
+  position: relative;
+  /* An empty line keeps its height, so its number and mark still show. */
+  min-height: 1.6em;
+  padding: 0 10px 0 3.4em;
+  border-radius: 4px;
+}
+.md-code-lines__row::before {
+  /* Plain form first: browsers without CSS alt text drop the whole `/ ''` declaration. */
+  content: attr(data-line);
+  content: attr(data-line) / '';
+  position: absolute;
+  left: 0;
+  width: 2.7em;
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.85em;
+  line-height: 1.88;
+  user-select: none;
+}
+.md-code-lines__row--marked {
+  background: #fdf1c0;
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+.md-code-lines__row--marked::before {
+  color: #b45309;
+  font-weight: 700;
+}
+.md-code-lines__row--marked::after {
+  content: '\25B6';
+  content: '\25B6' / '';
+  position: absolute;
+  left: 0.55em;
+  top: 0;
+  color: #d97706;
+  font-size: 0.7em;
+  line-height: 2.3;
+  user-select: none;
+}
+
+/* Click-the-line quiz (src/app/components/quiz/CodeLinesQuiz.jsx): numbered rows to tap, 44px
+   tall at least; picked = purple outline + "picked", then green right / amber wrong after Check.
+   The words in each row's tag mean colour is never the only cue. */
+.cl-quiz__card {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.cl-quiz__body {
+  overflow-y: auto;
+}
+.cl-quiz__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+  user-select: none;
+}
+.cl-quiz__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 12px 4px 3.2em;
+  position: relative;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.cl-quiz__row::before {
+  content: attr(data-line);
+  content: attr(data-line) / '';
+  position: absolute;
+  left: 0;
+  width: 2.3em;
+  text-align: right;
+  color: #9ca3af;
+  font-size: 0.85em;
+}
+.cl-quiz__row code {
+  flex: 1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.cl-quiz__row:hover {
+  border-color: #c4b5fd;
+}
+.cl-quiz__row:focus-visible {
+  outline: 3px solid #a78bfa;
+  outline-offset: 2px;
+}
+.cl-quiz__row[data-picked] {
+  border-color: #6d28d9;
+  background: #ede9fe;
+}
+.cl-quiz__row[data-verdict='right'] {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+.cl-quiz__row[data-verdict='wrong'] {
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+.cl-quiz__row[data-answer]:not([data-verdict]) {
+  border-style: dashed;
+  border-color: #16a34a;
+}
+.cl-quiz__row[data-answer]:not([data-verdict]) .cl-quiz__tag {
+  color: #15803d;
+}
+.cl-quiz__lines[aria-disabled='true'] .cl-quiz__row {
+  cursor: default;
+}
+.cl-quiz__tag {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #6d28d9;
+}
+.cl-quiz__row[data-verdict='right'] .cl-quiz__tag {
+  color: #15803d;
+}
+.cl-quiz__row[data-verdict='wrong'] .cl-quiz__tag {
+  color: #b45309;
+}
+.cl-quiz__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: none;
+}
+.cl-quiz__status {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: #4b5563;
+}
+.cl-quiz__status[data-verdict='right'] {
+  color: #166534;
+}
+.cl-quiz__status[data-verdict='wrong'] {
+  color: #92400e;
+}
+.cl-quiz__button {
+  flex: none;
+  min-width: 180px;
+  min-height: 52px;
+  font-size: 1.25rem;
+}
+.cl-builder__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cl-builder__line label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.cl-builder__line .te-input {
+  flex: 1;
+}
+.cl-builder__n {
+  width: 1.6em;
+  text-align: right;
+  color: #6b7280;
+}
+.cl-builder__code {
+  font-family: 'JetBrains Mono', monospace;
 }
 .hljs-keyword {
   color: #7c3aed;
@@ -8482,8 +8671,94 @@ label.te-backdrop-tag,
   color: var(--colour-muted);
 }
 
+.poll-quiz__hint,
+.poll-quiz__answered {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--colour-primary-dark);
+}
+
+.poll-quiz__answered {
+  font-size: 0.82rem;
+}
+
+.poll-quiz__note {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--ui-surface-tint);
+  border: 1px solid var(--ui-border-strong);
+  color: var(--colour-primary-dark);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* A poll task's tile carries its own share of the vote (PollTileResult): the words and letter
+   on one line, the count and a thin bar in the tile's colour under them. */
+[data-option-extra] {
+  /* Letter + words on one row (the words wrap within it, never drop under the letter), the vote
+     share across the row below. The grid's height counts in the quiz fit (shrinkToFit). */
+  display: grid;
+  grid-template-columns: 1fr auto minmax(0, max-content) 1fr;
+  align-content: center;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: calc(var(--quiz-option-scale, 1) * 10px);
+}
+
+/* The letter in the second column (the words follow it); the spare columns centre the pair. */
+[data-option-extra] > :first-child {
+  grid-column: 2;
+}
+
+.poll-tile-result {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--quiz-option-scale, 1) * 6px);
+  font-size: 0.78em;
+  font-variant-numeric: tabular-nums;
+}
+
+.poll-tile-result__track {
+  display: block;
+  width: min(100%, 360px);
+  height: calc(var(--quiz-option-scale, 1) * 8px);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+}
+
+.poll-tile-result--on-dark .poll-tile-result__track {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Projected on the presentation window: read from the back of the room. */
+.poll-tile-result--large {
+  font-size: 0.95em;
+  font-weight: 700;
+}
+
+.poll-tile-result--large .poll-tile-result__track {
+  width: min(100%, 440px);
+  height: calc(var(--quiz-option-scale, 1) * 12px);
+}
+
+.poll-tile-result__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--motion-base) var(--motion-ease-out);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .poll-bar__fill {
+  .poll-bar__fill,
+  .poll-tile-result__fill {
     transition: none;
   }
 }

@@ -71,6 +71,10 @@ async function sweep(db, now = Date.now()) {
       lastActivity = Math.max(lastActivity, toMs(entry.data().createdAt) ?? 0)
       const work = await entry.ref.collection('work').get()
       for (const w of work.docs) lastActivity = Math.max(lastActivity, toMs(w.data().savedAt) ?? 0)
+      const typing = await entry.ref.collection('typing').get()
+      for (const t of typing.docs) {
+        lastActivity = Math.max(lastActivity, toMs(t.data().recordedAt) ?? 0)
+      }
     }
     const info = { archived: !!data.archived, updatedAt: toMs(data.updatedAt), lastActivity }
     if (!classIsPastLimit(info, now)) continue

@@ -304,10 +304,7 @@ export default function StudentWorkspace({
     taskShowsVariables(task) && !isViewingPrev && !isTeacherEditing && !tagsAbove
   const pictureAvailable =
     showStage ||
-    (!isViewingPrev &&
-      !isTeacherEditing &&
-      // A chart program (matplotlib) draws on the Stage too.
-      (codeImportsStage(code) || codeImportsMatplotlib(code)))
+    (!isViewingPrev && !isTeacherEditing && (codeImportsStage(code) || codeImportsMatplotlib(code)))
   const resultPanes = shouldShowOutput
     ? [pictureAvailable && 'picture', tagsAvailable && 'tags', 'console'].filter(Boolean)
     : []
@@ -328,6 +325,7 @@ export default function StudentWorkspace({
     tabbed,
     tagsMode: tagsAvailable ? (getShowVariables(task)?.mode ?? null) : null,
     pictureGoal: !!stageTargetCode(task),
+    preferPicture: pictureAvailable,
     slowMo: !!slowMoView,
     runToken,
     drew: stageCommands.length > 0,

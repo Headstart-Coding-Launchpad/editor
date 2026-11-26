@@ -1,4 +1,5 @@
 import { quizHasPictureOptions, stripOptionPicture } from '../../shared/quizPictureOptions.js'
+import codeLines from '../quiz_code_lines/definition.js'
 
 // Builder task conversions for the legacy quiz activities (moved from TaskEditor with plan step
 // 2.4; the results are unchanged). Each quiz_<type>/ui.jsx exposes `builderConvert` built from
@@ -142,6 +143,20 @@ function switchQuizTypeInner(task, quizType) {
       blanks: undefined,
       text: undefined,
       feedback: undefined,
+      check: null,
+    }
+  }
+  if (quizType === 'code_lines') {
+    // Its own fields are kept; a task with no code gets the example program and answer.
+    const fresh = !String(task.code ?? '').trim()
+    return {
+      ...task,
+      ...(fresh ? codeLines.defaultTask(task) : {}),
+      quizType: 'code_lines',
+      options: undefined,
+      pairs: undefined,
+      blanks: undefined,
+      text: undefined,
       check: null,
     }
   }

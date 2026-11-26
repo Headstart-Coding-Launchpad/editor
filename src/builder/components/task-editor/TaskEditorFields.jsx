@@ -13,6 +13,7 @@ import {
   playScratchSound,
 } from '../../../modules/scratch/scratchSounds'
 import { flattenTasks, getStageRole, STAGE_ROLES } from '../../../shared/taskUtils'
+import { CHANGE_NOTE_MAX, stageShowsChange } from '../../../shared/stageChange'
 import { getLessonModule } from '../../../modules/registry'
 import { getModuleAuthoring } from '../../../modules/definitions'
 import { getModuleCarrySourceIds } from '../../../shared/composedLesson'
@@ -306,8 +307,7 @@ const STAGE_ROLE_HINTS = {
   complete: 'The read-only solution, which students can choose to apply',
 }
 
-// `showChangeOption`: the module shows a Complete or Support stage's change view (Python), so
-// those stages offer `show: 'change'` (platform request 134). Off is stored as no field.
+// `showChangeOption`: Python's change view (stageShowsChange), with a `changeNote` (none if empty).
 function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
   function update(updates) {
     onChange({
@@ -337,18 +337,34 @@ function StageMetadataEditor({ stage, onChange, showChangeOption = false }) {
       {showChangeOption && ['complete', 'support'].includes(getStageRole(stage)) && (
         <label
           style={stageMetadataStyles.revealToggle}
-          title="Students see only what to add, remove or indent, anchored by a line of their own code"
+          title="Students see only what this step adds, removes or indents, from the lesson's step before"
         >
           <input
             type="checkbox"
-            checked={stage?.show === 'change'}
+            checked={stageShowsChange({ ...stage, code: '' })}
             onChange={(e) => {
               const { show: _show, ...rest } = stage ?? {}
-              onChange(e.target.checked ? { ...rest, show: 'change' } : rest)
+              const complete = getStageRole(stage) === 'complete'
+              const show = e.target.checked ? (complete ? null : 'change') : complete && 'full'
+              onChange(show ? { ...rest, show } : rest)
             }}
           />{' '}
           Show only the changes
         </label>
+      )}
+      {showChangeOption && stageShowsChange({ ...stage, code: '' }) && (
+        <input
+          className="te-input"
+          aria-label="Change note"
+          placeholder="Change note: one sentence, e.g. Add a line inside the loop"
+          maxLength={CHANGE_NOTE_MAX}
+          style={stageMetadataStyles.note}
+          value={stage?.changeNote ?? ''}
+          onChange={(e) => {
+            const { changeNote: _note, ...rest } = stage ?? {}
+            onChange(e.target.value ? { ...rest, changeNote: e.target.value } : rest)
+          }}
+        />
       )}
     </div>
   )
@@ -1272,6 +1288,7 @@ const stageMetadataStyles = {
     color: '#4b5563',
     whiteSpace: 'nowrap',
   },
+  note: { flex: '1 1 220px', minWidth: 0, padding: '4px 7px', fontSize: '0.8rem' },
 }
 
 export {

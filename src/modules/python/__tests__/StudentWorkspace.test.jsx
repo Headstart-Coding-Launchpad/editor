@@ -357,6 +357,13 @@ describe('Python StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     expect(screen.getByTestId('stage-pane')).toBeVisible()
   })
 
+  it('opens a Stage task with name tags on the Picture tab, not Tags', () => {
+    layoutState.layout = 'tabs'
+    const task = { id: 't1', showVariables: { mode: 'view' } }
+    renderWorkspace({ task }, { code: 'from stage import *\ncircle(40)\n' })
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('switches to the Picture after a Run that drew, with a badge for the hidden Console', () => {
     layoutState.layout = 'tabs'
     const task = { id: 't1' }
@@ -364,7 +371,7 @@ describe('Python StudentWorkspace result tabs on smaller screens (P6-12)', () =>
     const { rerender, cs: ownCs } = renderWorkspace({ task }, { code })
     // The output side starts folded away (no name tags, no target); Run opens it.
     fireEvent.click(screen.getByText('Run'))
-    expect(screen.getByRole('tab', { name: 'Console' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Picture' })).toHaveAttribute('aria-selected', 'true')
 
     const props = {
       task,
