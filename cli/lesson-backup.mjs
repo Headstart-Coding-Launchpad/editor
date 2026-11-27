@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { copyFile, mkdir, open, readFile, readdir, rename, stat } from 'node:fs/promises'
-import { dirname, join, parse, resolve } from 'node:path'
+import { dirname, join, parse, resolve, win32 } from 'node:path'
 
 export const DEFAULT_BACKUP_DIR = 'D:\\LaunchPad-backups\\lessons'
 
@@ -20,7 +20,8 @@ const INDEX_FILE = 'index.json'
 const FETCH_POOL = 8
 
 export function checkBackupRoot(out, exists = existsSync) {
-  const root = parse(resolve(out)).root
+  // A drive-letter path is read the Windows way on any machine (CI runs on Linux).
+  const root = /^[a-z]:[\\/]/i.test(out) ? win32.parse(out).root : parse(resolve(out)).root
   if (!exists(root)) {
     throw new Error(`Backup drive ${root} not found: plug it in or pass --out <folder>`)
   }
