@@ -8,9 +8,12 @@
 // The row's icons show on hover, on keyboard focus, and while the row is open (so a touch screen,
 // which has no reliable hover, reaches them by tapping the row open).
 import React from 'react'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
+
+const touch = vi.hoisted(() => ({ value: false }))
+vi.mock('../../../shared/useIsTouchDevice', () => ({ useIsTouchDevice: () => touch.value }))
 import StudentGrid from '../StudentGrid'
 import StudentModal from '../StudentModal'
 import ClassHealthChip from '../ClassHealthChip'
@@ -246,6 +249,152 @@ describe('Tutor actions, one home each: the student pop-up', () => {
     expect(props.onSendVideoCallLink).toHaveBeenCalledWith('b')
   })
 })
+
+// Review and browser-check findings (27 Nov 2026).
+describe('Tutor actions, one home each: review fixes', () => {
+  const focusIn = (el) => act(() => el.focus())
+
+  it('the pop-up Message ▾ menu is not clipped by its button group', async () => {
+    const user = userEvent.setup()
+    render(<StudentModal {...modalPropsForFixes()} />)
+    const header = screen.getByTestId('student-modal-header')
+    await user.click(within(header).getByRole('button', { name: 'More ways to message' }))
+    const topic = screen.getByRole('button', { name: '📖 Send Topic' })
+    // No box between the menu item and the header may clip what overflows it.
+    for (let el = topic.parentElement; el && el !== header; el = el.parentElement) {
+      expect(el.style.overflow, el.outerHTML.slice(0, 80)).not.toBe('hidden')
+    }
+  })
+
+  it('a ⋯ menu action chosen with the mouse does not leave the icons up', async () => {
+    const user = userEvent.setup()
+    const props = gridProps()
+    render(<StudentGrid {...props} />)
+    fireEvent.mouseEnter(rowOf('Bea'))
+    await user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    await user.click(screen.getByRole('menuitem', { name: /Ask to go fullscreen/ }))
+    expect(props.onRequestFullscreenStudent).toHaveBeenCalledWith('b')
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+  })
+
+  it('a ⋯ menu action chosen with the keyboard does not leave the icons up', async () => {
+    const user = userEvent.setup()
+    render(<StudentGrid {...gridProps()} />)
+    await focusIn(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    await user.keyboard('{Enter}')
+    await focusIn(screen.getByRole('menuitem', { name: /Ask to go fullscreen/ }))
+    await user.keyboard('{Enter}')
+    // The item is gone and focus with it: nothing in the row is focused now.
+    expect(rowOf('Bea').contains(document.activeElement)).toBe(false)
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+  })
+
+  it('rename with Enter or Escape puts focus back on the row', async () => {
+    const user = userEvent.setup()
+    const props = gridProps()
+    render(<StudentGrid {...props} />)
+    await user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    await user.click(screen.getByRole('menuitem', { name: /Rename student/ }))
+    await user.clear(screen.getByRole('textbox', { name: 'Rename Bea' }))
+    await user.type(screen.getByRole('textbox', { name: 'Rename Bea' }), 'Beatrice{Enter}')
+    expect(props.onRename).toHaveBeenCalledWith('b', 'Beatrice')
+    expect(document.activeElement).toBe(within(rowOf('Bea')).getByTestId('row-main'))
+
+    await user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    await user.click(screen.getByRole('menuitem', { name: /Rename student/ }))
+    await user.keyboard('{Escape}')
+    expect(document.activeElement).toBe(within(rowOf('Bea')).getByTestId('row-main'))
+    // Focus leaving the row takes the icons with it.
+    await act(() => document.activeElement.blur())
+    fireEvent.mouseLeave(rowOf('Bea'))
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+  })
+
+  it('a focused 🔔 that goes (the student came back) does not leave the icons up', async () => {
+    const props = gridProps()
+    const { rerender } = render(<StudentGrid {...props} />)
+    await focusIn(within(rowOf('Bea')).getByTestId('row-main'))
+    await focusIn(within(rowOf('Bea')).getByRole('button', { name: 'Nudge Bea' }))
+    rerender(
+      <StudentGrid
+        {...props}
+        students={[st('b', 'Bea', { windowFocused: true }), st('c', 'Cal')]}
+      />
+    )
+    expect(within(rowOf('Bea')).queryByRole('button', { name: 'Nudge Bea' })).toBeNull()
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+  })
+
+  it('a mouse press released outside the row does not stop Tab showing the icons', async () => {
+    render(<StudentGrid {...gridProps()} />)
+    fireEvent.mouseDown(within(rowOf('Bea')).getByTestId('row-main'))
+    fireEvent.mouseUp(document.body)
+    await focusIn(within(rowOf('Bea')).getByTestId('row-main'))
+    expect(within(rowOf('Bea')).getByTestId('row-icons')).toBeInTheDocument()
+  })
+
+  it('an open or focused row still shows its status', async () => {
+    render(<StudentGrid {...gridProps()} />)
+    await focusIn(within(rowOf('Bea')).getByTestId('row-main'))
+    expect(within(rowOf('Bea')).getByTestId('row-icons')).toBeInTheDocument()
+    expect(within(rowOf('Bea')).getByTestId('row-status')).toHaveTextContent('Away')
+
+    fireEvent.click(within(rowOf('Bea')).getByTestId('row-main'))
+    expect(within(rowOf('Bea')).getByTestId('row-open')).toBeInTheDocument()
+    expect(within(rowOf('Bea')).getByTestId('row-status')).toHaveTextContent('Away')
+  })
+
+  it('Enter on 👍 keeps focus on it', async () => {
+    const user = userEvent.setup()
+    const props = gridProps()
+    render(<StudentGrid {...props} />)
+    await focusIn(within(rowOf('Cal')).getByTestId('row-main'))
+    const thumbs = within(rowOf('Cal')).getByRole('button', { name: 'Send Cal a thumbs up' })
+    await focusIn(thumbs)
+    await user.keyboard('{Enter}')
+    expect(props.onThumbsUpStudent).toHaveBeenCalledWith('c')
+    expect(thumbs).not.toBeDisabled()
+    expect(thumbs).toHaveFocus()
+    // A second press while it shows ✓ sends nothing more.
+    await user.keyboard('{Enter}')
+    expect(props.onThumbsUpStudent).toHaveBeenCalledTimes(1)
+  })
+
+  it('on a touch screen the opened row has full-size, labelled icons', async () => {
+    touch.value = true
+    try {
+      render(<StudentGrid {...gridProps()} />)
+      fireEvent.click(within(rowOf('Bea')).getByTestId('row-main'))
+      const open = within(rowOf('Bea')).getByTestId('row-open')
+      for (const label of ['Nudge Bea', 'Send Bea a thumbs up', 'Open Bea']) {
+        const button = within(open).getByRole('button', { name: label })
+        expect(button).toHaveStyle({ minWidth: '44px', minHeight: '44px' })
+      }
+      // Not repeated as small icons on the name line.
+      expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+    } finally {
+      touch.value = false
+    }
+  })
+})
+
+function modalPropsForFixes() {
+  return {
+    student: st('b', 'Bea'),
+    lesson: LESSON,
+    session: SESSION,
+    isLive: true,
+    isLiveForAll: false,
+    onGoLive: vi.fn(),
+    onGoLiveForAll: vi.fn(),
+    onStopLive: vi.fn(),
+    onClose: vi.fn(),
+    onSendMessage: vi.fn(),
+    onSendToTopic: vi.fn(),
+    topics: [{ id: 't1', title: 'Loops' }],
+    onSendVideoCallLink: vi.fn(),
+  }
+}
 
 describe('Tutor actions, one home each: Class health', () => {
   it('keeps Open and drops Nudge', () => {
