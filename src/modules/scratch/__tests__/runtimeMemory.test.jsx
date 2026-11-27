@@ -25,7 +25,15 @@ afterAll(() => {
 
 const task = { id: 't1', sprites: [{ id: 'a', name: 'a', type: 'cat', x: 10, y: 20 }] }
 const numbers = (c) => [...c.querySelectorAll('input[type="number"]')].map((i) => i.value)
-const ready = (c) => waitFor(() => expect(numbers(c).length).toBeGreaterThan(1), { timeout: 30000 })
+// The inputs are in the DOM under the loading overlay: a child can only reach them once it goes.
+const ready = (c) =>
+  waitFor(
+    () => {
+      expect(c.textContent).not.toContain('Getting Scratch ready')
+      expect(numbers(c).length).toBeGreaterThan(1)
+    },
+    { timeout: 30000 }
+  )
 
 describe('Scratch sprites survive a remount', () => {
   it('shows the sprites where they were left after a remount with the same runtimeKey', async () => {
@@ -46,7 +54,8 @@ describe('Scratch sprites survive a remount', () => {
     const r = render(<ScratchWorkspace initialStates={{}} {...props} />)
     await ready(r.container)
     fireEvent.change(r.container.querySelector('input[type="number"]'), { target: { value: x } })
-    act(() => after(r))
+    // Not wrapped in act: each rerender must really render, not batch into the last one.
+    after(r)
   }
   const reopen = async (props) => {
     const r = render(<ScratchWorkspace initialStates={{}} {...props} />)

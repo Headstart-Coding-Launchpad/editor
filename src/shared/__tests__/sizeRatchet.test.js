@@ -12,6 +12,7 @@
 // And for the tutor-side fixes (+24: 213839 -> 213863), same Ryan OK.
 // And for Drop pin following the student's typing (+21: 213863 -> 213884), same Ryan OK.
 // And for the compact Pin row at 1366 (+2: 213884 -> 213886), same Ryan OK.
+// Raised 27 Nov 13:22 (Ryan: "ok rachet sprites") for Scratch sprites surviving a peer view (+57: 213886 -> 213943).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
