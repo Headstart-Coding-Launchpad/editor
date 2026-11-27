@@ -349,7 +349,7 @@ describe('Tutor actions, one home each: review fixes', () => {
     expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
   })
 
-  it('a focused 🔔 that goes (the student came back) does not leave the icons up', async () => {
+  it('a focused 🔔 that goes (the student came back) hands focus to the row', async () => {
     const props = gridProps()
     const { rerender } = render(<StudentGrid {...props} />)
     await focusIn(within(rowOf('Bea')).getByTestId('row-main'))
@@ -361,6 +361,10 @@ describe('Tutor actions, one home each: review fixes', () => {
       />
     )
     expect(within(rowOf('Bea')).queryByRole('button', { name: 'Nudge Bea' })).toBeNull()
+    // Focus stays in the row (not dropped to the page), so Tab carries on from here.
+    expect(document.activeElement).toBe(within(rowOf('Bea')).getByTestId('row-main'))
+    // Leaving the row takes the icons with it.
+    await act(() => document.activeElement.blur())
     expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
   })
 
@@ -415,6 +419,111 @@ describe('Tutor actions, one home each: review fixes', () => {
     } finally {
       touch.value = false
     }
+  })
+})
+
+// Code-review findings (27 Nov 2026, second pass).
+describe('Tutor actions, one home each: second review fixes', () => {
+  const MIN = 60 * 1000
+
+  it('in Select mode the ⋯ menu keeps Nudge, Thumbs up and Open, and they work', async () => {
+    const user = userEvent.setup()
+    const props = gridProps()
+    render(<StudentGrid {...props} />)
+    await user.click(screen.getByRole('button', { name: 'More class actions' }))
+    await user.click(screen.getByRole('button', { name: '☑ Select' }))
+    fireEvent.mouseEnter(rowOf('Bea'))
+    // No row icons while selecting.
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+
+    const openMenu = () =>
+      user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    await openMenu()
+    await user.click(screen.getByRole('menuitem', { name: /Nudge/ }))
+    expect(props.onNudgeStudent).toHaveBeenCalledWith('b')
+    await openMenu()
+    await user.click(screen.getByRole('menuitem', { name: /Thumbs up/ }))
+    expect(props.onThumbsUpStudent).toHaveBeenCalledWith('b')
+    await openMenu()
+    await user.click(screen.getByRole('menuitem', { name: /Open student/ }))
+    expect(props.onGoLive).toHaveBeenCalledWith('b')
+  })
+
+  it('outside Select mode the ⋯ menu still has no Nudge, Thumbs up or Open', async () => {
+    const user = userEvent.setup()
+    render(<StudentGrid {...gridProps()} />)
+    await user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    const menu = screen.getByRole('menu')
+    expect(
+      within(menu).queryByRole('menuitem', { name: /Nudge|Thumbs up|Open student/ })
+    ).toBeNull()
+  })
+
+  it('the opened line does not repeat a run: "tried 1m" without "ran 1m ago"', () => {
+    const students = [st('c', 'Cal', { lastRunAt: Date.now() - 1.5 * MIN })]
+    render(<StudentGrid {...gridProps({ students })} />)
+    fireEvent.click(within(rowOf('Cal')).getByTestId('row-main'))
+    const where = within(rowOf('Cal')).getByTestId('row-where')
+    expect(where).toHaveTextContent('Task 1 of 2')
+    expect(where).toHaveTextContent('tried 1m')
+    expect(where.textContent).not.toMatch(/ran/)
+  })
+
+  it('the opened line does not say "typing now" after the typing dots', () => {
+    const props = gridProps({ students: [st('c', 'Cal', { lastActivityAt: 1 })] })
+    const { rerender } = render(<StudentGrid {...props} />)
+    fireEvent.click(within(rowOf('Cal')).getByTestId('row-main'))
+    rerender(<StudentGrid {...props} students={[st('c', 'Cal', { lastActivityAt: 2 })]} />)
+    const where = within(rowOf('Cal')).getByTestId('row-where')
+    expect(within(where).getByRole('img', { name: 'Typing now' })).toBeInTheDocument()
+    expect(where.textContent).not.toMatch(/typing now/i)
+  })
+
+  it('the opened row draws no empty status line', () => {
+    const students = [st('c', 'Cal')]
+    // Not on a task in the lesson, never run, no activity: nothing to say.
+    render(<StudentGrid {...gridProps({ students, session: { ...SESSION, currentTaskId: 99 } })} />)
+    fireEvent.click(within(rowOf('Cal')).getByTestId('row-main'))
+    expect(within(rowOf('Cal')).getByTestId('row-open')).toBeInTheDocument()
+    expect(within(rowOf('Cal')).queryByTestId('row-where')).toBeNull()
+  })
+
+  it('on a touch screen, emulated hover on a closed row shows no small icons', () => {
+    touch.value = true
+    try {
+      render(<StudentGrid {...gridProps()} />)
+      fireEvent.pointerDown(rowOf('Bea'), { pointerType: 'touch' })
+      fireEvent.mouseEnter(rowOf('Bea'))
+      expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+      // A mouse on the same touch-capable screen still gets them.
+      fireEvent.pointerDown(rowOf('Bea'), { pointerType: 'mouse' })
+      fireEvent.mouseEnter(rowOf('Bea'))
+      expect(within(rowOf('Bea')).getByTestId('row-icons')).toBeInTheDocument()
+      fireEvent.mouseLeave(rowOf('Bea'))
+      fireEvent.pointerDown(rowOf('Bea'), { pointerType: 'touch' })
+      // Tapped open, then tapped closed, with the emulated hover still on it.
+      fireEvent.click(within(rowOf('Bea')).getByTestId('row-main'))
+      fireEvent.click(within(rowOf('Bea')).getByTestId('row-main'))
+      fireEvent.mouseEnter(rowOf('Bea'))
+      expect(within(rowOf('Bea')).queryByTestId('row-open')).toBeNull()
+      expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+    } finally {
+      touch.value = false
+    }
+  })
+
+  it('closing the ⋯ menu with Escape does not leave the row looking hovered', async () => {
+    const user = userEvent.setup()
+    render(<StudentGrid {...gridProps()} />)
+    fireEvent.mouseEnter(rowOf('Bea'))
+    await user.click(within(rowOf('Bea')).getByRole('button', { name: 'Actions for Bea' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+    // The pointer moving over the row again brings hover back.
+    fireEvent.mouseMove(rowOf('Bea'))
+    expect(within(rowOf('Bea')).getByTestId('row-icons')).toBeInTheDocument()
   })
 })
 

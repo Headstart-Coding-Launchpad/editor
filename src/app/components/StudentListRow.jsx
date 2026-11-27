@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import StudentCard from './StudentCard'
 import TipButton from './TipButton'
 import { ageWords, IDLE_AFTER_MS, outputStub, rowOutputText } from '../studentList.js'
@@ -17,6 +17,7 @@ import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 // on keyboard focus (:focus-visible, so a mouse click never does it), and all the time while the
 // row is open. A touch screen taps the row open and gets them full size in the opened row. The
 // status word stays beside them, so an open or focused row still says Away, Stuck or Finished.
+// Select mode hides the icons, so there (and only there) the ⋯ menu carries the three as well.
 
 // Whether focus arrived by keyboard (the browser's own rule). Older engines without the
 // selector count every focus as keyboard focus.
@@ -146,7 +147,7 @@ function rowStatusWords(state, { now, since, lastRunAt, activityAt, typing }) {
   }
 }
 
-function RowMenu({ name, groups, onOpenChange, onPick }) {
+function RowMenu({ name, groups, onOpenChange }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpenChange?.(open)
@@ -238,7 +239,6 @@ function RowMenu({ name, groups, onOpenChange, onPick }) {
                     title={item.title}
                     onClick={() => {
                       setOpen(false)
-                      onPick?.()
                       item.onClick()
                     }}
                   >
@@ -308,9 +308,15 @@ export default function StudentListRow({
   // Keyboard focus inside the row (not a mouse click, which focuses the row too).
   const [keyFocus, setKeyFocus] = useState(false)
   const touch = useIsTouchDevice()
+  // What last touched the row: a tap's emulated hover is ignored, a mouse on a touch PC is not.
+  const pointerRef = useRef(null)
+  const notePointer = (event) => (pointerRef.current = event.pointerType)
+  const hoverOn = () => pointerRef.current !== 'touch' && setHover(true)
   const rowRef = useRef(null)
   // Set when a rename ends with Enter or Escape: focus goes back to the row once it is drawn.
   const refocusRef = useRef(false)
+  // The row icon that last had focus: if it goes (a 🔔 once they are back), focus goes to the row.
+  const focusedIconRef = useRef(null)
   // Set once a rename is saved or cancelled, so a blur that follows Enter or Escape (the box
   // unmounting) never saves again or saves the discarded text.
   const renameDoneRef = useRef(true)
@@ -326,12 +332,23 @@ export default function StudentListRow({
   useEffect(() => {
     const row = rowRef.current
     if (!row) return
+    if (focusedIconRef.current && !focusedIconRef.current.isConnected) {
+      focusedIconRef.current = null
+      refocusRef.current ||= !document.activeElement || document.activeElement === document.body
+    }
     if (refocusRef.current && !renaming) {
       refocusRef.current = false
       row.querySelector('[data-testid="row-main"]')?.focus()
     }
     if (keyFocus && !row.contains(document.activeElement)) setKeyFocus(false)
   })
+
+  // A ⋯ menu that closes (a choice, Escape or a click away) clears hover: the pointer may be
+  // elsewhere by now, and a move over the row brings it back.
+  const onMenuOpenChange = useCallback((menuIsOpen) => {
+    setMenuOpen(menuIsOpen)
+    if (!menuIsOpen) setHover(false)
+  }, [])
 
   const sandbox = session?.state === 'sandbox'
   const shownHint = sandbox ? null : readStudentHint(student, taskId)
@@ -352,7 +369,8 @@ export default function StudentListRow({
   const offline = state.presence === 'offline'
   const showHover = hover && !selectMode && !renaming
   // The row's icons on the name line: on hover, on keyboard focus, and while the row is open. On
-  // a touch screen the opened row has them full size instead.
+  // a touch screen the opened row has them full size instead, and a tap's emulated hover never
+  // brings up the small ones.
   const showIcons = !selectMode && !renaming && (open ? !touch : hover || keyFocus)
   const showPanelIcons = open && touch && !selectMode && !renaming
 
@@ -490,11 +508,25 @@ export default function StudentListRow({
     ]
   }
 
-  // Thumbs up, Nudge and Open live on the row's icons, not in this menu (one home each).
+  // Thumbs up, Nudge and Open live on the row's icons, not in this menu (one home each), except
+  // in Select mode, which hides the icons: then the menu is their home.
   const menuGroups = [
     {
       label: 'Encourage',
       items: [
+        selectMode &&
+          canThumbsUp && {
+            icon: thumbsSent ? '✓' : '👍',
+            label: 'Thumbs up',
+            onClick: sendThumbsUp,
+          },
+        selectMode &&
+          canNudge && {
+            icon: nudged ? '✓' : '🔔',
+            label: 'Nudge',
+            title: 'Flash their tab and play a chime',
+            onClick: sendNudge,
+          },
         onAwardBadge && {
           icon: '🏅',
           label: 'Award badge',
@@ -530,6 +562,12 @@ export default function StudentListRow({
     {
       label: 'Their screen',
       items: [
+        selectMode && {
+          icon: '👁',
+          label: 'Open student',
+          title: 'Their screen, live',
+          onClick: () => onOpenStudent?.(student),
+        },
         sideQuest &&
           onOpenSideQuest && {
             icon: '🗺️',
@@ -607,22 +645,32 @@ export default function StudentListRow({
   const chips = healthChipItem ? [healthChipItem, ...usualChips] : usualChips
   const moreHasFlag = paste?.count > 0 || supportCount > 0 || examplesOpened > 0
 
-  const where = [
-    taskPosition(lesson, taskId),
-    typing
-      ? 'typing now'
-      : student.lastRunAt
-        ? `${student.lastRunStatus === 'error' ? 'error' : 'ran'} ${ageWords(student.lastRunAt, now) === 'now' ? 'just now' : `${ageWords(student.lastRunAt, now)} ago`}`
-        : activityAt && now - activityAt >= IDLE_AFTER_MS
-          ? `idle ${ageWords(activityAt, now)}`
-          : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
   // An open row on a mouse screen has the icons on its name line: its status moves to the opened
   // line, in full, so the name keeps its room.
   const statusOnOpenLine = open && showIcons
+  const statusShown = !!(words.text || words.typing)
+  // What they did last, for the opened line: typing now, their last run, or idle.
+  const activity = typing
+    ? { kind: 'typing', text: 'typing now' }
+    : student.lastRunAt
+      ? {
+          kind: 'tried',
+          text: `${student.lastRunStatus === 'error' ? 'error' : 'ran'} ${ageWords(student.lastRunAt, now) === 'now' ? 'just now' : `${ageWords(student.lastRunAt, now)} ago`}`,
+        }
+      : activityAt && now - activityAt >= IDLE_AFTER_MS
+        ? { kind: 'idle', text: `idle ${ageWords(activityAt, now)}` }
+        : null
+  // Which of those the status word already says (the dots, "idle 3m", "tried 2m", "Error 2m").
+  const statusActivity = words.typing
+    ? 'typing'
+    : state.status === 'online'
+      ? words.text.split(' ')[0]
+      : ['error', 'failed'].includes(state.status) && 'tried'
+  // Beside the status on the opened line, the same thing is never said twice.
+  const repeatsStatus = statusOnOpenLine && activity?.kind === statusActivity
+  const where = [taskPosition(lesson, taskId), repeatsStatus ? null : activity?.text]
+    .filter(Boolean)
+    .join(' · ')
   const statusWord = (
     <span
       style={{
@@ -668,13 +716,24 @@ export default function StudentListRow({
       data-student-id={id}
       data-student-name={name}
       data-status={state.status}
-      onMouseEnter={() => setHover(true)}
+      onPointerEnter={notePointer}
+      onPointerDown={notePointer}
+      onMouseEnter={hoverOn}
       onMouseLeave={() => setHover(false)}
       // After a ⋯ menu choice the pointer may still be over the row: hover comes back on a move.
-      onMouseMove={hover ? undefined : () => setHover(true)}
+      onMouseMove={hover ? undefined : hoverOn}
       // A click focuses the row too; only keyboard focus (Tab) brings the icons up on its own.
-      onFocus={(event) => setKeyFocus(isFocusVisible(event.target))}
+      onFocus={(event) => {
+        setKeyFocus(isFocusVisible(event.target))
+        focusedIconRef.current = event.target.closest?.('[data-testid$="icons"]')
+          ? event.target
+          : null
+      }}
       onBlur={(event) => {
+        // Focus moved on (still on the page): nothing to bring back if the icon goes later.
+        if (event.target === focusedIconRef.current && event.target.isConnected) {
+          focusedIconRef.current = null
+        }
         if (!event.currentTarget.contains(event.relatedTarget)) setKeyFocus(false)
       }}
     >
@@ -781,12 +840,7 @@ export default function StudentListRow({
             I&apos;m on it
           </button>
         )}
-        <RowMenu
-          name={name}
-          groups={menuGroups}
-          onOpenChange={setMenuOpen}
-          onPick={() => setHover(false)}
-        />
+        <RowMenu name={name} groups={menuGroups} onOpenChange={onMenuOpenChange} />
       </div>
       {healthNote && !open && (
         <div
@@ -807,10 +861,10 @@ export default function StudentListRow({
       )}
       {open && (
         <div style={s.open} data-testid="row-open">
-          {(where || statusOnOpenLine) && (
-            <div style={s.where}>
-              {statusOnOpenLine && statusWord}
-              {statusOnOpenLine && where && (words.text || words.typing) ? ' · ' : null}
+          {(where || (statusOnOpenLine && statusShown)) && (
+            <div style={s.where} data-testid="row-where">
+              {statusOnOpenLine && statusShown && statusWord}
+              {statusOnOpenLine && statusShown && where ? ' · ' : null}
               {where}
             </div>
           )}

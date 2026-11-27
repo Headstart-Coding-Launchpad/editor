@@ -1608,7 +1608,6 @@ export default function StudentModal({
                   onDecideBadge={onDecideBadge}
                   onRevokeBadge={onRevokeBadge}
                   onOpenPicker={() => setShowBadgeDialog(true)}
-                  variant="header"
                   headerClassName=""
                   headerStyle={s.groupButtonAward}
                   otherStyle={

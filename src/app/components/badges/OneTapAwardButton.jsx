@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useIsTouchDevice } from '../../../shared/useIsTouchDevice'
 import { topStudentSuggestion } from '../../../badges/suggestionRanking'
 
 export const UNDO_MS = 6000
 
 /**
  * One-tap award of a student's top-ranked suggested badge (docs/authoring/badges.md, "One-tap
- * award"). Used on the student card and in the one-student view. Tapping awards straight away
- * through the same `onDecideBadge` the suggestions panel uses (source 'rule', the rule's reason
- * and task), then shows an Undo toast for six seconds that calls the existing `onRevokeBadge`.
+ * award"). Used in the one-student view's header. Tapping awards straight away through the same
+ * `onDecideBadge` the suggestions panel uses (source 'rule', the rule's reason and task), then
+ * shows an Undo toast for six seconds that calls the existing `onRevokeBadge`. A ▾ beside it opens
+ * the picker (`onOpenPicker`) for a different badge.
  *
- * With no suggestion it opens the normal picker (`onOpenPicker`) in the modal, and renders
- * nothing when there is no picker to open (the card, so the grid isn't cluttered).
+ * With no suggestion it opens the normal picker instead, and renders nothing when there is no
+ * picker to open.
  *
  * @param {object} props
  * @param {{ anonymousId: string, displayName: string }} props.student
@@ -23,12 +23,11 @@ export const UNDO_MS = 6000
  * @param {Function} props.onDecideBadge useSession's decideBadge
  * @param {Function} [props.onRevokeBadge] useSession's revokeBadge
  * @param {Function} [props.onOpenPicker] opens BadgeAwardDialog when nothing is suggested
- * @param {'card'|'header'} [props.variant]
- * @param {object} [props.headerStyle] header: style laid over the header button(s)
- * @param {object} [props.otherStyle] header: style for the ▾ beside a suggestion, which opens the
- *   picker for a different badge (defaults to headerStyle)
- * @param {string} [props.headerClassName] header: class for the header button(s)
- * @param {boolean} [props.iconOnly] header: the emoji only (the name stays in aria-label/title)
+ * @param {object} [props.headerStyle] style laid over the header button(s)
+ * @param {object} [props.otherStyle] style for the ▾ beside a suggestion, which opens the picker
+ *   for a different badge (defaults to headerStyle)
+ * @param {string} [props.headerClassName] class for the header button(s)
+ * @param {boolean} [props.iconOnly] the emoji only (the name stays in aria-label/title)
  */
 export default function OneTapAwardButton({
   student,
@@ -39,7 +38,6 @@ export default function OneTapAwardButton({
   onDecideBadge,
   onRevokeBadge,
   onOpenPicker,
-  variant = 'card',
   headerStyle = null,
   otherStyle = null,
   headerClassName = 'btn-secondary',
@@ -49,7 +47,6 @@ export default function OneTapAwardButton({
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState(null)
   const timer = useRef(null)
-  const touch = useIsTouchDevice()
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -111,7 +108,6 @@ export default function OneTapAwardButton({
     }
   }
 
-  const isCard = variant === 'card'
   let button = null
   if (top && onDecideBadge) {
     const label = `Award ${top.badge.title} to ${student.displayName}`
@@ -119,8 +115,8 @@ export default function OneTapAwardButton({
     button = (
       <button
         type="button"
-        className={isCard ? undefined : headerClassName}
-        style={isCard ? { ...s.cardBtn, ...(touch ? s.touchMin : null) } : headerBtn}
+        className={headerClassName}
+        style={headerBtn}
         disabled={busy}
         aria-label={why ? `${label}. ${why}` : label}
         title={why ? `${label}\n${why}` : label}
@@ -136,7 +132,7 @@ export default function OneTapAwardButton({
         )}
       </button>
     )
-    if (!isCard && onOpenPicker) {
+    if (onOpenPicker) {
       // The one-tap button awards at once, so a ▾ beside it opens the picker to choose a
       // different badge without awarding the suggested one.
       button = (
@@ -156,7 +152,7 @@ export default function OneTapAwardButton({
         </>
       )
     }
-  } else if (!isCard && onOpenPicker) {
+  } else if (onOpenPicker) {
     button = (
       <button
         type="button"
@@ -193,22 +189,6 @@ export default function OneTapAwardButton({
 }
 
 const s = {
-  cardBtn: {
-    background: '#f5f3ff',
-    border: '1px solid var(--colour-primary)',
-    color: 'var(--colour-primary-dark)',
-    borderRadius: 999,
-    fontSize: '0.72rem',
-    lineHeight: 1.2,
-    padding: '1px 8px',
-    cursor: 'pointer',
-    maxWidth: 170,
-    minHeight: 24,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 3,
-  },
-  touchMin: { minHeight: 44, padding: '4px 12px' },
   headerBtn: {
     fontSize: 13,
     padding: '5px 12px',
