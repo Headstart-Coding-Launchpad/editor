@@ -317,8 +317,7 @@ export default function StudentListRow({
   const refocusRef = useRef(false)
   // The row icon that last had focus: if it goes (a 🔔 once they are back), focus goes to the row.
   const focusedIconRef = useRef(null)
-  // Set once a rename is saved or cancelled, so a blur that follows Enter or Escape (the box
-  // unmounting) never saves again or saves the discarded text.
+  // Set once a rename is saved or cancelled, so a following blur never saves again.
   const renameDoneRef = useRef(true)
   const typing = useTyping(student.lastActivityAt)
   const now = useNow()
@@ -327,8 +326,7 @@ export default function StudentListRow({
     if (!open) setMoreOpen(false)
   }, [open])
 
-  // After every draw: a focused control that went away (a ⋯ menu item, the rename box, a 🔔 once
-  // the student is back) takes focus with it and fires no blur, so check where focus is now.
+  // After every draw: a focused control that went away takes focus with it and fires no blur.
   useEffect(() => {
     const row = rowRef.current
     if (!row) return
@@ -338,7 +336,7 @@ export default function StudentListRow({
     }
     if (refocusRef.current && !renaming) {
       refocusRef.current = false
-      row.querySelector('[data-testid="row-main"]')?.focus()
+      row.querySelector('[data-testid="row-main"]')?.focus({ preventScroll: true })
     }
     if (keyFocus && !row.contains(document.activeElement)) setKeyFocus(false)
   })
@@ -664,8 +662,9 @@ export default function StudentListRow({
     : state.status === 'online'
       ? words.text.split(' ')[0]
       : ['error', 'failed'].includes(state.status) && 'tried'
-  // The status (name line or opened line) and the opened line never say the same thing twice.
-  const repeatsStatus = activity?.kind === statusActivity
+  // Never said twice, but an error the status word leaves out ("tried 2m") is still said.
+  const unsaidError = state.status === 'online' && activity?.text.startsWith('error')
+  const repeatsStatus = activity?.kind === statusActivity && !unsaidError
   const where = [taskPosition(lesson, taskId), repeatsStatus ? null : activity?.text]
     .filter(Boolean)
     .join(' · ')
@@ -716,16 +715,17 @@ export default function StudentListRow({
       data-status={state.status}
       onPointerEnter={notePointer}
       onPointerDown={notePointer}
+      onPointerMove={notePointer}
       onMouseEnter={hoverOn}
       onMouseLeave={() => setHover(false)}
       // After a ⋯ menu choice the pointer may still be over the row: hover comes back on a move.
       onMouseMove={hover ? undefined : hoverOn}
       // A click focuses the row too; only keyboard focus (Tab) brings the icons up on its own.
       onFocus={(event) => {
-        setKeyFocus(isFocusVisible(event.target))
-        focusedIconRef.current = event.target.closest?.('[data-testid$="icons"]')
-          ? event.target
-          : null
+        const byKey = isFocusVisible(event.target)
+        setKeyFocus(byKey)
+        const onIcon = byKey && event.target.closest?.('[data-testid$="icons"]')
+        focusedIconRef.current = onIcon ? event.target : null
       }}
       onBlur={(event) => {
         // Focus moved on (still on the page): nothing to bring back if the icon goes later.

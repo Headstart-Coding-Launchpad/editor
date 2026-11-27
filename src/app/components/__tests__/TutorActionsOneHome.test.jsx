@@ -368,6 +368,18 @@ describe('Tutor actions, one home each: review fixes', () => {
     expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
   })
 
+  it('a mouse-clicked 👍 that goes on mouse leave does not pull focus back to the row', () => {
+    render(<StudentGrid {...gridProps()} />)
+    fireEvent.mouseEnter(rowOf('Bea'))
+    const thumb = within(rowOf('Bea')).getByRole('button', { name: /thumbs up/i })
+    // A mouse click's focus is not :focus-visible; jsdom cannot tell, so say so here.
+    thumb.matches = () => false
+    act(() => thumb.focus())
+    fireEvent.click(thumb)
+    fireEvent.mouseLeave(rowOf('Bea'))
+    expect(rowOf('Bea').contains(document.activeElement)).toBe(false)
+  })
+
   it('a mouse press released outside the row does not stop Tab showing the icons', async () => {
     render(<StudentGrid {...gridProps()} />)
     fireEvent.mouseDown(within(rowOf('Bea')).getByTestId('row-main'))
