@@ -1019,9 +1019,16 @@ export default function ScratchWorkspace({
   calm = null,
   runtimeKey = null,
 }) {
+  // Go Live: save the student's own sprites before the broadcast's replace them, then never again.
+  const runtimeKeyRef = useRef(null)
+  if (runtimeKey) runtimeKeyRef.current = runtimeKey
   const mirroredRef = useRef(false)
-  if (readOnly || externalSpriteState) mirroredRef.current = true
-  const memoryOn = !!runtimeKey && !mirroredRef.current
+  const saveRuntimeRef = useRef(null)
+  React.useLayoutEffect(() => {
+    if (!externalSpriteState || mirroredRef.current) return
+    saveRuntimeRef.current?.()
+    mirroredRef.current = true
+  }, [externalSpriteState])
   const calmOn = !!calm
   const calmStacked = !!calm?.stacked
   // Go Live and the presentation show the large stage: a view-only override, never stored.
@@ -2168,7 +2175,8 @@ export default function ScratchWorkspace({
             setVariableValues({ ...meta.variableValues })
           }
         }
-        const seen = !cancelled && memoryOn ? recallRuntime(runtimeKey, task) : null
+        const own = !cancelled && !mirroredRef.current && runtimeKeyRef.current
+        const seen = own ? recallRuntime(own, task) : null
         if (seen) {
           // Set directly: a restore is not a student change, so nothing is broadcast.
           const states = { ...spriteStatesRef.current }
@@ -2190,11 +2198,12 @@ export default function ScratchWorkspace({
 
     init()
 
-    return () => {
-      // Never from a mirror of a broadcast (even after it ends) or mid-run.
-      if (memoryOn && !mirroredRef.current && statusRef.current === 'ready')
+    // Never from a mirror of a broadcast (even after it ends); mid-run forgets.
+    saveRuntimeRef.current = () => {
+      const key = runtimeKeyRef.current
+      if (key && !mirroredRef.current && statusRef.current === 'ready')
         rememberRuntime(
-          runtimeKey,
+          key,
           task,
           runningRef.current
             ? null
@@ -2204,6 +2213,10 @@ export default function ScratchWorkspace({
                 variableValues: { ...variableRuntimeRef.current },
               }
         )
+    }
+
+    return () => {
+      saveRuntimeRef.current()
       cancelled = true
       clearTimeout(syncTimerRef.current)
       clearTimeout(blockPlacedTimerRef.current)

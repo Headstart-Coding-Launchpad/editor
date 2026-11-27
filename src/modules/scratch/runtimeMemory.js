@@ -13,7 +13,9 @@ export function rememberRuntime(key, task, data) {
   if (memory.size > MAX_ENTRIES) memory.delete(memory.keys().next().value)
 }
 
+// Handed out once: an old position must never be replayed.
 export function recallRuntime(key, task) {
   const entry = memory.get(key)
+  memory.delete(key)
   return entry && entry.fp === fingerprint(task?.sprites) ? entry.data : null
 }

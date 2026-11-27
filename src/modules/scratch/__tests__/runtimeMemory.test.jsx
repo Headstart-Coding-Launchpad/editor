@@ -2,6 +2,7 @@ import React from 'react'
 import { render, waitFor, fireEvent, act } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import ScratchWorkspace from '../ScratchWorkspace.jsx'
+import { rememberRuntime, recallRuntime } from '../runtimeMemory.js'
 
 // A student's own Scratch workspace unmounts while they look at a classmate's shared work and
 // mounts again on "Back to my work": the sprites must come back where they were left.
@@ -105,8 +106,45 @@ describe('Scratch sprites survive a remount', () => {
       r.rerender(<ScratchWorkspace task={task} initialStates={{}} runtimeKey="k6" />)
       r.unmount()
     })
-    expect(numbers((await reopen({ task, runtimeKey: 'k6' })).r.container)[0]).toBe('10')
+    // The child's own position from just before the broadcast, never the teacher's 99.
+    const back = await reopen({ task, runtimeKey: 'k6' })
+    await waitFor(() => expect(numbers(back.r.container)[0]).toBe('5'))
   }, 90000)
+
+  it('after Go Live the sprites are where they were just before it, not an older visit', async () => {
+    await move({ task, runtimeKey: 'k10' }, '-100')
+    const live = { spriteStates: { a: { x: 99, y: 1, direction: 90, size: 100, visible: true } } }
+    const own = { task, initialStates: {}, runtimeKey: 'k10' }
+    const r = render(<ScratchWorkspace key="0" {...own} />)
+    await ready(r.container)
+    await waitFor(() => expect(numbers(r.container)[0]).toBe('-100'))
+    fireEvent.change(r.container.querySelector('input[type="number"]'), { target: { value: '60' } })
+    // As StudentWorkspace does it: the same instance mirrors the broadcast, then a new key.
+    r.rerender(
+      <ScratchWorkspace key="0" {...own} runtimeKey={null} readOnly externalSpriteState={live} />
+    )
+    await waitFor(() => expect(numbers(r.container)[0]).toBe('99'))
+    r.rerender(<ScratchWorkspace key="1" {...own} />)
+    await ready(r.container)
+    await waitFor(() => expect(numbers(r.container)[0]).toBe('60'))
+  }, 90000)
+
+  it('keeps remembering after a read-only spell with no broadcast sprites (tutor editing)', async () => {
+    await move({ task, runtimeKey: 'k11' }, '-100')
+    const r = render(<ScratchWorkspace task={task} initialStates={{}} runtimeKey={null} readOnly />)
+    await ready(r.container)
+    r.rerender(<ScratchWorkspace task={task} initialStates={{}} runtimeKey="k11" />)
+    fireEvent.change(r.container.querySelector('input[type="number"]'), { target: { value: '30' } })
+    r.unmount()
+    const back = await reopen({ task, runtimeKey: 'k11' })
+    await waitFor(() => expect(numbers(back.r.container)[0]).toBe('30'))
+  }, 90000)
+
+  it('gives a remembered position out once', () => {
+    rememberRuntime('once', task, { x: 1 })
+    expect(recallRuntime('once', task)).toEqual({ x: 1 })
+    expect(recallRuntime('once', task)).toBeNull()
+  })
 
   it('restores a student-added sprite too', async () => {
     const added = { id: 'n1', name: 'n1', type: 'cat', x: 0, y: 0, studentAdded: true }
