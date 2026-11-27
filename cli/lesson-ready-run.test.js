@@ -2,7 +2,8 @@ import { createElement as h } from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { RUN_ERROR, guardDecision, readShotVerdict } from './lesson-ready-run.mjs'
+import { RUN_ERROR, guardDecision, readShotVerdict, runTaskCopy } from './lesson-ready-run.mjs'
+import { getTaskFormat } from '../src/activities/registry.pure.js'
 import CheckFeedbackBanner from '../src/app/components/CheckFeedbackBanner.jsx'
 import OutputPanel from '../src/app/components/OutputPanel.jsx'
 import { SETUP_ERROR_TEXT } from '../src/shared/puzzle/setupCode.js'
@@ -82,6 +83,28 @@ describe('readShotVerdict reads the real check banner and output panel', () => {
     render(h(OutputPanel, { output: 'hello\n', runStatus: 'success', collapsible: false }))
     await waitFor(() => expect(read().output).toContain('hello'))
     expect(read()).toMatchObject({ runError: false, setupError: false })
+  })
+})
+
+describe('runTaskCopy', () => {
+  it("runs a code_arrange task's program as its host module's code task", () => {
+    const arrange = {
+      id: 5,
+      title: 'Arrange',
+      taskType: 'code_arrange',
+      moduleType: 'python',
+      lines: [{ id: 'l1', parts: [{ type: 'slot', id: 's1', code: 'print("hi")' }] }],
+      distractors: [{ id: 'd1', code: 'input()' }],
+      check: { type: 'output', operator: 'contains', value: 'hi' },
+    }
+    const lesson = { id: 'l', type: 'composed', title: 'L', tasks: [arrange] }
+    const task = runTaskCopy(lesson, 5, 'print("hi")')
+    expect(getTaskFormat(task)).toBe('code')
+    expect(task).toMatchObject({ moduleType: 'python', check: arrange.check })
+    expect(task.lines).toBeUndefined()
+    expect(task.codeStages).toEqual([
+      expect.objectContaining({ role: 'starter', code: 'print("hi")' }),
+    ])
   })
 })
 

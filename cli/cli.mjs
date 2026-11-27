@@ -237,7 +237,10 @@ async function runLessonReady(lesson, { base, run, assets, taskId, inputs }) {
   } else if (!run) {
     for (const p of plans) {
       results[p.id] = Object.fromEntries(
-        p.runs.map((r) => [r.role, { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' }])
+        p.runs.map((r) => [
+          ready.runKey(r),
+          { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' },
+        ])
       )
     }
   }
@@ -309,6 +312,29 @@ await yargs(hideBin(process.argv))
         cmd(async ({ light }) => {
           const { listLessons } = await loadLessons()
           print(await listLessons({ light }))
+        })
+      )
+
+      .command(
+        'backup',
+        'Read-only: save a new copy of every lesson (forks too), level, topic and type-assets doc that changed since the last run; never overwrites. Prints read counts',
+        (y) =>
+          y.option('out', {
+            type: 'string',
+            describe: 'Backup folder (default D:\\LaunchPad-backups\\lessons)',
+          }),
+        cmd(async ({ out }) => {
+          const [{ db }, backup] = await Promise.all([
+            import('./firebase.mjs'),
+            import('./lesson-backup.mjs'),
+          ])
+          const log = (line) => process.stderr.write(`${line}\n`)
+          try {
+            print(await backup.runLessonBackup({ db, out: out ?? backup.DEFAULT_BACKUP_DIR, log }))
+          } catch (e) {
+            if (e.result) print(e.result) // a partly failed run still prints its counts
+            throw e
+          }
         })
       )
 
@@ -860,7 +886,7 @@ await yargs(hideBin(process.argv))
           inputs: {
             type: 'string',
             describe:
-              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...] } }',
+              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...], support: [...] } } (support: every Support stage run)',
           },
           out: { type: 'string', describe: 'Also write the JSON report to this file' },
         },
