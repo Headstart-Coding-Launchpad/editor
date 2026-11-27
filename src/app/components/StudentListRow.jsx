@@ -620,6 +620,24 @@ export default function StudentListRow({
     .filter(Boolean)
     .join(' · ')
 
+  // An open row on a mouse screen has the icons on its name line: its status moves to the opened
+  // line, in full, so the name keeps its room.
+  const statusOnOpenLine = open && showIcons
+  const statusWord = (
+    <span
+      style={{
+        ...s.status,
+        ...(showIcons && !statusOnOpenLine ? s.statusSqueezed : null),
+        ...(statusOnOpenLine ? s.statusOpen : null),
+        color: STATUS_COLOUR[state.status],
+      }}
+      title={words.title ? `${words.text ? `${words.text}: ` : ''}${words.title}` : undefined}
+      data-testid="row-status"
+    >
+      {words.typing ? <TypingPulse /> : words.text}
+    </span>
+  )
+
   const marker = selectMode ? (
     <span style={{ ...s.selectBox, ...(selected ? s.selectBoxOn : null) }} aria-hidden="true">
       {selected ? '✓' : ''}
@@ -739,20 +757,9 @@ export default function StudentListRow({
             <span style={s.stub} title={showIcons ? undefined : output || undefined}>
               {state.status === 'help' || showIcons ? '' : stub}
             </span>
-            {/* The status stays beside the icons, shortened (full words in its title) if it must. */}
-            <span
-              style={{
-                ...s.status,
-                ...(showIcons ? s.statusSqueezed : null),
-                color: STATUS_COLOUR[state.status],
-              }}
-              title={
-                words.title ? `${words.text ? `${words.text}: ` : ''}${words.title}` : undefined
-              }
-              data-testid="row-status"
-            >
-              {words.typing ? <TypingPulse /> : words.text}
-            </span>
+            {/* The status stays beside the icons, shortened (full words in its title) if it must;
+                an open row has room for it in full on its opened line instead. */}
+            {!statusOnOpenLine && statusWord}
           </div>
         )}
         {showIcons && (
@@ -800,7 +807,13 @@ export default function StudentListRow({
       )}
       {open && (
         <div style={s.open} data-testid="row-open">
-          {where && <div style={s.where}>{where}</div>}
+          {(where || statusOnOpenLine) && (
+            <div style={s.where}>
+              {statusOnOpenLine && statusWord}
+              {statusOnOpenLine && where && (words.text || words.typing) ? ' · ' : null}
+              {where}
+            </div>
+          )}
           {output && (
             <div
               style={{
@@ -1042,6 +1055,7 @@ const s = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
+  statusOpen: { fontSize: 'inherit', paddingRight: 0 },
   hoverBtns: { display: 'flex', gap: 3, flexShrink: 0 },
   hoverBtn: {
     height: 22,
