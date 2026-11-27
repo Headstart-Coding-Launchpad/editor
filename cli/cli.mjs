@@ -237,7 +237,10 @@ async function runLessonReady(lesson, { base, run, assets, taskId, inputs }) {
   } else if (!run) {
     for (const p of plans) {
       results[p.id] = Object.fromEntries(
-        p.runs.map((r) => [r.role, { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' }])
+        p.runs.map((r) => [
+          ready.runKey(r),
+          { status: ready.NOT_CHECKED, reason: 'not run (--no-run)' },
+        ])
       )
     }
   }
@@ -883,7 +886,7 @@ await yargs(hideBin(process.argv))
           inputs: {
             type: 'string',
             describe:
-              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...] } }',
+              'JSON or YAML file of answers to input() per task: { "<taskId>": ["Ava", "7"] } or { "<taskId>": { starter: [...], complete: [...], support: [...] } } (support: every Support stage run)',
           },
           out: { type: 'string', describe: 'Also write the JSON report to this file' },
         },

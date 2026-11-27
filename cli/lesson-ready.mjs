@@ -8,8 +8,17 @@
 import { validateLessonForMcp } from './validate.mjs'
 import { flattenTasks } from '../src/shared/taskUtils.js'
 import { getTaskModuleType } from '../src/shared/composedLesson.js'
-import { getTaskFormat } from '../src/activities/registry.pure.js'
 import {
+  getTaskActivity,
+  getTaskFormat,
+  isLegacyQuizTask,
+  isModuleHostedActivityTask,
+} from '../src/activities/registry.pure.js'
+import { assembleCodeArrangement, buildSolutionSlotState } from '../src/shared/codeArrange.js'
+import { isIndentArrangeTask } from '../src/shared/codeArrangeIndent.js'
+import { formatStageLabel, getStageRole } from '../src/shared/taskStages.js'
+import {
+  completionToleratesRunError,
   isRunAttemptedCheck,
   normalizeChecks,
   normalizeFeedbackChecks,
@@ -49,9 +58,10 @@ export const NOT_COVERED = Object.freeze([
   'Topic Library links (use lessons preflight)',
   'tutor views, live sessions and the Admin screens',
   'how the lesson reads or looks (use lessons screenshot)',
-  'code stages other than starter and complete',
+  'Starter stages after the first, and Python or Turtle Complete stages after the first',
   'Scratch run-time checks, and Scratch starters carried from another task (the authored starter is judged)',
-  'quizzes, activities, code_arrange, Arcade and Electronics tasks',
+  'activities, Arcade and Electronics tasks',
+  'quiz feedback and hints, and code_arrange tile hints and arrangements other than the model one',
 ])
 
 // ── 1. Validate as published ─────────────────────────────────────────────────
@@ -208,14 +218,21 @@ function starterFor(lesson, task) {
     const from = flattenTasks(lesson.tasks).find(
       (t) => String(t?.id) === String(task.carryCodeFrom)
     )
-    const code = from ? stage(from, 'complete') : null
+    // An arrangement's assembled program is its work, so it carries the model arrangement.
+    const arranged = from && isModuleHostedActivityTask(from)
+    const code = !from
+      ? null
+      : arranged
+        ? assembleCodeArrangement(from, buildSolutionSlotState(from))
+        : stage(from, 'complete')
     if (code == null) {
       return {
         code: null,
         skip: `the starter is carried from task ${task.carryCodeFrom}, which has no complete code`,
       }
     }
-    return { code, note: `carried from task ${task.carryCodeFrom}'s complete code` }
+    const what = arranged ? 'model arrangement' : 'complete code'
+    return { code, note: `carried from task ${task.carryCodeFrom}'s ${what}` }
   }
   return { code: stage(task, 'starter') ?? '' }
 }
@@ -253,8 +270,11 @@ function answersFor(taskInputs, role) {
   return Array.isArray(list) ? list.map((v) => String(v)) : null
 }
 
+/** A run's own key in the results (`starter`, `complete`, `support:<n>`). */
+export const runKey = (run) => run.key ?? run.role
+
 function codeRun(task, role, code, expect, extra = {}, taskInputs = null) {
-  const run = { role, code, expect, ...extra }
+  const run = { role, key: role, code, expect, ...extra }
   if (run.skip != null || code == null) return run
   const answers = answersFor(taskInputs, role)
   if (answers) run.inputs = answers
@@ -277,18 +297,22 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   const stop = (status, reason) => ({ ...base, status, reason })
 
   if (format === 'information') return stop(NOTHING_TO_RUN, 'information task')
-  if (format !== 'code')
+  if (isLegacyQuizTask(task)) return planQuizTask(task, base, stop)
+  // code_arrange: an activity hosted by a workspace module, run as that module's code.
+  const arrange = isModuleHostedActivityTask(task)
+  if (format !== 'code' && !arrange)
     return stop(NOT_CHECKED, `${format} tasks are not run by lessons ready yet`)
   const method = Object.hasOwn(READY_METHOD_BY_MODULE, module ?? '')
     ? READY_METHOD_BY_MODULE[module]
     : null
   if (method === 'frozen') return stop(NOT_CHECKED, `${module} is a frozen module: not checked`)
-  if (method === 'blocks') return planBlocksTask(task, base)
+  if (method === 'blocks' && !arrange) return planBlocksTask(task, base)
   if (method !== 'run') return stop(NOT_CHECKED, `${module} tasks are not run by lessons ready yet`)
   if (task.tests?.length > 0) return stop(NOT_CHECKED, 'Python tests (Run Tests) are not run yet')
   if (task.interactionMode === 'submit') {
     return stop(NOT_CHECKED, 'a submit-mode task (Submit is not pressed yet)')
   }
+  if (arrange) return planArrangeTask(task, base, inputs)
 
   const setupCode = getTaskSetupCode(task)
   const starter = starterFor(lesson, task)
@@ -338,24 +362,175 @@ export function planTask(lesson, task, { inputs = null } = {}) {
   } else {
     runs.push(codeRun(task, 'starter', starter.code, 'runs', starterExtra, inputs))
   }
+  if (hasCheck && !runAndRead) runs.push(...supportRuns(task, inputs))
   const hints = authoredHints(task).map(({ index: _index, ...h }) => h)
   return { ...base, setup: setupCode != null, runs, hints }
+}
+
+// A Support stage is a hint a child (or tutor) can take over: it must not pass the checks.
+function supportRuns(task, inputs) {
+  const stages = Array.isArray(task.codeStages) ? task.codeStages : []
+  return stages.flatMap((s, i) =>
+    getStageRole(s) !== 'support' || s?.code == null
+      ? []
+      : [codeRun(task, 'support', String(s.code), 'not_pass', supportRunExtra(s, i), inputs)]
+  )
+}
+
+const SUPPORT_PASSES = 'already passes the checks: offering it hands the child the answer'
+
+function supportRunExtra(stage, index) {
+  const label = formatStageLabel(stage, index)
+  return {
+    key: `support:${index}`,
+    name: `${label} does not pass`,
+    failDetail: `${label} ${SUPPORT_PASSES}`,
+  }
+}
+
+// ── code_arrange: the model arrangement run as the host module's code ─────────
+//
+// The classroom marks an arrangement by running the assembled program through the host module's
+// Run and checks, so the model arrangement (every blank holding its own tile, or every line at
+// its authored depth) runs as that module's code task (lesson-ready-run.mjs runTaskCopy). In
+// indent mode the lines' start depths are a runnable program too, which must not pass. A slot
+// board can't Run until every blank is filled, so it has no starter run. Support stages (the
+// classroom reveals them on an arrangement as on a code task) must not pass either.
+function planArrangeTask(task, base, inputs) {
+  const hasCheck = normalizeChecks(task.check).length > 0
+  // Run and read: every check passes on any run, so no arrangement can fail and the model
+  // arrangement is only checked for errors (as on a code task).
+  const runAndRead = completionToleratesRunError(task.check)
+  const model = assembleCodeArrangement(task, buildSolutionSlotState(task))
+  const runs = []
+  if (hasCheck && !runAndRead && isIndentArrangeTask(task)) {
+    const start = assembleCodeArrangement(task, {})
+    runs.push(
+      codeRun(
+        task,
+        'starter',
+        start,
+        'not_pass',
+        {
+          name: 'start arrangement does not pass',
+          failDetail:
+            'every line already starts at a depth that passes: a child could finish without moving anything',
+        },
+        inputs
+      )
+    )
+  }
+  const expect = hasCheck && !runAndRead ? 'pass' : 'runs_clean'
+  const extra = {
+    name:
+      expect === 'pass' ? 'model arrangement passes' : 'model arrangement runs without an error',
+    what: 'model arrangement',
+  }
+  runs.push(
+    model == null
+      ? {
+          role: 'complete',
+          key: 'complete',
+          code: null,
+          expect,
+          ...extra,
+          skip: 'the model arrangement does not assemble',
+        }
+      : codeRun(task, 'complete', model, expect, extra, inputs)
+  )
+  if (hasCheck && !runAndRead) runs.push(...supportRuns(task, inputs))
+  const hints = authoredHints(task).map(({ index: _index, ...h }) => h)
+  return { ...base, setup: getTaskSetupCode(task) != null, runs, hints }
+}
+
+// ── Quizzes: graded by the quiz's own grader ──────────────────────────────────
+//
+// The classroom marks a quiz with its definition's grade(task, answer) (useActivityState), so
+// that is what judges here: the model answer (solutionState, read back the way a stored answer
+// is, so an option the quiz no longer offers is no answer) must pass, and a blank one must not.
+function gradeQuiz(def, task, state) {
+  try {
+    const answer = def.deserialize(def.serialize(state), task)
+    return { passed: !!def.grade(task, answer)?.passed }
+  } catch (e) {
+    return { error: e.message }
+  }
+}
+
+function planQuizTask(task, base, stop) {
+  const def = getTaskActivity(task)
+  if (def.completion === 'none' || !def.isGraded(task)) {
+    return stop(NOTHING_TO_RUN, 'an ungraded quiz: any answer completes it')
+  }
+  if (!def.solutionState) {
+    return stop(NOT_CHECKED, 'no model answer to grade (a typed answer is not guessed)')
+  }
+  const graded = (name, state, expectPass, failDetail) => {
+    const result = gradeQuiz(def, task, state)
+    if (result.error) return { name, status: FAIL, detail: `grading stopped: ${result.error}` }
+    return result.passed === expectPass
+      ? { name, status: PASS }
+      : { name, status: FAIL, detail: failDetail }
+  }
+  // A numeric answer (`value: 1` for option id "1") is what a child's pick stores as text.
+  const model = def.solutionState(task)
+  const checks = [
+    graded(
+      'blank answer does not pass',
+      def.initialState(task),
+      false,
+      'a blank answer already passes: a child could finish without answering'
+    ),
+    graded(
+      'model answer passes',
+      typeof model === 'number' ? String(model) : model,
+      true,
+      "the quiz's own answer is marked wrong: no child can pass it"
+    ),
+  ]
+  if (task.quizType === 'fill_blank') checks.push(gapsCheck(task))
+  return { ...base, method: 'grade', gradeChecks: checks }
+}
+
+// The student view draws one gap per `___` (in text, inline code or a code block) and fills the
+// blanks in order, so a blank past the last gap can never be filled and the quiz never passes.
+// Counted as the Builder's fill-blank editor counts them.
+function gapsCheck(task) {
+  const name = 'every blank has a gap'
+  const gaps = (String(task.text ?? '').match(/___/g) ?? []).length
+  const blanks = (task.blanks ?? []).length
+  if (blanks <= gaps) return { name, status: PASS }
+  return {
+    name,
+    status: FAIL,
+    detail: `${blanks} blanks but ${gaps} ___ gap(s) in the text: a child can never fill them all`,
+  }
 }
 
 // ── Scratch: the checks judged on each stage's blocks ─────────────────────────
 
 const BLOCKS_NOTE = 'judged on the blocks without a run, as in class'
 
-// One stage's completion verdict as a check: `expectPass` for complete stages.
-function blocksCheck(name, entry, expectPass) {
+// One stage's completion verdict as a check: `expectPass` for complete stages. `passDetail`: why
+// a stage that must not pass is a problem when it does.
+function blocksCheck(
+  name,
+  entry,
+  expectPass,
+  passDetail = 'the starter blocks already pass every completion check: a child could finish without changing anything'
+) {
   if (!entry) return { name, status: NOT_CHECKED, reason: 'no such stage' }
   if (entry.error) return { name, status: FAIL, detail: `the ${entry.stage} ${entry.error}` }
   const result = entry.completion.result
   if (result === 'none') return { name, status: NOT_CHECKED, reason: 'no completion check' }
   if (result === 'incomplete') {
-    return expectPass
-      ? { name, status: NOT_CHECKED, reason: 'its run-time checks need a run, which is not made' }
-      : { name, status: NOT_CHECKED, reason: 'the block checks pass; run-time checks not judged' }
+    const judged = entry.completion.checks.some((c) => c.result !== 'skipped')
+    const reason = expectPass
+      ? 'its run-time checks need a run, which is not made'
+      : judged
+        ? 'the block checks pass; run-time checks not judged'
+        : 'only run-time checks, which need a run (not made)'
+    return { name, status: NOT_CHECKED, reason }
   }
   const passed = result === 'pass'
   if (passed === expectPass) return { name, status: PASS, note: BLOCKS_NOTE }
@@ -365,7 +540,7 @@ function blocksCheck(name, entry, expectPass) {
     status: FAIL,
     detail: expectPass
       ? `the ${entry.stage} blocks fail completion check(s): ${failed.join(', ')}`
-      : 'the starter blocks already pass every completion check: a child could finish without changing anything',
+      : passDetail,
   }
 }
 
@@ -373,7 +548,8 @@ function planBlocksTask(task, base) {
   if (normalizeChecks(task.check).length === 0) {
     return { ...base, status: NOTHING_TO_RUN, reason: 'no completion check' }
   }
-  const stages = getScratchVerificationStages(task).map(({ stage, kind, blocks }) => {
+  const toJudge = getScratchVerificationStages(task, { includeSupport: true })
+  const stages = toJudge.map(({ stage, kind, blocks }) => {
     // A task with no starter blocks starts on an empty workspace.
     if (blocks == null && kind !== 'starter') return { stage, kind, missing: true }
     blocks = blocks ?? {}
@@ -399,6 +575,13 @@ function planBlocksTask(task, base) {
     })
   }
   for (const c of completes) checks.push(blocksCheck(`${c.stage} blocks pass`, c, true))
+  if (!runAndRead) {
+    for (const s of stages.filter((x) => x.kind === 'support')) {
+      const name = `${s.stage} does not pass`
+      const detail = `the ${s.stage} blocks already pass every completion check: offering the stage hands the child the answer`
+      checks.push(blocksCheck(name, s, false, detail))
+    }
+  }
   // A completion check's hint shows when a stage the child could be on fails it; a feedback
   // check's when it fires.
   const hints = authoredHints(task).map(({ index, ...h }) => {
@@ -448,9 +631,12 @@ const tail = (text, n = 300) => {
 
 function judgeRun(run, result) {
   const name =
-    run.role === 'starter' && run.expect === 'pass'
+    run.name ??
+    (run.role === 'starter' && run.expect === 'pass'
       ? 'starter passes (run and read)'
-      : RUN_NAMES[run.expect]
+      : RUN_NAMES[run.expect])
+  // What the run's code is, in a failure's detail.
+  const what = run.what ?? (run.role === 'starter' ? 'starter (run and read)' : 'complete code')
   const item = { name, role: run.role }
   if (run.note) item.note = run.note
   if (run.skip) return { ...item, status: NOT_CHECKED, reason: run.skip }
@@ -466,6 +652,7 @@ function judgeRun(run, result) {
           ...item,
           status: FAIL,
           detail:
+            run.failDetail ??
             'the starter already passes the checks: a child could finish without changing anything',
         }
       }
@@ -477,7 +664,7 @@ function judgeRun(run, result) {
         return {
           ...item,
           status: FAIL,
-          detail: `the ${run.role === 'starter' ? 'starter (run and read)' : 'complete code'} fails the checks${shown}${result.runError ? `; output: ${tail(result.output)}` : ''}`,
+          detail: `the ${what} fails the checks${shown}${result.runError ? `; output: ${tail(result.output)}` : ''}`,
         }
       }
       return { ...item, status: NOT_CHECKED, reason: 'no check result appeared after Run' }
@@ -486,7 +673,7 @@ function judgeRun(run, result) {
         ? {
             ...item,
             status: FAIL,
-            detail: `the complete code stops with an error: ${tail(result.output)}`,
+            detail: `the ${run.what ?? 'complete code'} stops with an error: ${tail(result.output)}`,
           }
         : { ...item, status: PASS }
     default:
@@ -506,12 +693,22 @@ function rollUp(statuses) {
   return PASS
 }
 
-/** One task's report from its plan and its run results ({ starter, complete }). */
+/** One task's report from its plan and its run results, by run key ({ starter, complete, … }). */
 export function judgeTask(plan, results = {}) {
   const { runs, hints, setup, ...rest } = plan
   const base = { id: rest.id, title: rest.title, module: rest.module, format: rest.format }
   if (plan.status)
     return { ...base, status: plan.status, reason: plan.reason, checks: [], hints: [] }
+  if (plan.method === 'grade') {
+    const checks = plan.gradeChecks
+    return {
+      ...base,
+      method: 'grade',
+      status: rollUp(checks.map((c) => c.status)),
+      checks,
+      hints: [],
+    }
+  }
   if (plan.method === 'blocks') {
     const checks = plan.blockChecks
     const hints = plan.blockHints.map(({ seenIn, ...h }) =>
@@ -526,9 +723,9 @@ export function judgeTask(plan, results = {}) {
     return { ...base, method: 'blocks', status, checks, hints }
   }
 
-  const checks = runs.map((run) => judgeRun(run, results[run.role]))
+  const checks = runs.map((run) => judgeRun(run, results[runKey(run)]))
   if (setup) {
-    const done = runs.map((r) => results[r.role]).filter((r) => r?.status === 'done')
+    const done = runs.map((r) => results[runKey(r)]).filter((r) => r?.status === 'done')
     const broke = done.find((r) => r.setupError)
     checks.push(
       broke
@@ -545,8 +742,8 @@ export function judgeTask(plan, results = {}) {
   }
   const hintReports = hints.map((h) => {
     const seenIn = runs
-      .filter((r) => !r.skip && hintSeen(results[r.role]?.hintShown, h.hint))
-      .map((r) => r.role)
+      .filter((r) => !r.skip && hintSeen(results[runKey(r)]?.hintShown, h.hint))
+      .map(runKey)
     return seenIn.length
       ? { ...h, status: 'shown', seenIn }
       : { ...h, status: NOT_CHECKED, reason: 'no run of the authored code showed this hint' }
