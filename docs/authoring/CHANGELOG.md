@@ -37,7 +37,38 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-26
+
+- **`lessons ready` now checks quizzes, `code_arrange` tasks and Support stages.** A graded quiz
+  is marked with the quiz's own grader: its model answer must pass and a blank answer must not
+  (an answer naming an option the quiz no longer offers fails). Polls, confidence ratings and
+  open short answers have nothing to judge; a short answer with a check is not checked (a typed
+  answer is not guessed). A Python or Turtle `code_arrange` task runs its model arrangement as
+  the host module's code (it must pass), and in indent mode the lines' start depths too (they
+  must not pass). A Support stage must not pass the checks (Python and Turtle runs it, Scratch
+  judges its blocks; on a `code_arrange` task it runs too): one that does hands the child the
+  answer, and fails. A fill-in-the-gaps quiz with more blanks than `___` gaps fails. No new
+  lesson fields.
+  See [lessons-ready-cli.md](lessons-ready-cli.md).
+- Affects: cli, quiz_multiple_choice, quiz_match, quiz_fill_blank, quiz_code_lines, code_arrange,
+  python, turtle, scratch · Existing lessons: a Support stage that already passes the checks is
+  now reported as a failure; trim it or make it a Complete stage, and a fill-in-the-gaps quiz
+  with a blank past its last `___` fails; add the gap or drop the blank · Resolves: none (Deep Review
+  C1, 10 Nov 2026)
+
 ## 2026-11-25
+
+- **`lessons ready`: is a lesson ready for class?** A new CLI command, `lessons ready <file|id>`,
+  validates the lesson as published (the Draft flag ignored), fetches every image and asset URL it
+  uses, runs each Python and Turtle task's starter and complete code in a browser (the starter
+  must not pass, the complete code must pass, `setupCode` must run clean, each authored hint must
+  show in some run) and judges Scratch block checks on each stage. It prints a JSON report and a
+  plain summary and exits 0 ready, 1 not ready, 2 nothing failed but something was not checked.
+  Anything not run (quizzes, activities, `input()` code without `--inputs`, predict locks, frozen
+  modules) is "not checked" with its reason, so a lesson with such tasks is never "ready". No new
+  lesson fields; nothing is written to Firebase. See [lessons-ready-cli.md](lessons-ready-cli.md).
+- Affects: cli, python, turtle, scratch · Existing lessons: no changes needed · Resolves: none
+  (Deep Review C1/C6/C10, 10 Nov 2026)
 
 - **Python Stage tasks open on the Picture tab on smaller screens.** A task that draws on the Stage
   (the code imports `stage` or `matplotlib`, or it has a `stageTarget`) used to open on Tags when it

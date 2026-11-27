@@ -13,7 +13,7 @@ Key references:
 - Contract, data flow and write rules: `docs/architecture/activities.md`
 - Plan, decision test, definition of done: `docs/architecture/modular-activities-plan.md`
 - Worked example: `src/activities/binary/` + `docs/authoring/activities/binary.md`
-- UI rules: `docs/UI_STYLE_GUIDE.md`; project rules: `AGENTS.md`
+- UI rules: `docs/UI_STYLE_GUIDE.md`; project rules: `CLAUDE.md`
 
 ## 1. Start from the request
 
@@ -36,8 +36,8 @@ Key references:
    writing code. Create a `feature/<id>-activity` branch; set the request's status to `planned`.
 6. **Sketch gate** (CLAUDE.md "Child-facing screens", #314). Fill the one-screen design brief
    (template in `HSC Hub\Research\LaunchPad Dev workflow proposal.md` §4: who, the wow, the one
-   main action, at most 5 visible controls, what's hidden, result slot, tutor view, 1366x768 fit).
-   A design subagent returns a wireframe of the whole screen with its control count; Ryan OKs it
+   one primary action, at most 5 control groups, what's hidden, result slot, tutor view, 1366x768 fit).
+   A design subagent returns a sketch of the whole screen listing its control groups; Ryan OKs it
    before any code. A new mode on an existing activity sketches the whole screen, folding older
    extras rather than adding a row.
 7. Write the request's Fun moment as a behaviour test that fails before the build.
@@ -106,9 +106,9 @@ anything. Every place to change is marked `TODO(new-activity)`.
 ## 6. Verify (all must pass)
 
 ```bash
-npm test                 # re-run once if a jsdom test times out under load
+npx vitest run <your test files>  # targeted only; the full suite goes through test-runner (CLAUDE.md)
 npx eslint src cli scripts  # 0 errors (npm run lint also walks .claude/worktrees)
-npx prettier --write <changed files> && npm run format:check
+npx prettier --check <changed files>  # --write to fix
 npm run docs:check
 npx vite build
 node cli/cli.mjs lessons capabilities   # the activity is listed; CLI imports stay Node-safe
@@ -121,7 +121,7 @@ Stage → Start again / Complete (show answers); teacher Presentation View broad
 preview; a composed lesson with the activity between two code tasks.
 
 Then a **cold review**: an agent that hasn't seen the work reviews the screenshots against the
-brief (control count, fold at 1366x768, plain words) before anything goes to Ryan.
+brief (control groups, fold at 1366x768, plain words) before anything goes to Ryan.
 
 ## 7. Close the loop
 

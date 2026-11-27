@@ -146,6 +146,40 @@ describe('TeacherView with a Python Turtle task', () => {
   })
 })
 
+describe('TeacherView opening a session', () => {
+  beforeEach(() => {
+    for (const key of Object.keys(captured)) delete captured[key]
+    for (const key of Object.keys(sessionCommands)) delete sessionCommands[key]
+  })
+
+  it.each([
+    ['no node', null, 1],
+    ['a node with no state', { students: { a: { currentCode: 'x' } } }, 1],
+    ['a running session', { state: 'active', currentTaskId: 1, students: {} }, 0],
+    ['an ended session', { state: 'ended', currentTaskId: 1, students: {} }, 0],
+  ])('asks for a fresh session for %s: %#', async (_name, session, calls) => {
+    mockSession = session
+    await renderTeacherView(turtleLesson())
+    expect(sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0).toBe(calls)
+  })
+
+  // Repair happens when the dashboard loads only: a stray write after an Admin close must not
+  // reopen the session from a tutor tab left open.
+  it('does not reopen a session removed while open, even if a stray write follows', async () => {
+    mockSession = { state: 'active', currentTaskId: 1, students: {} }
+    const lesson = turtleLesson()
+    getDoc.mockResolvedValue({ exists: () => true, data: () => lesson })
+    const view = render(<TeacherView lessonId={lesson.id} />)
+    await waitFor(() => expect(captured.editor?.task).toBeTruthy())
+
+    mockSession = null // Closed from Admin.
+    view.rerender(<TeacherView lessonId={lesson.id} />)
+    mockSession = { students: { a: { currentCode: 'x' } } } // A stale student write.
+    await act(async () => view.rerender(<TeacherView lessonId={lesson.id} />))
+    expect(sessionCommands.createSessionIfAbsent?.mock.calls.length ?? 0).toBe(0)
+  })
+})
+
 describe('TeacherView task slide', () => {
   beforeEach(() => {
     for (const key of Object.keys(captured)) delete captured[key]

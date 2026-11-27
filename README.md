@@ -24,7 +24,8 @@ Start with `docs/README.md`. For feature work, use `docs/architecture/feature-im
 
 Key entry points:
 
-- `AGENTS.md` - short project rules and routing index
+- `CLAUDE.md` - project rules for agents (the one home for who may do what)
+- `AGENTS.md` - tool-neutral entry point for other agent tools
 - `docs/CODEBASE_MAP.md` - source file inventory
 - `docs/architecture/` - design intent and impact maps
 - `docs/adr/` - architecture decision records

@@ -18,14 +18,13 @@ Use focused branch prefixes:
 
 Do not commit directly to `main`. Preserve unrelated user changes already present in the worktree.
 
-When complete:
+When complete, push the branch (never `main`):
 
 ```bash
 git push -u origin feature/<branch-name>
-gh pr create --title "<Feature title>" --body "<summary, decisions, verification>"
 ```
 
-Do not merge the PR.
+Who may land a branch on `main`, when, and how Ryan's OK is recorded is set in `CLAUDE.md` ("Main, merges and deploys") and enforced by the gate (`.claude/hooks/claude_gate.py`). This file holds only the commands. Open a PR only when asked; never run `gh pr merge` (Ryan merges PRs himself).
 
 ## Versioning
 
@@ -53,6 +52,8 @@ gh pr comment <pr-number> --body "Addressed in <commit-sha>: <brief explanation>
 
 ## Code Review
 
+The default review for a branch is the built-in `/code-review`, run before the merge ask (see `CLAUDE.md`). The steps below apply only when asked to review a GitHub PR.
+
 When reviewing a PR by number or URL, post findings as a PR comment when complete:
 
 ```bash
@@ -73,7 +74,7 @@ The app's `.env` lives in the repo root and the CLI's in `cli/.env`. Both are gi
 
 Do not create, copy, or write `.env` files in a worktree unless the user asks. Run the CLI and dev server from the main checkout instead.
 
-After creating a PR from a temporary worktree, remove that worktree when the PR is open and the user no longer needs local changes there.
+Do not remove worktrees as part of finishing a branch. Worktrees can hold `node_modules` junctions, so removal follows the `worktree-cleanup` skill, only with Ryan's OK on a named list (see `CLAUDE.md`).
 
 ## Testing
 
@@ -81,9 +82,16 @@ Read `docs/TESTING.md` before writing or modifying tests.
 
 Commands:
 
-- `npm test` for Vitest unit/component tests.
+- `npx vitest run <test files>` for the targeted Vitest files your change touches.
+- The full suite runs once per branch through the `test-runner` agent, with the command named in `CLAUDE.md`. Builder and parallel subagents do not run the full suite (`npm test`) themselves.
 - `npm run test:e2e` for Playwright E2E tests.
 - Never run tests through raw `node` or `vite` commands.
+
+Before handing work back:
+
+- `npx prettier --check <changed files>` (fix with `npx prettier --write <changed files>`).
+- `npx eslint src cli scripts` (0 errors; `npm run lint` also walks `.claude/worktrees`).
+- `npm run docs:check`.
 
 Test placement:
 
@@ -132,7 +140,7 @@ After significant changes, update relevant docs:
 - `docs/agents/project-rules.md` when CLI commands or auth setup changes.
 - `docs/authoring/AUTHORING_GUIDE.md`, `docs/authoring/validation-errors.md` or `docs/authoring/feedback-cli.md` when content-authoring workflows change.
 - `docs/authoring/session-reports.md` **and** a `docs/authoring/CHANGELOG.md` entry whenever the session report's output changes: `src/shared/lessonReport.js`, `src/badges/reportMetrics.js`, or an activity's `report.summaryFields` / `report.typeFields`. Reports are never regenerated, so give each new field its date added.
-- `AGENTS.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
+- `CLAUDE.md` and `docs/agents/*.md` when agent-facing rules, Firebase model, localStorage keys, URLs, session states, or key behaviours change.
 
 ### Authoring CHANGELOG entries
 
@@ -144,7 +152,7 @@ When a change affects how lessons, tasks, topics, checks, assets or lesson Markd
 
 `Resolves:` names the authoring request(s) the change ships (or `none`); set that request's **Status** and **Resolution** in the same PR.
 
-**All project docs live under `docs/`.** `AGENTS.md` and `CLAUDE.md` are the only doc files at the repo root.
+**All project docs live under `docs/`.** The only tracked doc files at the repo root are `AGENTS.md`, `CLAUDE.md` and `README.md` (`NOW.md` and `Plans/` are untracked working notes).
 
 A significant change includes a new component, hook, or module; Firebase field change; URL parameter change; or change to a documented key behaviour.
 

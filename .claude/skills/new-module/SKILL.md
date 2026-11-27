@@ -16,7 +16,7 @@ Key references:
 - Plan, decision test, definition of done: `docs/architecture/modular-activities-plan.md`
 - Worked examples: `src/modules/filesystem/` (structured state checked on every change),
   `src/modules/turtle/` (runtime module), `src/modules/arcade/` (workspace runs and reports)
-- Runtime data model (must not change): `docs/agents/runtime-model.md`; rules: `AGENTS.md`
+- Runtime data model (must not change): `docs/agents/runtime-model.md`; rules: `CLAUDE.md`
 
 ## 1. Start from the request
 
@@ -127,9 +127,9 @@ Core code checks work against `buildContext(work).code`. Module check types go i
 ## 8. Verify (all must pass)
 
 ```bash
-npm test                     # re-run once if a jsdom test times out under load
+npx vitest run <your test files>  # targeted only; the full suite goes through test-runner (CLAUDE.md)
 npx eslint src cli scripts   # 0 errors (npm run lint also walks .claude/worktrees)
-npx prettier --write <changed files> && npm run format:check
+npx prettier --check <changed files>  # --write to fix
 npm run docs:check
 npx vite build
 node cli/cli.mjs lessons capabilities   # the module is listed; definition.js stays Node-safe
