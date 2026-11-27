@@ -1304,42 +1304,19 @@ export default function StudentModal({
     </>
   )
 
+  // One home each (Deep Review U7): Nudge (🔔), Take over every screen (Live ▾) and the Award ▾
+  // live on the bar, so Tools does not repeat them. Send Topic and the video call link live in
+  // the Message ▾, so Tools keeps them only when there is no Message button.
+  const topicInTools = hasTopic && !onSendMessage
+  const videoCallInTools = hasVideoCall && !onSendMessage
   const toolColumns = (close) =>
     [
       [
-        hasNudge && {
-          key: 'encourage',
-          heading: 'Encourage',
-          body: (
-            <button
-              style={sTo.toolBtn}
-              onClick={() => {
-                close()
-                handleNudge()
-              }}
-              title="Nudge: flash this student's tab and play a chime"
-            >
-              🔔 Nudge
-            </button>
-          ),
-        },
-        (hasGoLiveForAll || hasShare) && {
+        hasShare && {
           key: 'show',
           heading: 'Show the class',
           body: (
             <>
-              {hasGoLiveForAll && (
-                <button
-                  style={sTo.toolBtn}
-                  onClick={() => {
-                    close()
-                    onGoLiveForAll()
-                  }}
-                  title="Put this student's work on every screen, live. The class watches until you press Stop Live."
-                >
-                  📡 Take over every screen (Go Live for All)
-                </button>
-              )}
               {hasShare && (
                 <button
                   style={sTo.toolBtn}
@@ -1355,7 +1332,7 @@ export default function StudentModal({
             </>
           ),
         },
-        (hasEdit || hasCopyCodeEdit || hasTopic || hasVideoCall || hasFullscreen) && {
+        (hasEdit || hasCopyCodeEdit || topicInTools || videoCallInTools || hasFullscreen) && {
           key: 'help',
           heading: 'Help this student',
           body: (
@@ -1384,7 +1361,7 @@ export default function StudentModal({
                   ⌨️ Edit Type this out
                 </button>
               )}
-              {hasTopic && (
+              {topicInTools && (
                 <button
                   style={sTo.toolBtn}
                   onClick={() => {
@@ -1395,7 +1372,7 @@ export default function StudentModal({
                   📖 Send Topic
                 </button>
               )}
-              {hasVideoCall && (
+              {videoCallInTools && (
                 <button
                   style={sTo.toolBtn}
                   onClick={() => {
@@ -1551,7 +1528,7 @@ export default function StudentModal({
       .map((column) => column.filter(Boolean))
       .filter((column) => column.length > 0)
 
-  const hasAnyTool = toolColumns(() => {}).length > 0 || !!onDecideBadge
+  const hasAnyTool = toolColumns(() => {}).length > 0
 
   // ─── Body: instructions on the left, the workspace, Output on the right ───────
   const showLeftColumn =
@@ -1632,9 +1609,9 @@ export default function StudentModal({
                   onRevokeBadge={onRevokeBadge}
                   onOpenPicker={() => setShowBadgeDialog(true)}
                   variant="header"
-                  showOther={false}
                   headerClassName=""
                   headerStyle={s.groupButtonAward}
+                  otherStyle={s.caretButtonAward}
                   iconOnly={narrowHeader}
                 />
               )}
@@ -1801,16 +1778,7 @@ export default function StudentModal({
                     >
                       📡 Take over every screen (Go Live for All)
                     </button>
-                    <button
-                      style={sTo.toolBtn}
-                      onClick={() => {
-                        close()
-                        onGoLiveForAll('panel')
-                      }}
-                      title="Offer this student's work to the class, live: everyone keeps coding and can watch it or try a copy"
-                    >
-                      📺 Show to class, they keep coding
-                    </button>
+                    {/* Show to class (they keep coding) is the bar's own button. */}
                   </>
                 )}
               </DropdownMenu>
@@ -1859,20 +1827,6 @@ export default function StudentModal({
                         })}
                       </div>
                     ))}
-                    {onDecideBadge && (
-                      <div style={s.toolsFooter}>
-                        <button
-                          style={{ ...sTo.toolBtn, width: 'auto' }}
-                          onClick={() => {
-                            close()
-                            setShowBadgeDialog(true)
-                          }}
-                          data-testid="award-other-badge"
-                        >
-                          🏅 Award a different badge…
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )
               }}
@@ -2321,6 +2275,15 @@ const s = {
     justifyContent: 'center',
     background: 'rgba(0,0,0,0.12)',
   },
+  // The Award ▾ (a different badge) sits mid-group, so it keeps the divider on its right.
+  caretButtonAward: {
+    ...headerButton,
+    width: 24,
+    padding: 0,
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.12)',
+    borderRight: '1px solid rgba(255,255,255,0.22)',
+  },
   squareButton: {
     ...headerButton,
     width: 34,
@@ -2385,14 +2348,6 @@ const s = {
   },
   toolsGrid: { display: 'grid', gap: 12, color: 'var(--colour-text)' },
   toolsColumn: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  toolsFooter: {
-    gridColumn: '1 / -1',
-    borderTop: '1px solid #eee',
-    paddingTop: 8,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
   footerNote: { fontSize: 12, fontWeight: 600, color: '#6b7280' },
   menuSection: { display: 'flex', flexDirection: 'column', gap: 4 },
   menuHeadingFirst: { ...menuHeadingBase, padding: '0 2px 2px' },

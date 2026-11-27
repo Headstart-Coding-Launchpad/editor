@@ -53,8 +53,7 @@ export default function TeacherSessionControls({
   onGoLive,
   goLiveDisabledReason = null,
   goLiveControl = null,
-  onOpenStudent, // the Class health chip's Open and Nudge (student id), while the session runs
-  onNudgeStudent,
+  onOpenStudent, // the Class health chip's Open (student id), while the session runs
 }) {
   const [showExtraTools] = useExtraClassToolsOn()
   const state = session?.state
@@ -209,7 +208,7 @@ export default function TeacherSessionControls({
   return (
     <div className="teacher-session-controls" data-testid="teacher-top-row">
       {isRunning && onOpenStudent && (
-        <ClassHealthChip {...{ session, serverTimeOffset, onOpenStudent, onNudgeStudent }} />
+        <ClassHealthChip {...{ session, serverTimeOffset, onOpenStudent }} />
       )}
       <button
         type="button"

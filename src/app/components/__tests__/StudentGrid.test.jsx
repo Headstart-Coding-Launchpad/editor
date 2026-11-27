@@ -68,13 +68,12 @@ const STUDENTS = [
   { anonymousId: 's3', displayName: 'Carol', online: true, lastRunStatus: null, checkPassed: null },
 ]
 
-// Opens a student's window the compact list's way: open their row, then Open.
+// Opens a student's window the compact list's way: open their row, then its 👁 Open icon (on the
+// name line, shown while the row is open).
 async function openStudent(user, name) {
   const row = screen.getAllByTestId('student-row').find((el) => el.dataset.studentName === name)
   await user.click(within(row).getByTestId('row-main'))
-  await user.click(
-    within(within(row).getByTestId('row-open')).getByRole('button', { name: `Open ${name}` })
-  )
+  await user.click(within(row).getByRole('button', { name: `Open ${name}` }))
 }
 
 function mkProps(overrides = {}) {

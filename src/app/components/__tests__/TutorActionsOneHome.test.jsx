@@ -49,7 +49,12 @@ const SUGGESTION = {
   at: 1000,
 }
 
-const st = (id, name, extra = {}) => ({ anonymousId: id, displayName: name, online: true, ...extra })
+const st = (id, name, extra = {}) => ({
+  anonymousId: id,
+  displayName: name,
+  online: true,
+  ...extra,
+})
 const rowOf = (name) =>
   screen.getAllByTestId('student-row').find((row) => row.dataset.studentName === name)
 
@@ -96,6 +101,25 @@ describe('Tutor actions, one home each: the student row', () => {
     await user.click(within(row).getByRole('button', { name: 'Send Bea a thumbs up' }))
     expect(props.onThumbsUpStudent).toHaveBeenCalledWith('b')
     expect(within(row).getByRole('button', { name: 'Open Bea' })).toBeInTheDocument()
+  })
+
+  it('hides the icons again when keyboard focus leaves the row', () => {
+    render(<StudentGrid {...gridProps()} />)
+    fireEvent.focus(within(rowOf('Bea')).getByTestId('row-main'))
+    expect(within(rowOf('Bea')).getByRole('button', { name: 'Open Bea' })).toBeInTheDocument()
+    fireEvent.blur(within(rowOf('Bea')).getByTestId('row-main'), { relatedTarget: document.body })
+    expect(within(rowOf('Bea')).queryByRole('button', { name: 'Open Bea' })).toBeNull()
+    expect(within(rowOf('Bea')).getByTestId('row-status')).toBeInTheDocument()
+  })
+
+  it('a mouse click that opens and closes the row does not leave the icons up', async () => {
+    const user = userEvent.setup()
+    render(<StudentGrid {...gridProps()} />)
+    await user.click(within(rowOf('Bea')).getByTestId('row-main'))
+    await user.click(within(rowOf('Bea')).getByTestId('row-main'))
+    fireEvent.mouseLeave(rowOf('Bea'))
+    expect(within(rowOf('Bea')).queryByTestId('row-icons')).toBeNull()
+    expect(within(rowOf('Bea')).getByTestId('row-status')).toBeInTheDocument()
   })
 
   it('has no Nudge icon for a student who is not Away', () => {

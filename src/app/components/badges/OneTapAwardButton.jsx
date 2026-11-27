@@ -24,9 +24,10 @@ export const UNDO_MS = 6000
  * @param {Function} [props.onRevokeBadge] useSession's revokeBadge
  * @param {Function} [props.onOpenPicker] opens BadgeAwardDialog when nothing is suggested
  * @param {'card'|'header'} [props.variant]
- * @param {boolean} [props.showOther] header: the "Other…" picker button beside a suggestion
- *   (false where the picker has its own entry, as in the StudentModal's Tools menu)
+ * @param {boolean} [props.showOther] header: the ▾ picker button beside a suggestion, to award
+ *   a different badge (false where the picker has its own entry)
  * @param {object} [props.headerStyle] header: style laid over the header button(s)
+ * @param {object} [props.otherStyle] header: style for the ▾ button (defaults to headerStyle)
  * @param {string} [props.headerClassName] header: class for the header button(s)
  * @param {boolean} [props.iconOnly] header: the emoji only (the name stays in aria-label/title)
  */
@@ -42,6 +43,7 @@ export default function OneTapAwardButton({
   variant = 'card',
   showOther = true,
   headerStyle = null,
+  otherStyle = null,
   headerClassName = 'btn-secondary',
   iconOnly = false,
 }) {
@@ -137,21 +139,21 @@ export default function OneTapAwardButton({
       </button>
     )
     if (!isCard && onOpenPicker && showOther) {
-      // The one-tap button awards at once, so give the teacher a way into the picker to choose
-      // a different badge without awarding the suggested one.
+      // The one-tap button awards at once, so a ▾ beside it opens the picker to choose a
+      // different badge without awarding the suggested one.
       button = (
         <>
           {button}
           <button
             type="button"
             className={headerClassName}
-            style={headerBtn}
+            style={otherStyle ?? headerBtn}
             aria-label={`Choose a different badge for ${student.displayName}`}
             title="Choose a different badge"
             data-testid="award-other-badge"
             onClick={onOpenPicker}
           >
-            <span aria-hidden="true">🏅</span> Other…
+            <span aria-hidden="true">▾</span>
           </button>
         </>
       )

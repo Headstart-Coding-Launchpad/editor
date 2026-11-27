@@ -1278,7 +1278,6 @@ export default function TeacherView({ lessonId, sessionKey: sessionKeyProp }) {
                     : null
               }
               onOpenStudent={(studentId) => setOpenStudentRequest({ studentId, at: Date.now() })}
-              onNudgeStudent={nudgeStudent}
               goLiveControl={
                 session &&
                 !isInSandbox &&

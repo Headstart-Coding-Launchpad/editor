@@ -8,8 +8,11 @@ import { studentHealthChip, studentHealthProblem } from '../../shared/studentHea
 // One student in the tutor's compact list (sketch v2, Ryan OK 8 Nov 2026): a 28px row with the
 // presence marker, name, up to 3 glyphs, a grey output stub and one status word or live cue; a
 // second 16px line only for a notable state. Clicking the row opens it in place (where they are,
-// their last output, 2 chips, Thumbs up / Open / More); More folds out everything the old card
-// showed (StudentCard variant="detail"). The ⋯ menu holds every other action. Tutor screen only.
+// their last output, 2 chips, More); More folds out everything the old card showed (StudentCard
+// variant="detail"). The ⋯ menu holds every other action. Tutor screen only.
+// One home each (Deep Review U7, sketch OK'd 27 Nov 2026): the row's own icons (🔔 Nudge while
+// Away, 👍 Thumbs up, 👁 Open) are the dashboard's only home for those three. They show on hover,
+// on keyboard focus, and all the time while the row is open (a touch screen taps the row open).
 
 const EDGE = {
   help: 'var(--colour-warning)',
@@ -287,6 +290,9 @@ export default function StudentListRow({
   const [thumbsSent, setThumbsSent] = useState(false)
   const [nudged, setNudged] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // Keyboard focus inside the row (not a mouse click, which focuses the row too).
+  const [keyFocus, setKeyFocus] = useState(false)
+  const pointerDownRef = useRef(false)
   const rowRef = useRef(null)
   // Set once a rename is saved or cancelled, so a blur that follows Enter or Escape (the box
   // unmounting) never saves again or saves the discarded text.
@@ -316,6 +322,8 @@ export default function StudentListRow({
   })
   const offline = state.presence === 'offline'
   const showHover = hover && !selectMode && !renaming
+  // The row's icons: on hover, on keyboard focus, and while the row is open.
+  const showIcons = (hover || keyFocus || open) && !selectMode && !renaming
 
   const glyphs = [
     shownHint || shownOffer
@@ -391,13 +399,35 @@ export default function StudentListRow({
     else onToggleOpen?.(id)
   }
 
+  function sendNudge() {
+    onNudge?.(id)
+    setNudged(true)
+    setTimeout(() => setNudged(false), 2000)
+  }
+
   const canThumbsUp = !!onThumbsUp && !!student.online
-  const thumbsButton = (compact) => (
+  // Nudge only does something for a student who is online with their tab not focused (Away).
+  const canNudge = !!onNudge && !!student.online && student.windowFocused === false
+  const nudgeButton = (
     <button
       type="button"
-      style={compact ? s.hoverBtn : s.actionBtn}
+      style={s.hoverBtn}
+      aria-label={`Nudge ${name}`}
+      title={`Nudge ${name}: flash their tab and play a chime`}
+      onClick={(event) => {
+        event.stopPropagation()
+        sendNudge()
+      }}
+    >
+      {nudged ? '✓' : '🔔'}
+    </button>
+  )
+  const thumbsButton = (
+    <button
+      type="button"
+      style={s.hoverBtn}
       disabled={thumbsSent}
-      aria-label={compact ? `Send ${name} a thumbs up` : undefined}
+      aria-label={`Send ${name} a thumbs up`}
       title={`Send ${name} a thumbs up`}
       onClick={(event) => {
         event.stopPropagation()
@@ -405,13 +435,12 @@ export default function StudentListRow({
       }}
     >
       {thumbsSent ? '✓' : '👍'}
-      {!compact && (thumbsSent ? ' Sent' : ' Thumbs up')}
     </button>
   )
-  const openButton = (compact) => (
+  const openButton = (
     <button
       type="button"
-      style={compact ? s.hoverBtn : s.actionBtn}
+      style={s.hoverBtn}
       aria-label={`Open ${name}`}
       title={`Open ${name}: their screen, live`}
       onClick={(event) => {
@@ -419,21 +448,15 @@ export default function StudentListRow({
         onOpenStudent?.(student)
       }}
     >
-      👁{!compact && ' Open'}
+      👁
     </button>
   )
 
+  // Thumbs up, Nudge and Open live on the row's icons, not in this menu (one home each).
   const menuGroups = [
     {
       label: 'Encourage',
       items: [
-        onThumbsUp && {
-          icon: '👍',
-          label: 'Thumbs up',
-          disabled: !student.online,
-          note: student.online ? null : 'only when online',
-          onClick: sendThumbsUp,
-        },
         onAwardBadge && {
           icon: '🏅',
           label: 'Award badge',
@@ -458,17 +481,6 @@ export default function StudentListRow({
           title: 'Send this student a pop-up message',
           onClick: () => onSendMessage(student),
         },
-        onNudge && {
-          icon: '🔔',
-          label: nudged ? 'Nudged' : 'Nudge',
-          disabled: !(student.online && student.windowFocused === false),
-          note: student.online && student.windowFocused === false ? null : 'only when Away',
-          onClick: () => {
-            onNudge(id)
-            setNudged(true)
-            setTimeout(() => setNudged(false), 2000)
-          },
-        },
         onRequestFullscreen && {
           icon: '⛶',
           label: 'Ask to go fullscreen',
@@ -480,7 +492,6 @@ export default function StudentListRow({
     {
       label: 'Their screen',
       items: [
-        { icon: '👁', label: 'Open student', onClick: () => onOpenStudent?.(student) },
         sideQuest &&
           onOpenSideQuest && {
             icon: '🗺️',
@@ -603,6 +614,19 @@ export default function StudentListRow({
       data-status={state.status}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      // A click focuses the row too; only keyboard focus (Tab) brings the icons up on its own.
+      onMouseDown={() => {
+        pointerDownRef.current = true
+      }}
+      onMouseUp={() => {
+        pointerDownRef.current = false
+      }}
+      onFocus={() => {
+        if (!pointerDownRef.current) setKeyFocus(true)
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setKeyFocus(false)
+      }}
     >
       <span aria-hidden="true" style={{ ...s.edge, background: EDGE[state.status] }} />
       <div style={s.line}>
@@ -674,7 +698,7 @@ export default function StudentListRow({
                 {glyph.icon}
               </span>
             ))}
-            {!showHover && (
+            {!showIcons && (
               <>
                 {/* A help row's status and I'm on it leave no room for a useful stub. */}
                 <span style={s.stub} title={output || undefined}>
@@ -689,13 +713,14 @@ export default function StudentListRow({
                 </span>
               </>
             )}
-            {showHover && <span style={s.stub} />}
+            {showIcons && <span style={s.stub} />}
           </div>
         )}
-        {showHover && (
-          <span style={s.hoverBtns}>
-            {canThumbsUp && thumbsButton(true)}
-            {openButton(true)}
+        {showIcons && (
+          <span style={s.hoverBtns} data-testid="row-icons">
+            {canNudge && nudgeButton}
+            {canThumbsUp && thumbsButton}
+            {openButton}
           </span>
         )}
         {state.status === 'help' && !helpAcked && onAckHelp && (
@@ -760,9 +785,8 @@ export default function StudentListRow({
               ))}
             </div>
           )}
+          {/* Thumbs up and Open are the icons on the name line, shown while the row is open. */}
           <div style={s.actions}>
-            {canThumbsUp && thumbsButton(false)}
-            {openButton(false)}
             <span style={{ flex: 1 }} />
             <button
               type="button"
@@ -1040,19 +1064,6 @@ const s = {
   chipScreenError: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
   chipGrey: { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' },
   actions: { display: 'flex', alignItems: 'center', gap: 5 },
-  actionBtn: {
-    height: 26,
-    padding: '0 9px',
-    border: '1px solid rgba(98,34,204,0.3)',
-    borderRadius: 6,
-    background: '#fff',
-    color: 'var(--colour-primary-dark)',
-    fontFamily: 'var(--font-body)',
-    fontWeight: 700,
-    fontSize: '0.74rem',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
   moreBtn: {
     position: 'relative',
     height: 26,

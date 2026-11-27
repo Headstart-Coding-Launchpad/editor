@@ -125,18 +125,19 @@ describe('Student View Modal tidy: the fun moment', () => {
     fireEvent.click(within(strip).getByRole('button', { name: /Helped/ }))
     expect(p.onDismissHelp).toHaveBeenCalledWith('student-1')
 
-    // Tools: every old More item, grouped.
+    // Tools: every old More item, grouped, except those whose one home is the header bar
+    // (Nudge is the 🔔 above; Deep Review U7).
     fireEvent.click(within(header).getByRole('button', { name: /^Tools/ }))
     const menu = screen.getByTestId('student-modal-tools')
     for (const heading of [
-      'Encourage',
       'Help this student',
       'Mark the task',
       'Their screen and answers',
       'Their work',
     ])
       expect(within(menu).getByText(heading)).toBeInTheDocument()
-    expect(within(menu).getByRole('button', { name: '🔔 Nudge' })).toBeInTheDocument()
+    expect(within(menu).queryByText('Encourage')).not.toBeInTheDocument()
+    expect(within(menu).queryByRole('button', { name: '🔔 Nudge' })).not.toBeInTheDocument()
     expect(within(menu).getByRole('button', { name: '⛶ Ask to go fullscreen' })).toBeInTheDocument()
   })
 
@@ -193,10 +194,11 @@ describe('Student View Modal tidy: the fun moment', () => {
     expect(screen.getByTestId('student-modal-strip')).toHaveTextContent('SHOWN TO CLASS')
   })
 
-  it('offers Go Live for All and Show to class under Live', () => {
+  it('offers Go Live for All under Live, and Show to class only on the bar', () => {
     const p = props()
     render(<StudentModal {...p} />)
     fireEvent.click(screen.getByRole('button', { name: /^Live/ }))
+    expect(screen.queryByRole('button', { name: /they keep coding/ })).not.toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )

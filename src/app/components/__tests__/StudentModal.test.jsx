@@ -1187,7 +1187,7 @@ describe('StudentModal header', () => {
     expect(screen.getByRole('button', { name: 'Starter' })).toBeInTheDocument()
   })
 
-  it('has Nudge in the header and Tools, Go Live for All and Focus in Tools, Award badge in the header', async () => {
+  it('has Nudge, Award badge and Live ▾ (Go Live for All) in the header, and Focus in Tools', async () => {
     const user = userEvent.setup()
     const onNudge = vi.fn()
     const onGoLiveForAll = vi.fn()
@@ -1207,10 +1207,14 @@ describe('StudentModal header', () => {
     await user.click(screen.getByRole('button', { name: /^Tools/ }))
     expect(screen.queryByRole('button', { name: '🏅 Award badge' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Focus' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '🔔 Nudge' }))
+    // One home each (Deep Review U7): Tools repeats neither Nudge nor Take over every screen.
+    expect(screen.queryByRole('button', { name: '🔔 Nudge' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Nudge Jamie' }))
     expect(onNudge).toHaveBeenCalledWith('student-1')
     expect(screen.getByText('✓ Nudged')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^Tools/ }))
+    await user.click(screen.getByRole('button', { name: /^Live/ }))
     await user.click(
       screen.getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )
@@ -1231,11 +1235,12 @@ describe('StudentModal header', () => {
       />
     )
     await user.click(screen.getByRole('button', { name: /^Tools/ }))
-    expect(screen.getByText('Encourage')).toBeInTheDocument()
+    // Nudge and Take over every screen have their one home in the header (Deep Review U7).
+    expect(screen.queryByText('Encourage')).not.toBeInTheDocument()
     expect(screen.getByText('Show the class')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
+    ).not.toBeInTheDocument()
     // Show to class and Help are one tap in the header, not in More.
     expect(
       screen.queryByRole('button', { name: '📺 Show to class: they keep coding' })
@@ -1258,12 +1263,12 @@ describe('StudentModal header', () => {
 
   it('closes an open menu on Escape without closing the modal', async () => {
     const user = userEvent.setup()
-    const props = mkProps({ onNudge: vi.fn() })
+    const props = mkProps({ onRequestFullscreen: vi.fn() })
     render(<StudentModal {...props} />)
     await user.click(screen.getByRole('button', { name: /^Tools/ }))
-    expect(screen.getByRole('button', { name: '🔔 Nudge' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '⛶ Ask to go fullscreen' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('button', { name: '🔔 Nudge' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '⛶ Ask to go fullscreen' })).not.toBeInTheDocument()
     expect(props.onClose).not.toHaveBeenCalled()
   })
 })
@@ -1597,11 +1602,14 @@ describe('StudentModal header: four common actions, the rest in More', () => {
     expect(screen.getByTestId('modal-scrub-result')).toHaveTextContent('Fails after scrub')
   })
 
-  it('opens the picker from Tools > "Award a different badge…" without awarding the suggested badge', async () => {
+  it('opens the picker from the header Award ▾ without awarding the suggested badge', async () => {
     const user = userEvent.setup()
     const onDecideBadge = vi.fn(async () => ({ committed: true }))
     render(<StudentModal {...mkProps({ onDecideBadge, badgeSuggestions: [SUGGESTION] })} />)
+    // Its one home is the header ▾ beside the one-tap award (Deep Review U7), not Tools.
     await user.click(screen.getByRole('button', { name: /^Tools/ }))
+    expect(screen.queryByText(/Award a different badge/)).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
     await user.click(screen.getByTestId('award-other-badge'))
     expect(onDecideBadge).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: /Award badge/ })).toBeInTheDocument()

@@ -189,8 +189,9 @@ export default function StudentCard({
   carryWaiting = false,
   onOpenRoster = null,
   // 'card' (default): the whole clickable card. 'detail': the same chips, output and buttons
-  // without the name, rename, remove and thumbs-up (the compact list's row carries those), as
-  // the More fold of an opened row in the student list (StudentListRow.jsx).
+  // without the name, rename, remove, thumbs-up, nudge and one-tap award (the compact list's row
+  // and the suggestions panel carry those: one home each, Deep Review U7), as the More fold of an
+  // opened row in the student list (StudentListRow.jsx).
   variant = 'card',
 }) {
   const detail = variant === 'detail'
@@ -612,7 +613,7 @@ export default function StudentCard({
               showLabel
             />
           )}
-          {onNudge && student.online && student.windowFocused === false && (
+          {onNudge && !detail && student.online && student.windowFocused === false && (
             <TipButton
               style={s.nudgeBtn}
               onClick={(event) => {
@@ -641,7 +642,7 @@ export default function StudentCard({
               {thumbsUpSent ? '✓' : '👍'}
             </TipButton>
           )}
-          {onDecideBadge && student.online && !selectMode && (
+          {onDecideBadge && !detail && student.online && !selectMode && (
             <OneTapAwardButton
               student={student}
               suggestions={badgeSuggestionList}

@@ -167,7 +167,7 @@ describe('compact student list: header', () => {
 })
 
 describe('compact student list: a row opens in place', () => {
-  it('shows where they are and their output, Thumbs up / Open, and More with everything else', async () => {
+  it('shows where they are and their output, the 👍 / 👁 icons, and More with everything else', async () => {
     const user = userEvent.setup()
     const onThumbsUpStudent = vi.fn()
     const students = [
@@ -185,7 +185,9 @@ describe('compact student list: a row opens in place', () => {
     const open = within(rowOf('Gus')).getByTestId('row-open')
     expect(open).toHaveTextContent('Task 1 of 2')
     expect(open).toHaveTextContent("NameError: name 'scor' is not defined")
-    await user.click(within(open).getByRole('button', { name: /Thumbs up/ }))
+    // Thumbs up and Open are the name line's icons, up while the row is open (one home each).
+    fireEvent.mouseLeave(rowOf('Gus'))
+    await user.click(within(rowOf('Gus')).getByRole('button', { name: 'Send Gus a thumbs up' }))
     expect(onThumbsUpStudent).toHaveBeenCalledWith('g')
     // Pasted code sits in More, so More carries the amber dot.
     const more = within(open).getByRole('button', { name: /More/ })
@@ -195,7 +197,7 @@ describe('compact student list: a row opens in place', () => {
     const fold = screen.getByTestId('row-more')
     expect(within(fold).getByLabelText(/Pasted ×2/)).toBeInTheDocument()
     expect(within(fold).getByLabelText(/Can see: Info \+ Code/)).toBeInTheDocument()
-    await user.click(within(open).getByRole('button', { name: 'Open Gus' }))
+    await user.click(within(rowOf('Gus')).getByRole('button', { name: 'Open Gus' }))
     expect(props.onGoLive).toHaveBeenCalledWith('g')
     expect(screen.getByTestId('modal-name')).toHaveTextContent('Gus')
   })
@@ -235,26 +237,32 @@ describe('compact student list: nothing a tutor could do is lost', () => {
     })
     render(<StudentGrid {...props} />)
     let menu = await openMenu(user, 'Dev')
-    for (const group of ['Encourage', 'Help this student', 'Their screen', 'Edit']) {
+    for (const group of ['Encourage', 'Help this student', 'Edit']) {
       expect(within(menu).getByText(group)).toBeInTheDocument()
     }
     for (const label of [
-      'Thumbs up',
       'Award badge',
       'Send hint',
       'Message',
-      'Nudge',
       'Ask to go fullscreen',
-      'Open student',
       'Rename student',
       'Match them to the class list',
       'Remove student',
     ]) {
       expect(within(menu).getByRole('menuitem', { name: new RegExp(label) })).toBeInTheDocument()
     }
-
-    await user.click(within(menu).getByRole('menuitem', { name: /Nudge/ }))
+    // Thumbs up, Nudge and Open have one home on the dashboard: the row's icons (U7).
+    for (const label of ['Thumbs up', 'Nudge', 'Open student']) {
+      expect(within(menu).queryByRole('menuitem', { name: new RegExp(label) })).toBeNull()
+    }
+    await user.keyboard('{Escape}')
+    fireEvent.mouseEnter(rowOf('Dev'))
+    expect(within(rowOf('Dev')).getByRole('button', { name: 'Send Dev a thumbs up' })).toBeVisible()
+    expect(within(rowOf('Dev')).getByRole('button', { name: 'Open Dev' })).toBeVisible()
+    // fireEvent: user-event's pointer move from the ⋯ button reads as leaving the row in jsdom.
+    fireEvent.click(within(rowOf('Dev')).getByRole('button', { name: 'Nudge Dev' }))
     expect(handlers.onNudgeStudent).toHaveBeenCalledWith('d')
+    fireEvent.mouseLeave(rowOf('Dev'))
     menu = await openMenu(user, 'Dev')
     await user.click(within(menu).getByRole('menuitem', { name: /Ask to go fullscreen/ }))
     expect(handlers.onRequestFullscreenStudent).toHaveBeenCalledWith('d')

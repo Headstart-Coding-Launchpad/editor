@@ -26,7 +26,6 @@ function renderChip(students, overrides = {}) {
     students,
     appVersion: '1.0.985',
     onOpenStudent: vi.fn(),
-    onNudgeStudent: vi.fn(),
     ...overrides,
   }
   render(<ClassHealthChip {...props} />)
@@ -93,9 +92,12 @@ describe('ClassHealthChip (Fun moment: the tutor sees whose screen is breaking)'
 
     fireEvent.click(within(panel).getByRole('button', { name: "Open Dev's screen" }))
     expect(props.onOpenStudent).toHaveBeenCalledWith('d')
+    // Open only (Deep Review U7): Nudge lives on the row and in the pop-up, not here.
     fireEvent.click(chip)
-    fireEvent.click(within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Nudge' })[1])
-    expect(props.onNudgeStudent).toHaveBeenCalledWith('h')
+    const reopened = screen.getByRole('dialog')
+    expect(within(reopened).queryByRole('button', { name: 'Nudge' })).toBeNull()
+    fireEvent.click(within(reopened).getByRole('button', { name: "Open Hana's screen" }))
+    expect(props.onOpenStudent).toHaveBeenCalledWith('h')
   })
 
   it('leaves out offline students and old errors', () => {

@@ -6,7 +6,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 // The tutor's Class health chip (R1, sketch OK'd 20 Nov 2026), in TeacherSessionControls. Reads
 // `students` or `session.students` (src/shared/healthBeacon.js), ages in server time. No writes.
 export default function ClassHealthChip(props) {
-  const { session, serverTimeOffset, onOpenStudent, onNudgeStudent } = props
+  const { session, serverTimeOffset, onOpenStudent } = props
   const appVersion = props.appVersion ?? APP_VERSION
   const [open, setOpen] = useState(false)
   const [, setTick] = useState(0)
@@ -71,17 +71,13 @@ export default function ClassHealthChip(props) {
                 <div title={r.message ?? undefined}>{r.headline}</div>
                 {r.detail && <em>{r.detail}</em>}
                 <div className="class-health__actions">
+                  {/* Open only: a broken screen needs a look, and the pop-up has 🔔 Nudge. */}
                   <button
                     className={`${btn} ${btn}--primary`}
                     onClick={() => setOpen(false) || act(onOpenStudent, r.id)()}
                   >
                     {`Open ${r.name}'s screen`}
                   </button>
-                  {onNudgeStudent && (
-                    <button className={btn} onClick={act(onNudgeStudent, r.id)}>
-                      Nudge
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

@@ -135,6 +135,8 @@ describe('StudentModal on an activity task', () => {
     const four = screen.getByRole('switch', { name: 'Bits 4 column' })
     expect(four).toHaveAttribute('aria-checked', 'true')
     expect(four).toBeDisabled()
+    // Take over every screen lives in the Live ▾ (Deep Review U7): no Live ▾ here.
+    expect(screen.queryByRole('button', { name: /^Live/ })).not.toBeInTheDocument()
     const more = screen.queryByRole('button', { name: /^Tools/ })
     if (more) fireEvent.click(more)
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
@@ -214,6 +216,8 @@ describe('Go Live restriction', () => {
       ],
     }
     render(<StudentModal {...modalProps({ lesson })} />)
+    // Take over every screen lives in the Live ▾ (Deep Review U7): no Live ▾ here.
+    expect(screen.queryByRole('button', { name: /^Live/ })).not.toBeInTheDocument()
     const more = screen.queryByRole('button', { name: /^Tools/ })
     if (more) fireEvent.click(more)
     expect(screen.queryByRole('button', { name: /Go Live for All/ })).not.toBeInTheDocument()
@@ -227,7 +231,8 @@ describe('Go Live restriction', () => {
       />
     )
     const header = screen.getByRole('dialog')
-    fireEvent.click(within(header).getByRole('button', { name: /^Tools/ }))
+    // Its one home is the Live ▾ (Deep Review U7), no longer Tools too.
+    fireEvent.click(within(header).getByRole('button', { name: /^Live/ }))
     fireEvent.click(
       within(header).getByRole('button', { name: '📡 Take over every screen (Go Live for All)' })
     )

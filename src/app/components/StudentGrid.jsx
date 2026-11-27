@@ -720,14 +720,10 @@ export default function StudentGrid({
           badgePendingCount={badgeSuggestions?.pendingCountByStudent?.[id] ?? 0}
           isCodeTask={isCodeTask}
           isInformation={!!taskContext?.isInformation}
+          // The More fold (StudentCard variant="detail") has no Nudge, Thumbs up or one-tap
+          // Award: the row's icons and the suggestions panel are their homes (Deep Review U7).
           cardProps={{
             lessonId,
-            onNudge: onNudgeStudent,
-            onThumbsUp: onThumbsUpStudent,
-            badgeSuggestionList: badgeSuggestions?.suggestions ?? [],
-            catalogueBadges,
-            onDecideBadge,
-            onRevokeBadge,
             onShowResponse,
             onHideResponse,
             onSetShownResponseName,
