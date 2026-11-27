@@ -664,8 +664,8 @@ export default function StudentListRow({
     : state.status === 'online'
       ? words.text.split(' ')[0]
       : ['error', 'failed'].includes(state.status) && 'tried'
-  // Beside the status on the opened line, the same thing is never said twice.
-  const repeatsStatus = statusOnOpenLine && activity?.kind === statusActivity
+  // The status (name line or opened line) and the opened line never say the same thing twice.
+  const repeatsStatus = activity?.kind === statusActivity
   const where = [taskPosition(lesson, taskId), repeatsStatus ? null : activity?.text]
     .filter(Boolean)
     .join(' · ')

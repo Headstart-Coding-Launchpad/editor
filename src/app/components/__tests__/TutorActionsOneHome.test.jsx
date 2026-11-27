@@ -469,6 +469,20 @@ describe('Tutor actions, one home each: second review fixes', () => {
     expect(where.textContent).not.toMatch(/ran/)
   })
 
+  it('on a touch screen the opened line does not repeat the name line status', () => {
+    touch.value = true
+    try {
+      const students = [st('c', 'Cal', { lastRunAt: Date.now() - 1.5 * MIN })]
+      render(<StudentGrid {...gridProps({ students })} />)
+      fireEvent.click(within(rowOf('Cal')).getByTestId('row-main'))
+      const where = within(rowOf('Cal')).getByTestId('row-where')
+      expect(where).toHaveTextContent('Task 1 of 2')
+      expect(where.textContent).not.toMatch(/ran/)
+    } finally {
+      touch.value = false
+    }
+  })
+
   it('the opened line does not say "typing now" after the typing dots', () => {
     const props = gridProps({ students: [st('c', 'Cal', { lastActivityAt: 1 })] })
     const { rerender } = render(<StudentGrid {...props} />)
