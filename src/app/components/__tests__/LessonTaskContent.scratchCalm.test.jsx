@@ -234,7 +234,8 @@ describe('calm Scratch: the hint is docked under the explainer', () => {
     render(<LessonTaskContent {...baseProps} />)
     const hint = screen.getByTestId('task-hint')
     expect(within(screen.getByTestId('scratch-calm-aside')).getByTestId('task-hint')).toBe(hint)
-    expect(hint).toHaveTextContent(/green flag/i)
+    // The calm screen's button says Run (CalmRunButton): the hint names it.
+    expect(hint).toHaveTextContent('Have a go, then tap Run to see what happens.')
     expect(hint).toHaveAttribute('data-tone', 'nudge')
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -316,7 +317,7 @@ describe('calm Scratch A+B: the hint inside the card, a small stage that can be 
     panelWidth(1334)
     render(<LessonTaskContent {...baseProps} />)
     const card = screen.getByTestId('task-instructions')
-    expect(within(card).getByTestId('task-hint')).toHaveTextContent(/green flag/i)
+    expect(within(card).getByTestId('task-hint')).toHaveTextContent(/tap Run/)
   })
 
   it('keeps the hint in view when the card is folded to its title', async () => {
@@ -337,7 +338,7 @@ describe('calm Scratch A+B: the hint inside the card, a small stage that can be 
   it('hands the workspace the hint line for the full-screen stage bar', () => {
     panelWidth(1334)
     const { rerender } = render(<LessonTaskContent {...baseProps} />)
-    expect(workspaceProps.calm.fullscreenHint).toMatch(/green flag/i)
+    expect(workspaceProps.calm.fullscreenHint).toMatch(/tap Run/)
     rerender(
       <LessonTaskContent
         {...baseProps}
