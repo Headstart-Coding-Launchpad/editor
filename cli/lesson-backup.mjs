@@ -21,7 +21,7 @@ const FETCH_POOL = 8
 
 export function checkBackupRoot(out, exists = existsSync) {
   // A drive-letter path is read the Windows way on any machine (CI runs on Linux).
-  const root = /^[a-z]:[\/]/i.test(out) ? win32.parse(out).root : parse(resolve(out)).root
+  const root = /^[a-z]:[\\/]/i.test(out) ? win32.parse(out).root : parse(resolve(out)).root
   if (!exists(root)) {
     throw new Error(`Backup drive ${root} not found: plug it in or pass --out <folder>`)
   }
