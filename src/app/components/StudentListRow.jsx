@@ -343,8 +343,7 @@ export default function StudentListRow({
     if (keyFocus && !row.contains(document.activeElement)) setKeyFocus(false)
   })
 
-  // A ⋯ menu that closes (a choice, Escape or a click away) clears hover: the pointer may be
-  // elsewhere by now, and a move over the row brings it back.
+  // A ⋯ menu that closes clears hover (the pointer may be elsewhere); a move brings it back.
   const onMenuOpenChange = useCallback((menuIsOpen) => {
     setMenuOpen(menuIsOpen)
     if (!menuIsOpen) setHover(false)
@@ -368,9 +367,8 @@ export default function StudentListRow({
   })
   const offline = state.presence === 'offline'
   const showHover = hover && !selectMode && !renaming
-  // The row's icons on the name line: on hover, on keyboard focus, and while the row is open. On
-  // a touch screen the opened row has them full size instead, and a tap's emulated hover never
-  // brings up the small ones.
+  // The row's icons on the name line: on hover, on keyboard focus, and while the row is open.
+  // On a touch screen the opened row has them full size instead.
   const showIcons = !selectMode && !renaming && (open ? !touch : hover || keyFocus)
   const showPanelIcons = open && touch && !selectMode && !renaming
 
