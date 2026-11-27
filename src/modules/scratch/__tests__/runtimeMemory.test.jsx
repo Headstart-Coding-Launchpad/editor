@@ -1,8 +1,8 @@
 import React from 'react'
-import { render, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, renderHook, waitFor, fireEvent, act } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import ScratchWorkspace from '../ScratchWorkspace.jsx'
-import { rememberRuntime, recallRuntime } from '../runtimeMemory.js'
+import { rememberRuntime, recallRuntime, useRuntimeAway } from '../runtimeMemory.js'
 
 // A student's own Scratch workspace unmounts while they look at a classmate's shared work and
 // mounts again on "Back to my work": the sprites must come back where they were left.
@@ -168,6 +168,72 @@ describe('Scratch sprites survive a remount', () => {
       r.unmount()
     })
     expect(numbers((await reopen({ task, runtimeKey: 'k9' })).r.container)[0]).toBe('10')
+  }, 60000)
+
+  it('saves only on the way to a round trip, never on task navigation or into a sandbox', async () => {
+    const away = { current: false }
+    await move({ task, runtimeKey: 'r1', runtimeAwayRef: away }, '77')
+    expect(numbers((await reopen({ task, runtimeKey: 'r1' })).r.container)[0]).toBe('10')
+
+    away.current = true
+    await move({ task, runtimeKey: 'r2', runtimeAwayRef: away }, '77')
+    const back = await reopen({ task, runtimeKey: 'r2', runtimeAwayRef: away })
+    await waitFor(() => expect(numbers(back.r.container)[0]).toBe('77'))
+  }, 90000)
+
+  it('holds one round trip only: any other workspace of the student drops it', () => {
+    rememberRuntime('a', task, { x: 1 })
+    expect(recallRuntime('b', task)).toBeNull()
+    expect(recallRuntime('a', task)).toBeNull()
+  })
+
+  it('forgets once the student is somewhere else (task, sandbox, rejoin)', () => {
+    const { rerender } = renderHook((where) => useRuntimeAway(where), { initialProps: 't1' })
+    rememberRuntime('a', task, { x: 1 })
+    rerender('t1')
+    expect(recallRuntime('a', task)).toEqual({ x: 1 })
+    rememberRuntime('a', task, { x: 1 })
+    rerender('t2')
+    expect(recallRuntime('a', task)).toBeNull()
+    rememberRuntime('a', task, { x: 1 })
+    renderHook(() => useRuntimeAway('t1'))
+    expect(recallRuntime('a', task)).toBeNull()
+  })
+
+  it('keeps them through a Go Live that sends no sprite positions', async () => {
+    const away = { current: false }
+    const own = { task, initialStates: {}, runtimeKey: 'r3', runtimeAwayRef: away }
+    const r = render(<ScratchWorkspace key="0" {...own} />)
+    await ready(r.container)
+    fireEvent.change(r.container.querySelector('input[type="number"]'), { target: { value: '60' } })
+    away.current = true
+    r.rerender(<ScratchWorkspace key="0" {...own} runtimeKey={null} readOnly />)
+    away.current = false
+    r.rerender(<ScratchWorkspace key="1" {...own} />)
+    await ready(r.container)
+    await waitFor(() => expect(numbers(r.container)[0]).toBe('60'))
+  }, 90000)
+
+  it("shows the restored position in the palette's go to block, without broadcasting", async () => {
+    await move({ task, runtimeKey: 'r4' }, '-123')
+    const spy = vi.fn()
+    const { r } = await reopen({ task, runtimeKey: 'r4', onSpriteStatesChange: spy })
+    const palette = () =>
+      [...r.container.querySelectorAll('.blocklyFlyout')].map((f) => f.textContent).join(' ')
+    await waitFor(() => expect(palette()).toContain('-123'), { timeout: 10000 })
+    expect(spy).not.toHaveBeenCalled()
+  }, 60000)
+
+  it('tells the tutor the restored positions when there is a student-added sprite', async () => {
+    const added = { id: 'n1', name: 'n1', type: 'cat', x: 0, y: 0, studentAdded: true }
+    const initialStates = { __meta__: { addedSprites: [added] } }
+    const props = { task, initialStates, runtimeKey: 'r5', selectedSpriteId: 'n1' }
+    await move(props, '-60')
+    const spy = vi.fn()
+    const r = render(<ScratchWorkspace {...props} onSpriteStatesChange={spy} />)
+    await ready(r.container)
+    await waitFor(() => expect(numbers(r.container)[0]).toBe('-60'))
+    expect(spy.mock.calls.at(-1)[0].n1.x).toBe(-60)
   }, 60000)
 
   it('does not carry them to a different key (another student, another task)', async () => {

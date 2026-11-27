@@ -1018,6 +1018,7 @@ export default function ScratchWorkspace({
   // Blockly's own layout and drag-and-drop are untouched.
   calm = null,
   runtimeKey = null,
+  runtimeAwayRef = null,
 }) {
   // Go Live: save the student's own sprites before the broadcast's replace them, then never again.
   const runtimeKeyRef = useRef(null)
@@ -1025,10 +1026,11 @@ export default function ScratchWorkspace({
   const mirroredRef = useRef(false)
   const saveRuntimeRef = useRef(null)
   React.useLayoutEffect(() => {
-    if (!externalSpriteState || mirroredRef.current) return
+    const live = externalSpriteState || (readOnly && runtimeAwayRef?.current)
+    if (!live || mirroredRef.current) return
     saveRuntimeRef.current?.()
     mirroredRef.current = true
-  }, [externalSpriteState])
+  }, [externalSpriteState, readOnly, runtimeAwayRef])
   const calmOn = !!calm
   const calmStacked = !!calm?.stacked
   // Go Live and the presentation show the large stage: a view-only override, never stored.
@@ -1803,7 +1805,7 @@ export default function ScratchWorkspace({
       if (rebuild) ws.updateToolbox(buildToolboxForSprite(spriteId))
       requestAnimationFrame(() => {
         try {
-          ws.getFlyout?.()?.setVisible(!flyoutCollapsed)
+          ws.getFlyout?.()?.setVisible(!flyoutCollapsedRef.current)
           BlocklyRef.current?.svgResize?.(ws)
         } catch {}
       })
@@ -1844,12 +1846,17 @@ export default function ScratchWorkspace({
   // Adds sprites restored from persisted `__meta__.addedSprites`, or one newly created via the
   // "Add sprite" picker, to workspace state. Blockly workspace injection for these happens in
   // the "ensure workspaces" effect below, keyed off `sprites`.
-  function restoreAddedSprites(addedSprites) {
-    if (!addedSprites?.length) return
-    setSprites((prev) => [...prev, ...addedSprites])
+  // `remembered`: positions from before a round trip. With added sprites the tutor is told (their
+  // defaults would otherwise be the last the tutor heard); alone it is not a student change.
+  function restoreSprites(addedSprites = [], remembered) {
+    if (!addedSprites.length && !remembered) return
+    if (addedSprites.length) setSprites((prev) => [...prev, ...addedSprites])
     const nextStates = { ...spriteStatesRef.current }
     for (const sp of addedSprites) nextStates[sp.id] = defaultSpriteState(sp)
-    commitSpriteStates(nextStates)
+    for (const id of Object.keys(nextStates)) nextStates[id] = remembered?.[id] ?? nextStates[id]
+    if (addedSprites.length) return commitSpriteStates(nextStates)
+    spriteStatesRef.current = nextStates
+    setSpriteStates(nextStates)
   }
 
   // ── Student "Add sprite"/"Add backdrop" pickers, and "Make a Variable" ──────
@@ -2164,8 +2171,11 @@ export default function ScratchWorkspace({
         // Injecting Blockly workspaces for any restored sprites happens in the "ensure
         // workspaces" effect below, once `sprites` state grows to include them.
         const meta = normInitStates?.__meta__ ?? null
+        const own = !cancelled && !mirroredRef.current && runtimeKeyRef.current
+        const seen = own ? recallRuntime(own, task) : null
+        if (seen) backdropNameRef.current = seen.backdropName
+        if (!cancelled) restoreSprites(meta?.addedSprites, seen?.spriteStates)
         if (!cancelled && meta) {
-          restoreAddedSprites(meta.addedSprites)
           if (meta.addedCostumes || meta.addedSounds)
             setSprites((prev) => mergeAddedSpriteAssets(prev, meta.addedCostumes, meta.addedSounds))
           if (meta.addedBackdrops?.length) setBackdrops((prev) => [...prev, ...meta.addedBackdrops])
@@ -2175,17 +2185,10 @@ export default function ScratchWorkspace({
             setVariableValues({ ...meta.variableValues })
           }
         }
-        const own = !cancelled && !mirroredRef.current && runtimeKeyRef.current
-        const seen = own ? recallRuntime(own, task) : null
         if (seen) {
-          // Set directly: a restore is not a student change, so nothing is broadcast.
-          const states = { ...spriteStatesRef.current }
-          for (const id of Object.keys(states))
-            if (seen.spriteStates[id]) states[id] = seen.spriteStates[id]
-          spriteStatesRef.current = states
-          setSpriteStates(states)
-          preRunSpriteStatesRef.current = cloneSpriteStates(states)
-          backdropNameRef.current = seen.backdropName
+          preRunSpriteStatesRef.current = cloneSpriteStates(spriteStatesRef.current)
+          // The palette's go to / glide blocks were built from the starting positions.
+          for (const id of Object.keys(seen.spriteStates)) refreshSpriteToolbox(id)
           setBackdropName(seen.backdropName)
           variableRuntimeRef.current = { ...seen.variableValues }
           setVariableValues({ ...seen.variableValues })
@@ -2198,10 +2201,11 @@ export default function ScratchWorkspace({
 
     init()
 
-    // Never from a mirror of a broadcast (even after it ends); mid-run forgets.
+    // Only on leaving for a round trip, never from a broadcast's mirror; mid-run forgets.
     saveRuntimeRef.current = () => {
       const key = runtimeKeyRef.current
-      if (key && !mirroredRef.current && statusRef.current === 'ready')
+      const away = runtimeAwayRef?.current ?? true
+      if (key && away && !mirroredRef.current && statusRef.current === 'ready')
         rememberRuntime(
           key,
           task,

@@ -176,11 +176,13 @@ export default function StudentWorkspace({
         onRunTokenHandled={detached ? undefined : cs.acknowledgeRemoteRun}
         onSlowMoUse={detached ? undefined : cs.recordSlowMoUse}
         calm={calmConfig}
+        // No cs.runtimeAwayRef: a preview or a throwaway copy, which remembers nothing.
         runtimeKey={
-          detached
+          detached || !cs.runtimeAwayRef
             ? null
-            : `${lessonId}|${identityId}|${viewingTaskId ?? currentTaskId}|${isSandbox}`
+            : `${lessonId}|${identityId}|${viewingTaskId ?? currentTaskId}|${cs.inPersonalSandbox ? 'personal' : isSandbox}`
         }
+        runtimeAwayRef={cs.runtimeAwayRef}
       />
     </div>
   )

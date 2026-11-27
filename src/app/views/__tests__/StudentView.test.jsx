@@ -723,6 +723,26 @@ describe('StudentView', () => {
       tasks: [{ id: 1, title: 'Move', starterBlocks: null }],
     }
 
+    // Sprite positions are remembered only for a peer view / Go Live round trip.
+    const latestRuntime = async (props) => {
+      render(<StudentView lessonId="scratch-1-1" lesson={scratchLesson} {...props} />)
+      await waitFor(() => expect(mocks.scratchWorkspace).toHaveBeenCalled())
+      return mocks.scratchWorkspace.mock.calls.at(-1)[0]
+    }
+
+    it('arms Scratch position memory only while the student is away from their work', async () => {
+      mocks.useSession.mockReturnValue(mkScratchSession())
+      const props = await latestRuntime()
+      expect(props.runtimeKey).toBeTruthy()
+      expect(props.runtimeAwayRef.current).toBe(false)
+    })
+
+    it('gives a builder preview no Scratch position memory', async () => {
+      mocks.useSession.mockReturnValue(mkScratchSession())
+      const props = await latestRuntime({ previewMode: true, forceSolo: true })
+      expect(props.runtimeKey).toBeNull()
+    })
+
     it('passes a per-student highlight command down to ScratchWorkspace as highlightedPanes', async () => {
       mocks.useSession.mockReturnValue(
         mkScratchSession({

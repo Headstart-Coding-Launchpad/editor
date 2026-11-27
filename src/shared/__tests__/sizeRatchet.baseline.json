@@ -1,7 +1,7 @@
 {
   "files": {
     "modules/scratch/ScratchWorkspace.jsx": {
-      "lines": 4989,
+      "lines": 4993,
       "suppressions": 7,
       "inlineStyles": 20
     },
@@ -26,7 +26,7 @@
       "inlineStyles": 7
     },
     "app/views/StudentView.jsx": {
-      "lines": 2503,
+      "lines": 2513,
       "suppressions": 6,
       "inlineStyles": 12
     },
@@ -52,7 +52,7 @@
     }
   },
   "totals": {
-    "lines": 213958,
+    "lines": 213982,
     "suppressions": 165,
     "inlineStyles": 1082
   }

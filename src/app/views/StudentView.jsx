@@ -90,6 +90,7 @@ import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
+import { useRuntimeAway } from '../../modules/scratch/runtimeMemory.js'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
@@ -552,8 +553,12 @@ export default function StudentView({
   })
   // "Show complete" fills in the answer, which passes the checks: that pass isn't celebrated.
   // (cs is a new object every render, so this wrapper costs nothing extra.)
+  const runtimeAwayRef = useRuntimeAway(
+    `${lessonId}|${phase}|${currentTaskId}|${viewingTaskId}|${cs.inPersonalSandbox}`
+  )
   const taskCs = {
     ...cs,
+    runtimeAwayRef: previewMode ? null : runtimeAwayRef,
     handleShowCompleteCode: () => {
       completeChime.skipTask()
       cs.handleShowCompleteCode()
@@ -1301,6 +1306,12 @@ export default function StudentView({
       : []
   const isHelpingClassmate = !!peerHelp.helpingRequestId && phase === 'lesson'
   const showPeerHelperWorkspace = isHelpingClassmate && peerHelperOpen && !activeShare
+  // Away from their own work, to come straight back: Scratch keeps their sprites for that.
+  runtimeAwayRef.current =
+    isForcedTeacherLive ||
+    !!activeShare ||
+    showPeerHelperWorkspace ||
+    (isStudentPanelBroadcast && !!livePanelCopy)
 
   // ✋ Help is one tap; where a classmate could help, a bubble then asks.
   async function handleHelpTap() {
