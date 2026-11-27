@@ -1612,7 +1612,7 @@ export default function StudentModal({
                   headerClassName=""
                   headerStyle={s.groupButtonAward}
                   otherStyle={
-                    (onThumbsUp && student.online) || (canBroadcast && !isLiveForAll)
+                    (onThumbsUp && student.online) || hasGoLiveForAll
                       ? s.caretButtonAward
                       : s.caretButton
                   }
@@ -1770,20 +1770,18 @@ export default function StudentModal({
                 buttonStyle={s.liveButton}
                 panelStyle={s.smallMenu}
               >
+                {/* Show to class (they keep coding) is the bar's own button. */}
                 {(close) => (
-                  <>
-                    <button
-                      style={sTo.toolBtn}
-                      onClick={() => {
-                        close()
-                        onGoLiveForAll()
-                      }}
-                      title="Put this student's work on every screen, live. The class watches until you press Stop Live."
-                    >
-                      📡 Take over every screen (Go Live for All)
-                    </button>
-                    {/* Show to class (they keep coding) is the bar's own button. */}
-                  </>
+                  <button
+                    style={sTo.toolBtn}
+                    onClick={() => {
+                      close()
+                      onGoLiveForAll()
+                    }}
+                    title="Put this student's work on every screen, live. The class watches until you press Stop Live."
+                  >
+                    📡 Take over every screen (Go Live for All)
+                  </button>
                 )}
               </DropdownMenu>
             )

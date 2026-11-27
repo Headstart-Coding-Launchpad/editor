@@ -24,10 +24,9 @@ export const UNDO_MS = 6000
  * @param {Function} [props.onRevokeBadge] useSession's revokeBadge
  * @param {Function} [props.onOpenPicker] opens BadgeAwardDialog when nothing is suggested
  * @param {'card'|'header'} [props.variant]
- * @param {boolean} [props.showOther] header: the ▾ picker button beside a suggestion, to award
- *   a different badge (false where the picker has its own entry)
  * @param {object} [props.headerStyle] header: style laid over the header button(s)
- * @param {object} [props.otherStyle] header: style for the ▾ button (defaults to headerStyle)
+ * @param {object} [props.otherStyle] header: style for the ▾ beside a suggestion, which opens the
+ *   picker for a different badge (defaults to headerStyle)
  * @param {string} [props.headerClassName] header: class for the header button(s)
  * @param {boolean} [props.iconOnly] header: the emoji only (the name stays in aria-label/title)
  */
@@ -41,7 +40,6 @@ export default function OneTapAwardButton({
   onRevokeBadge,
   onOpenPicker,
   variant = 'card',
-  showOther = true,
   headerStyle = null,
   otherStyle = null,
   headerClassName = 'btn-secondary',
@@ -138,7 +136,7 @@ export default function OneTapAwardButton({
         )}
       </button>
     )
-    if (!isCard && onOpenPicker && showOther) {
+    if (!isCard && onOpenPicker) {
       // The one-tap button awards at once, so a ▾ beside it opens the picker to choose a
       // different badge without awarding the suggested one.
       button = (

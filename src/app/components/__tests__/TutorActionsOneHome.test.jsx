@@ -163,6 +163,14 @@ describe('Tutor actions, one home each: the student row', () => {
     expect(within(rowOf('Cal')).queryByRole('button', { name: 'Nudge Cal' })).toBeNull()
   })
 
+  it('has no Thumbs up or Nudge icon for an offline student, but keeps Open', () => {
+    render(<StudentGrid {...gridProps({ students: [st('o', 'Oli', { online: false })] })} />)
+    fireEvent.mouseEnter(rowOf('Oli'))
+    expect(within(rowOf('Oli')).queryByRole('button', { name: 'Send Oli a thumbs up' })).toBeNull()
+    expect(within(rowOf('Oli')).queryByRole('button', { name: 'Nudge Oli' })).toBeNull()
+    expect(within(rowOf('Oli')).getByRole('button', { name: 'Open Oli' })).toBeVisible()
+  })
+
   it('the opened row keeps the icons (reachable on touch) and drops its repeats', async () => {
     const user = userEvent.setup()
     render(<StudentGrid {...gridProps()} />)

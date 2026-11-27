@@ -25,8 +25,6 @@ import { courseCardChip } from '../../modules/turtle/courseRun.js'
 import PresenceBadge from './PresenceBadge'
 import { studentHealthChip, studentHealthProblem } from '../../shared/studentHealth'
 import { scrubResultOf } from '../scrubResult'
-import OneTapAwardButton from './badges/OneTapAwardButton'
-import TipButton from './TipButton'
 import { formatTimeAgo } from '../../shared/timeAgo'
 import { formatTaskItemProgress, getTaskItemProgress } from '../taskItemProgress'
 import { readActivityAnswer, summarizeActivityAnswer } from '../../activities/state.js'
@@ -157,14 +155,6 @@ export default function StudentCard({
   onRename,
   onRemove,
   onExpand,
-  onNudge,
-  onThumbsUp,
-  // One-tap badge award on the card (OneTapAwardButton): the pending rule suggestions, the
-  // catalogue (for descriptions) and the award/revoke writers.
-  badgeSuggestionList = [],
-  catalogueBadges = [],
-  onDecideBadge = null,
-  onRevokeBadge = null,
   onShowResponse,
   onHideResponse,
   onSetShownResponseName,
@@ -189,9 +179,9 @@ export default function StudentCard({
   carryWaiting = false,
   onOpenRoster = null,
   // 'card' (default): the whole clickable card. 'detail': the same chips, output and buttons
-  // without the name, rename, remove, thumbs-up, nudge and one-tap award (the compact list's row
-  // and the suggestions panel carry those: one home each, Deep Review U7), as the More fold of an
-  // opened row in the student list (StudentListRow.jsx).
+  // without the name, rename and remove, as the More fold of an opened row in the student list
+  // (StudentListRow.jsx). Neither has Nudge, Thumbs up or one-tap Award: the row's icons and the
+  // suggestions panel are their one home (Deep Review U7).
   variant = 'card',
 }) {
   const detail = variant === 'detail'
@@ -201,8 +191,6 @@ export default function StudentCard({
   const [editing, setEditing] = useState(false)
   const [nameValue, setNameValue] = useState(student.displayName)
   const [isActive, setIsActive] = useState(false)
-  const [nudged, setNudged] = useState(false)
-  const [thumbsUpSent, setThumbsUpSent] = useState(false)
   const pasteRecord = student.pasteLog?.[session?.currentTaskId] ?? null
   const [, setTick] = useState(0)
 
@@ -611,47 +599,6 @@ export default function StudentCard({
               }
               testId="health-chip"
               showLabel
-            />
-          )}
-          {onNudge && !detail && student.online && student.windowFocused === false && (
-            <TipButton
-              style={s.nudgeBtn}
-              onClick={(event) => {
-                event.stopPropagation()
-                onNudge(student.anonymousId)
-                setNudged(true)
-                setTimeout(() => setNudged(false), 2000)
-              }}
-              label={`Nudge ${student.displayName}`}
-            >
-              {nudged ? '✓' : '🔔'}
-            </TipButton>
-          )}
-          {onThumbsUp && student.online && !detail && (
-            <TipButton
-              style={{ ...s.thumbsUpBtn, ...(thumbsUpSent ? s.thumbsUpBtnSent : null) }}
-              disabled={thumbsUpSent}
-              onClick={(event) => {
-                event.stopPropagation()
-                onThumbsUp(student.anonymousId)
-                setThumbsUpSent(true)
-                setTimeout(() => setThumbsUpSent(false), 2000)
-              }}
-              label={`Send ${student.displayName} a thumbs up`}
-            >
-              {thumbsUpSent ? '✓' : '👍'}
-            </TipButton>
-          )}
-          {onDecideBadge && !detail && student.online && !selectMode && (
-            <OneTapAwardButton
-              student={student}
-              suggestions={badgeSuggestionList}
-              decisions={session?.badges ?? {}}
-              catalogueBadges={catalogueBadges}
-              currentTaskId={session?.currentTaskId ?? null}
-              onDecideBadge={onDecideBadge}
-              onRevokeBadge={onRevokeBadge}
-              variant="card"
             />
           )}
           {pasteRecord?.count > 0 && (
@@ -1376,25 +1323,6 @@ const s = {
     color: '#92400e',
     border: '1px solid #fcd34d',
   },
-  nudgeBtn: {
-    background: '#fffbeb',
-    border: '1px solid #f59e0b',
-    borderRadius: 999,
-    fontSize: '0.72rem',
-    lineHeight: 1.2,
-    padding: '1px 6px',
-    cursor: 'pointer',
-  },
-  thumbsUpBtn: {
-    background: '#ecfdf5',
-    border: '1px solid #10b981',
-    borderRadius: 999,
-    fontSize: '0.72rem',
-    lineHeight: 1.2,
-    padding: '1px 6px',
-    cursor: 'pointer',
-  },
-  thumbsUpBtnSent: { cursor: 'default', opacity: 0.7 },
   showRow: { display: 'flex', gap: 4, flexWrap: 'wrap' },
   showBtn: {
     background: 'var(--ui-surface)',
