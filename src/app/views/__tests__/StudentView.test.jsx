@@ -6,6 +6,7 @@ import { peerHelpMock } from '../../hooks/__tests__/peerHelpMock.js'
 import StudentView from '../StudentView'
 import { runPython, stopPython } from '../../../modules/python/pyodide'
 import { SOUNDS_MUTED_KEY, setSoundsMuted } from '../../soundSettings'
+import { rememberRuntime, recallRuntime } from '../../../modules/scratch/runtimeMemory.js'
 
 const mocks = vi.hoisted(() => ({
   fetchLessonById: vi.fn(),
@@ -735,6 +736,47 @@ describe('StudentView', () => {
       const props = await latestRuntime()
       expect(props.runtimeKey).toBeTruthy()
       expect(props.runtimeAwayRef.current).toBe(false)
+    })
+
+    const shared = {
+      sharedWorkspaces: { s1: { sharerName: 'Sam', sharerId: 'student-2', taskId: 1 } },
+    }
+    const openShare = async () => {
+      const user = userEvent.setup()
+      mocks.useSession.mockReturnValue({
+        ...mkScratchSession(shared),
+        readSharedWorkspace: vi.fn().mockResolvedValue({ taskId: 1, code: '{}' }),
+      })
+      const props = await latestRuntime()
+      await user.click(screen.getByRole('button', { name: /Shared work/ }))
+      await user.click(screen.getByRole('button', { name: 'Open' }))
+      await screen.findByRole('button', { name: /Back to my work/ })
+      return { user, away: props.runtimeAwayRef }
+    }
+
+    it("arms it while a classmate's work is open, and disarms on the way back", async () => {
+      const { user, away } = await openShare()
+      expect(away.current).toBe(true)
+      await user.click(screen.getByRole('button', { name: /Back to my work/ }))
+      expect(away.current).toBe(false)
+    })
+
+    it('arms it for a tutor Go Live', async () => {
+      mocks.useSession.mockReturnValue(
+        mkScratchSession({
+          teacherLive: { active: true, source: 'teacher', taskId: 1, code: '{}' },
+        })
+      )
+      expect((await latestRuntime()).runtimeAwayRef.current).toBe(true)
+    })
+
+    it("forgets the student's sprites when they copy a classmate's work over their own", async () => {
+      const { user } = await openShare()
+      // What their own workspace saved as the classmate's opened (it is mocked here).
+      rememberRuntime('own', scratchLesson.tasks[0], { spriteStates: {} })
+      await user.click(screen.getByRole('button', { name: 'Copy to my editor' }))
+      await user.click(screen.getByRole('button', { name: 'Replace my work' }))
+      expect(recallRuntime('own', scratchLesson.tasks[0])).toBeNull()
     })
 
     it('gives a builder preview no Scratch position memory', async () => {

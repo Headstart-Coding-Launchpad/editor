@@ -90,7 +90,7 @@ import SoloNav from '../components/SoloNav'
 import SharedWorkspacePanel from '../components/SharedWorkspacePanel'
 import { applySharedWorkspaceCopy, describeShareError } from '../sharedWorkspacePayload'
 import SharedWorkspaceViewer from '../components/SharedWorkspaceViewer'
-import { useRuntimeAway } from '../../modules/scratch/runtimeMemory.js'
+import { useRuntimeAway, rememberRuntime } from '../../modules/scratch/runtimeMemory.js'
 import StudentLivePanelBar from '../components/StudentLivePanelBar'
 import { usePeerHelp } from '../hooks/usePeerHelp'
 import HelpRequestButton from '../components/peerHelp/HelpRequestButton'
@@ -1239,11 +1239,11 @@ export default function StudentView({
     }
   }
 
-  // The one deliberate bridge from a shared workspace into the student's own
-  // work. Routed through the normal change handlers so it persists exactly like
-  // their own typing would; everything else in the viewer is throwaway.
+  // The one deliberate bridge from a shared workspace into the student's own work, through the
+  // normal change handlers so it persists like their own typing; the rest is throwaway.
   function handleCopySharedWorkspace(copy) {
     applySharedWorkspaceCopy(copy, cs)
+    rememberRuntime() // No data: forgets, so their old sprites don't land on the copy.
     handleCloseSharedWorkspace()
   }
 
