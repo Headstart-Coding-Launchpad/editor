@@ -1611,7 +1611,11 @@ export default function StudentModal({
                   variant="header"
                   headerClassName=""
                   headerStyle={s.groupButtonAward}
-                  otherStyle={s.caretButtonAward}
+                  otherStyle={
+                    (onThumbsUp && student.online) || (canBroadcast && !isLiveForAll)
+                      ? s.caretButtonAward
+                      : s.caretButton
+                  }
                   iconOnly={narrowHeader}
                 />
               )}
@@ -2260,7 +2264,8 @@ const s = {
     flexShrink: 0,
     borderRadius: 8,
     background: 'rgba(255,255,255,0.14)',
-    overflow: 'hidden',
+    // Not overflow: hidden: that clipped the Hint ▾, Message ▾ and Award ▾ menus out of sight.
+    // The caret, the one filled end, rounds its own corners instead.
   },
   groupButton: { ...headerButton, borderRight: '1px solid rgba(255,255,255,0.22)' },
   groupButtonAward: {
@@ -2274,6 +2279,7 @@ const s = {
     padding: 0,
     justifyContent: 'center',
     background: 'rgba(0,0,0,0.12)',
+    borderRadius: '0 8px 8px 0',
   },
   // The Award ▾ (a different badge) sits mid-group, so it keeps the divider on its right.
   caretButtonAward: {
