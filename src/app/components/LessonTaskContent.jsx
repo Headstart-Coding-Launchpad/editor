@@ -907,7 +907,7 @@ export default function LessonTaskContent({
     anyChangeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
   const runWord = getModuleDefinition(lessonMod?.type ?? lesson.type)?.meta?.runWord ?? 'Run'
   const hintNudge = calmScratch
-    ? 'Have a go, then tap the green flag to see what happens.'
+    ? 'Have a go, then tap Run to see what happens.'
     : task?.interactionMode === 'submit'
       ? 'Have a go, then tap Submit.'
       : hasGreenLine
