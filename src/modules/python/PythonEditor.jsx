@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
+import { useShowTouchKeys } from '../../shared/useShowTouchKeys'
 import { useBlockGuidesOn } from '../../shared/blockGuidesSetting'
 import { BlocksButton, EmojiButton } from './EditorToolButtons'
 import { applySlowMoMarker } from './slowMo/editorMarker.js'
@@ -85,7 +86,8 @@ export default function PythonEditor({
     applySlowMoMarker(editorRef.current?.getView?.(), JSON.parse(slowMoKey))
   }, [slowMoKey])
   const isTouchDevice = useIsTouchDevice()
-  const showSymbolButtons = isTouchDevice && !readOnly
+  // Not isTouchDevice: a mouse PC that merely reports touch gets no key row.
+  const showSymbolButtons = useShowTouchKeys() && !readOnly
   const showEmojiButton = !readOnly
   const [blockGuidesOn] = useBlockGuidesOn()
   // Non-touch: one "Keys" button folds the emoji key away. Touch (request #125): the symbol row is

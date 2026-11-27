@@ -1,17 +1,25 @@
 import React from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PythonEditor from '../PythonEditor'
 
 // The calm code screen's key row (touch screens): one row of main keys with the task's own
 // symbols, and "More keys" opening the rest as a flat strip that stays open until closed.
-// Touch is the real useIsTouchDevice check ('ontouchstart' in window), no mock.
+// The real useShowTouchKeys check (a coarse main pointer, or a real touch), no mock.
 describe('PythonEditor calm key row', () => {
+  let coarse = true
   beforeEach(() => {
-    window.ontouchstart = null
+    coarse = true
+    window.matchMedia = (query) => ({
+      matches: coarse && query === '(pointer: coarse)',
+      // CodeMirror listens for printing through matchMedia too.
+      addListener: () => {},
+      removeListener: () => {},
+    })
   })
   afterEach(() => {
+    delete window.matchMedia
     delete window.ontouchstart
   })
 
@@ -63,9 +71,36 @@ describe('PythonEditor calm key row', () => {
     expect(screen.queryByRole('button', { name: /Blocks/ })).not.toBeInTheDocument()
   })
 
-  it('has no key row on a screen without touch', () => {
-    delete window.ontouchstart
+  const keyRow = () => screen.queryByRole('toolbar', { name: 'Python keys' })
+  const pointer = (type, pointerType) =>
+    window.dispatchEvent(Object.assign(new Event(type), { pointerType }))
+
+  it('has no key row on a mouse PC, even one that reports touch support', () => {
+    coarse = false
+    window.ontouchstart = null
     renderEditor()
-    expect(screen.queryByRole('toolbar', { name: 'Python keys' })).not.toBeInTheDocument()
+    expect(keyRow()).not.toBeInTheDocument()
+  })
+
+  it('has no key row, and does not break, where matchMedia is missing', () => {
+    delete window.matchMedia
+    renderEditor()
+    expect(keyRow()).not.toBeInTheDocument()
+  })
+
+  // Last: a real touch is remembered for the rest of the page (here, this test file).
+  it('shows the key row once a finger has touched the screen, and keeps it', async () => {
+    coarse = false
+    const { unmount } = renderEditor()
+    pointer('pointerup', 'mouse')
+    pointer('pointerup', 'pen')
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    expect(keyRow()).not.toBeInTheDocument()
+    pointer('pointerup', 'touch')
+    await waitFor(() => expect(keyRow()).toBeInTheDocument())
+    // The next editor (another task) has it from the start.
+    unmount()
+    renderEditor()
+    expect(keyRow()).toBeInTheDocument()
   })
 })

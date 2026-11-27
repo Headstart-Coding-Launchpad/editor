@@ -21,8 +21,8 @@ vi.mock('../../../modules/python/pyodide', () => ({
   isPythonRunning: () => false,
 }))
 
-vi.mock('../../../shared/useIsTouchDevice', () => ({
-  useIsTouchDevice: () => mocks.touch,
+vi.mock('../../../shared/useShowTouchKeys', () => ({
+  useShowTouchKeys: () => mocks.touch,
 }))
 
 vi.mock('../../../shared/lessonService', () => ({

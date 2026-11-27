@@ -29,6 +29,9 @@ let touchDevice = false
 vi.mock('../../../shared/useIsTouchDevice', () => ({
   useIsTouchDevice: () => touchDevice,
 }))
+vi.mock('../../../shared/useShowTouchKeys', () => ({
+  useShowTouchKeys: () => touchDevice,
+}))
 
 vi.mock('../../../shared/EmojiPickerButton', () => ({
   default: function MockEmojiPickerButton({ onInsert }) {
