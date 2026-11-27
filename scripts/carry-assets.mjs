@@ -48,7 +48,7 @@ function readBuildInfo(distDir) {
   }
 }
 
-// Retries network and server errors; a 404 and the like will not change.
+// Retries network errors, server errors and "slow down" replies; a 404 and the like will not change.
 async function download(fetchImpl, url, retryMs, deadline = Infinity) {
   for (let attempt = 1; ; attempt += 1) {
     let status
@@ -62,7 +62,7 @@ async function download(fetchImpl, url, retryMs, deadline = Infinity) {
       const type = response.headers.get('content-type') ?? ''
       return { type, body: Buffer.from(await response.arrayBuffer()) }
     } catch (error) {
-      const final = status >= 400 && status < 500
+      const final = status >= 400 && status < 500 && status !== 408 && status !== 429
       if (final || attempt === ATTEMPTS || Date.now() > deadline) throw error
       await new Promise((resolve) => setTimeout(resolve, retryMs))
     }

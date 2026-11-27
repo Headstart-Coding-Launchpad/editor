@@ -163,6 +163,23 @@ describe('carryAssets', () => {
     expect(warnings).toEqual([])
   })
 
+  it.each([408, 429])('retries a %s reply instead of dropping the file', async (status) => {
+    const { fetchImpl } = site({
+      'asset-manifest.json': { format: 1, releases: [release('old', ['assets/old.js'])] },
+      'assets/old.js': 'old',
+    })
+    let refused = false
+    const busy = async (url) => {
+      if (!refused && new URL(url).pathname.endsWith('old.js')) {
+        refused = true
+        return new Response('', { status })
+      }
+      return fetchImpl(url)
+    }
+    await expect(run(busy)).resolves.toMatchObject({ carried: 1 })
+    expect(read('assets/old.js')).toBe('old')
+  })
+
   it('has the earlier releases on record before downloading, in case it is cut short', async () => {
     const { fetchImpl } = site({
       'asset-manifest.json': { format: 1, releases: [release('old', ['assets/old.js'])] },
