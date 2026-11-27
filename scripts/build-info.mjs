@@ -29,3 +29,14 @@ export function getBuildInfo({ packageVersion, run = defaultRun, now = new Date(
     builtAt: now.toISOString(),
   }
 }
+
+// Publishes the build info the bundle carries as version.json beside index.html.
+export function versionJsonPlugin(info) {
+  return {
+    name: 'version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify(info) })
+    },
+  }
+}

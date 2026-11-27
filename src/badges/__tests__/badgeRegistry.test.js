@@ -12,7 +12,7 @@ import {
   getTutorOnlyBadges,
 } from '../registry.pure.js'
 import { evaluateBadgeRules } from '../evaluate.js'
-import { EXAMPLE_LESSON } from '../exampleLesson.js'
+import { EXAMPLE_LESSON } from '../../test/fixtures/badgeExampleLesson.js'
 import { defineBadge } from '../defineBadge.js'
 import { TASK_ACTIVITY_PATTERN_IDS } from '../../shared/taskActivity.js'
 

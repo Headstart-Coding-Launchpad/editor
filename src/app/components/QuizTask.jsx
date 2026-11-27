@@ -1,4 +1,5 @@
 import React from 'react'
+import CodeLinesQuiz from './quiz/CodeLinesQuiz'
 import ConfidenceQuiz from './quiz/ConfidenceQuiz'
 import FillBlankQuiz from './quiz/FillBlankQuiz'
 import MatchQuiz from './quiz/MatchQuiz'
@@ -44,5 +45,6 @@ export default function QuizTask({
   if (quizType === 'short_answer') return <ShortAnswerQuiz {...props} />
   if (quizType === 'confidence') return <ConfidenceQuiz {...props} />
   if (quizType === 'poll') return <PollQuiz {...props} />
+  if (quizType === 'code_lines') return <CodeLinesQuiz {...props} />
   return <MultipleChoiceQuiz {...props} />
 }

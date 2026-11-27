@@ -23,7 +23,6 @@ export const MAX_GENERATED_CHARS = 400
 export const MIN_TEMPERATURE = 0
 export const MAX_TEMPERATURE = 2
 export const DEFAULT_TEMPERATURE = 1
-export const GENERATE_WORDS = 20
 
 // Temperatures at or below this always pick the most likely word.
 const GREEDY_TEMPERATURE = 0.05
@@ -262,44 +261,4 @@ export function pickOption(options, temperature, random = Math.random) {
     if (r < 0) return options[i]
   }
   return options[options.length - 1]
-}
-
-// Make text by walking the model. Starts at `start` (normalised) or, if that is empty or has
-// no words after it, at the text's first word with a word after it. When it reaches a word
-// with nothing after it, it jumps to a random word that has something after it.
-// Returns the words as a string (end marks stuck to the word before them).
-export function generateText(
-  model,
-  {
-    start = '',
-    length = GENERATE_WORDS,
-    temperature = DEFAULT_TEMPERATURE,
-    random = Math.random,
-  } = {}
-) {
-  const starters = [...(model?.successors?.keys() ?? [])].filter((word) => !isEndMark(word)).sort()
-  if (starters.length === 0) return ''
-  let word = keyOf(start)
-  if (!word) word = model.successors.has(model.firstWord) ? model.firstWord : starters[0]
-  const out = [word]
-  while (out.length < length) {
-    const { options } = nextOptions(model, word)
-    if (options.length === 0) {
-      word = starters[Math.floor(random() * starters.length)]
-      out.push(word)
-      continue
-    }
-    word = pickOption(options, temperature, random).word
-    out.push(word)
-  }
-  return joinTokens(out)
-}
-
-// A friendly name for a temperature, shown beside the slider.
-export function temperatureLabel(temperature) {
-  if (temperature <= GREEDY_TEMPERATURE) return 'always the most likely word'
-  if (temperature < 0.6) return 'careful'
-  if (temperature <= 1.2) return 'balanced'
-  if (temperature <= 1.7) return 'adventurous'
-  return 'wild'
 }

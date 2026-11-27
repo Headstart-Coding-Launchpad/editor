@@ -9,6 +9,7 @@ import { getTaskActivity } from '../../../activities/registry.pure.js'
 import { getModuleHostedActivityUi } from '../../../activities/registry.js'
 import { readActivityAnswer, studentStateField } from '../../../activities/state.js'
 import { HIGHLIGHT_EMOJI_LABELS, HIGHLIGHT_EMOJI_OPTIONS } from './constants'
+import { PIN_NOTE_MAX, PIN_PRESETS } from '../../../shared/teacherHighlightsEditor'
 import { readAnswerDraft } from '../../../shared/answerDrafts'
 import { getMirrorLineHintSets, getMirrorLockSets } from './mirrorLineHints'
 import { getInspectorConfig } from '../../../modules/html/inspector/config'
@@ -87,8 +88,11 @@ export default function StudentWorkspaceBody({
   iframeRef,
   canHighlight,
   pendingHighlight,
+  pinMode = false,
+  onPinModeChange,
   highlights,
   onMirrorSelectionChange,
+  onMirrorPick,
   onDismissHighlight,
   highlightEmoji,
   onHighlightEmojiChange,
@@ -166,56 +170,92 @@ export default function StudentWorkspaceBody({
     { enabled: mirror === 'code' && !isSessionSandbox }
   )
 
+  const modeButton = (pin, label) => (
+    <button
+      type="button"
+      className={pinMode === pin ? 'btn-primary' : 'btn-ghost-outline'}
+      style={s.composerChip}
+      aria-pressed={pinMode === pin}
+      onClick={() => onPinModeChange?.(pin)}
+    >
+      {label}
+    </button>
+  )
+  const canSend = !!pendingHighlight && (!pinMode || !!highlightNote.trim())
   const highlightComposer = canHighlight && (
-    <div style={s.highlightComposer}>
-      <div style={s.highlightEmojiRow} role="group" aria-label="Highlight mark">
-        <span style={s.highlightEmojiLabel} aria-hidden="true">
-          Mark:
-        </span>
-        {HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
-          <button
-            key={emoji}
-            type="button"
-            style={{
-              ...s.highlightEmojiBtn,
-              ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
-            }}
-            aria-pressed={emoji === highlightEmoji}
-            aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-            title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
-            onClick={() => onHighlightEmojiChange(emoji)}
-          >
-            {emoji}
-          </button>
-        ))}
+    // Two fixed-height rows in both modes, so switching Highlight / Pin never moves the code.
+    <div style={s.highlightComposer} data-testid="highlight-composer">
+      <div style={{ ...s.composerRow, gap: 6, overflowX: 'auto' }}>
+        <div style={s.highlightEmojiRow} role="group" aria-label="Highlight or pin">
+          {modeButton(false, 'Highlight')}
+          {modeButton(true, '📌 Pin')}
+        </div>
+        <div style={s.highlightEmojiRow} role="group" aria-label={pinMode ? 'Quick words' : 'Mark'}>
+          {pinMode
+            ? PIN_PRESETS.map((words) => (
+                <button
+                  key={words}
+                  type="button"
+                  className={highlightNote === words ? 'btn-primary' : 'btn-ghost-outline'}
+                  style={s.composerChip}
+                  onClick={() => onHighlightNoteChange(words)}
+                >
+                  {words}
+                </button>
+              ))
+            : HIGHLIGHT_EMOJI_OPTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  style={{
+                    ...s.highlightEmojiBtn,
+                    ...(emoji === highlightEmoji ? s.highlightEmojiBtnActive : {}),
+                  }}
+                  aria-pressed={emoji === highlightEmoji}
+                  aria-label={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                  title={HIGHLIGHT_EMOJI_LABELS[emoji] ?? emoji}
+                  onClick={() => onHighlightEmojiChange(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+        </div>
       </div>
-      <input
-        type="text"
-        style={s.highlightNoteInput}
-        placeholder={pendingHighlight ? 'Optional note…' : 'Select code above to highlight it…'}
-        value={highlightNote}
-        onChange={(e) => onHighlightNoteChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && pendingHighlight) onSendHighlight()
-        }}
-      />
-      <button
-        className="btn-primary"
-        style={{ fontSize: 12, padding: '4px 10px' }}
-        onClick={onSendHighlight}
-        disabled={!pendingHighlight}
-      >
-        Send Highlight
-      </button>
-      {(pendingHighlight || highlightNote) && (
+      <div style={s.composerRow}>
+        <input
+          type="text"
+          style={s.highlightNoteInput}
+          aria-label={pinMode ? 'Pin words' : 'Highlight note'}
+          maxLength={pinMode ? PIN_NOTE_MAX : undefined}
+          placeholder={
+            pinMode
+              ? pendingHighlight
+                ? 'Type or pick the words…'
+                : 'Click a spot, then type or pick…'
+              : pendingHighlight
+                ? 'Optional note…'
+                : 'Select code to highlight…'
+          }
+          value={highlightNote}
+          onChange={(e) => onHighlightNoteChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canSend) onSendHighlight()
+          }}
+        />
         <button
-          className="btn-ghost-outline"
-          style={{ fontSize: 12, padding: '4px 10px' }}
-          onClick={onCancelHighlight}
+          className="btn-primary"
+          style={s.composerBtn}
+          onClick={onSendHighlight}
+          disabled={!canSend}
         >
-          Clear
+          {pinMode ? 'Drop pin' : 'Send Highlight'}
         </button>
-      )}
+        {(pendingHighlight || highlightNote) && (
+          <button className="btn-ghost-outline" style={s.composerBtn} onClick={onCancelHighlight}>
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   )
 
@@ -409,6 +449,7 @@ export default function StudentWorkspaceBody({
             runCounts={runCountsFor(student.currentCode ?? '')}
             variableLinks={variableLinks.editor}
             onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+            onPick={canHighlight ? onMirrorPick : undefined}
             onHighlightDismiss={onDismissHighlight}
             style={{
               height: fitCode ? 'auto' : '100%',
@@ -576,6 +617,7 @@ export default function StudentWorkspaceBody({
                 teacherHighlights={highlights}
                 lineHints={lineHints}
                 onSelectionChange={canHighlight ? onMirrorSelectionChange : undefined}
+                onPick={canHighlight ? onMirrorPick : undefined}
                 onHighlightDismiss={onDismissHighlight}
                 style={{ height: '100%', ...(canHighlight ? s.editorHighlightMode : {}) }}
               />
@@ -713,10 +755,14 @@ const s = {
     border: '1px solid rgba(37,99,235,0.5)',
     boxShadow: '0 0 0 2px rgba(37,99,235,0.15)',
   },
+  composerBtn: { fontSize: 12, padding: '4px 10px', whiteSpace: 'nowrap' },
+  // Row 1 must fit 597px, its width at 1366x768 (636px with composerBtn): no scrollbar there.
+  composerChip: { fontSize: 11.5, padding: '4px 6px', whiteSpace: 'nowrap' },
+  composerRow: { display: 'flex', alignItems: 'center', gap: 8, height: 30, minWidth: 0 },
   highlightComposer: {
     display: 'flex',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 4,
     padding: '6px 12px',
     background: '#eff6ff',
     borderBottom: '1px solid #bfdbfe',
@@ -726,13 +772,6 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: 2,
-  },
-  highlightEmojiLabel: {
-    fontFamily: 'var(--font-body)',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    color: '#1e40af',
-    marginRight: 4,
   },
   highlightEmojiBtn: {
     border: '1px solid transparent',

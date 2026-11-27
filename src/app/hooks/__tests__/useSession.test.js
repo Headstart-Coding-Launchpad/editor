@@ -17,6 +17,7 @@ const firebaseMocks = vi.hoisted(() => ({
   onDisconnect: vi.fn(() => ({
     set: vi.fn(() => Promise.resolve()),
     remove: vi.fn(() => Promise.resolve()),
+    cancel: vi.fn(() => Promise.resolve()),
   })),
   get: vi.fn(() => Promise.resolve({ val: () => null })),
   runTransaction: vi.fn(() => Promise.resolve({ committed: true })),
@@ -393,6 +394,30 @@ describe('useSession', () => {
         expect.objectContaining({ path: 'sessions/lesson-1' }),
         expect.anything()
       )
+    })
+
+    // A node with no `state` (left by a stale student tab writing after the session was
+    // removed) has no Start or End button, so it counts as no session.
+    it('createSessionIfAbsent replaces a node with no state, keeping only joining markers', async () => {
+      const { result } = renderHook(() => useSession('lesson-1', { enabled: true }))
+      firebaseMocks.runTransaction.mockImplementation(async () => ({ committed: true }))
+      await act(async () => {
+        await result.current.createSessionIfAbsent()
+      })
+      const updater = firebaseMocks.runTransaction.mock.calls[0][1]
+      const joiningStudents = { temp1: { joinedAt: 7, typedName: 'Bo' } }
+      const next = updater({
+        teacherLeftAt: 5,
+        joiningStudents,
+        students: { junk: { currentCode: 'x' }, ada: { displayName: 'Ada', currentCode: 'y' } },
+      })
+      expect(next).toMatchObject({ state: 'waiting', currentTaskId: 1 })
+      expect(next.students).toEqual({})
+      expect(next.joiningStudents).toEqual(joiningStudents)
+      expect(next).not.toHaveProperty('teacherLeftAt')
+      for (const state of ['waiting', 'active', 'sandbox', 'ended']) {
+        expect(updater({ state })).toBeUndefined()
+      }
     })
 
     it('createSession and endSession reset the polls', async () => {
@@ -1948,7 +1973,25 @@ describe('useSession', () => {
       })
       expect(firebaseMocks.set).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ note: null })
+        expect.objectContaining({ note: null, kind: null })
+      )
+    })
+
+    it("stores kind 'pin' for a pin and nothing else for it", async () => {
+      const { result } = renderHook(() => useSession('lesson-1'))
+      await act(async () => {
+        await result.current.pushTeacherHighlight('student-xyz', {
+          file: 'main.py',
+          from: 5,
+          to: 5,
+          emoji: '📌',
+          note: 'Write this here',
+          kind: 'pin',
+        })
+      })
+      expect(firebaseMocks.set).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ from: 5, to: 5, kind: 'pin', note: 'Write this here' })
       )
     })
   })

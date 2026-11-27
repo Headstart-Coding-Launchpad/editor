@@ -3,6 +3,11 @@ import { exampleOpenCount } from '../../shared/exampleOpens'
 import { CodeEditor } from '../../shared/CodeEditor'
 import { useLatestRef } from '../hooks/useLatestRef'
 import { decodeFileKey } from '../../shared/fileKeys'
+import {
+  mapThroughText,
+  PIN_NOTE_MAX,
+  teacherHighlightsFor,
+} from '../../shared/teacherHighlightsEditor'
 import { resolveAssetsPath } from '../../shared/assetPaths'
 import { decodeSessionFiles, parseScratchState } from '../../shared/workspaceData'
 import {
@@ -98,7 +103,6 @@ function useNarrowWindow(width) {
     onChange()
     list.addEventListener?.('change', onChange)
     return () => list.removeEventListener?.('change', onChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
   return narrow
 }
@@ -130,7 +134,6 @@ export default function StudentModal({
   isLive,
   isLiveForAll,
   isLiveForAllPanel = false,
-  onGoLive,
   onGoLiveForAll,
   onStopLive,
   onClose,
@@ -237,8 +240,10 @@ export default function StudentModal({
   // ({ at: 'student:task', key }), so it never carries over to the next student or task.
   const [canSeePreview, setCanSeePreview] = useState(null)
 
-  // Teacher highlight: select a range in the mirrored view, tag it, send it
+  // Teacher highlight: select a range in the mirrored view, tag it, send it. In Pin mode a click
+  // marks a spot instead (from === to) and the note is required.
   const [pendingHighlight, setPendingHighlight] = useState(null) // {from, to} | null
+  const [pinMode, setPinMode] = useState(false)
   const [highlightEmoji, setHighlightEmoji] = useState(HIGHLIGHT_EMOJI_OPTIONS[0])
   const [highlightNote, setHighlightNote] = useState('')
 
@@ -462,18 +467,36 @@ export default function StudentModal({
     onClose?.()
   }
 
+  // A pending range or pin belongs to the student, task and file it was made on (`at`); it is
+  // dropped (Send disabled) once any of them changes. It keeps the mirrored code it was made on
+  // (`text`), so it moves with the student's typing like the marker does (livePending).
+  const pendingAt = () => `${student.anonymousId}|${session?.currentTaskId}|${activeFile}`
+  const pending = (from, to) => ({ from, to, at: pendingAt(), text: mirroredText })
+
   function handleMirrorSelectionChange({ from, to }) {
-    setPendingHighlight(from === to ? null : { from, to })
+    if (!pinMode) setPendingHighlight(from === to ? null : pending(from, to))
+  }
+
+  // Pin mode: only the tutor's own click or tap on the mirror places the pin.
+  function handleMirrorPick(pos) {
+    if (pinMode) setPendingHighlight({ ...pending(pos, pos), kind: 'pin' })
+  }
+
+  function handleHighlightModeChange(pin) {
+    setPinMode(pin)
+    handleCancelHighlight()
   }
 
   function handleSendHighlight(activeFile) {
-    if (!pendingHighlight) return
+    const note = highlightNote.trim().slice(0, pinMode ? PIN_NOTE_MAX : undefined) || null
+    if (!livePending || (pinMode && !note)) return
     onAddHighlight?.(student.anonymousId, {
       file: activeFile,
-      from: pendingHighlight.from,
-      to: pendingHighlight.to,
-      emoji: highlightEmoji,
-      note: highlightNote.trim() || null,
+      from: livePending.from,
+      to: livePending.to,
+      emoji: pinMode ? '📌' : highlightEmoji,
+      note,
+      ...(pinMode ? { kind: 'pin' } : {}),
     })
     setPendingHighlight(null)
     setHighlightNote('')
@@ -633,6 +656,11 @@ export default function StudentModal({
 
   const [activeFile, setActiveFile] = useState(task?.entryFile ?? files[0]?.name ?? '')
   const activeFileObj = files.find((f) => f.name === activeFile) ?? files[0]
+  const mirroredText = (mirror === 'code' ? student.currentCode : activeFileObj?.content) ?? ''
+  const livePending =
+    pendingHighlight?.at === pendingAt()
+      ? mapThroughText(pendingHighlight, pendingHighlight.text, mirroredText)
+      : null
 
   // While a share is pending, the modal shows only the frozen snapshot the
   // class would receive — not this student's live workspace.
@@ -678,13 +706,19 @@ export default function StudentModal({
     !isCodeArrangeTask &&
     !!moduleCaps?.highlights &&
     teacherEditState === 'idle'
-  const highlightsForActiveFile = useMemo(() => {
-    const raw = student.teacherHighlights
-    if (!raw) return []
-    return Object.entries(raw)
-      .filter(([, h]) => (mirror === 'code' ? true : decodeFileKey(h.file) === activeFile))
-      .map(([id, h]) => ({ id, from: h.from, to: h.to, emoji: h.emoji, note: h.note }))
-  }, [student.teacherHighlights, mirror, activeFile])
+  const highlightsForActiveFile = useMemo(
+    () => teacherHighlightsFor(student.teacherHighlights, mirror === 'code' ? null : activeFile),
+    [student.teacherHighlights, mirror, activeFile]
+  )
+  // In Pin mode the clicked spot shows in the mirror as a marker until Drop pin, Clear or a mode
+  // change (a new id per spot, so a new click re-places it).
+  const mirrorHighlights =
+    pinMode && livePending
+      ? [
+          ...highlightsForActiveFile,
+          { ...livePending, id: `pending-pin-${livePending.from}`, pending: true, text: null },
+        ]
+      : highlightsForActiveFile
 
   useEffect(() => {
     const liveFile =
@@ -1853,7 +1887,7 @@ export default function StudentModal({
           studentName={studentName}
           task={task}
           lessonType={taskLesson?.type}
-          studentCode={student.currentCode}
+          lessonTasks={lesson?.tasks}
           copyCode={workspaceCopyCode}
           openKey={canSeeOpenKey}
           onOpenChange={(key) => setCanSeePreview(key ? { at: canSeeAt, key } : null)}
@@ -2020,8 +2054,11 @@ export default function StudentModal({
                       iframeSrc={iframeSrc}
                       iframeRef={iframeRef}
                       canHighlight={canHighlight}
-                      pendingHighlight={pendingHighlight}
-                      highlights={highlightsForActiveFile}
+                      pendingHighlight={livePending}
+                      onMirrorPick={handleMirrorPick}
+                      pinMode={pinMode}
+                      onPinModeChange={handleHighlightModeChange}
+                      highlights={mirrorHighlights}
                       onMirrorSelectionChange={handleMirrorSelectionChange}
                       onDismissHighlight={handleDismissHighlight}
                       highlightEmoji={highlightEmoji}

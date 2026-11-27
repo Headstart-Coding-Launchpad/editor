@@ -16,8 +16,7 @@ import { firestore } from './firebase'
 import { encodeLessonForFirestore, decodeLessonFromFirestore } from './lessonBlocksCodec'
 import { unsealTasks } from './lessonSeal'
 import { buildLessonFork, CLASS_COLLECTION, makeClassRecord } from './lessonForks'
-import { LEVEL_COLLECTION, migrateLessonLevel, normalizeLevelRecord } from './lessonLevels'
-import { sortLessons } from './lessonOrder'
+import { LEVEL_COLLECTION, migrateLessonLevel } from './lessonLevels'
 import { encodeSessionReportForFirestore } from './lessonReport'
 
 // Raw lesson docs cached for 2 minutes per page; every write below clears it.
@@ -33,22 +32,6 @@ export async function fetchLessonById(lessonId) {
   const raw = { id: snap.id, ...snap.data() }
   lessonCache.set(lessonId, { raw: structuredClone(raw), at: Date.now() })
   return decodeLessonFromFirestore(raw)
-}
-
-// Every published lesson in the shared LaunchPad order (src/shared/lessonOrder.js): by level
-// order, then lessonNumber, with each Solo Challenge straight after its parent.
-export async function fetchLessonList() {
-  const [snap, levels] = await Promise.all([
-    getDocs(collection(firestore, 'lessons')),
-    getDocs(collection(firestore, LEVEL_COLLECTION))
-      .then((levelSnap) =>
-        levelSnap.docs.map((d) => normalizeLevelRecord({ id: d.id, ...d.data() }))
-      )
-      // Level order only arranges the groups; without it levels group by id.
-      .catch(() => []),
-  ])
-  const items = snap.docs.map((d) => decodeLessonFromFirestore({ id: d.id, ...d.data() }))
-  return sortLessons(items, { levels })
 }
 
 // Finds the "solo challenge" lesson linked to a parent lesson, if any, via the

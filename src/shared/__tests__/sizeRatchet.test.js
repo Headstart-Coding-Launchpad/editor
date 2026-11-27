@@ -2,6 +2,16 @@
 // Counts per file: lines, eslint/ts suppression comments, inline style={{ uses.
 // To lower the baseline after a cleanup: UPDATE_SIZE_RATCHET=1 npx vitest run src/shared/__tests__/sizeRatchet.test.js
 // and commit sizeRatchet.baseline.json. Never raise a number to make this pass; split the file instead.
+// Project total lines raised 24 Nov by Ryan for the code_lines quiz (+318: 213320 -> 213638,
+// of which +52 are the code-review fixes).
+// Raised 26 Nov 09:56 (Ryan OK) for the tutor highlight note rows and Pin (+88: 213668 -> 213756,
+// after trimming 13 dead lines and compacting 5 in the files touched).
+// Raised again 26 Nov (same Ryan OK) for the code-review fixes (+54: 213756 -> 213810, after
+// shortening the module header by 9).
+// And again 26 Nov (same Ryan OK) for the browser-pass fixes (+29: 213810 -> 213839).
+// And for the tutor-side fixes (+24: 213839 -> 213863), same Ryan OK.
+// And for Drop pin following the student's typing (+21: 213863 -> 213884), same Ryan OK.
+// And for the compact Pin row at 1366 (+2: 213884 -> 213886), same Ryan OK.
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'

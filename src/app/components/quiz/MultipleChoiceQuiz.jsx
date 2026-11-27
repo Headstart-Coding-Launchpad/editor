@@ -37,6 +37,8 @@ export default function MultipleChoiceQuiz({
   showCorrectAnswer,
   // Extra content under the options (a poll's "you can change your vote" line).
   footer = null,
+  // Poll only: (option, { colour, onDark, id }) => the tile's vote share, which describes it.
+  optionExtra = null,
   // Poll only: tick any number of options; selectedAnswer is then a JSON array string.
   multiple = false,
 }) {
@@ -73,9 +75,8 @@ export default function MultipleChoiceQuiz({
     const content = optionsGridRef.current
     if (!container || !content) return undefined
 
-    // A rising option (its first-view entrance) is translated down, which scrollHeight counts
-    // as overflow; measure with the options at rest so the entrance never shrinks them. An
-    // !important declaration outranks the animation without restarting it.
+    // A rising option (entrance) is translated down, which scrollHeight counts as overflow;
+    // measure at rest (an !important declaration outranks the animation without restarting it).
     // `running` guards against re-entry: our own writes (columns, scale) can resize the frame.
     let running = false
     const run = () => {
@@ -98,8 +99,7 @@ export default function MultipleChoiceQuiz({
           nextPictureNarrow(content.hasAttribute('data-picture-narrow'), container.clientWidth)
         )
       else {
-        // Word tiles: the column count follows the frame's and screen's width (quizWordLayout),
-        // so set it here too, before the fit measures.
+        // Word tiles: columns follow the frame and screen width (quizWordLayout), set before the fit.
         const wasWide = content.dataset.quizWide === 'true'
         const width = container.clientWidth
         const screenWide = window.innerWidth >= 900
@@ -107,8 +107,7 @@ export default function MultipleChoiceQuiz({
         content.dataset.quizWide = String(layout.wide)
         content.dataset.quizCols = String(layout.cols)
         content.style.setProperty('--quiz-cols', String(layout.cols))
-        // The row cap also follows the fit scale (--quiz-row-cap), else rows stay 250px tall
-        // however far the shrink loop goes and the last tiles are cut off (24 Nov 2026).
+        // The row cap follows the fit scale, else rows stay tall and the last tiles are cut off.
         if (layout.rowMax) {
           content.style.setProperty('--quiz-row-max', `${layout.rowMax}px`)
           content.style.setProperty(
@@ -122,6 +121,7 @@ export default function MultipleChoiceQuiz({
       }
       const options = Array.from(content.children)
       options.forEach((option) => option.style.setProperty('transform', 'none', 'important'))
+      container.style.minHeight = '0px'
       try {
         shrinkToFit({
           setScale: (scale) => {
@@ -137,6 +137,9 @@ export default function MultipleChoiceQuiz({
               (text) => text.scrollWidth > text.clientWidth + 1
             ),
         })
+        // Too tall even at the smallest size: frame = tiles' height, so the pane scrolls to them.
+        if (content.scrollHeight > container.clientHeight + 1)
+          container.style.minHeight = `${content.scrollHeight}px`
       } finally {
         options.forEach((option) => option.style.removeProperty('transform'))
       }
@@ -177,9 +180,8 @@ export default function MultipleChoiceQuiz({
       content.removeEventListener('error', refitOnPicture, true)
     }
     if (typeof ResizeObserver === 'undefined') return stopPictureRefit
-    // Only observe the frame, not the grid itself: the grid is what we resize,
-    // and font-size changes (unlike transform: scale) affect layout, so
-    // observing it here would re-trigger this same observer on our own writes.
+    // Observe only the frame: the grid is what we resize, and font-size changes affect
+    // layout, so observing it would re-trigger this observer on our own writes.
     const observer = new ResizeObserver(run)
     observer.observe(container)
     return () => {
@@ -204,6 +206,7 @@ export default function MultipleChoiceQuiz({
             const active = multiple ? ticked.includes(option.id) : selectedAnswer === option.id
             const isCorrect = revealAnswers && option.id === correctId
             const isWrong = revealAnswers && active && option.id !== correctId
+            const marked = active || isCorrect || isWrong // filled with colour, white words
             // Decoration by position; a verdict only once the answer has been submitted.
             // OPTION_COLOURS holds no success or error hue, so a selected card can never
             // be mistaken for a judged one.
@@ -277,7 +280,7 @@ export default function MultipleChoiceQuiz({
                     ...s.pictureOption,
                     borderColor: verdict ? verdict.border : colour.border,
                     background: active && !verdict ? colour.background : '#fff',
-                    ...(active || isCorrect || isWrong
+                    ...(marked
                       ? {
                           boxShadow: `inset 0 0 0 4px ${ring}, 0 6px 18px rgba(17, 24, 39, 0.18)`,
                           zIndex: 2,
@@ -323,19 +326,24 @@ export default function MultipleChoiceQuiz({
               )
             }
 
+            const extraId = `quiz-option-extra-${instanceId}-${option.id}`
+            const look = { colour: colour.active, onDark: marked, id: extraId }
+            const extra = optionExtra?.(option, look)
             return (
               <div
                 key={option.id}
                 role={multiple ? 'checkbox' : 'radio'}
                 aria-checked={active}
                 aria-disabled={locked || undefined}
+                aria-describedby={extra ? extraId : undefined}
+                data-option-extra={extra ? '' : undefined}
                 tabIndex={locked ? -1 : 0}
                 className={['quiz-word-option', optionEntrance.className].filter(Boolean).join(' ')}
                 style={{
                   background: bg,
                   borderColor: border,
                   color: textColour,
-                  ...(active || isCorrect || isWrong ? s.optionActive : {}),
+                  ...(marked ? s.optionActive : {}),
                   ...optionEntrance.style,
                 }}
                 onClick={chooseOption}
@@ -344,8 +352,7 @@ export default function MultipleChoiceQuiz({
                 <span
                   className="quiz-word-option__id"
                   style={{
-                    background:
-                      active || isCorrect || isWrong ? 'rgba(255,255,255,0.22)' : colour.active,
+                    background: marked ? 'rgba(255,255,255,0.22)' : colour.active,
                   }}
                 >
                   {multiple && active ? '\u2713' : option.id}
@@ -360,10 +367,10 @@ export default function MultipleChoiceQuiz({
                         <MarkdownRenderer
                           content={optionText}
                           textScale={1.2}
-                          inheritColor={active || isCorrect || isWrong}
+                          inheritColor={marked}
                         />
                       ) : (
-                        <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                        <span style={marked ? s.markdownOnDark : undefined}>
                           <InlineMarkdown content={optionText} />
                         </span>
                       )}
@@ -372,14 +379,15 @@ export default function MultipleChoiceQuiz({
                     <MarkdownRenderer
                       content={optionText}
                       textScale={1.2 * optionsScale}
-                      inheritColor={active || isCorrect || isWrong}
+                      inheritColor={marked}
                     />
                   ) : (
-                    <span style={active || isCorrect || isWrong ? s.markdownOnDark : undefined}>
+                    <span style={marked ? s.markdownOnDark : undefined}>
                       <InlineMarkdown content={optionText} />
                     </span>
                   )}
                 </div>
+                {extra}
               </div>
             )
           })}

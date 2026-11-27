@@ -19,9 +19,9 @@ Not legal advice. The research behind it is in Ryan Hub `drafts/research-childre
 | `joiningStudents/{tempId}` | The name while it is being typed | Anyone | On join or disconnect |
 | `sharedWorkspacePayloads/{lessonId}` | Code a student shared with the class and the sharer's name | `approved`: anyone signed in with the lesson id. `pending`: the author and tutors | At End Session and on disconnect |
 | `carryInbox`, `peerHelp*`, `sessionArchive` | Earlier-lesson code, help requests, sandbox snapshots | The student (own carry), tutors | At End Session and on disconnect |
-| Firestore `lessons/{id}/sessionReports` | Anonymous: "Student N" and a one-way `studentKey` hash, attempts, timings, typing numbers, badges, help. Reports saved before 16 Jul 2026 can still hold names and ids | Tutors and admins | No retention limit. They go only when the lesson is deleted |
-| Firestore `classes/{id}/roster` (+ `work`, `typing`) | Name and initial, saved code per task, typing scores | Tutors and admins | No retention limit. They go when the roster entry is deleted |
-| Firestore `sharedWork/{id}` (`/share/:id` links) | Task title and a code snapshot, with no name | Anyone with the 128-bit link id, until it expires or is revoked | Hidden after 30 days or on revoke (tutor, per link, or admin). The document stays |
+| Firestore `lessons/{id}/sessionReports` | Anonymous: "Student N" and a one-way `studentKey` hash, attempts, timings, typing numbers, badges, help. Reports saved on or before 16 Jul 2026 can still hold names and ids | Tutors and admins | Deleted by the nightly sweep 2 years after the session (1 year if saved on or before 16 Jul 2026), or with the lesson |
+| Firestore `classes/{id}/roster` (+ `work`, `typing`) | Name and initial, saved code per task, typing scores | Tutors and admins | Not deleted automatically (the sweep only counts them). They go when the roster entry is deleted |
+| Firestore `sharedWork/{id}` (`/share/:id` links) | Task title and a code snapshot, with no name | Anyone with the 128-bit link id, until it expires or is revoked | Hidden after 30 days or on revoke (tutor, per link, or admin). The nightly sweep deletes the document 30 days after its expiry date |
 | Browser `localStorage` (`headstart_*`) | `anonymousId`, typed name, code per task, mute and volume | That device only | Never expires (cleared with the browser's site data) |
 
 Storage (images, sounds) holds only lesson assets written by admins. Students upload nothing.
@@ -33,11 +33,13 @@ Storage (images, sounds) holds only lesson assets written by admins. Students up
 | Big screen shows first names only | Show it shows no names at all ("Build 1/2/3"). Badge award toasts on the class screen do name the child |
 | Share links are unguessable, expire, can be revoked, aren't indexed | 128-bit ids, 30-day expiry, per-link revoke. Every page now carries `noindex` (27 Oct) |
 | Minimal data | Nothing beyond first name and work. See the gaps below |
-| Reports: tutor-only, retention limit | Tutor-only and anonymous since Jul 2026, but no retention limit |
+| Reports: tutor-only, retention limit | Tutor-only, anonymous since 16 Jul 2026, deleted after 2 years (older ones 1 year) |
 | No geolocation, profiling or public galleries | None |
 
 ## Open gaps (for Ryan, not changed)
 
 1. Closed 2026-10-27 (#288, Ryan yes): live session reads now need a sign-in (`auth != null`). Students sign in anonymously, so nothing changes for them. Anyone signed in with the lesson id (including an anonymous sign-in) still sees that class, which the live view needs.
-2. There is no retention limit on session reports, roster work and typing, or expired `sharedWork` documents.
-3. Reports saved before 16 Jul 2026 may still hold names.
+2. There is no automatic retention limit on class lists (roster names, saved work, typing). The nightly sweep counts the ones past the proposed limit but does not delete them.
+3. Reports saved on or before 16 Jul 2026 may still hold names until the sweep deletes them (from July 2027).
+
+The sweep (`retentionSweep`, [data-retention-plan.md](../architecture/data-retention-plan.md)) does these deletes only once the Cloud Function is released.

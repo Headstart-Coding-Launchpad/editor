@@ -180,42 +180,42 @@ describe('line hint note box', () => {
     return found
   }
 
-  it('shows the hint as a block note on the line above, not at the end of the hinted line', () => {
+  it('shows the hint as a chip at the end of its own line, never a block between lines', () => {
     const state = stateWithHints(DOC, [
       { line: 2, text: 'First' },
       { line: 2, text: 'Second' },
     ])
     const [note, ...rest] = notes(state)
     expect(rest).toEqual([])
-    expect(note.from).toBe(state.doc.line(2).from)
-    expect(note.block).toBe(true)
-    expect(note.side).toBeLessThan(0)
-    expect(note.dom.className).toBe('cm-lineHintNote')
+    expect(note.from).toBe(state.doc.line(2).to)
+    expect(note.block).toBeFalsy()
+    expect(note.side).toBeGreaterThan(0)
+    expect(note.dom.className).toBe('cm-lineHintChip')
     expect(note.dom.textContent).toBe('Hint: First · Second')
     expect(state.doc.toString()).toBe(DOC)
     expect(note.dom.getAttribute('role')).toBe('note')
     expect(note.dom.title).toBe('Hint: First · Second')
   })
 
-  it('shows a note for a hint on line 1', () => {
+  it('shows a chip for a hint on line 1', () => {
     const state = stateWithHints(DOC, [{ line: 1, text: 'Start here' }])
     const found = notes(state)
     expect(found).toHaveLength(1)
-    expect(found[0].from).toBe(0)
+    expect(found[0].from).toBe(state.doc.line(1).to)
     expect(found[0].dom.textContent).toBe('Hint: Start here')
   })
 
-  it('shows one box per hinted line, each at its own line', () => {
+  it('shows one chip per hinted line, each on its own line', () => {
     const state = stateWithHints(DOC, [
       { line: 3, text: 'Print it' },
       { line: 1, text: 'Start here' },
     ])
     const found = notes(state)
-    expect(found.map((n) => n.from)).toEqual([state.doc.line(1).from, state.doc.line(3).from])
+    expect(found.map((n) => n.from)).toEqual([state.doc.line(1).to, state.doc.line(3).to])
     expect(found.map((n) => n.dom.textContent)).toEqual(['Hint: Start here', 'Hint: Print it'])
   })
 
-  it('drops the box when its line is deleted', () => {
+  it('drops the chip when its line is deleted', () => {
     let state = stateWithHints(DOC, [
       { line: 2, text: 'Change the colour' },
       { line: 3, text: 'Print it' },
@@ -224,12 +224,7 @@ describe('line hint note box', () => {
     state = deleteRange(state, line.from, line.to + 1)
     const found = notes(state)
     expect(found).toHaveLength(1)
-    expect(found[0].from).toBe(state.doc.line(2).from)
+    expect(found[0].from).toBe(state.doc.line(2).to)
     expect(found[0].dom.textContent).toBe('Hint: Print it')
-  })
-
-  it('gives the height map an estimate', () => {
-    const [note] = notes(stateWithHints(DOC, [{ line: 2, text: 'x' }]))
-    expect(note.widget.estimatedHeight).toBeGreaterThan(0)
   })
 })

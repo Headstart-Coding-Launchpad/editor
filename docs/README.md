@@ -58,7 +58,7 @@ Change-type map for finding adjacent code, docs, and tests that usually move tog
 **Load when:** starting feature work, changing runtime contracts, adding source files, or deciding which docs/tests a change should update.
 
 ### [architecture/data-retention-plan.md](architecture/data-retention-plan.md)
-Proposal (Hub #303) for how long LaunchPad keeps session reports, class lists, share links and the old US database, and a daily retention sweep that starts as a dry run.
+Proposal (Hub #303) for how long LaunchPad keeps session reports, class lists, share links and the old US database, and the daily retention sweep (a dry run first; since 26 Nov 2026 it deletes reports and share links, and only counts class lists).
 
 **Load when:** deciding or building data retention or deletion.
 
@@ -278,6 +278,11 @@ Every lesson validation error and warning from the CLI and shared validators, wi
 
 **Load when:** `lessons validate`, `yaml-to-json`, `upsert` or `publish-yaml` reports errors or warnings.
 
+### [authoring/lesson-backup-cli.md](authoring/lesson-backup-cli.md)
+`lessons backup`: the read-only nightly copy of every changed lesson, level, topic and type-assets doc to `D:\LaunchPad-backups\lessons`, what it does not cover (Storage files, anything about children), the folder layout, read counts and how Dev restores a version by hand.
+
+**Load when:** running or changing the lesson backup, or putting back a lost or broken lesson.
+
 ### [authoring/feedback-cli.md](authoring/feedback-cli.md)
 Reading, adding and archiving teacher feedback (lesson and platform) with the CLI, preview review notes (`lessons notes`: an admin's per-task notes from the lesson preview, and moving them to picked up or done), and a suggested loop for revising a lesson from feedback.
 
@@ -324,7 +329,7 @@ Turtle module code-task authoring reference: the single-file task model, support
 **Load when:** authoring or editing a Turtle module code task.
 
 ### [authoring/quiz-tasks.md](authoring/quiz-tasks.md)
-Detailed reference for all six quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, confidence rating and poll. Covers all sub-type-specific fields and YAML syntax.
+Detailed reference for all seven quiz sub-types: multiple-choice, match, fill-in-the-blank, short-answer, confidence rating, poll and click the line (`code_lines`). Covers all sub-type-specific fields and YAML syntax.
 
 **Load when:** authoring or editing a quiz task.
 
@@ -437,6 +442,11 @@ How to write a Scratch toolbox XML string: XML structure, all categories with th
 `hsc lessons screenshot`: PNGs of lesson tasks as students and tutors see them (code, Run, inputs, crops, tablet size), single or batch from a spec. Student views need no session and work on Drafts; tutor, grid and Shared work views run on a throwaway copy.
 
 **Load when:** taking screenshots for lesson images, or changing the screenshot command or the panels it crops.
+
+### [authoring/lessons-ready-cli.md](authoring/lessons-ready-cli.md)
+`hsc lessons ready`: is a lesson ready for class? Validates it as published (Draft flag ignored), fetches every asset URL, runs each Python and Turtle task's starter and complete code in a browser (starter must not pass, complete must pass, setupCode clean, hints shown) and judges Scratch block checks per stage. JSON report plus a plain summary; anything not run is "not checked", never "ready".
+
+**Load when:** checking a lesson before class, reading a `lessons ready` report, or changing the command or the banner and output panel it reads.
 
 ### [authoring/scratch-render-cli.md](authoring/scratch-render-cli.md)
 `hsc scratch render`: draw a lesson's Scratch script as the classroom shows it and save a standalone SVG plus a block map with a stable id on each block.

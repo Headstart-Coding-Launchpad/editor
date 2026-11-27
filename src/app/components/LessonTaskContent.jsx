@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Banner from '../../shared/Banner'
 import { getLessonModule } from '../../modules/registry'
 import { getModuleDefinition, getModuleTypesWithCapability } from '../../modules/definitions'
@@ -26,9 +26,8 @@ import {
   getEffectiveTaskMode,
   getRevealableStages,
   getStageRole,
-  getStarterStage,
 } from '../../shared/taskUtils'
-import { chooseChangeBase, stageShowsChange } from '../../shared/stageChange'
+import { lessonStageChange, stageChangeBases } from '../../shared/stageChange'
 import { getStageLineHints } from '../../shared/lineHints'
 import { getTaskLockSets } from '../../shared/lockedLines'
 import {
@@ -605,12 +604,18 @@ export default function LessonTaskContent({
       fromTutor: kind === 'live' || openedByTutor,
     }
   })()
-  // A change view (a revealed stage with `show: 'change'`) is on screen.
+  // The shown stage's real changes are on screen (not a fall-back to the whole program).
+  const shownStageIndex = task?.codeStages?.indexOf(shownReference?.stage) ?? -1
+  // Lesson code only, never the student's: worked out per task and stage, not per keystroke.
+  const shownStageChange = useMemo(
+    () => lessonStageChange(task, shownStageIndex, lesson.tasks),
+    [task, shownStageIndex, lesson.tasks]
+  )
   const anyChangeViewOnScreen =
     calmScreen &&
     !!shownReference?.revealed &&
     !!moduleCaps?.stageChangeView &&
-    stageShowsChange(shownReference.stage)
+    shownStageChange?.kind === 'changes'
   // Only a Complete stage's change view takes the Type this out's place on the calm screen: a
   // Support stage's is a hint, part of the program, so the copy box stays beside it.
   const changeViewOnScreen =
@@ -902,7 +907,7 @@ export default function LessonTaskContent({
     anyChangeViewOnScreen || (typeof task?.copyCode === 'string' && !!task.copyCode.trim())
   const runWord = getModuleDefinition(lessonMod?.type ?? lesson.type)?.meta?.runWord ?? 'Run'
   const hintNudge = calmScratch
-    ? 'Have a go, then tap the green flag to see what happens.'
+    ? 'Have a go, then tap Run to see what happens.'
     : task?.interactionMode === 'submit'
       ? 'Have a go, then tap Submit.'
       : hasGreenLine
@@ -948,23 +953,18 @@ export default function LessonTaskContent({
         (() => {
           const referenceStage = shownReference.stage
           // Authored stages show their line hints; the teacher's live code has none.
-          const referenceStageIndex = task?.codeStages?.indexOf(referenceStage) ?? -1
           const lineHintsFor =
-            referenceStageIndex >= 0
-              ? (file) => getStageLineHints(task, referenceStageIndex, file)
+            shownStageIndex >= 0
+              ? (file) => getStageLineHints(task, shownStageIndex, file)
               : shownReference.kind === 'complete'
                 ? (file) => getStageLineHints(task, 'complete', file)
                 : undefined
-          const changeViewKey = `${task?.id ?? ''}:${referenceStageIndex}`
+          const changeViewKey = `${task?.id ?? ''}:${shownStageIndex}`
           return (
             <SupportStagePanel
-              // One panel per task and stage, and a new one after "Load complete code": the change
-              // view reads the student's code when the stage is revealed.
+              // One panel per task and stage, and a new one after "Load complete code".
               key={`${changeViewKey}:${shownReference.kind === 'live' ? 'live' : 'stage'}:${completeLoads}`}
-              changeBase={chooseChangeBase(
-                displayCode,
-                getStarterStage(task)?.stage?.code ?? task?.starterCode
-              )}
+              changeBase={stageChangeBases(task, shownStageIndex, lesson.tasks)}
               // Each panel sets or clears only its own key, so a panel unmounting after a newer
               // one has opened leaves the newer one's value alone.
               onChangeViewShown={(shown) =>

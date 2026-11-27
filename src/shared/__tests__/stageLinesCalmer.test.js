@@ -69,10 +69,12 @@ function fakeLayout(view) {
     return line.from + Math.max(0, Math.min(line.length, Math.floor(x / 10)))
   }
 }
-function tap(view, x, y) {
+// A touch tap; `hold` ms makes it a long press (which a number needs to open its slider).
+function tap(view, x, y, hold = 0) {
   const down = new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: x, clientY: y })
   Object.defineProperty(down, 'pointerType', { value: 'touch' })
   view.contentDOM.dispatchEvent(down)
+  if (hold) vi.advanceTimersByTime(hold)
   window.dispatchEvent(new MouseEvent('pointerup', { clientX: x, clientY: y }))
   vi.runAllTimers()
 }
@@ -87,33 +89,30 @@ describe('calmer Stage code lines', () => {
     const { view } = makeView()
     expect(view.dom.querySelector('.cm-lineHintGutter')).toBeNull()
     expect(view.dom.querySelector('.cm-lineHintIcon')).toBeNull()
-    const note = view.dom.querySelector('.cm-lineHintNote')
+    const note = view.dom.querySelector('.cm-lineHintChip')
     expect(note.textContent).toBe('Hint: Draw a white moon in the top right')
     expect(note.getAttribute('role')).toBe('note')
   })
 
-  it('shows a hint on line 1 too, as a note above the first line', () => {
+  it('shows a hint on line 1 too, as a chip inside the first line', () => {
     const { view } = makeView({ doc: 'x = 1', locks: [], hints: [{ line: 1, text: 'Start' }] })
-    const note = view.dom.querySelector('.cm-lineHintNote')
+    const note = view.dom.querySelector('.cm-line .cm-lineHintChip')
     expect(note.textContent).toBe('Hint: Start')
-    expect(note.compareDocumentPosition(view.dom.querySelector('.cm-line'))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
-    )
   })
 
-  it('a slot line has a wash and a small pencil (read out), no pill and no dashed outline', () => {
+  it('a slot line is a dashed row with a wash and a small pencil (read out), no pill', () => {
     const { view } = makeView()
     expect(view.dom.querySelector('.cm-slotTag')).toBeNull()
     expect(view.dom.textContent).not.toContain('Write one line here')
     const slot = view.dom.querySelector('.cm-slotLine')
-    expect(slot.textContent).toBe(`${MOON}✎`)
+    expect(slot.textContent).toBe(`${MOON}✎Hint: Draw a white moon in the top right`)
     const pencil = slot.querySelector('.cm-slotMark')
     expect(pencil.textContent).toBe('✎')
     expect(pencil.getAttribute('role')).toBe('img')
     expect(pencil.getAttribute('aria-label')).toBe('This space takes one line')
     const css = [...document.querySelectorAll('style')].map((s) => s.textContent).join('\n')
     const rule = css.match(/\.cm-slotLine\s*\{[^}]*\}/)[0]
-    expect(rule).not.toMatch(/outline|dashed/)
+    expect(rule).toMatch(/dashed/)
     expect(rule).toMatch(/background-color/)
   })
 
@@ -166,12 +165,12 @@ describe('calmer Stage code lines', () => {
     expect(boxed(view)).toEqual(['10'])
   })
 
-  it("a tap on another line's number still opens its control and moves the caret there", () => {
+  it("a long press on another line's number opens its control and moves the caret there", () => {
     vi.useFakeTimers()
     const { view, handlers } = makeView({ doc: 'x = 10\ny = 20' })
     caretOn(view, 1)
     fakeLayout(view)
-    tap(view, 50, 25)
+    tap(view, 50, 25, 600)
     expect(handlers.openPopover).toHaveBeenCalledWith(
       expect.objectContaining({ literal: expect.objectContaining({ text: '20', line: 2 }) })
     )
@@ -191,7 +190,7 @@ describe('calmer Stage code lines', () => {
       caretOn(view, 1)
       selections.length = 0
       fakeLayout(view)
-      tap(view, 50, 25)
+      tap(view, 50, 25, 600)
       expect(handlers.openPopover).toHaveBeenCalledTimes(1)
       expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(1)
       expect(selections).toEqual([])

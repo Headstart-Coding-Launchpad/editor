@@ -54,7 +54,7 @@ A feature that answers "no" to 1, 2 or 4 is incomplete. Ship it only with the ga
 | Zip files | `fflate` (approved 2026-10-14), loaded with `import()` only when Export work builds a `.zip` or `.sb3` |
 | Env vars | App: `.env` in the repo root (Vite default). CLI: `cli/.env` (`GOOGLE_APPLICATION_CREDENTIALS`). Both gitignored |
 
-Do not add major dependencies without confirming with the user.
+Do not add any new dependency without asking first (the rule lives in `CLAUDE.md`).
 
 ## Architecture Constraints
 
@@ -152,7 +152,7 @@ The `cli/` package manages lessons, tasks, topics, feedback, and assets against 
 
 **CLI credentials:**
 - Set `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON file path, in your shell or in `cli/.env` (gitignored; loaded by `cli/cli.mjs`). A relative path in `cli/.env` resolves from `cli/`.
-- `lessons validate`, `lessons yaml-to-json`, `lessons json-to-yaml` and `lessons test-checks` work **without** credentials. Everything that reads or writes Firestore or Storage needs them, including `lessons preflight`.
+- `lessons validate`, `lessons yaml-to-json`, `lessons json-to-yaml`, `lessons test-checks` and `lessons ready <file>` work **without** credentials (`lessons ready <id>` reads Firestore). Everything that reads or writes Firestore or Storage needs them, including `lessons preflight`.
 - Download from Firebase Console > Project Settings > Service Accounts.
 - Do not commit or copy service account keys.
 
@@ -162,7 +162,7 @@ node cli/cli.mjs <command> <subcommand> [args]
 ```
 
 Command groups:
-- `lessons list [--light]|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics|screenshot` (`screenshot`: PNGs of tasks for lesson images; needs the root dev dependencies and Playwright Chromium, see `docs/authoring/lesson-screenshot-cli.md`) `lessons list --light` returns only id, title, draft, version, levelId, companionOf via a field-select read (cheap; use it for syncs).
+- `lessons list [--light]|get|skeleton|validate|test-checks|upsert|delete|fork|forks|lineage|link-solo|yaml-to-json|json-to-yaml|preflight|publish-yaml|topics|screenshot` (`screenshot`: PNGs of tasks for lesson images; needs the root dev dependencies and Playwright Chromium, see `docs/authoring/lesson-screenshot-cli.md`) `lessons list --light` returns only id, title, draft, version, levelId, companionOf via a field-select read (cheap; use it for syncs). `lessons backup [--out]` is the read-only nightly versioned copy to `D:\LaunchPad-backups\lessons` (`docs/authoring/lesson-backup-cli.md`).
 - `tasks get|upsert|append`
 - `topics list|get|upsert|upsert-library|yaml-to-json|json-to-yaml|publish-yaml|delete`
 - `feedback platform|lesson|all|add-lesson|add-platform|archive-lesson|archive-platform|clear-lesson|clear-platform`

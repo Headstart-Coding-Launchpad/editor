@@ -148,7 +148,7 @@ fields, the lock, the checks, tutor view and the report.
 
 ## Live scrubbing (`scrub`)
 
-`scrub` lets students drag a number (or tap it for a slider) and pick a colour from a picker,
+`scrub` lets students drag a number's handle (or long-press it for a slider) and pick a colour from a picker,
 and the turtle redraws as the value changes. It's off unless set. Same field as Python:
 see [Python → Live scrubbing](python.md#live-scrubbing-scrub) for the options, devices and
 keyboard use.

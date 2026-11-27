@@ -52,6 +52,13 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIRESTORE_DATABASE_ID: london
 
+      # A deploy replaces every file: copy the last releases' hashed assets from the live site
+      # into dist, so tabs left open keep working. A problem here never stops the deploy.
+      - name: Carry earlier assets forward
+        continue-on-error: true
+        timeout-minutes: 5
+        run: node scripts/carry-assets.mjs https://headstart-coding-launchpad.github.io/editor/ dist
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

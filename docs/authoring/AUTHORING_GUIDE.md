@@ -32,6 +32,9 @@ node cli/cli.mjs lessons test-checks lesson.yaml --cases check-cases.yaml
 # verify Scratch block checks against each task's complete, starter, Complete and Support stages (no cases file):
 node cli/cli.mjs lessons test-checks lesson.yaml
 
+# before class: validate as published, fetch assets, run each Python/Turtle task (see lessons-ready-cli.md):
+node cli/cli.mjs lessons ready lesson.yaml --inputs answers.yaml
+
 # fetch an existing lesson as YAML:
 node cli/cli.mjs lessons get python-for-loops --format yaml
 ```
@@ -609,6 +612,7 @@ Do not use lesson stages, `taskType: draft` or `type: draft`, intended-type fiel
 | `lessons validate <file>` | Validates the lesson envelope, real task types, titles, non-empty intents, and field shapes. | Runs all ordinary lesson validation requirements. |
 | `lessons upsert <file>` | Creates or replaces a validated Draft lesson. | Creates or replaces a fully validated lesson. |
 | `lessons preflight <file>` | Validates Draft structure and checks Topic Library references against LaunchPad. | Validates the lesson and checks Topic Library references against LaunchPad. |
+| `lessons ready <file\|id>` | Ignores the Draft flag: validates as published, fetches assets and runs the tasks. See [lessons-ready-cli.md](lessons-ready-cli.md). | The same. |
 | `lessons publish-yaml <file>` | Refuses to publish. Clear Draft first. | Validates, checks Topic Library references, and publishes. |
 | `lessons get <id> --format yaml` | Returns the current authoritative Draft YAML. | Returns the current authoritative final YAML. |
 
