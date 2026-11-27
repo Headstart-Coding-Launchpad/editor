@@ -1,9 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import StudentCard from './StudentCard'
+import TipButton from './TipButton'
 import { ageWords, IDLE_AFTER_MS, outputStub, rowOutputText } from '../studentList.js'
 import { hintPlainText, readHintOffer, readStudentHint } from '../studentHints.js'
 import { exampleOpenCount } from '../../shared/exampleOpens'
 import { studentHealthChip, studentHealthProblem } from '../../shared/studentHealth'
+import { useIsTouchDevice } from '../../shared/useIsTouchDevice'
 
 // One student in the tutor's compact list (sketch v2, Ryan OK 8 Nov 2026): a 28px row with the
 // presence marker, name, up to 3 glyphs, a grey output stub and one status word or live cue; a
@@ -12,7 +14,19 @@ import { studentHealthChip, studentHealthProblem } from '../../shared/studentHea
 // variant="detail"). The ⋯ menu holds every other action. Tutor screen only.
 // One home each (Deep Review U7, sketch OK'd 27 Nov 2026): the row's own icons (🔔 Nudge while
 // Away, 👍 Thumbs up, 👁 Open) are the dashboard's only home for those three. They show on hover,
-// on keyboard focus, and all the time while the row is open (a touch screen taps the row open).
+// on keyboard focus (:focus-visible, so a mouse click never does it), and all the time while the
+// row is open. A touch screen taps the row open and gets them full size in the opened row. The
+// status word stays beside them, so an open or focused row still says Away, Stuck or Finished.
+
+// Whether focus arrived by keyboard (the browser's own rule). Older engines without the
+// selector count every focus as keyboard focus.
+function isFocusVisible(el) {
+  try {
+    return el.matches(':focus-visible')
+  } catch {
+    return true
+  }
+}
 
 const EDGE = {
   help: 'var(--colour-warning)',
@@ -132,7 +146,7 @@ function rowStatusWords(state, { now, since, lastRunAt, activityAt, typing }) {
   }
 }
 
-function RowMenu({ name, groups, onOpenChange }) {
+function RowMenu({ name, groups, onOpenChange, onPick }) {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpenChange?.(open)
@@ -224,6 +238,7 @@ function RowMenu({ name, groups, onOpenChange }) {
                     title={item.title}
                     onClick={() => {
                       setOpen(false)
+                      onPick?.()
                       item.onClick()
                     }}
                   >
@@ -292,8 +307,10 @@ export default function StudentListRow({
   const [menuOpen, setMenuOpen] = useState(false)
   // Keyboard focus inside the row (not a mouse click, which focuses the row too).
   const [keyFocus, setKeyFocus] = useState(false)
-  const pointerDownRef = useRef(false)
+  const touch = useIsTouchDevice()
   const rowRef = useRef(null)
+  // Set when a rename ends with Enter or Escape: focus goes back to the row once it is drawn.
+  const refocusRef = useRef(false)
   // Set once a rename is saved or cancelled, so a blur that follows Enter or Escape (the box
   // unmounting) never saves again or saves the discarded text.
   const renameDoneRef = useRef(true)
@@ -303,6 +320,18 @@ export default function StudentListRow({
   useEffect(() => {
     if (!open) setMoreOpen(false)
   }, [open])
+
+  // After every draw: a focused control that went away (a ⋯ menu item, the rename box, a 🔔 once
+  // the student is back) takes focus with it and fires no blur, so check where focus is now.
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row) return
+    if (refocusRef.current && !renaming) {
+      refocusRef.current = false
+      row.querySelector('[data-testid="row-main"]')?.focus()
+    }
+    if (keyFocus && !row.contains(document.activeElement)) setKeyFocus(false)
+  })
 
   const sandbox = session?.state === 'sandbox'
   const shownHint = sandbox ? null : readStudentHint(student, taskId)
@@ -322,8 +351,10 @@ export default function StudentListRow({
   })
   const offline = state.presence === 'offline'
   const showHover = hover && !selectMode && !renaming
-  // The row's icons: on hover, on keyboard focus, and while the row is open.
-  const showIcons = (hover || keyFocus || open) && !selectMode && !renaming
+  // The row's icons on the name line: on hover, on keyboard focus, and while the row is open. On
+  // a touch screen the opened row has them full size instead.
+  const showIcons = !selectMode && !renaming && (open ? !touch : hover || keyFocus)
+  const showPanelIcons = open && touch && !selectMode && !renaming
 
   const glyphs = [
     shownHint || shownOffer
@@ -378,9 +409,10 @@ export default function StudentListRow({
     setRenaming(true)
   }
 
-  function finishRename(save) {
+  function finishRename(save, { refocus = false } = {}) {
     if (renameDoneRef.current) return
     renameDoneRef.current = true
+    refocusRef.current = refocus
     const next = nameValue.trim()
     if (save && next && next !== name) onRename?.(id, next)
     setNameValue(name)
@@ -388,6 +420,7 @@ export default function StudentListRow({
   }
 
   function sendThumbsUp() {
+    if (thumbsSent) return
     onThumbsUp?.(id)
     setThumbsSent(true)
     setTimeout(() => setThumbsSent(false), 2000)
@@ -408,49 +441,54 @@ export default function StudentListRow({
   const canThumbsUp = !!onThumbsUp && !!student.online
   // Nudge only does something for a student who is online with their tab not focused (Away).
   const canNudge = !!onNudge && !!student.online && student.windowFocused === false
-  const nudgeButton = (
-    <button
-      type="button"
-      style={s.hoverBtn}
-      aria-label={`Nudge ${name}`}
-      title={`Nudge ${name}: flash their tab and play a chime`}
-      onClick={(event) => {
-        event.stopPropagation()
-        sendNudge()
-      }}
-    >
-      {nudged ? '✓' : '🔔'}
-    </button>
-  )
-  const thumbsButton = (
-    <button
-      type="button"
-      style={s.hoverBtn}
-      disabled={thumbsSent}
-      aria-label={`Send ${name} a thumbs up`}
-      title={`Send ${name} a thumbs up`}
-      onClick={(event) => {
-        event.stopPropagation()
-        sendThumbsUp()
-      }}
-    >
-      {thumbsSent ? '✓' : '👍'}
-    </button>
-  )
-  const openButton = (
-    <button
-      type="button"
-      style={s.hoverBtn}
-      aria-label={`Open ${name}`}
-      title={`Open ${name}: their screen, live`}
-      onClick={(event) => {
-        event.stopPropagation()
-        onOpenStudent?.(student)
-      }}
-    >
-      👁
-    </button>
-  )
+  // The three icons. On the name line they are small, with a hover title; in a touch screen's
+  // opened row they are 44px TipButtons (a long-press shows the label).
+  function iconButtons(place) {
+    const panel = place === 'panel'
+    const Btn = panel ? TipButton : 'button'
+    const make = (key, label, title, onPress, text, extra = {}) => (
+      <Btn
+        key={key}
+        type="button"
+        style={panel ? s.touchBtn : s.hoverBtn}
+        {...(panel ? { label } : { 'aria-label': label, title })}
+        {...extra}
+        onClick={(event) => {
+          event.stopPropagation()
+          onPress()
+        }}
+      >
+        {text}
+      </Btn>
+    )
+    return [
+      canNudge &&
+        make(
+          'nudge',
+          `Nudge ${name}`,
+          `Nudge ${name}: flash their tab and play a chime`,
+          sendNudge,
+          nudged ? '✓' : '🔔'
+        ),
+      // aria-disabled, not disabled: a disabled button drops keyboard focus to the page.
+      canThumbsUp &&
+        make(
+          'thumbs',
+          `Send ${name} a thumbs up`,
+          `Send ${name} a thumbs up`,
+          sendThumbsUp,
+          thumbsSent ? '✓' : '👍',
+          thumbsSent ? { 'aria-disabled': true } : {}
+        ),
+      make(
+        'open',
+        `Open ${name}`,
+        `Open ${name}: their screen, live`,
+        () => onOpenStudent?.(student),
+        '👁'
+      ),
+    ]
+  }
 
   // Thumbs up, Nudge and Open live on the row's icons, not in this menu (one home each).
   const menuGroups = [
@@ -614,16 +652,10 @@ export default function StudentListRow({
       data-status={state.status}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      // After a ⋯ menu choice the pointer may still be over the row: hover comes back on a move.
+      onMouseMove={hover ? undefined : () => setHover(true)}
       // A click focuses the row too; only keyboard focus (Tab) brings the icons up on its own.
-      onMouseDown={() => {
-        pointerDownRef.current = true
-      }}
-      onMouseUp={() => {
-        pointerDownRef.current = false
-      }}
-      onFocus={() => {
-        if (!pointerDownRef.current) setKeyFocus(true)
-      }}
+      onFocus={(event) => setKeyFocus(isFocusVisible(event.target))}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setKeyFocus(false)
       }}
@@ -650,7 +682,11 @@ export default function StudentListRow({
                 onBlur={() => finishRename(true)}
                 onKeyDown={(event) => {
                   event.stopPropagation()
-                  if (event.key === 'Escape') finishRename(false)
+                  if (event.key === 'Escape') finishRename(false, { refocus: true })
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    finishRename(true, { refocus: true })
+                  }
                 }}
               />
             </form>
@@ -698,29 +734,30 @@ export default function StudentListRow({
                 {glyph.icon}
               </span>
             ))}
-            {!showIcons && (
-              <>
-                {/* A help row's status and I'm on it leave no room for a useful stub. */}
-                <span style={s.stub} title={output || undefined}>
-                  {state.status === 'help' ? '' : stub}
-                </span>
-                <span
-                  style={{ ...s.status, color: STATUS_COLOUR[state.status] }}
-                  title={words.title || undefined}
-                  data-testid="row-status"
-                >
-                  {words.typing ? <TypingPulse /> : words.text}
-                </span>
-              </>
-            )}
-            {showIcons && <span style={s.stub} />}
+            {/* A help row's status and I'm on it leave no room for a useful stub; nor do the
+                icons, which take its place. */}
+            <span style={s.stub} title={showIcons ? undefined : output || undefined}>
+              {state.status === 'help' || showIcons ? '' : stub}
+            </span>
+            {/* The status stays beside the icons, shortened (full words in its title) if it must. */}
+            <span
+              style={{
+                ...s.status,
+                ...(showIcons ? s.statusSqueezed : null),
+                color: STATUS_COLOUR[state.status],
+              }}
+              title={
+                words.title ? `${words.text ? `${words.text}: ` : ''}${words.title}` : undefined
+              }
+              data-testid="row-status"
+            >
+              {words.typing ? <TypingPulse /> : words.text}
+            </span>
           </div>
         )}
         {showIcons && (
           <span style={s.hoverBtns} data-testid="row-icons">
-            {canNudge && nudgeButton}
-            {canThumbsUp && thumbsButton}
-            {openButton}
+            {iconButtons('line')}
           </span>
         )}
         {state.status === 'help' && !helpAcked && onAckHelp && (
@@ -737,7 +774,12 @@ export default function StudentListRow({
             I&apos;m on it
           </button>
         )}
-        <RowMenu name={name} groups={menuGroups} onOpenChange={setMenuOpen} />
+        <RowMenu
+          name={name}
+          groups={menuGroups}
+          onOpenChange={setMenuOpen}
+          onPick={() => setHover(false)}
+        />
       </div>
       {healthNote && !open && (
         <div
@@ -785,8 +827,14 @@ export default function StudentListRow({
               ))}
             </div>
           )}
-          {/* Thumbs up and Open are the icons on the name line, shown while the row is open. */}
+          {/* Nudge, Thumbs up and Open are the icons on the name line, shown while the row is
+              open; on a touch screen they are here instead, full size. */}
           <div style={s.actions}>
+            {showPanelIcons && (
+              <span style={s.touchBtns} data-testid="row-touch-icons">
+                {iconButtons('panel')}
+              </span>
+            )}
             <span style={{ flex: 1 }} />
             <button
               type="button"
@@ -987,6 +1035,13 @@ const s = {
     whiteSpace: 'nowrap',
     paddingRight: 2,
   },
+  // Beside the icons the status gives way with the name, and ends in … if it must.
+  statusSqueezed: {
+    flexShrink: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
   hoverBtns: { display: 'flex', gap: 3, flexShrink: 0 },
   hoverBtn: {
     height: 22,
@@ -997,6 +1052,17 @@ const s = {
     background: '#fff',
     cursor: 'pointer',
     fontSize: '0.78rem',
+    lineHeight: 1,
+  },
+  touchBtns: { display: 'flex', gap: 8, flexShrink: 0 },
+  touchBtn: {
+    height: 44,
+    padding: '0 8px',
+    border: '1px solid var(--ui-border-strong, #d1d5db)',
+    borderRadius: 8,
+    background: '#fff',
+    cursor: 'pointer',
+    fontSize: '1.15rem',
     lineHeight: 1,
   },
   onIt: { fontSize: 11, padding: '2px 6px', height: 22, flexShrink: 0, whiteSpace: 'nowrap' },

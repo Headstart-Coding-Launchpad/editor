@@ -10,10 +10,39 @@
 import React from 'react'
 import { act, render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 
 const touch = vi.hoisted(() => ({ value: false }))
 vi.mock('../../../shared/useIsTouchDevice', () => ({ useIsTouchDevice: () => touch.value }))
+
+// jsdom never matches :focus-visible. Model the browser's rule: the focused element matches
+// unless the last input was a pointer press (a programmatic focus follows the last input).
+let lastInput = 'keyboard'
+const onPointer = () => {
+  lastInput = 'pointer'
+}
+const onKey = () => {
+  lastInput = 'keyboard'
+}
+const realMatches = Element.prototype.matches
+beforeEach(() => {
+  lastInput = 'keyboard'
+  document.addEventListener('pointerdown', onPointer, true)
+  document.addEventListener('mousedown', onPointer, true)
+  document.addEventListener('keydown', onKey, true)
+  vi.spyOn(Element.prototype, 'matches').mockImplementation(function (selector) {
+    if (selector === ':focus-visible') {
+      return this === document.activeElement && lastInput === 'keyboard'
+    }
+    return realMatches.call(this, selector)
+  })
+})
+afterEach(() => {
+  document.removeEventListener('pointerdown', onPointer, true)
+  document.removeEventListener('mousedown', onPointer, true)
+  document.removeEventListener('keydown', onKey, true)
+  vi.restoreAllMocks()
+})
 import StudentGrid from '../StudentGrid'
 import StudentModal from '../StudentModal'
 import ClassHealthChip from '../ClassHealthChip'
@@ -98,19 +127,21 @@ describe('Tutor actions, one home each: the student row', () => {
     expect(within(row).queryByRole('button', { name: 'Nudge Bea' })).not.toBeInTheDocument()
 
     // Keyboard focus on the row, no mouse: the three icons appear.
-    fireEvent.focus(within(row).getByTestId('row-main'))
-    await user.click(within(row).getByRole('button', { name: 'Nudge Bea' }))
+    await act(() => within(row).getByTestId('row-main').focus())
+    await act(() => within(row).getByRole('button', { name: 'Nudge Bea' }).focus())
+    await user.keyboard('{Enter}')
     expect(props.onNudgeStudent).toHaveBeenCalledWith('b')
-    await user.click(within(row).getByRole('button', { name: 'Send Bea a thumbs up' }))
+    await act(() => within(row).getByRole('button', { name: 'Send Bea a thumbs up' }).focus())
+    await user.keyboard('{Enter}')
     expect(props.onThumbsUpStudent).toHaveBeenCalledWith('b')
     expect(within(row).getByRole('button', { name: 'Open Bea' })).toBeInTheDocument()
   })
 
-  it('hides the icons again when keyboard focus leaves the row', () => {
+  it('hides the icons again when keyboard focus leaves the row', async () => {
     render(<StudentGrid {...gridProps()} />)
-    fireEvent.focus(within(rowOf('Bea')).getByTestId('row-main'))
+    await act(() => within(rowOf('Bea')).getByTestId('row-main').focus())
     expect(within(rowOf('Bea')).getByRole('button', { name: 'Open Bea' })).toBeInTheDocument()
-    fireEvent.blur(within(rowOf('Bea')).getByTestId('row-main'), { relatedTarget: document.body })
+    await act(() => within(rowOf('Bea')).getByTestId('row-main').blur())
     expect(within(rowOf('Bea')).queryByRole('button', { name: 'Open Bea' })).toBeNull()
     expect(within(rowOf('Bea')).getByTestId('row-status')).toBeInTheDocument()
   })
@@ -329,6 +360,7 @@ describe('Tutor actions, one home each: review fixes', () => {
     render(<StudentGrid {...gridProps()} />)
     fireEvent.mouseDown(within(rowOf('Bea')).getByTestId('row-main'))
     fireEvent.mouseUp(document.body)
+    fireEvent.keyDown(document.body, { key: 'Tab' })
     await focusIn(within(rowOf('Bea')).getByTestId('row-main'))
     expect(within(rowOf('Bea')).getByTestId('row-icons')).toBeInTheDocument()
   })
