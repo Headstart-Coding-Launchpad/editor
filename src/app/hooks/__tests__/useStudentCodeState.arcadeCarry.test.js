@@ -12,6 +12,7 @@ import {
   writeStored,
 } from '../../../test/studentCodeStateHarness'
 import { ARCADE_COLOURS } from '../../../modules/arcade/design'
+import { markReloadResume } from '../../pythonReload'
 
 vi.mock('../../../modules/python/pyodide', async () =>
   (await import('../../../test/studentCodeStateMocks')).pyodideMock()
@@ -177,7 +178,7 @@ describe('Arcade carry: the child’s art travels with carryCodeFrom', () => {
     expect(names(h.result.current.arcadeDesign)).toEqual(['boss.png'])
   })
 
-  it('in solo, a reload restores the own code with the merged art', () => {
+  it('in solo, the own save comes back with exactly its own art', () => {
     writeStored(taskKey('t1'), {
       code: 'hero = 1',
       arcadeDesign: design([sprite('hero.png', 'blue')], [map('level', 'B...')]),
@@ -189,9 +190,55 @@ describe('Arcade carry: the child’s art travels with carryCodeFrom', () => {
     const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't2', phase: 'solo' })
     const d = h.result.current.arcadeDesign
     expect(h.result.current.code).toBe('hero = 2')
-    expect(colourOf(d, 'hero.png')).toBe(hex('blue'))
+    // Repainted back to the starter's white: no carried overlay brings the blue hero back.
+    expect(colourOf(d, 'hero.png')).toBe(hex('white'))
     expect(colourOf(d, 'coin.png')).toBe(hex('red'))
-    expect(d.maps.map((m) => m.name)).toEqual(['level'])
+    expect(d.maps).toEqual([])
+  })
+
+  it('in solo, Reset survives leaving the task and coming back', () => {
+    const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't1', phase: 'solo' })
+    draw(h, 'hero.png', 'blue')
+    goToTask(h, 't2')
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
+    actSync(() => h.result.current.handleResetCode())
+    goToTask(h, 't1')
+    goToTask(h, 't2')
+    expect(h.result.current.code).toBe('# t2 starter')
+    expect(colourOf(h.result.current.arcadeDesign, 'hero.png')).toBe(hex('white'))
+  })
+
+  it('a reload from “Python fell asleep” brings back exactly the own art', () => {
+    writeStored(taskKey('t1'), {
+      code: 'hero = 1',
+      arcadeDesign: design([sprite('hero.png', 'blue')]),
+    })
+    writeStored(taskKey('t2'), {
+      code: 'hero = 2',
+      arcadeDesign: design([sprite('hero.png', 'white')]),
+    })
+    markReloadResume('lesson-1', 't2')
+    const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't2' })
+    expect(h.result.current.code).toBe('hero = 2')
+    expect(names(h.result.current.arcadeDesign)).toEqual(['hero.png'])
+    expect(colourOf(h.result.current.arcadeDesign, 'hero.png')).toBe(hex('white'))
+  })
+
+  it('a pending design write never lands over the next task’s art for a watching tutor', () => {
+    vi.useFakeTimers()
+    try {
+      const h = renderStudentCodeState({
+        lesson: lesson(),
+        currentTaskId: 't1',
+        session: makeSession({ activeStudentView: ANON }),
+      })
+      draw(h, 'hero.png', 'blue')
+      goToTask(h, 't4')
+      actSync(() => vi.advanceTimersByTime(1000))
+      expect(names(h.writers.writeStudentArcadeDesign.mock.calls.at(-1)[1])).toEqual(['boss.png'])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('carries in a teacher presentation too (the in-memory store)', () => {

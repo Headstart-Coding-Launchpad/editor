@@ -19,7 +19,8 @@ import {
   generatedArcadeTilemaps,
   mapToPythonSnippet,
 } from './design'
-import { selectPythonTaskCode } from '../../app/studentTaskContent'
+import { selectPythonTaskCode, selectTaskMeta } from '../../app/studentTaskContent'
+import { getModuleDefinition } from '../definitions.js'
 import CalmCodeRow from '../../shared/calmCode/CalmCodeRow.jsx'
 import { taskKeyCode } from '../python/keyRow.js'
 import './arcade.css'
@@ -86,6 +87,20 @@ export default function StudentWorkspace({
         readSavedCode: cs.readSavedTaskCode,
       }))
     : null
+  // The design of the task looked back at: as a solo load would build it.
+  function viewedDesign() {
+    const { storage, workSlot } = getModuleDefinition('arcade')
+    const { arcadeDesign } = selectTaskMeta({
+      tasks: lesson.tasks,
+      task,
+      taskId: viewingTaskId,
+      workSlot,
+      phase: 'solo',
+      own: storage.fromTaskRecord(viewedWork),
+      readStored: (id) => storage.fromTaskRecord(cs.readSavedTaskCode(id)),
+    })
+    return arcadeDesign ? cloneArcadeDesign(arcadeDesign) : designForCodeTab(task, 'starter')
+  }
   const code = isForcedTeacherLive
     ? displayCode
     : isTeacherEditing
@@ -98,9 +113,7 @@ export default function StudentWorkspace({
     : isTeacherEditing
       ? (teacherLiveArcadeDesign ?? cs.arcadeDesign)
       : isViewingPrev
-        ? viewedWork?.arcadeDesign
-          ? cloneArcadeDesign(viewedWork.arcadeDesign)
-          : designForCodeTab(task, 'starter')
+        ? viewedDesign()
         : cs.arcadeDesign
   const workspaceTab = isTeacherEditing ? (teacherLiveWorkspace ?? 'code') : activeWorkspaceTab
   const previousCodeRef = useRef(code)

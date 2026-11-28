@@ -363,7 +363,8 @@ carry its own `arcadeDesign` alongside that stage's `code`, as noted above.
 ### Carrying drawn art (`carryCodeFrom`)
 
 A task with `carryCodeFrom` brings the child's drawings as well as their code.
-When the task opens, the child sees:
+When the task opens with carried or starter code (a live lesson, or a first
+visit), the child sees:
 
 1. this task's starter `arcadeDesign`, then
 2. the sprites and tilemaps from the task the code carried from, matched by
@@ -381,6 +382,9 @@ authored still finds it. The art comes from the same task the code comes from,
 including the fallback past a skipped task. Tasks without `carryCodeFrom` are
 unchanged.
 
+Pictures that share a name inside one task (the editor can make two
+`sprite-2.png`) are all kept.
+
 Authoring tips:
 
 - Give a picture the same name in every task of a chain. A renamed sprite arrives
@@ -391,9 +395,13 @@ Authoring tips:
   task that already holds its own copy. The later task keeps the copy it has, so
   nothing the child drew there is lost.
 - Sprites deleted in a carrying task come back from the starter or the carried
-  task the next time it opens.
-- **Reset** and the tutor's reset still go back to this task's authored starter
-  art, like the code.
+  task the next time it opens with carried or starter code.
+- **Reset** and the tutor's reset put back this task's authored starter art, like
+  the code. How long that lasts also follows the code. Where the child's own save
+  of the task comes back (solo, or after the "Python fell asleep" reload), the art
+  is exactly what they saved there, with nothing carried on top, so a Reset or a
+  repaint back to the starter stays. In a live lesson, leaving and returning
+  carries the code again, and the carried drawings come back with it.
 
 ### Camera
 

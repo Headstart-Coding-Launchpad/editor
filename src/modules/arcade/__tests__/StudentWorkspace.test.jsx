@@ -7,7 +7,11 @@ vi.mock('../../python/PythonEditor', () => ({
   default: () => <div>python-editor</div>,
 }))
 vi.mock('../ArcadePreview', () => ({
-  default: () => <div>arcade-preview</div>,
+  default: ({ assets }) => (
+    <div data-testid="preview" data-assets={assets.map((a) => a.name).join()}>
+      arcade-preview
+    </div>
+  ),
 }))
 vi.mock('../ArcadeDesignStudio', () => ({
   default: () => <div>arcade-design-studio</div>,
@@ -189,5 +193,43 @@ describe('Arcade StudentWorkspace code checks', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Play' }))
     expect(handleArcadeRun).toHaveBeenCalledWith('game.run()')
+  })
+})
+
+describe('Arcade StudentWorkspace looking back', () => {
+  it('shows a carrying task never opened with the carried art, not just its starter', () => {
+    const picture = (name, colour) => ({
+      id: name,
+      name,
+      width: 1,
+      height: 1,
+      frames: [[colour]],
+    })
+    const tasks = [
+      { id: 't1', starterCode: 'a = 1' },
+      {
+        id: 't2',
+        carryCodeFrom: 't1',
+        arcadeDesign: { sprites: [picture('coin.png', 'yellow')] },
+      },
+    ]
+    const saved = {
+      t1: { code: 'a = 2', arcadeDesign: { sprites: [picture('hero.png', 'blue')] } },
+    }
+    render(
+      <StudentWorkspace
+        task={tasks[1]}
+        lessonId="lesson-1"
+        lesson={{ ...lesson, tasks }}
+        cs={{ ...cs, readSavedTaskCode: (id) => saved[id] ?? null }}
+        isMobile={false}
+        viewingTaskId="t2"
+        isViewingPrev
+        isForcedTeacherLive={false}
+        isTeacherEditing={false}
+      />
+    )
+    const given = screen.getByTestId('preview').dataset.assets.split(',')
+    expect(given).toEqual(expect.arrayContaining(['hero.png', 'coin.png']))
   })
 })

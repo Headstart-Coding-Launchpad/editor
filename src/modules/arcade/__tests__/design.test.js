@@ -155,6 +155,34 @@ describe('mergeCarriedArcadeDesign (carryCodeFrom)', () => {
     ])
   })
 
+  it('keeps same-named items that live within one design, overriding only across layers', () => {
+    const pictures = (d) => d.sprites.map((s) => [s.name, s.frames[0][0]])
+    const carried = {
+      sprites: [sprite('sprite-2.png', 'blue', 'a'), sprite('sprite-2.png', 'green', 'b')],
+      maps: [
+        { id: 'm1', name: 'world_2', columns: 2, rows: ['AA'] },
+        { id: 'm2', name: 'world_2', columns: 2, rows: ['BB'] },
+      ],
+    }
+    const merged = mergeCarriedArcadeDesign({ authored: [{}], carried, own: null })
+    expect(pictures(merged)).toEqual([
+      ['sprite-2.png', ARCADE_COLOURS.blue],
+      ['sprite-2.png', ARCADE_COLOURS.green],
+    ])
+    expect(merged.maps.map((m) => m.rows[0])).toEqual(['AA', 'BB'])
+    // Saved and merged again: still both, and the own change wins over its carried namesake only.
+    const own = {
+      ...merged,
+      sprites: [merged.sprites[0], { ...merged.sprites[1], frames: [['red']] }],
+    }
+    const again = mergeCarriedArcadeDesign({ authored: [{}], carried, own })
+    expect(pictures(again)).toEqual([
+      ['sprite-2.png', ARCADE_COLOURS.blue],
+      ['sprite-2.png', ARCADE_COLOURS.red],
+    ])
+    expect(again.maps).toHaveLength(2)
+  })
+
   it('gives a fresh id to a second item with the same id, so the editor never paints both', () => {
     const merged = mergeCarriedArcadeDesign({
       authored: [{ sprites: [sprite('coin.png', 'yellow', 'same')] }],

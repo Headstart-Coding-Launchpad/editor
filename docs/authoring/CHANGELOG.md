@@ -45,7 +45,10 @@ Entries written before 2026-09-29 are not tagged.
   added, untouched copies of a starter never replace another version of the same name, and art
   only the earlier task has is added, so carried code that names its tilemap still runs. The
   source follows the code's fallback past skipped tasks. Keep a picture's name the same along a
-  chain (a rename arrives as a second sprite). Cross-lesson carry is unchanged. No new lesson
+  chain (a rename arrives as a second sprite). Where the child's own save of the task comes
+  back (solo, or the reload after Python fell asleep), its art comes back exactly, with nothing
+  carried over it; in a live lesson a Reset lasts until the task is left, then the carried code
+  and art return. Cross-lesson carry is unchanged. No new lesson
   fields. See [arcade.md](arcade.md#carrying-drawn-art-carrycodefrom).
 - Affects: arcade · Existing lessons: no changes needed · Resolves: none (Ryan, 28 Nov 2026)
 - **Arcade: `Sprite("🐱")` draws an emoji.** A sprite (or tile) image made only of emoji, with

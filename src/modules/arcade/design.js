@@ -183,7 +183,8 @@ export function designForCodeTab(task, codeTab = 'starter') {
 }
 
 // A carrying task's design (carryCodeFrom): its starter (authored[0]) overlaid by name with the
-// carried design, then its own saved one. Art that is only a copy of a starter (`authored`: this
+// carried design, then its own one; items sharing a name inside one design are all kept (matched
+// in order). Art that is only a copy of a starter (`authored`: this
 // task's and those up its carry chain; compared without ids) never replaces art of the same name
 // but is kept when nothing else has that name. A repeated id gets a fresh one.
 const contentOf = ({ id: _id, ...rest }) => JSON.stringify(rest)
@@ -194,8 +195,14 @@ export function mergeCarriedArcadeDesign({ authored, carried, own }) {
   )
   const merge = (key) => {
     const byName = new Map()
-    for (const item of designs.flatMap((design) => design[key]))
-      if (!byName.has(item.name) || !untouched.has(contentOf(item))) byName.set(item.name, item)
+    for (const design of designs) {
+      const seen = {}
+      for (const item of design[key]) {
+        // Safe names have no spaces, so "name n" cannot collide.
+        const slot = `${item.name} ${(seen[item.name] = (seen[item.name] ?? 0) + 1)}`
+        if (!byName.has(slot) || !untouched.has(contentOf(item))) byName.set(slot, item)
+      }
+    }
     const ids = new Set()
     return [...byName.values()].map((item, index) => {
       const id = ids.has(item.id) ? `${item.id}-${index}` : item.id
