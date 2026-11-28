@@ -606,10 +606,8 @@ The student side of the tutor's badge decisions (`sessions/{lessonId}/badges`), 
 - Runs in a Web Worker and must not block the main thread.
 - `stopPython()` terminates the worker to kill infinite loops.
 - A replacement worker is pre-warmed immediately.
-- `input()` is handled with a Python AST transform and resolves when `provideInput()` is called.
+- The student's program runs as ordinary module code with top-level await. `input()` resolves when `provideInput()` is called: only the functions that reach `input()` (or Electronics' `sleep()`) are made async (`programShape.py.js`). Where Python cannot wait (`__init__` and other dunders, `map`, `sorted(key=)`, generators), the run stops with a plain `RuntimeError`, never a silent wrong answer. The Turtle and Electronics shims run first, in their own globals, so a student's names cannot overwrite theirs.
 - `useStudentCodeState`'s `resetForTaskChange()` calls `runtime.stop()` (and force-clears `running`/`runningTests`) whenever a run is still in flight when the student navigates to another task — a python/electronics execution must not keep running (or its output bleed into the new task) after the task changes. The `'stopped'` result from a run that raced with navigation is only repainted into `output`/`runStatus` if `currentTaskId` still matches the task that was running.
-
-- Top-level `from module import *` works: the wrapper spells out the module's `__all__` (or public names) on the same line, since the student's top level runs inside `async def __hs_run__`, where Python forbids `import *`. A module that can't be imported is left alone, and so is `turtle` (its shim registers it only once the program starts).
 
 ## Python Stage (drawing pane)
 

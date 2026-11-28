@@ -222,8 +222,11 @@ PR raises coverage, raise the floors in the same PR. Never lower a floor to get 
 add tests instead.
 
 `src/modules/scratch/scratch.js` (the Scratch interpreter) is measured, at about 52% lines.
-`pyodide.worker.js` stays excluded because it only runs inside a Web Worker. Its one pure
-export, `formatPythonError`, is unit-tested directly (see Layer 1 above).
+`pyodide.worker.js` stays excluded because it only runs inside a Web Worker. Its pure
+export, `formatPythonError`, is unit-tested directly (see Layer 1 above), and its Python wrapper
+(`PYTHON_WRAPPER`) runs under a real CPython in `programWrapper.test.js` (via `wrapperDriver.py`):
+`python3` on Linux and CI, `python` or `py` on Windows, 3.10 or newer; skipped where there is none,
+but never in CI.
 
 The weakest large files are the best places to add coverage: `TeacherView.jsx`,
 `ScratchWorkspace.jsx`, `useStudentCodeState.js`, `ScratchTaskSetup.jsx`, `TaskList.jsx`,

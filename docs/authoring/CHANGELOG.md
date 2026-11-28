@@ -37,6 +37,16 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-28
+
+### Python and Turtle tasks run ordinary Python
+
+- `global`, classes with `__init__`, your own functions in `map` / `sorted(key=)` / `lambda` / generators, a method name shared with your own function, and passing a function in now behave as in normal Python. Lessons may use them.
+- `input()` (and Electronics' `sleep()`) still waits at the top level and in ordinary functions and methods. It cannot wait inside `__init__` or another dunder method, `map`, `sorted(key=)`, a generator, or a function used by one: the run stops with a `RuntimeError` saying so.
+- As in normal Python, a `return` outside a function is now a `SyntaxError`, and `nonlocal` cannot name a top-level variable (use `global`).
+- Affects: python, turtle, electronics · Existing lessons: no changes needed, unless starter or solution code has a top-level `return` or uses `nonlocal` for a top-level variable ·
+  Resolves: none
+
 ## 2026-11-26
 
 - **`lessons ready` now checks quizzes, `code_arrange` tasks and Support stages.** A graded quiz

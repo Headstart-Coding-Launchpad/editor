@@ -4,10 +4,9 @@
  * panel (showVariables, src/shared/variablesPanel/) and later per-step recorders (slow-mo)
  * share one capture path.
  *
- * Why frames, not globals: the worker rewrites the student's program into
- * `async def __hs_run__()`, so every top-level variable is a LOCAL of that coroutine's frame.
- * The wrapper wraps the body in `try: … finally: _hs_end_capture(locals())`, so the end-of-run
- * state is read from the frame even when the program raised an error.
+ * The student's program runs as module code in its own namespace, so its top-level variables are
+ * that frame's globals; what was copied in from the runtime's shims (_hs_base) is not theirs. The
+ * wrapper reads them in a `finally`, so they are there even when the program raised an error.
  *
  * What it defines (all names start with `_hs`, so they never show as student variables):
  *
@@ -15,8 +14,8 @@
  *       One value as a small JSON-safe tree (see VALUE NODES below). Size-capped.
  *   _hs_snapshot(namespace, hidden=(), scope=None, max_nodes=None, max_var_nodes=None)
  *       → { vars: [{ n, v }], scope }
- *       The visible variables of a namespace dict, in its order (a function frame's locals come
- *       in the order the names first appear in the code), each encoded with _hs_encode_value.
+ *       The visible variables of a namespace dict, in its order, each encoded with
+ *       _hs_encode_value.
  *       The node budget (maxNodes) is shared by the whole snapshot, but no one variable may use
  *       more than maxVarNodes, so one big 2D list (a 32 × 32 picture) can't starve the rest.
  *       Slow-mo passes the smaller per-step budgets (stepNodes, stepVarNodes): every step is kept.
@@ -26,8 +25,9 @@
  *       Hidden: dunder names, `_hs…` names, modules, anything callable (functions, classes,
  *       methods, builtins) and `hidden` (the author's `hide` plus names imported from the
  *       turtle / stage modules — see _hs_imported_names).
+ *   _hs_own_names(namespace) → dict without what the runtime's own shims defined.
  *   _hs_frame_namespace(frame) → (namespace, scope)
- *       The variables visible at a traced line: the `__hs_run__` frame's locals, with a student
+ *       The variables visible at a traced line: the module frame's own names, with a student
  *       function's own locals on top when the line is inside one (scope = its name).
  *   _HsLineWatch(on_line)
  *       A sys.settrace wrapper that calls on_line(frame, lineno) before each line of the
@@ -38,7 +38,7 @@
  *       _hs_snapshot(*_hs_frame_namespace(frame)). on_line may raise _HsStopRun (a BaseException,
  *       so a student's `except Exception` can't swallow it) to end the
  *       student's program there (slow-mo's 2,000-step cap): the watch stops and the exception
- *       goes on into the program, for the caller to catch around __hs_run__.
+ *       goes on into the program, for the caller to catch around the run.
  *   _hs_imported_names(tree, modules) → set
  *       Names bound by `from <module> import …` for the given top-level modules.
  *
@@ -158,7 +158,7 @@ def _hs_encode_value(value, depth=0, budget=None):
     return {'t': 'obj', 'type': type(value).__name__, 'r': _hs_short_repr(value)}
 
 def _hs_visible_name(name, value, hidden):
-    if name.startswith('__') or name.startswith('_hs'):
+    if name.startswith('__') or name.startswith('_hs') or type(value).__name__ == '_HsPending':
         return False
     if name in hidden:
         return False
@@ -238,8 +238,13 @@ def _hs_snapshot(namespace, hidden=(), scope=None, max_nodes=None, max_var_nodes
         out.append({'n': name, 'v': node})
     return {'vars': out, 'scope': scope}
 
+_hs_base = {}
+
 def _hs_is_run_frame(frame):
-    return frame.f_code.co_name == '__hs_run__' and frame.f_code.co_filename == '<student>'
+    return frame.f_code.co_name == '<module>' and frame.f_code.co_filename == '<student>'
+
+def _hs_own_names(namespace):
+    return {n: v for n, v in namespace.items() if n not in _hs_base or _hs_base[n] is not v}
 
 def _hs_frame_namespace(frame):
     top = frame
@@ -247,7 +252,7 @@ def _hs_frame_namespace(frame):
         top = top.f_back
     namespace = {}
     if top is not None:
-        namespace.update(top.f_locals)
+        namespace.update(_hs_own_names(top.f_locals))
     if top is frame:
         return namespace, None
     namespace.update(frame.f_locals)
@@ -258,7 +263,11 @@ def _hs_imported_names(tree, modules):
     for node in _hs_ast.walk(tree):
         if isinstance(node, _hs_ast.ImportFrom) and (node.module or '').split('.')[0] in modules:
             for alias in node.names:
-                names.add(alias.asname or alias.name)
+                if alias.name == '*':
+                    module = _hs_sys.modules.get(node.module)
+                    names.update(getattr(module, '__all__', None) or dir(module))
+                else:
+                    names.add(alias.asname or alias.name)
     return names
 
 class _HsStopRun(BaseException):

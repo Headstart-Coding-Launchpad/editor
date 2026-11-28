@@ -66,9 +66,9 @@
  * `setup` is a task's hidden setupCode (src/shared/puzzle/setupCode.js): its statements run
  * first, in the same program (they join the top of the student's code, after the first
  * `afterLine` lines, which are the runtime's own — Turtle's shim), so its variables are the
- * student's too. Its lines are numbered after the student's last line (and the wrapper's
- * finally line), so the student's line numbers never move; formatPythonError turns an error
- * raised there into SETUP_ERROR_TEXT instead of its traceback.
+ * student's too. Its lines are numbered from two past the student's last line, so the student's
+ * line numbers never move; formatPythonError turns an error raised there into SETUP_ERROR_TEXT
+ * instead of its traceback.
  *
  * Charts (src/shared/stage/charts.js): a program that imports matplotlib (its code or the task's
  * setup) has it loaded first, once per worker (prepareCharts, between two 'charts_loading'
@@ -82,6 +82,7 @@
 
 import { createTurtleRecorder } from '../turtle/recorder.js'
 import { VARIABLE_CAPTURE_PY } from './variableCapture.py.js'
+import { PROGRAM_SHAPE_PY } from './programShape.py.js'
 import { STAGE_INSTALL_PY, STAGE_MODULE_PY } from '../../shared/stage/stagePy.js'
 import {
   createStageRecorder,
@@ -132,41 +133,25 @@ let _slowMo = null
 const SLOW_MO_MAX_OUTPUT = 50_000
 const SLOW_MO_MAX_EVENTS = PYTHON_SLOW_MO_MAX_STEPS * 20
 
-// Python wrapper — same AST-transform approach as before, but now running in a Worker.
-// `import js as _js` gives access to this worker's globalThis. The variable-capture helpers
-// (variableCapture.py.js) come first.
-const WRAPPER =
+// The Python each run executes: the student's program as ordinary module code with top-level
+// await (programShape.py.js lets input() wait), run by a Worker. `import js as _js` gives access
+// to this worker's globalThis. The variable-capture helpers (variableCapture.py.js) come first.
+export const PYTHON_WRAPPER =
   VARIABLE_CAPTURE_PY +
+  PROGRAM_SHAPE_PY +
   `
 import js as _js
 import sys, builtins, ast, json
 
-async def _hs_input(prompt=''):
+async def _hs_read_input(prompt):
     val = await _js.__hsInput(str(prompt) if prompt else '')
     return str(val).rstrip('\\n')
 
-builtins.input = _hs_input
+def _hs_input(prompt=''):
+    return _HsPending(_hs_read_input(prompt), 'input')
 
-class _Tx(ast.NodeTransformer):
-    def __init__(self, async_names):
-        self._async = async_names
-    def visit_Call(self, node):
-        self.generic_visit(node)
-        if isinstance(node.func, ast.Name) and node.func.id in self._async:
-            return ast.Await(value=node)
-        if isinstance(node.func, ast.Attribute) and node.func.attr in self._async:
-            return ast.Await(value=node)
-        return node
-    def visit_FunctionDef(self, node):
-        self.generic_visit(node)
-        new = ast.AsyncFunctionDef(
-            name=node.name, args=node.args, body=node.body,
-            decorator_list=node.decorator_list, returns=node.returns,
-            lineno=node.lineno, col_offset=node.col_offset,
-            type_comment=getattr(node, 'type_comment', None),
-        )
-        ast.copy_location(new, node)
-        return new
+builtins.input = _hs_input
+_hs_waiting.clear()
 
 _tree = ast.parse(_hs_user_code, filename='<student>')
 
@@ -184,48 +169,27 @@ if _hs_setup_src:
         _hs_split += 1
     _tree.body[_hs_split:_hs_split] = _hs_setup_tree.body
 
-# The student's top level becomes the body of async def __hs_run__, where Python refuses
-# 'from m import *'. Spell the names out instead (the module's __all__, else its public names),
-# on the same line, so 'from stage import *' works. A module that can't be imported is left
-# alone, so the error is the same as before.
-class _HsStarImports(ast.NodeTransformer):
-    def visit_FunctionDef(self, node):
-        return node
-    def visit_AsyncFunctionDef(self, node):
-        return node
-    def visit_ClassDef(self, node):
-        return node
-    def visit_ImportFrom(self, node):
-        if node.level or not any(a.name == '*' for a in node.names):
-            return node
-        # Turtle's module only exists once its shim (the first line of a Turtle program) has
-        # run, so it could expand on one run and not the one before: leave it as it was.
-        if node.module == 'turtle':
-            return node
-        try:
-            import importlib
-            _hs_mod = importlib.import_module(node.module)
-        except Exception:
-            return node
-        _hs_names = getattr(_hs_mod, '__all__', None)
-        if _hs_names is None:
-            _hs_names = [n for n in dir(_hs_mod) if not n.startswith('_')]
-        _hs_new = ast.ImportFrom(
-            module=node.module,
-            names=[ast.alias(name=str(n), asname=None) for n in _hs_names],
-            level=0,
-        )
-        return ast.copy_location(_hs_new, node)
+# The runtime's own first statements (Turtle's and Electronics' shims, the course set-up) run
+# before the student's, unchanged; what they define is not the student's.
+def _hs_is_runtime(node):
+    call = node.value if isinstance(node, ast.Expr) else None
+    name = call.func.id if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) else ''
+    if name == 'exec':
+        return len(call.args) == 2 and ast.unparse(call.args[1]) == 'globals()'
+    return name == '_turtle_course_setup'
 
-_HsStarImports().visit(_tree)
-_async_names = set(json.loads(_hs_async_names_json or '[]'))
-_async_names.update({n.name for n in ast.walk(_tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))})
-_async_names.add('input')
-_Tx(_async_names).visit(_tree)
-ast.fix_missing_locations(_tree)
+_hs_split = 0
+while _hs_split < len(_tree.body) and _hs_is_runtime(_tree.body[_hs_split]):
+    _hs_split += 1
+_hs_runtime = ast.Module(body=_tree.body[:_hs_split], type_ignores=[])
+_tree.body = _tree.body[_hs_split:]
 
-# The student's top-level variables are locals of __hs_run__: read them from the frame in a
-# finally, so they are there even when the program raised (see variableCapture.py.js).
+_hs_blocking = {'input'} | set(json.loads(_hs_async_names_json or '[]'))
+# Electronics' time module stays in the worker after its run.
+if getattr(getattr(sys.modules.get('time'), 'sleep', None), '_hs_waits', False):
+    _hs_blocking |= {'sleep', 'sleep_ms'}
+_hs_shape(_tree, _hs_blocking)
+
 _hs_cfg = json.loads(_hs_capture_json or '{}')
 _hs_panel_on = bool(_hs_cfg.get('panel'))
 _hs_peek_line = _hs_cfg.get('peekLine')
@@ -241,11 +205,7 @@ _hs_line_counts = {
 _hs_count_on = bool(_hs_line_counts)
 _hs_rec_cfg = json.loads(_hs_record_json or '{}')
 _hs_rec_on = bool(_hs_rec_cfg.get('on'))
-_hs_hidden = (
-    set(_hs_cfg.get('hide') or [])
-    | set(_hs_rec_cfg.get('hide') or [])
-    | _hs_imported_names(_tree, ('turtle', 'stage', 'beats'))
-)
+_hs_hidden = set(_hs_cfg.get('hide') or []) | set(_hs_rec_cfg.get('hide') or [])
 _hs_end_locals = {}
 _hs_panel = {'end': None, 'peek': None, 'peekLine': _hs_peek_line, 'peekReached': False}
 
@@ -255,44 +215,19 @@ if isinstance(_hs_drawn_list, list):
     _hs_drawn_list.clear()
 del _hs_drawn_list
 
-def _hs_end_capture(ns):
-    _hs_end_locals.update(ns)
-
-_hs_body = _tree.body or [ast.Pass()]
-# The finally line sits just past the student's last line, so a line watcher (peek, slow-mo)
-# never mistakes it for one of theirs.
-_hs_after_line = len(_hs_user_code.split(chr(10))) + 1
-_hs_final = ast.parse('_hs_end_capture(locals())').body
-for _hs_node in ast.walk(_hs_final[0]):
-    if hasattr(_hs_node, 'lineno'):
-        _hs_node.lineno = _hs_after_line
-        _hs_node.end_lineno = _hs_after_line
-_hs_try = ast.Try(body=_hs_body, handlers=[], orelse=[], finalbody=_hs_final)
-ast.copy_location(_hs_try, _hs_body[0])
-
-_fn = ast.AsyncFunctionDef(
-    name='__hs_run__',
-    args=ast.arguments(
-        posonlyargs=[], args=[], vararg=None,
-        kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[],
-    ),
-    body=[_hs_try],
-    decorator_list=[],
-    returns=None,
-    lineno=1, col_offset=0,
-    type_comment=None,
-)
-ast.fix_missing_locations(_fn)
-_mod = ast.Module(body=[_fn], type_ignores=[])
-ast.fix_missing_locations(_mod)
-
+# The program's own module namespace.
 _g = {
-    '_hs_input': _hs_input,
-    '_hs_end_capture': _hs_end_capture,
+    '_hs_wait': _hs_wait,
+    '_hs_aw': _hs_aw,
+    '_hs_now': _hs_now,
     '__builtins__': builtins,
     '__name__': '__main__',
 }
-exec(compile(_mod, '<student>', 'exec'), _g)
+# The shims keep their own globals (_hs_base), so a student's math = 5 can't break them; the
+# student's namespace starts with a copy. A new dict each run: earlier shims are still in use.
+_hs_base = dict(_g)
+_hs_runtime = compile(_hs_runtime, '<student>', 'exec')
+_hs_code = compile(_tree, '<student>', 'exec', flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
 
 # '#@peek' (showVariables at: marker): the variables the first time that line is about to run.
 def _hs_on_peek_line(frame, lineno):
@@ -314,7 +249,7 @@ _hs_rec = {'pending': None, 'scope': None, 'prev': {}, 'capped': False}
 def _hs_rec_depth(frame):
     depth = 0
     while frame is not None and not _hs_is_run_frame(frame):
-        depth += 1
+        depth += frame.f_code.co_filename == '<student>'
         frame = frame.f_back
     return depth
 
@@ -330,6 +265,8 @@ def _hs_rec_loop_total(node):
     if not isinstance(node, (ast.For, ast.AsyncFor)):
         return None
     it = node.iter
+    if isinstance(it, ast.Await):
+        it = it.value.args[0]
     try:
         if isinstance(it, (ast.List, ast.Tuple, ast.Set)):
             if any(isinstance(e, ast.Starred) for e in it.elts):
@@ -401,7 +338,7 @@ def _hs_rec_on_line(frame, lineno):
     _hs_ns, _hs_scope = _hs_frame_namespace(frame)
     _hs_rec_close(_hs_ns, _hs_scope)
     line = lineno - _hs_rec_offset
-    # The runtime's own lines (Turtle's shim) and the wrapper's finally line are not steps.
+    # The runtime's own lines (Turtle's shim) and the setup's lines are not steps.
     if line >= 1 and lineno <= _hs_rec_last:
         _hs_rec['pending'] = (line, _hs_rec_depth(frame))
     return True
@@ -426,11 +363,26 @@ _hs_watch = _HsLineWatch(_hs_on_line)
 if _hs_peek_on[0] or _hs_rec_on or _hs_count_on:
     _hs_watch.start()
 try:
-    await _g['__hs_run__']()
+    exec(_hs_runtime, _hs_base)
+    _g.update(_hs_base)
+    _hs_hidden |= _hs_imported_names(_tree, ('turtle', 'stage', 'beats'))
+    _hs_result = eval(_hs_code, _g)
+    if _hs_result is not None:
+        await _hs_result
+    _hs_watch.stop()
+    _hs_check_waited()
+except TypeError as _hs_error:
+    # C code (join, json) refuses a call that never waited in its own words: say ours.
+    if '_HsPending' in str(_hs_error):
+        _hs_watch.stop()
+        _hs_check_waited()
+    raise
 except _HsStopRun:
     pass
 finally:
     _hs_watch.stop()
+    _hs_close_waiting()
+    _hs_end_locals.update(_hs_own_names(_g))
     if _hs_rec_on:
         try:
             _hs_rec_close(_hs_end_locals, None, True)
@@ -447,23 +399,25 @@ finally:
             str(n - _hs_count_offset): c for n, c in _hs_line_counts.items()
         }))
     _hs_vars = {}
-    _hs_check_ns = dict(_g)
-    _hs_check_ns.update(_hs_end_locals)
-    for _name, _value in _hs_check_ns.items():
-        if _name.startswith('_') or _name in ('__builtins__', '__name__'):
+    for _name, _value in list(_g.items()):
+        if _name.startswith('_') or type(_value) is _HsPending:
+            continue
+        try:
+            _hs_repr = repr(_value)
+        except Exception:
             continue
         try:
             _hs_json = json.dumps(_value)
             _hs_vars[_name] = {
                 'type': type(_value).__name__,
                 'json': _hs_json,
-                'repr': repr(_value),
+                'repr': _hs_repr,
             }
         except Exception:
             _hs_vars[_name] = {
                 'type': type(_value).__name__,
                 'json': None,
-                'repr': repr(_value),
+                'repr': _hs_repr,
             }
     _js.__hsSetVariables(_hs_vars)
     sys.stdout.flush()
@@ -883,7 +837,7 @@ self.onmessage = async ({ data }) => {
     pyodide.globals.set('_hs_record_json', JSON.stringify(record))
     const setup = normalizeSetupConfig(data.setup)
     pyodide.globals.set('_hs_setup_json', JSON.stringify(setup))
-    // The first line number of the setup's statements (see the WRAPPER), or null without one.
+    // The first line number of the setup's statements (see PYTHON_WRAPPER), or null without one.
     const setupFrom = setup.code ? String(data.code ?? '').split('\n').length + 2 : null
     _slowMo = record.on ? createSlowMoRecording() : null
     await _stagePictures.prepare(`${data.code ?? ''}\n${setup.code ?? ''}`)
@@ -922,7 +876,7 @@ self.onmessage = async ({ data }) => {
 
     try {
       if (usesCharts) pyodide.runPython(CHARTS_RESET_PY)
-      await pyodide.runPythonAsync(WRAPPER)
+      await pyodide.runPythonAsync(PYTHON_WRAPPER)
       // A chart drawn but never shown is shown now (CHARTS_INSTALL_PY).
       if (usesCharts) pyodide.runPython(CHARTS_FLUSH_PY)
       flushBuffers()
@@ -1032,7 +986,7 @@ async function renderStage(code) {
   await _stagePictures.prepare(code)
   try {
     if (usesCharts) pyodide.runPython(CHARTS_RESET_PY)
-    await pyodide.runPythonAsync(WRAPPER)
+    await pyodide.runPythonAsync(PYTHON_WRAPPER)
     if (usesCharts) pyodide.runPython(CHARTS_FLUSH_PY)
     return { status: 'success', commands: _stageRecorder.commands, error: null }
   } catch (err) {
