@@ -39,6 +39,15 @@ Entries written before 2026-09-29 are not tagged.
 
 ## 2026-11-28
 
+- **Arcade: drawn sprites and tilemaps carry with `carryCodeFrom`.** A carrying task now opens
+  with its own starter art, overlaid by name with the child's art from the task the code came
+  from, then with anything the child changed in this task. New authored art in the task is
+  added, untouched copies of a starter never replace another version of the same name, and art
+  only the earlier task has is added, so carried code that names its tilemap still runs. The
+  source follows the code's fallback past skipped tasks. Keep a picture's name the same along a
+  chain (a rename arrives as a second sprite). Cross-lesson carry is unchanged. No new lesson
+  fields. See [arcade.md](arcade.md#carrying-drawn-art-carrycodefrom).
+- Affects: arcade · Existing lessons: no changes needed · Resolves: none (Ryan, 28 Nov 2026)
 - **Arcade: `Sprite("🐱")` draws an emoji.** A sprite (or tile) image made only of emoji, with
   no uploaded asset of that name, draws the emoji cropped to its ink, fitted inside the
   sprite's box (keeping its shape) and centred. `touches()`, tile collision and `pointer.over()`

@@ -360,6 +360,41 @@ Attachment points: a Starter state uses the task-level `arcadeDesign`; a
 Complete state uses `completeArcadeDesign`; a `role: starter` code stage can
 carry its own `arcadeDesign` alongside that stage's `code`, as noted above.
 
+### Carrying drawn art (`carryCodeFrom`)
+
+A task with `carryCodeFrom` brings the child's drawings as well as their code.
+When the task opens, the child sees:
+
+1. this task's starter `arcadeDesign`, then
+2. the sprites and tilemaps from the task the code carried from, matched by
+   **name** (`hero.png`, `level`): the child's version replaces the starter's,
+   then
+3. anything the child has already changed in this task, which wins over the
+   carried version.
+
+Art that is still an untouched copy of a starter (this task's, or one further up
+the carry chain) never replaces another version of the same name. So new authored
+art in this task (a `coin.png`) is added, and the child's hero still arrives if
+they peeked at this task before drawing it. A sprite or map that only the carried
+task has is added too, so carried code that names a tilemap this task never
+authored still finds it. The art comes from the same task the code comes from,
+including the fallback past a skipped task. Tasks without `carryCodeFrom` are
+unchanged.
+
+Authoring tips:
+
+- Give a picture the same name in every task of a chain. A renamed sprite arrives
+  as a second sprite.
+- To change an authored picture in a later task, change its pixels (or its name).
+  The child's drawing of the same name still wins.
+- A drawing the child edits again in the earlier task does not update a later
+  task that already holds its own copy. The later task keeps the copy it has, so
+  nothing the child drew there is lost.
+- Sprites deleted in a carrying task come back from the starter or the carried
+  task the next time it opens.
+- **Reset** and the tutor's reset still go back to this task's authored starter
+  art, like the code.
+
 ### Camera
 
 The camera shifts all world drawing, including sprites, tile maps, rectangles,

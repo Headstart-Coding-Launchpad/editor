@@ -186,7 +186,9 @@ the run output; `'state'`: own save always restored, carry via `carryThroughFiel
 `taskReset`, `teacherSandboxReset`, `remoteResetPersists`, `teacherEdit`, `workspaceOwned`
 (scratch; the workspace loads its own work and receives restored work as pushed state), and
 optional `teacherStarter(task)` (TeacherView's Starter-tab work; defaults to `starter`,
-electronics shows `starterCircuit`). A slot on the `'code'` channel stores one record; on
+electronics shows `starterCircuit`) and `carryMeta({ chain, carried, own })` (a `'code'` slot's
+record extras for a task with `carryCodeFrom` on load: Arcade merges the carried design;
+`selectTaskMeta` in `src/app/studentTaskContent.js`). A slot on the `'code'` channel stores one record; on
 `'files'` it stores per file.
 
 The one pipeline: `handleWorkChange(next, { moduleType, interaction })` (per trigger: save,

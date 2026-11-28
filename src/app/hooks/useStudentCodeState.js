@@ -1422,8 +1422,8 @@ export function useStudentCodeState({
   //   workspace reports), with no pushed stage, and check feedback is reset.
   // - 'code' (python, turtle, arcade, html): the own save only in solo, else carry-through
   //   (carryCodeFrom), else the starter — selectPythonTaskCode, or per file selectHtmlTaskFiles
-  //   for a per-file module. The module's extras (Arcade's design) come from the task's own
-  //   record in any phase, else the starter's; html's active file is the task's entry file.
+  //   for a per-file module. The extras (Arcade's design) are the own record's in any phase, merged
+  //   with the carry source's (selectTaskMeta), else the starter's; html opens its entry file.
   //   Check feedback is left alone.
   // - 'state' (electronics, filesystem, desktop): the own save, else the carry source when the
   //   task carries (carryThroughField), else the starter; the interaction keeps the previous
