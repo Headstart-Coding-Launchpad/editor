@@ -147,6 +147,25 @@ export function selectPythonTaskCode({
   return initial
 }
 
+// A code module's record extras (Arcade's design) on load: the own record's, unless the task
+// carries code and workSlot.carryMeta merges them with the extras of the source the code carries
+// from (selectPythonTaskCode's fallback); `chain` is the task and those up its carry chain.
+export function selectTaskMeta({ tasks, task, taskId, workSlot, own, readStored }) {
+  if (!workSlot.carryMeta || task.carryCodeFrom == null) return own?.meta ?? {}
+  const carried = resolveSavedCarrySource({
+    tasks,
+    taskId,
+    carryFromId: task.carryCodeFrom,
+    carryField: 'carryCodeFrom',
+    readSavedState: readStored,
+    hasSavedState: (saved) => saved?.work !== undefined,
+  })
+  const chain = []
+  for (let t = task; t && !chain.includes(t); t = findTaskById(tasks, t.carryCodeFrom ?? null))
+    chain.push(t)
+  return workSlot.carryMeta({ chain, own: own?.meta ?? null, carried: carried.saved?.meta ?? null })
+}
+
 export function selectHtmlTaskFiles({
   tasks,
   task,

@@ -182,6 +182,30 @@ export function designForCodeTab(task, codeTab = 'starter') {
   return cloneArcadeDesign(starterStage?.arcadeDesign ?? task?.arcadeDesign)
 }
 
+// A carrying task's design (carryCodeFrom): its starter (authored[0]) overlaid by name with the
+// carried design, then its own saved one. Art that is only a copy of a starter (`authored`: this
+// task's and those up its carry chain; compared without ids) never replaces art of the same name
+// but is kept when nothing else has that name. A repeated id gets a fresh one.
+const contentOf = ({ id: _id, ...rest }) => JSON.stringify(rest)
+export function mergeCarriedArcadeDesign({ authored, carried, own }) {
+  const designs = [authored[0], carried, own].map(createArcadeDesign)
+  const untouched = new Set(
+    authored.map(createArcadeDesign).flatMap((d) => [...d.sprites, ...d.maps].map(contentOf))
+  )
+  const merge = (key) => {
+    const byName = new Map()
+    for (const item of designs.flatMap((design) => design[key]))
+      if (!byName.has(item.name) || !untouched.has(contentOf(item))) byName.set(item.name, item)
+    const ids = new Set()
+    return [...byName.values()].map((item, index) => {
+      const id = ids.has(item.id) ? `${item.id}-${index}` : item.id
+      ids.add(id)
+      return { ...item, id }
+    })
+  }
+  return { version: 1, sprites: merge('sprites'), maps: merge('maps') }
+}
+
 export function updateDesignForCodeTab(task, codeTab = 'starter', design) {
   const next = cloneArcadeDesign(design)
   if (codeTab === 'complete') return { ...task, completeArcadeDesign: next }

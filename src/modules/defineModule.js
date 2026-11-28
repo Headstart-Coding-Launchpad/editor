@@ -258,6 +258,8 @@ export const CHECKING_HOOKS = Object.freeze(['buildContext'])
 // - teacherStarter(task) (optional; defaults to `starter`): the work TeacherView's Starter tab
 //   shows for the displayed task. Electronics overrides it: that tab has always shown
 //   `starterCircuit`, while `starter` prefers a starter stage's circuit.
+// - carryMeta({ chain, carried, own }) (optional, 'code' kind): a carrying task's record extras on
+//   load, from the carry source's and its own (Arcade's design; see selectTaskMeta).
 //
 // Plan step 4.5 adds per-file slots (html): a slot on the 'files' wire channel stores per file
 // (storage layout 'perFile') and its value is `{ files, activeFile }` (filesWorkSlot in

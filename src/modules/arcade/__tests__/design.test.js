@@ -7,6 +7,7 @@ import {
   createArcadeMap,
   createArcadeSprite,
   designForCodeTab,
+  mergeCarriedArcadeDesign,
   generatedArcadeAssets,
   generatedArcadeTilemaps,
   mapToPythonSnippet,
@@ -92,5 +93,76 @@ describe('Arcade design model', () => {
     expect(design.sprites[0].height).toBe(16)
     expect(design.sprites[0].frames[0]).toHaveLength(256)
     expect(design.sprites[0].frames[0]).toStrictEqual(Array(256).fill(null))
+  })
+})
+
+describe('mergeCarriedArcadeDesign (carryCodeFrom)', () => {
+  const sprite = (name, colour, id = `id-${name}`) => ({
+    id,
+    name,
+    width: 1,
+    height: 1,
+    frames: [[colour]],
+  })
+  const colours = (design) => design.sprites.map((s) => [s.name, s.frames[0][0]])
+  const starter = { sprites: [sprite('hero.png', 'white'), sprite('coin.png', 'yellow')] }
+  const sourceStarter = { sprites: [sprite('hero.png', 'black')] }
+  // The task's own starter first, then the starters up its carry chain.
+  const authored = [starter, sourceStarter]
+
+  it('lays the carried drawing over the starter by name, keeping new starter art', () => {
+    const merged = mergeCarriedArcadeDesign({
+      authored,
+      carried: { sprites: [sprite('hero.png', 'blue')] },
+      own: null,
+    })
+    expect(colours(merged)).toEqual([
+      ['hero.png', ARCADE_COLOURS.blue],
+      ['coin.png', ARCADE_COLOURS.yellow],
+    ])
+  })
+
+  it('lets the own drawing win over the carried one, and ignores an untouched own copy', () => {
+    const carried = { sprites: [sprite('hero.png', 'blue'), sprite('pet.png', 'pink')] }
+    const own = { sprites: [sprite('hero.png', 'white'), sprite('coin.png', 'red')] }
+    expect(colours(mergeCarriedArcadeDesign({ authored, carried, own }))).toEqual([
+      ['hero.png', ARCADE_COLOURS.blue],
+      ['coin.png', ARCADE_COLOURS.red],
+      ['pet.png', ARCADE_COLOURS.pink],
+    ])
+  })
+
+  it('keeps the target starter over an untouched copy of the source starter', () => {
+    const merged = mergeCarriedArcadeDesign({
+      starter,
+      authored,
+      carried: sourceStarter,
+      own: null,
+    })
+    expect(colours(merged)[0]).toEqual(['hero.png', ARCADE_COLOURS.white])
+  })
+
+  it('merges tilemaps by name the same way', () => {
+    const map = (name, row) => ({ id: `m-${name}`, name, columns: 2, rows: [row] })
+    const merged = mergeCarriedArcadeDesign({
+      authored: [{ maps: [map('level', '..')] }],
+      carried: { maps: [map('level', 'AB'), map('cave', 'CC')] },
+      own: null,
+    })
+    expect(merged.maps.map((m) => [m.name, m.rows[0]])).toEqual([
+      ['level', 'AB'],
+      ['cave', 'CC'],
+    ])
+  })
+
+  it('gives a fresh id to a second item with the same id, so the editor never paints both', () => {
+    const merged = mergeCarriedArcadeDesign({
+      authored: [{ sprites: [sprite('coin.png', 'yellow', 'same')] }],
+      carried: { sprites: [sprite('hero.png', 'blue', 'same')] },
+      own: null,
+    })
+    const ids = merged.sprites.map((s) => s.id)
+    expect(new Set(ids).size).toBe(2)
+    expect(ids[0]).toBe('same')
   })
 })

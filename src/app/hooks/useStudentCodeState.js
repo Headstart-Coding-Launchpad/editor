@@ -50,6 +50,7 @@ import {
   resolveSavedCarrySource,
   selectHtmlTaskFiles,
   selectPythonTaskCode,
+  selectTaskMeta,
 } from '../studentTaskContent'
 import { decodeSessionFiles, getFileType } from '../../shared/workspaceData'
 import { getPreviewDoc, resolveIframeErrorLocation } from '../../modules/html/iframe'
@@ -537,6 +538,14 @@ export function useStudentCodeState({
   // plus `{ arcadeDesign }`).
   function storedWork(moduleType, value = workValueFor(moduleType)) {
     return getModuleDefinition(moduleType).workSlot.stored(value)
+  }
+
+  // Arcade's design has its own mirror: sent to a watching tutor on load, reset and watch start.
+  function mirrorDesignIfWatched(moduleType, value) {
+    const { arcadeDesign } = storedWork(moduleType, value).meta
+    const id = sessionRef.current?.activeStudentView
+    if (arcadeDesign !== undefined && !teacherPresentation && id && id === identity?.anonymousId)
+      writeStudentArcadeDesign?.(id, arcadeDesign)
   }
 
   // The work with `code` as its storage/wire work, the rest (Arcade's design) kept from `base`.
@@ -1457,10 +1466,9 @@ export function useStudentCodeState({
             restoreOwn: phase === 'lesson' && isReloadResume(lesson.id ?? lessonId, taskId),
           })
       const own = perFile ? null : readStored(taskId)
-      restoreWork(
-        moduleType,
-        workSlot.fromStored({ work: loaded, meta: own?.meta ?? {} }, workSlot.starter(task))
-      )
+      const meta = selectTaskMeta({ tasks: lesson.tasks, task, taskId, workSlot, own, readStored })
+      const restored = workSlot.fromStored({ work: loaded, meta }, workSlot.starter(task))
+      mirrorDesignIfWatched(moduleType, restoreWork(moduleType, restored))
       return
     }
     const carryField = definition.carryThroughField
@@ -1680,6 +1688,7 @@ export function useStudentCodeState({
         identity.anonymousId,
         slotDefinition.wire.toCode(storedWork(lesson.type).work)
       )
+      mirrorDesignIfWatched(lesson.type, workValueFor(lesson.type))
       // Modules checked on Run also mirror the run: its output and any pending input() prompt.
       // Modules checked on every change (filesystem, desktop) have no run to mirror.
       if (slotDefinition.checking.trigger !== 'change') {
@@ -1767,13 +1776,7 @@ export function useStudentCodeState({
       // next edit or snapshot.
       if (slotDefinition.workSlot.remoteResetPersists) {
         persistRestoredWork(lesson.type, restored)
-        const { meta } = storedWork(lesson.type, restored)
-        if (
-          Object.hasOwn(meta, 'arcadeDesign') &&
-          identity?.anonymousId &&
-          sessionRef.current?.activeStudentView === identity.anonymousId
-        )
-          writeStudentArcadeDesign?.(identity.anonymousId, meta.arcadeDesign)
+        mirrorDesignIfWatched(lesson.type, restored)
       }
       clearRunFor(lesson.type)
       // A workspace-owned module's feedback stays until its workspace reports its next check.

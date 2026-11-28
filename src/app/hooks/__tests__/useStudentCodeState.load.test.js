@@ -192,10 +192,20 @@ describe('useStudentCodeState load — arcade', () => {
     })
   })
 
-  it('carries code (not the design) from carryCodeFrom', () => {
+  // Ryan, 28 Nov ("Yes arcade carry"): the drawn art carries with the code (see
+  // useStudentCodeState.arcadeCarry.test.js for the merge rules).
+  it('carries code and the drawn design from carryCodeFrom', () => {
     writeStored(taskKey('t1'), { code: 'player = 5', arcadeDesign: normalisedArcadeDesign('mine') })
     const h = renderStudentCodeState({ lesson: arcadeLesson(), currentTaskId: 't2' })
     expect(h.result.current.code).toBe('player = 5')
+    expect(h.result.current.arcadeDesign).toEqual(normalisedArcadeDesign('mine'))
+  })
+
+  it('a task that does not carry still loads only its own (empty) design', () => {
+    writeStored(taskKey('t1'), { code: 'player = 5', arcadeDesign: normalisedArcadeDesign('mine') })
+    const l = arcadeLesson()
+    delete l.tasks[1].carryCodeFrom
+    const h = renderStudentCodeState({ lesson: l, currentTaskId: 't2' })
     expect(h.result.current.arcadeDesign).toEqual(EMPTY_ARCADE_DESIGN)
   })
 })

@@ -10,7 +10,7 @@ import {
 } from '../moduleTaskValidation.js'
 import { normalizeChecks } from '../checks.js'
 import { warnArcadeUnevaluatedChecks } from '../../shared/checkAuthoringValidation.js'
-import { cloneArcadeDesign, designForCodeTab } from './design.js'
+import { cloneArcadeDesign, designForCodeTab, mergeCarriedArcadeDesign } from './design.js'
 import {
   codeCheckContext,
   codeHasComplete,
@@ -305,6 +305,14 @@ export default defineModule({
     }),
     // The design has no other save on a teacher reset.
     remoteResetPersists: true,
+    // A task with carryCodeFrom brings the child's drawn sprites and tilemaps (selectTaskMeta).
+    carryMeta: ({ chain, carried, own }) => ({
+      arcadeDesign: mergeCarriedArcadeDesign({
+        authored: chain.map((task) => designForCodeTab(task, 'starter')),
+        carried: carried?.arcadeDesign,
+        own: own?.arcadeDesign,
+      }),
+    }),
   }),
 
   // ── Validation (shared by the Builder and the CLI; see ../moduleTaskValidation.js) ──
