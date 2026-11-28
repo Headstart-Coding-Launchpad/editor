@@ -72,8 +72,10 @@ describe('watch start (activeStudentView flips to this student)', () => {
     expect(h.writers.writeStudentInteraction.mock.calls).toEqual([
       [ANON, { selection: null, activeFile: undefined }],
     ])
-    // Watch start does not re-send an arcade design or turtle result.
-    expect(h.writers.writeStudentArcadeDesign).not.toHaveBeenCalled()
+    // Watch start sends Arcade's current design (its own mirror channel), not a turtle result.
+    expect(h.writers.writeStudentArcadeDesign.mock.calls).toEqual(
+      type === 'arcade' ? [[ANON, normalisedArcadeDesign('starter')]] : []
+    )
     expect(h.writers.writeStudentTurtleResult).not.toHaveBeenCalled()
     expect(h.writers.writeStudentFiles).not.toHaveBeenCalled()
   })

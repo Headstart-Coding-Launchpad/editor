@@ -142,6 +142,8 @@ describe('handleArcadeDesignChange', () => {
       currentTaskId: 't1',
       session: watched(),
     })
+    // The loaded design was sent once on load (and at watch start); edits are debounced.
+    h.writers.writeStudentArcadeDesign.mockClear()
     actSync(() => h.result.current.handleArcadeDesignChange(arcadeDesign('a')))
     actSync(() => vi.advanceTimersByTime(300))
     actSync(() => h.result.current.handleArcadeDesignChange(arcadeDesign('b')))
