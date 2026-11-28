@@ -1,6 +1,18 @@
 import { ARCADE_PALETTE } from './design'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
+const PYODIDE_BOOT =
+  'pyodide.mjs pyodide.asm.js pyodide.asm.wasm python_stdlib.zip pyodide-lock.json'
+let preloading = false
+// Fetched once a page, Pyodide's boot files land in the HTTP cache the sandboxed game frame reuses
+// (measured 28 Nov 2026); a failure leaves Play fetching them as before.
+export function preloadArcadePython() {
+  if (preloading || typeof fetch !== 'function') return
+  preloading = true
+  const drain = (response) => response.arrayBuffer().catch(() => {})
+  for (const file of PYODIDE_BOOT.split(' ')) fetch(PYODIDE_CDN + file).then(drain, () => {})
+}
+
 // A sprite name made only of emoji (ZWJ sequences, skin tones, flags, keycaps): Sprite("🐱").
 export const isArcadeEmoji = (text) =>
   /^[\p{Extended_Pictographic}\p{Emoji_Component}]+$/u.test(text) &&

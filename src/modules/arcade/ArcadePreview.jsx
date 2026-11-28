@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { buildArcadeIframeSrc } from './runtime'
+import { buildArcadeIframeSrc, preloadArcadePython } from './runtime'
 import OutputPanel from '../../app/components/OutputPanel'
 
 export default function ArcadePreview({
@@ -21,6 +21,7 @@ export default function ArcadePreview({
     [code, assets, tilemaps, width, height]
   )
 
+  useEffect(preloadArcadePython, [])
   useEffect(() => {
     function receive(event) {
       if (event.source !== frameRef.current?.contentWindow || !event.data?.headstartArcade) return

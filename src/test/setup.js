@@ -31,10 +31,13 @@ if (typeof window !== 'undefined') {
 
   // Blockly.inject preloads its click sounds from the internet with Node's real fetch. When
   // that fails the rejection is unhandled and the suite exits 1 with every test passing.
-  // Answer those with an empty file; every other request goes through unchanged.
+  // Arcade's ArcadePreview preloads Pyodide the same way. Answer those with an empty file;
+  // every other request goes through unchanged.
   const realFetch = globalThis.fetch
   globalThis.fetch = (input, init) =>
-    String(input?.url ?? input).startsWith('https://blockly-demo.appspot.com/')
+    /^https:\/\/(blockly-demo\.appspot\.com|cdn\.jsdelivr\.net\/pyodide)\//.test(
+      String(input?.url ?? input)
+    )
       ? Promise.resolve(new Response(new ArrayBuffer(0)))
       : realFetch(input, init)
 
