@@ -13,6 +13,7 @@
 // And for Drop pin following the student's typing (+21: 213863 -> 213884), same Ryan OK.
 // And for the compact Pin row at 1366 (+2: 213884 -> 213886), same Ryan OK.
 // Raised 27 Nov 13:22 (Ryan: "ok rachet sprites") for Scratch sprites surviving a peer view (+96: 213886 -> 213982, with the code-review fixes).
+// Raised 28 Nov 13:09 (Ryan: "Yes merge arcade") for Arcade emoji sprites and the Python preload (+34: 213982 -> 214016).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
