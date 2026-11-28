@@ -155,7 +155,7 @@ white is #fff1e8") rather than just naming the palette.
 
 | API | Description |
 |---|---|
-| `Sprite(image, x=0, y=0, width=None, height=None, frames=1, frame=0)` | Creates a sprite from an asset name. Omitted dimensions default to 16 by 16 logical pixels. `frames` treats one image as a horizontal sprite sheet. |
+| `Sprite(image, x=0, y=0, width=None, height=None, frames=1, frame=0)` | Creates a sprite from an asset name, or from an emoji: `Sprite("🐱")`. Omitted dimensions default to 16 by 16 logical pixels. `frames` treats one image as a horizontal sprite sheet. |
 | `sprite.draw()` | Draws the sprite at its current position. |
 | `sprite.touches(other)` | Returns `True` when this sprite's axis-aligned rectangle overlaps another sprite. |
 | `sprite.x`, `sprite.y` | Mutable position values. |
@@ -176,6 +176,15 @@ player = Sprite("player-walk.png", x=72, y=100, frames=4)
 def update():
     player.animate(fps=10)
 ```
+
+An emoji sprite needs no asset: `Sprite("🐱", x=20, y=20)` draws the cat, cropped
+to its ink and scaled to fill the sprite's box (keeping its shape, centred), so
+`touches()`, tile collision and `pointer.over()` match what children see. It
+must be only emoji: skin tones, ZWJ sequences such as 👩‍🚀 and keycaps such as 1️⃣
+work; an uploaded asset with the same name wins; any other unknown name still
+draws nothing. Emoji also work as tile images: `world.draw({"#": "🧱"})`. The
+emoji's look comes from the device's emoji font, so it differs between Windows,
+iPad and Chromebook, and Windows shows flags such as 🇬🇧 as two letters.
 
 ### `keys`
 
@@ -210,6 +219,10 @@ player.y = pointer.y
 | `pointer.down` | `True` while a mouse/touch press is held. |
 | `pointer.just_pressed`, `pointer.just_released` | `True` for one game frame when the press starts or ends. |
 | `pointer.over(sprite)` | Returns `True` when the pointer is inside a sprite's rectangle. |
+
+`if pointer.down:` alone can miss a quick click or tap that starts and ends
+between two frames; use `if pointer.just_pressed or pointer.down:` for "is the
+player pressing".
 
 ### Tile maps
 

@@ -1,6 +1,10 @@
 import { ARCADE_PALETTE } from './design'
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
+// A sprite name made only of emoji (ZWJ sequences, skin tones, flags, keycaps): Sprite("🐱").
+export const isArcadeEmoji = (text) =>
+  /^[\p{Extended_Pictographic}\p{Emoji_Component}]+$/u.test(text) &&
+  /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u.test(text)
 
 // Direction names also answer to WASD, so keys.left / keys.horizontal /
 // keys.pressed('left') work for either hand position. Single-letter names
@@ -130,6 +134,17 @@ function image(name) {
   if (!images.has(name)) { const img = new Image(); img.src = assets[name]; images.set(name, img); }
   return images.get(name);
 }
+const isEmoji = ${isArcadeEmoji}, emojiArt = new Map();
+// Each emoji is drawn once, large, on its own canvas cropped to its ink, so it fills the sprite's box.
+function emojiCanvas(text) {
+  if (emojiArt.has(text)) return emojiArt.get(text);
+  const art = document.createElement('canvas'), pen = art.getContext('2d'), font = '128px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  pen.font = font;
+  const ink = pen.measureText(text), left = ink.actualBoundingBoxLeft, top = ink.actualBoundingBoxAscent;
+  art.width = Math.ceil(left + ink.actualBoundingBoxRight) + 2 || 130; art.height = Math.ceil(top + ink.actualBoundingBoxDescent) + 2 || 130;
+  pen.font = font; pen.fillText(text, left + 1, top + 1);
+  emojiArt.set(text, art); return art;
+}
 function keyDown(name) { const aliases = keyAliases[name]; return aliases ? aliases.some(key => keys.has(key)) : keys.has(name); }
 function arcadeColour(value, fallback) {
   const colour = String(value ?? '').trim().toLowerCase();
@@ -189,6 +204,12 @@ globalThis.hsArcadeRect = (x, y, width, height, color) => { context.fillStyle = 
 globalThis.hsArcadeText = (text, x, y, color, size) => { context.fillStyle = arcadeColour(color, paletteByName.white); context.font = Number(size || 8) + 'px monospace'; context.textBaseline = 'top'; context.fillText(String(text), worldX(x), worldY(y)); };
 globalThis.hsArcadeSprite = (name, x, y, width, height, frame = 0, frames = 1) => {
   const img = image(String(name));
+  if (!img && isEmoji(String(name))) {
+    const art = emojiCanvas(String(name)), w = Number(width) || 16, h = Number(height) || 16, k = Math.min(w / art.width, h / art.height);
+    context.imageSmoothingEnabled = true;
+    context.drawImage(art, worldX(x) + (w - art.width * k) / 2, worldY(y) + (h - art.height * k) / 2, art.width * k, art.height * k);
+    return void (context.imageSmoothingEnabled = false);
+  }
   if (!img?.complete || !img.naturalWidth) return;
   const count = Math.max(1, Math.floor(Number(frames) || 1));
   const sourceWidth = img.naturalWidth / count;
@@ -471,7 +492,6 @@ try {
   pyodide.setStdout({ batched: text => say('console', { kind: 'stdout', text }) });
   pyodide.setStderr({ batched: text => say('console', { kind: 'stderr', text }) });
   pyodide.globals.set('_hs_source', source);
-  status.textContent = 'Loading game…';
   await pyodide.runPythonAsync(bootstrap);
 } catch (error) {
   const message = formatPythonError(error);
