@@ -37,11 +37,15 @@ class _HsPending:
     # Raised on the line that made the call, wherever its answer was used.
     def _hs_use(self, *args, **kwargs):
         where = ('inside __init__. Do it outside the class (and pass the answer in).' if self._hs_init
-                 else 'here (map(), sorted(), a lambda, yield or a __special__ method).')
+                 else 'here (map(), sorted(), a lambda, yield, @property, a class body or a __special__ method).')
         error = _HsCannotWait(self._hs_name + '() has to wait, and Python cannot wait ' + where)
         code = compile(chr(10) * (self._hs_line - 1) + 'raise _hs_error', '<student>', 'exec')
+        tracer = _hs_sys.gettrace()
         _hs_sys.settrace(None)
-        exec(code, {'_hs_error': error})
+        try:
+            exec(code, {'_hs_error': error})
+        finally:
+            _hs_sys.settrace(tracer)  # A variable tag's repr() lands here too: keep counting.
 
     __bool__ = __str__ = __repr__ = __format__ = __hash__ = __call__ = _hs_use
     __eq__ = __ne__ = __lt__ = __le__ = __gt__ = __ge__ = _hs_use
@@ -107,8 +111,8 @@ def _hs_own_nodes(function):
         stack.extend(n for n in _hs_ast.iter_child_nodes(node) if n not in body)
 
 # The defs that must be async: they call a blocking name or another such def (anything.f() only
-# reaches a method f), or hand one to a call. Once one is handed around as a value (a bound method
-# or a lambda too) or decorated, so are the defs that call a function held in a variable, parameter, attribute, list or dict.
+# reaches a method f), or hand one to a call. Once one is handed around as a value (or decorated),
+# so are the defs that call a function held in a variable, parameter, attribute, list or dict.
 def _hs_async_defs(tree, blocking):
     nodes = list(_hs_ast.walk(tree))
     held = {n.arg for n in nodes if isinstance(n, _hs_ast.arg)}
@@ -116,11 +120,6 @@ def _hs_async_defs(tree, blocking):
     methods = {d for c in nodes if isinstance(c, _hs_ast.ClassDef) for d in c.body}
     called = {id(n.func) for n in nodes if isinstance(n, _hs_ast.Call)}
     values = {n.id for n in nodes if isinstance(n, _hs_ast.Name) and id(n) not in called}
-    bound = {n.attr for n in nodes if isinstance(n, _hs_ast.Attribute) and id(n) not in called}
-    in_lambdas = {
-        _hs_name(c.func) for n in nodes if isinstance(n, _hs_ast.Lambda)
-        for c in _hs_ast.walk(n.body) if isinstance(c, _hs_ast.Call)
-    }
     defs = [
         d for d in nodes
         if isinstance(d, _hs_ast.FunctionDef)
@@ -136,8 +135,7 @@ def _hs_async_defs(tree, blocking):
         reach = attributes if isinstance(n.func, _hs_ast.Attribute) else names
         if _hs_name(n.func) in reach or any(_hs_name(a) in names for a in passed):
             return True
-        handed = values & names or bound & attributes or in_lambdas & names
-        if not (handed or any(d.decorator_list for d in chosen)):
+        if not (values & names or any(d.decorator_list for d in chosen)):
             return False
         return isinstance(n.func, _hs_ast.Subscript) or _hs_name(n.func) in held
 
@@ -189,6 +187,9 @@ class _HsShape(_hs_ast.NodeTransformer):
             node.test = self.visit(node.test)
             node.body, node.orelse = self._handed_on(node.body), self._handed_on(node.orelse)
             return node
+        if not self.can_wait and isinstance(node, _hs_ast.BoolOp):
+            node.values = [*map(self.visit, node.values[:-1]), self._handed_on(node.values[-1])]
+            return node
         if not self.can_wait and isinstance(node, _hs_ast.Call):
             self.generic_visit(node)
             return node
@@ -203,6 +204,8 @@ class _HsShape(_hs_ast.NodeTransformer):
 
     def visit_Return(self, node):
         node.value = node.value and self._handed_on(node.value)
+        if self.can_wait and node.value and not isinstance(node.value, _hs_ast.Await):  # return answers[0]
+            node.value = _hs_ast.copy_location(_hs_ast.Await(value=self._call('_hs_aw', node.value)), node)
         return node
 
     # A bare except: must not swallow "cannot wait" (or slow-mo's stop).

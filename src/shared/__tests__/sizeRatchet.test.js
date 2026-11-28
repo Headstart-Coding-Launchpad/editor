@@ -15,6 +15,7 @@
 // Raised 27 Nov 13:22 (Ryan: "ok rachet sprites") for Scratch sprites surviving a peer view (+96: 213886 -> 213982, with the code-review fixes).
 // Raised 28 Nov (Ryan OK 28 Nov, at most 250 lines) for ordinary Python semantics and its review fixes
 // (+247: 213982 -> 214229).
+// Last review round of the same change, inside the same OK (+3: 214229 -> 214232).
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'

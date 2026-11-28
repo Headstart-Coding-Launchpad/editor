@@ -51,7 +51,7 @@ const EXPLAINERS = [
         `Look at ${onLine(err)}. ${what} has to stop and wait for an answer.`,
         init
           ? '__init__ sets up a new object, and Python cannot pause in the middle of it.'
-          : 'Python cannot pause inside map(), sorted(), a lambda, yield or a __special__ method.',
+          : 'Python cannot pause inside map(), sorted(), a lambda, yield, @property, a class body or a __special__ method.',
         init
           ? '```python\nclass Dog:\n    def __init__(self, name):\n        self.name = name\nname = input("Name? ")   # ask outside\ndog = Dog(name)          # pass it in\n```'
           : '```python\nanswers = []\nfor i in range(3):\n    answers.append(input("? "))   # a loop can wait\n```',

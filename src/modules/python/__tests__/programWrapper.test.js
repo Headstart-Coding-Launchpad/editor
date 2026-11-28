@@ -331,6 +331,71 @@ const JOBS = {
     capture: { panel: true, lineOffset: TURTLE_LINE_OFFSET },
     record: { on: true, lineOffset: TURTLE_LINE_OFFSET },
   },
+  applyBesideAskingLambda: {
+    code: lines(
+      'def double(n):',
+      '    return n * 2',
+      'def apply(f, x):',
+      '    return f(x)',
+      'class Box:',
+      '    def __init__(self):',
+      '        self.v = apply(double, 3)',
+      "quit = lambda: input('sure? ')",
+      'print(Box().v)',
+      'print(sorted(["bb", "a"], key=lambda w: apply(len, w)))'
+    ),
+  },
+  applyBesideSharedAttribute: {
+    code: lines(
+      'class Menu:',
+      '    def show(self):',
+      '        return input()',
+      'def apply(f, x):',
+      '    return f(x)',
+      'class Box:',
+      '    def __init__(self):',
+      '        self.show = True',
+      '        if self.show:',
+      '            self.v = apply(abs, -6)',
+      'print(Box().v)'
+    ),
+  },
+  reprKeepsCounting: {
+    code: lines(
+      'from collections import deque',
+      'def ask(n):',
+      '    return input()',
+      'q = deque(map(ask, [1]))',
+      'x = q.popleft',
+      'for i in range(3):',
+      '    print(i)',
+      'print(x())'
+    ),
+    inputs: ['z'],
+    capture: { panel: true, countLines: [7] },
+    record: { on: true },
+  },
+  returnsWaiting: {
+    code: lines(
+      'def pick(items):',
+      '    input()',
+      '    return items[0]',
+      'print(pick(list(map(lambda n: input(), [1]))))'
+    ),
+    inputs: ['first', 'second'],
+  },
+  lambdaOr: {
+    code: lines(
+      'saved = ""',
+      'def ask():',
+      '    return input("n? ")',
+      'get = lambda: saved or ask()',
+      'def other():',
+      '    return saved and ask() or ask()',
+      'print(get())'
+    ),
+    inputs: ['Al'],
+  },
   boundCallback: {
     code: lines(
       'class Game:',
@@ -630,9 +695,11 @@ describe.skipIf(!PYTHON)('input() still waits', () => {
 
 describe.skipIf(!PYTHON)('review faults of 28 Nov', () => {
   it.each([
-    ['boundCallback', ['played a']],
-    ['storedLambda', ['got b']],
-    ['methodInList', ['start c']],
+    ['applyBesideAskingLambda', ['6', "['a', 'bb']"]],
+    ['applyBesideSharedAttribute', ['6']],
+    ['reprKeepsCounting', ['0', '1', '2', 'z']],
+    ['returnsWaiting', ['second']],
+    ['lambdaOr', ['Al']],
     ['deepRecursion', ['600']],
     ['classAndLambdaSlots', ['kw k', 'v dict', 'dict w']],
     ['ownExec', ['1 z']],
@@ -641,7 +708,17 @@ describe.skipIf(!PYTHON)('review faults of 28 Nov', () => {
     expect(printed(name)).toEqual(expected)
   })
 
+  it('keeps counting lines after a variable tag meets a waiting answer', () => {
+    expect(result('reprKeepsCounting').lineCounts).toEqual({ 7: 3 })
+    const stepped = result('reprKeepsCounting').steps.map((s) => s.l)
+    expect(stepped.filter((l) => l === 7)).toHaveLength(3)
+    expect(stepped).toContain(8)
+  })
+
   it.each([
+    ['boundCallback', 5, 'here', ''],
+    ['storedLambda', 3, 'here', ''],
+    ['methodInList', 7, 'here', ''],
     ['initAppend', 4, 'inside __init__', ''],
     ['initContainer', 3, 'inside __init__', ''],
     ['initTry', 4, 'inside __init__', ''],
