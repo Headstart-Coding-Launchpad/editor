@@ -183,28 +183,48 @@ export function designForCodeTab(task, codeTab = 'starter') {
 }
 
 // A carrying task's design (carryCodeFrom): its starter (authored[0]) overlaid by name with the
-// carried design, then its own one; items sharing a name inside one design are all kept (matched
-// in order). Art that is only a copy of a starter (`authored`: this
+// carried design, then its own one. Art that is only a copy of a starter (`authored`: this
 // task's and those up its carry chain; compared without ids) never replaces art of the same name
 // but is kept when nothing else has that name. A repeated id gets a fresh one.
 const contentOf = ({ id: _id, ...rest }) => JSON.stringify(rest)
+
+// For each item of a layer, the index in `earlier` of the same-named item it stands for (-1: none),
+// by id first, then by its position among that name. Items sharing a name inside one layer never
+// stand for the same one, so all are kept.
+function matchEarlierArt(earlier, items) {
+  const taken = new Set()
+  const take = (index) => {
+    if (index === undefined || index < 0 || taken.has(index)) return -1
+    taken.add(index)
+    return index
+  }
+  const byId = items.map((item) =>
+    take(earlier.findIndex((other) => other.name === item.name && other.id === item.id))
+  )
+  return items.map((item, index) => {
+    if (byId[index] >= 0) return byId[index]
+    const nth = items.slice(0, index).filter((other) => other.name === item.name).length
+    const named = earlier.flatMap((other, at) => (other.name === item.name ? [at] : []))
+    return take(named[nth])
+  })
+}
+
 export function mergeCarriedArcadeDesign({ authored, carried, own }) {
   const designs = [authored[0], carried, own].map(createArcadeDesign)
   const untouched = new Set(
     authored.map(createArcadeDesign).flatMap((d) => [...d.sprites, ...d.maps].map(contentOf))
   )
   const merge = (key) => {
-    const byName = new Map()
+    const merged = []
     for (const design of designs) {
-      const seen = {}
-      for (const item of design[key]) {
-        // Safe names have no spaces, so "name n" cannot collide.
-        const slot = `${item.name} ${(seen[item.name] = (seen[item.name] ?? 0) + 1)}`
-        if (!byName.has(slot) || !untouched.has(contentOf(item))) byName.set(slot, item)
-      }
+      const matches = matchEarlierArt(merged, design[key])
+      design[key].forEach((item, index) => {
+        if (matches[index] < 0) merged.push(item)
+        else if (!untouched.has(contentOf(item))) merged[matches[index]] = item
+      })
     }
     const ids = new Set()
-    return [...byName.values()].map((item, index) => {
+    return merged.map((item, index) => {
       const id = ids.has(item.id) ? `${item.id}-${index}` : item.id
       ids.add(id)
       return { ...item, id }

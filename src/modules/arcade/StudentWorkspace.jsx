@@ -87,7 +87,7 @@ export default function StudentWorkspace({
         readSavedCode: cs.readSavedTaskCode,
       }))
     : null
-  // The design of the task looked back at: as a solo load would build it.
+  // The design of the task looked back at: as loading it would build it.
   function viewedDesign() {
     const { storage, workSlot } = getModuleDefinition('arcade')
     const { arcadeDesign } = selectTaskMeta({
@@ -95,7 +95,6 @@ export default function StudentWorkspace({
       task,
       taskId: viewingTaskId,
       workSlot,
-      phase: 'solo',
       own: storage.fromTaskRecord(viewedWork),
       readStored: (id) => storage.fromTaskRecord(cs.readSavedTaskCode(id)),
     })

@@ -178,7 +178,7 @@ describe('Arcade carry: the child’s art travels with carryCodeFrom', () => {
     expect(names(h.result.current.arcadeDesign)).toEqual(['boss.png'])
   })
 
-  it('in solo, the own save comes back with exactly its own art', () => {
+  it('in solo, a reload restores the own code with the merged art', () => {
     writeStored(taskKey('t1'), {
       code: 'hero = 1',
       arcadeDesign: design([sprite('hero.png', 'blue')], [map('level', 'B...')]),
@@ -190,38 +190,39 @@ describe('Arcade carry: the child’s art travels with carryCodeFrom', () => {
     const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't2', phase: 'solo' })
     const d = h.result.current.arcadeDesign
     expect(h.result.current.code).toBe('hero = 2')
-    // Repainted back to the starter's white: no carried overlay brings the blue hero back.
-    expect(colourOf(d, 'hero.png')).toBe(hex('white'))
+    expect(colourOf(d, 'hero.png')).toBe(hex('blue'))
     expect(colourOf(d, 'coin.png')).toBe(hex('red'))
-    expect(d.maps).toEqual([])
+    expect(d.maps.map((m) => m.name)).toEqual(['level'])
   })
 
-  it('in solo, Reset survives leaving the task and coming back', () => {
-    const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't1', phase: 'solo' })
+  it('carried art still arrives after Show stage (no stage design) and reopening in solo', () => {
+    const l = lesson()
+    l.tasks[1].codeStages = [{ label: 'Step', code: '# step' }]
+    const h = renderStudentCodeState({ lesson: l, currentTaskId: 't1', phase: 'solo' })
     draw(h, 'hero.png', 'blue')
     goToTask(h, 't2')
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
-    actSync(() => h.result.current.handleResetCode())
+    actSync(() => h.result.current.handleShowCodeStage(0))
+    expect(h.result.current.arcadeDesign.sprites).toEqual([])
     goToTask(h, 't1')
     goToTask(h, 't2')
-    expect(h.result.current.code).toBe('# t2 starter')
-    expect(colourOf(h.result.current.arcadeDesign, 'hero.png')).toBe(hex('white'))
+    expect(h.result.current.code).toBe('# step')
+    expect(colourOf(h.result.current.arcadeDesign, 'hero.png')).toBe(hex('blue'))
   })
 
-  it('a reload from “Python fell asleep” brings back exactly the own art', () => {
+  it('carried art still arrives after Reset and a “Python fell asleep” reload', () => {
     writeStored(taskKey('t1'), {
       code: 'hero = 1',
       arcadeDesign: design([sprite('hero.png', 'blue')]),
     })
-    writeStored(taskKey('t2'), {
-      code: 'hero = 2',
-      arcadeDesign: design([sprite('hero.png', 'white')]),
-    })
-    markReloadResume('lesson-1', 't2')
     const h = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't2' })
-    expect(h.result.current.code).toBe('hero = 2')
-    expect(names(h.result.current.arcadeDesign)).toEqual(['hero.png'])
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
+    actSync(() => h.result.current.handleResetCode())
     expect(colourOf(h.result.current.arcadeDesign, 'hero.png')).toBe(hex('white'))
+    actSync(() => h.result.current.saveCurrentWork())
+    markReloadResume('lesson-1', 't2')
+    const again = renderStudentCodeState({ lesson: lesson(), currentTaskId: 't2' })
+    expect(again.result.current.code).toBe('# t2 starter')
+    expect(colourOf(again.result.current.arcadeDesign, 'hero.png')).toBe(hex('blue'))
   })
 
   it('a pending design write never lands over the next task’s art for a watching tutor', () => {

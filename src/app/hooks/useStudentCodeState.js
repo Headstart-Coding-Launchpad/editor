@@ -1443,30 +1443,31 @@ export function useStudentCodeState({
     }
     if (workSlot.kind === 'code') {
       const perFile = definition.storage.layout === 'perFile'
-      const from = {
-        tasks: lesson.tasks,
-        task,
-        taskId,
-        phase,
-        crossLesson: crossLessonCarryFor(taskId),
-        // Reloaded from "Python fell asleep" a moment ago: the own save comes back (R3).
-        restoreOwn: !perFile && phase === 'lesson' && isReloadResume(lesson.id ?? lessonId, taskId),
-      }
       const loaded = perFile
         ? selectHtmlTaskFiles({
-            ...from,
+            tasks: lesson.tasks,
+            task,
+            taskId,
+            phase,
             readSavedFile: (sourceTaskId, filename) =>
               readStored(sourceTaskId, filename)?.work ?? null,
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
           })
         : selectPythonTaskCode({
-            ...from,
+            tasks: lesson.tasks,
+            task,
+            taskId,
+            phase,
             readSavedCode: (sourceTaskId) =>
               persistence.readSavedCode(activeIdentity.anonymousId, sourceTaskId),
             onCarryFallback: recordCarryFallback,
+            crossLesson: crossLessonCarryFor(taskId),
+            // Reloaded from "Python fell asleep" a moment ago: the own save comes back (R3).
+            restoreOwn: phase === 'lesson' && isReloadResume(lesson.id ?? lessonId, taskId),
           })
       const own = perFile ? null : readStored(taskId)
-      const meta = selectTaskMeta({ ...from, workSlot, own, readStored })
+      const meta = selectTaskMeta({ tasks: lesson.tasks, task, taskId, workSlot, own, readStored })
       const restored = workSlot.fromStored({ work: loaded, meta }, workSlot.starter(task))
       mirrorDesignIfWatched(moduleType, restoreWork(moduleType, restored))
       return

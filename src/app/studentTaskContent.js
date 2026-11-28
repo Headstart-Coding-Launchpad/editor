@@ -110,12 +110,6 @@ function crossLessonState(crossLesson) {
   return crossLesson?.state ?? null
 }
 
-// Whether the student's own save is what a code task loads: solo, cross-lesson 'own', or a reload
-// from "Python fell asleep" (restoreOwn, src/app/pythonReload.js).
-function ownSaveWins({ phase, crossLesson, restoreOwn }) {
-  return phase === 'solo' || crossLessonState(crossLesson) === 'own' || !!restoreOwn
-}
-
 export function selectPythonTaskCode({
   tasks,
   task,
@@ -124,10 +118,12 @@ export function selectPythonTaskCode({
   readSavedCode,
   onCarryFallback,
   crossLesson = null,
+  // The student's own save wins in any phase (a reload from "Python fell asleep",
+  // src/app/pythonReload.js).
   restoreOwn = false,
 }) {
   const crossState = crossLessonState(crossLesson)
-  if (ownSaveWins({ phase, crossLesson, restoreOwn })) {
+  if (phase === 'solo' || crossState === 'own' || restoreOwn) {
     const ownSaved = readSavedCode(taskId)
     if (ownSaved != null) return ownSaved.code ?? ''
   }
@@ -151,13 +147,11 @@ export function selectPythonTaskCode({
   return initial
 }
 
-// A code module's record extras (Arcade's design) on load follow the code: the own record's when
-// the own save wins (`from`: ownSaveWins's) or the task does not carry, else workSlot.carryMeta
-// merges them with the extras of the source the code carries from (selectPythonTaskCode's
-// fallback); `chain` is the task and those up its carry chain.
-export function selectTaskMeta({ tasks, task, taskId, workSlot, own, readStored, ...from }) {
-  const exact = ownSaveWins(from) && own?.meta?.arcadeDesign
-  if (!workSlot.carryMeta || task.carryCodeFrom == null || exact) return own?.meta ?? {}
+// A code module's record extras (Arcade's design) on load: the own record's, unless the task
+// carries code and workSlot.carryMeta merges them with the extras of the source the code carries
+// from (selectPythonTaskCode's fallback); `chain` is the task and those up its carry chain.
+export function selectTaskMeta({ tasks, task, taskId, workSlot, own, readStored }) {
+  if (!workSlot.carryMeta || task.carryCodeFrom == null) return own?.meta ?? {}
   const carried = resolveSavedCarrySource({
     tasks,
     taskId,

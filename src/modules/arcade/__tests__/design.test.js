@@ -183,6 +183,24 @@ describe('mergeCarriedArcadeDesign (carryCodeFrom)', () => {
     expect(again.maps).toHaveLength(2)
   })
 
+  it('matches same-named items by id first, so a deleted twin never doubles the other', () => {
+    const carried = {
+      sprites: [sprite('sprite-2.png', 'blue', 'a'), sprite('sprite-2.png', 'green', 'b')],
+    }
+    // The child deleted `a` in the later task; `b` is saved there, repainted.
+    const own = { sprites: [sprite('sprite-2.png', 'red', 'b')] }
+    const merged = mergeCarriedArcadeDesign({ authored: [{}], carried, own })
+    expect(merged.sprites.map((s) => [s.id, s.frames[0][0]])).toEqual([
+      ['a', ARCADE_COLOURS.blue],
+      ['b', ARCADE_COLOURS.red],
+    ])
+    // A new picture of that name never takes the place its id-matched twin already has.
+    const added = { sprites: [...own.sprites, sprite('sprite-2.png', 'pink', 'c')] }
+    expect(
+      mergeCarriedArcadeDesign({ authored: [{}], carried, own: added }).sprites.map((s) => s.id)
+    ).toEqual(['a', 'b', 'c'])
+  })
+
   it('gives a fresh id to a second item with the same id, so the editor never paints both', () => {
     const merged = mergeCarriedArcadeDesign({
       authored: [{ sprites: [sprite('coin.png', 'yellow', 'same')] }],
