@@ -60,6 +60,7 @@ vi.mock('../../../modules/html/iframe', async (importOriginal) => ({
 // jsdom from loading it.
 vi.mock('../../../modules/arcade/runtime', () => ({
   buildArcadeIframeSrc: vi.fn(() => '<!doctype html><title>game</title>'),
+  preloadArcadePython: vi.fn(),
 }))
 
 // ─── Classroom plumbing (Firebase) ───────────────────────────────────────────
