@@ -605,11 +605,11 @@ Each lesson type is a self-contained module folder. Adding a new type requires o
 | `arcade/index.js` | Arcade Kit module definition: single-file Python pixel-game task schema and classroom capabilities |
 | `arcade/StudentWorkspace.jsx` | Student Arcade Kit workspace (the calm Arcade screen): Code / Sprites / Tilemaps tabs (`ui-tabs` / `ui-tab`) with a 🎨 Assets chip for the lesson/type/made-here asset panel under the editor (open by itself while the student has drawn sprites or maps; the chip from another tab goes to Code with it open); on the Code tab the shared `CalmCodeRow` (😊 Emoji · Blocks · More: Reset code, Topic library (`onOpenTopicLibrary`) · big ▶ Play / Stop) and the calm key row (`PythonEditor` `calm`); the Type this out box folds through `whatToChange`; game beside the editor (46% editor on a desktop, 56% under 1024px); styles in `arcade.css` |
 | `arcade/BuilderWorkspace.jsx` | Builder Arcade Kit code-stage editor and on-demand game preview |
-| `arcade/ArcadePreview.jsx` | Isolated iframe host for rendering and restarting an Arcade Kit game safely |
+| `arcade/ArcadePreview.jsx` | Isolated iframe host for rendering and restarting an Arcade Kit game safely; on mount starts `preloadArcadePython()` (Pyodide's boot files into the HTTP cache, once a page) |
 | `arcade/arcade.css` | The Arcade student workspace's tabs, Assets chip and assets panel styles |
 | `arcade/design.js` | Portable pixel-sprite and tilemap model, stage selection, generated image data URLs, and Python tilemap snippet creation |
 | `arcade/ArcadeDesignStudio.jsx` | Shared Builder/student sprite editor, tilemap painter, per-tile-property editor, object-spawn list, and generated-asset list |
-| `arcade/runtime.js` | Builds the sandboxed Pyodide game document and exposes `headstart_arcade` (`game`, `Sprite`, `TileMap`, `keys`, `pointer`/`mouse`) to student code |
+| `arcade/runtime.js` | Builds the sandboxed Pyodide game document and exposes `headstart_arcade` (`game`, `Sprite`, `TileMap`, `keys`, `pointer`/`mouse`) to student code; `isArcadeEmoji` (emoji sprite images, drawn fitted to the sprite's box); `preloadArcadePython` |
 | `arcade/CheckEditor.jsx` | Arcade Kit code-check editor wrapper (Output subject hidden; code checks run on Run game via `handleArcadeRun` in `useStudentCodeState.js`) |
 | `arcade/TeacherLiveView.jsx` | Teacher Arcade source view with read-only inspection of a watched student's art and map snapshot |
 | `turtle/index.js` | Turtle module definition: single-file Python turtle-graphics task schema and classroom capabilities |

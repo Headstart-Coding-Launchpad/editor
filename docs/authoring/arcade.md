@@ -391,7 +391,10 @@ the Admin Portal's Shared Assets panel.
 ## Runtime notes and limits
 
 The first **Run game** loads a separate Pyodide runtime inside a sandboxed
-iframe, so a short initial delay is expected. The runtime is stopped by
+iframe, so a short initial delay is expected. Opening an Arcade task fetches
+Pyodide's files in the background (once a page, never for other task types),
+so by the first Play they are usually in the browser cache and only Python's
+start-up (about a second) is left. The runtime is stopped by
 destroying that iframe when source changes or the student presses Stop.
 
 Arcade Kit currently supports one Python source file, images, animated sprite

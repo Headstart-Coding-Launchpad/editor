@@ -53,7 +53,9 @@ installed or used outside Head Start unchanged.
   game.frame, game.shake(...), camera following, and controllable music/sound
   effects are available for game feel and scrolling worlds.
 - Sprite(image, x, y, width, height, frames, frame) supports horizontal sprite
-  sheets, simple frame animation, and delta-based velocity movement.
+  sheets, simple frame animation, and delta-based velocity movement. An image
+  made only of emoji with no asset of that name (`Sprite("🐱")`) draws the
+  emoji cropped to its ink and fitted to the sprite's box (also for tiles).
 - sprite.touches(other) supplies simple axis-aligned rectangle collision.
 - keys.left, keys.right, keys.up, keys.down, keys.space, keys.horizontal,
   keys.vertical, and keys.pressed("…") are available.
@@ -151,7 +153,12 @@ installed or used outside Head Start unchanged.
   iframe. It depends on the Pyodide CDN and network availability; it is not
   bundled or shared with the existing Python Web Worker. This means the first
   explicit **Run game** can take a few seconds, especially on a slow connection;
-  later runs are normally faster when the browser cache is available.
+  later runs are normally faster when the browser cache is available. To cut
+  the first wait, `ArcadePreview` calls `preloadArcadePython()` on mount: the
+  page fetches the five Pyodide boot files once, and the sandboxed frame reuses
+  them from the HTTP cache (measured 28 Nov 2026 in headless Chromium at
+  10 Mbit/s: first Play 4.6 s to 1.4 s, no bytes downloaded by Play). It does
+  not boot Python early, so about a second of start-up remains.
 - Teacher live/source views mirror code only. They do not currently render a
   student's running game canvas.
 - Arcade games do not use the existing Python worker runtime, Python tests,

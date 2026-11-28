@@ -37,6 +37,19 @@ touches without reading all of it:
 
 Entries written before 2026-09-29 are not tagged.
 
+## 2026-11-28
+
+- **Arcade: `Sprite("🐱")` draws an emoji.** A sprite (or tile) image made only of emoji, with
+  no uploaded asset of that name, draws the emoji cropped to its ink and scaled to fill the
+  sprite's box, so `touches()`, tile collision and `pointer.over()` match the picture. Skin tones,
+  ZWJ sequences and keycaps work; Windows shows flags as two letters. An uploaded asset with the
+  same name still wins, and other unknown names still draw nothing. Opening an Arcade task now
+  fetches the game's Python files in the background, so the first **Play** starts faster. Also
+  documented: `if pointer.down:` alone can miss a quick click; use
+  `pointer.just_pressed or pointer.down`. No new lesson fields.
+  See [arcade.md](arcade.md).
+- Affects: arcade · Existing lessons: no changes needed · Resolves: none (Ryan, 28 Nov 2026)
+
 ## 2026-11-26
 
 - **`lessons ready` now checks quizzes, `code_arrange` tasks and Support stages.** A graded quiz
