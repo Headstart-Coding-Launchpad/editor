@@ -39,7 +39,7 @@ describe('variable capture Python source', () => {
       'def _hs_encode_value(',
       'def _hs_snapshot(',
       'def _hs_frame_namespace(',
-      'def _hs_imported_names(',
+      'def _hs_imported(',
       'class _HsLineWatch',
     ]) {
       expect(VARIABLE_CAPTURE_PY).toContain(name)

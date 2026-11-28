@@ -24,7 +24,7 @@
  *       when a flat list was drawn with width= (the panel wraps its tiles at that width).
  *       Hidden: dunder names, `_hs…` names, modules, anything callable (functions, classes,
  *       methods, builtins) and `hidden` (the author's `hide` plus names imported from the
- *       turtle / stage modules — see _hs_imported_names).
+ *       turtle / stage modules while they still hold the module's object — see _hs_imported).
  *   _hs_own_names(namespace) → dict without what the runtime's own shims defined.
  *   _hs_frame_namespace(frame) → (namespace, scope)
  *       The variables visible at a traced line: the module frame's own names, with a student
@@ -39,8 +39,8 @@
  *       so a student's `except Exception` can't swallow it) to end the
  *       student's program there (slow-mo's 2,000-step cap): the watch stops and the exception
  *       goes on into the program, for the caller to catch around the run.
- *   _hs_imported_names(tree, modules) → set
- *       Names bound by `from <module> import …` for the given top-level modules.
+ *   _hs_imported(tree, modules) → { name: object }
+ *       What `from <module> import …` bound for the given top-level modules.
  *
  * VALUE NODES (`t` is the kind):
  *   { t: 'str', v, more? }              more = characters cut off the end
@@ -95,7 +95,7 @@ _HS_MAX_REPR = ${L.maxReprChars}
 def _hs_short_repr(value):
     try:
         text = repr(value)
-    except Exception:
+    except BaseException:
         text = '<' + type(value).__name__ + '>'
     if len(text) > _HS_MAX_REPR:
         text = text[:_HS_MAX_REPR] + '...'
@@ -105,6 +105,9 @@ def _hs_encode_value(value, depth=0, budget=None):
     if budget is None:
         budget = [_HS_MAX_NODES]
     budget[0] -= 1
+    # An answer that was never waited for (programShape.py.js): the run ends with its error.
+    if type(value).__name__ == '_HsPending':
+        return {'t': 'obj', 'type': 'waiting', 'r': '…'}
     if value is None:
         return {'t': 'none'}
     if isinstance(value, bool):
@@ -258,17 +261,18 @@ def _hs_frame_namespace(frame):
     namespace.update(frame.f_locals)
     return namespace, frame.f_code.co_name
 
-def _hs_imported_names(tree, modules):
-    names = set()
+def _hs_imported(tree, modules):
+    found = {}
     for node in _hs_ast.walk(tree):
         if isinstance(node, _hs_ast.ImportFrom) and (node.module or '').split('.')[0] in modules:
             for alias in node.names:
+                module = _hs_sys.modules.get(node.module)
                 if alias.name == '*':
-                    module = _hs_sys.modules.get(node.module)
-                    names.update(getattr(module, '__all__', None) or dir(module))
+                    names = getattr(module, '__all__', None) or dir(module)
+                    found.update({n: getattr(module, n, None) for n in names})
                 else:
-                    names.add(alias.asname or alias.name)
-    return names
+                    found[alias.asname or alias.name] = getattr(module, alias.name, None)
+    return found
 
 class _HsStopRun(BaseException):
     pass

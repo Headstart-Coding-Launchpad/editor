@@ -174,8 +174,8 @@ if _hs_setup_src:
 def _hs_is_runtime(node):
     call = node.value if isinstance(node, ast.Expr) else None
     name = call.func.id if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) else ''
-    if name == 'exec':
-        return len(call.args) == 2 and ast.unparse(call.args[1]) == 'globals()'
+    if name == 'exec' and call.args:
+        return str(getattr(call.args[0], 'value', '')).startswith('import sys, types, ')
     return name == '_turtle_course_setup'
 
 _hs_split = 0
@@ -266,7 +266,10 @@ def _hs_rec_loop_total(node):
         return None
     it = node.iter
     if isinstance(it, ast.Await):
-        it = it.value.args[0]
+        it = it.value
+    # The wrapper's own calls around the student's (programShape.py.js).
+    if isinstance(it, ast.Call) and getattr(it.func, 'id', '') in ('_hs_aw', '_hs_now'):
+        it = it.args[0]
     try:
         if isinstance(it, (ast.List, ast.Tuple, ast.Set)):
             if any(isinstance(e, ast.Starred) for e in it.elts):
@@ -365,7 +368,8 @@ if _hs_peek_on[0] or _hs_rec_on or _hs_count_on:
 try:
     exec(_hs_runtime, _hs_base)
     _g.update(_hs_base)
-    _hs_hidden |= _hs_imported_names(_tree, ('turtle', 'stage', 'beats'))
+    # What the student imported from these is not theirs, until they give the name a new value.
+    _hs_base = {**_hs_base, **_hs_imported(_tree, ('turtle', 'stage', 'beats'))}
     _hs_result = eval(_hs_code, _g)
     if _hs_result is not None:
         await _hs_result
@@ -404,7 +408,7 @@ finally:
             continue
         try:
             _hs_repr = repr(_value)
-        except Exception:
+        except BaseException:
             continue
         try:
             _hs_json = json.dumps(_value)

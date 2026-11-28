@@ -17,6 +17,23 @@ describe('findPythonError', () => {
 describe('explainPythonError', () => {
   const explain = (text, code) => explainPythonError(text, { code })
 
+  it('input() where Python cannot wait, with other advice inside __init__', () => {
+    const wait = 'Line 3: RuntimeError: input() has to wait, and Python cannot wait '
+    const init = explain(
+      wait + 'inside __init__. Do it outside the class (and pass the answer in).'
+    )
+    expect(init.title).toBe("input() can't wait inside __init__")
+    expect(init.rungs).toHaveLength(4)
+    expect(init.rungs[3]).toContain('outside the class')
+    const other = explain(
+      wait.replace('input', 'ask') +
+        'here (map(), sorted(), a lambda, yield or a __special__ method).'
+    )
+    expect(other.title).toBe("ask() can't wait here")
+    expect(other.rungs[3]).toContain('for loop')
+    expect(explain('Line 1: RuntimeError: dictionary changed size during iteration')).toBeNull()
+  })
+
   it('range without brackets (the session report case)', () => {
     const help = explain('Line 1: SyntaxError: invalid syntax', 'for i in range 4:\n    print(i)')
     expect(help.title).toBe('range needs brackets around its number')

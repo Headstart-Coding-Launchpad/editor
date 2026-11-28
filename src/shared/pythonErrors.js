@@ -40,6 +40,27 @@ const BLOCK_START = /^\s*(for|while|if|elif|else|def|class|try|except|finally|wi
 
 // Each entry: (error, code) => explanation or null. First match wins.
 const EXPLAINERS = [
+  // The Python worker's "cannot wait" (src/modules/python/programShape.py.js).
+  (err) => {
+    const what = err.message.match(/^(\S+\(\)) has to wait/)?.[1]
+    if (!what) return null
+    const init = err.message.includes('inside __init__')
+    return {
+      title: `${what} can't wait ${init ? 'inside __init__' : 'here'}`,
+      rungs: [
+        `Look at ${onLine(err)}. ${what} has to stop and wait for an answer.`,
+        init
+          ? '__init__ sets up a new object, and Python cannot pause in the middle of it.'
+          : 'Python cannot pause inside map(), sorted(), a lambda, yield or a __special__ method.',
+        init
+          ? '```python\nclass Dog:\n    def __init__(self, name):\n        self.name = name\nname = input("Name? ")   # ask outside\ndog = Dog(name)          # pass it in\n```'
+          : '```python\nanswers = []\nfor i in range(3):\n    answers.append(input("? "))   # a loop can wait\n```',
+        init
+          ? 'Ask outside the class, then pass the answer in.'
+          : 'Ask first in an ordinary line or a for loop, then use the answer.',
+      ],
+    }
+  },
   // `for i in range 4:` — range needs brackets.
   (err, code) => {
     if (err.type !== 'SyntaxError') return null

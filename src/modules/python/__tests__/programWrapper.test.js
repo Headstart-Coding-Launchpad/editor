@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildMicroPythonProgram } from '../../electronics/index.js'
 import { buildTurtleProgram, TURTLE_LINE_OFFSET } from '../../turtle/shim.js'
 import { STAGE_MODULE_PY } from '../../../shared/stage/stagePy.js'
+import { explainPythonError } from '../../../shared/pythonErrors.js'
 
 // The worker module assigns self.onmessage when imported.
 vi.hoisted(() => {
@@ -314,6 +315,204 @@ const JOBS = {
       lines('from turtle import *', 'math = 5', 'json = "x"', 'circle(10)', 'print(heading())')
     ),
   },
+  // Review and browser-check faults (28 Nov).
+  turtleOwnNames: {
+    code: buildTurtleProgram(
+      lines(
+        'from turtle import *',
+        'color = "red"',
+        'speed = 3',
+        'width = 4',
+        'heading = 90',
+        'position = [0, 0]',
+        'forward(10)'
+      )
+    ),
+    capture: { panel: true, lineOffset: TURTLE_LINE_OFFSET },
+    record: { on: true, lineOffset: TURTLE_LINE_OFFSET },
+  },
+  boundCallback: {
+    code: lines(
+      'class Game:',
+      '    def play(self):',
+      '        print("played", input())',
+      'def run(f):',
+      '    f()',
+      'g = Game()',
+      'run(g.play)'
+    ),
+    inputs: ['a'],
+  },
+  storedLambda: {
+    code: lines(
+      'def ask():',
+      '    return input()',
+      'actions = {"1": lambda: ask() if True else ""}',
+      'def menu():',
+      '    answer = actions["1"]()',
+      '    print("got", answer)',
+      'menu()'
+    ),
+    inputs: ['b'],
+  },
+  methodInList: {
+    code: lines(
+      'class Game:',
+      '    def start(self):',
+      '        print("start", input())',
+      'g = Game()',
+      'def go():',
+      '    for step in [g.start]:',
+      '        step()',
+      'go()'
+    ),
+    inputs: ['c'],
+  },
+  initAppend: {
+    code: lines(
+      'class Bag:',
+      '    def __init__(self):',
+      '        self.items = []',
+      '        self.items.append(input())',
+      '    def first(self):',
+      '        return self.items[0]',
+      'b = Bag()',
+      'print("made")',
+      'print(b.first())'
+    ),
+    inputs: ['late'],
+  },
+  initContainer: {
+    code: lines(
+      'class Bag:',
+      '    def __init__(self):',
+      '        self.items = [input()]',
+      '    def first(self):',
+      '        return self.items[0]',
+      'b = Bag()',
+      'print(b.first())'
+    ),
+    inputs: ['late'],
+  },
+  initTry: {
+    code: lines(
+      'class Dog:',
+      '    def __init__(self):',
+      '        try:',
+      '            self.age = int(input())',
+      '        except ValueError:',
+      '            print("not a number")',
+      '        except Exception:',
+      '            print("oops")',
+      'Dog()'
+    ),
+  },
+  initBareExcept: {
+    code: lines(
+      'class Dog:',
+      '    def __init__(self):',
+      '        try:',
+      '            self.age = int(input())',
+      '        except:',
+      '            print("not a number")',
+      'try:',
+      '    Dog()',
+      'except:',
+      '    print("oops")'
+    ),
+  },
+  deepRecursion: {
+    code: lines(
+      'def count(n):',
+      '    if n == 0:',
+      '        return int(input())',
+      '    return count(n - 1) + 1',
+      'print(count(600))'
+    ),
+    inputs: ['0'],
+  },
+  classAndLambdaSlots: {
+    code: lines(
+      'def keep(label):',
+      '    return lambda cls: cls',
+      'class Meta(type):',
+      '    def __new__(m, n, b, d, **kw):',
+      '        print("kw", kw.get("tag"))',
+      '        return super().__new__(m, n, b, d)',
+      '    def __init__(c, n, b, d, **kw):',
+      '        pass',
+      '@keep(input())',
+      'class A(dict if input() == "d" else list, metaclass=Meta, tag=input()):',
+      '    pass',
+      'f = lambda x=input(): x',
+      'print(f(), A.__bases__[0].__name__)',
+      'def make():',
+      '    class B(dict if input() == "d" else list):',
+      '        pass',
+      '    g = lambda y=input(): y',
+      '    print(B.__bases__[0].__name__, g())',
+      'make()'
+    ),
+    inputs: ['1', 'd', 'k', 'v', 'd', 'w'],
+  },
+  ownAwaitLoop: {
+    code: lines(
+      'async def get():',
+      '    return [1, 2]',
+      'co = get()',
+      'for x in await co:',
+      '    print(x)',
+      'class C:',
+      '    def __init__(self):',
+      '        for i in range(3):',
+      '            pass',
+      'C()',
+      'if False:',
+      '    input()'
+    ),
+    record: { on: true },
+  },
+  mapLaterPrint: {
+    code: lines(
+      'def ask(n):',
+      '    return input()',
+      'answers = list(map(ask, [1]))',
+      'print("one")',
+      'print(answers)'
+    ),
+  },
+  waitingInTags: {
+    code: lines(
+      'def ask(n):',
+      '    return input()',
+      'answers = list(map(ask, [1]))',
+      'lookup = {"a": answers}'
+    ),
+    capture: { panel: true },
+    record: { on: true },
+  },
+  sleepInInit: {
+    code: buildMicroPythonProgram(
+      lines('import time', 'class A:', '    def __init__(self):', '        time.sleep(1)', 'A()')
+    ),
+    asyncNames: ['sleep', 'sleep_ms'],
+  },
+  ownBareExec: { code: lines('exec()', 'input()') },
+  ownExec: {
+    code: lines('exec("x = 1", globals())', 'y = x', 'print(y, input())'),
+    inputs: ['z'],
+    capture: { panel: true },
+  },
+  property: {
+    code: lines(
+      'class Dog:',
+      '    @property',
+      '    def name(self):',
+      '        return input()',
+      'd = Dog()',
+      'print(d.name)'
+    ),
+  },
   electronics: [
     {
       code: buildMicroPythonProgram(
@@ -426,6 +625,70 @@ describe.skipIf(!PYTHON)('input() still waits', () => {
       "Line 4: NameError: name 'missing' is not defined"
     )
     expect(result('uncaughtKeepsOwnError').warnings).toEqual([])
+  })
+})
+
+describe.skipIf(!PYTHON)('review faults of 28 Nov', () => {
+  it.each([
+    ['boundCallback', ['played a']],
+    ['storedLambda', ['got b']],
+    ['methodInList', ['start c']],
+    ['deepRecursion', ['600']],
+    ['classAndLambdaSlots', ['kw k', 'v dict', 'dict w']],
+    ['ownExec', ['1 z']],
+  ])('%s still waits', (name, expected) => {
+    clean(name)
+    expect(printed(name)).toEqual(expected)
+  })
+
+  it.each([
+    ['initAppend', 4, 'inside __init__', ''],
+    ['initContainer', 3, 'inside __init__', ''],
+    ['initTry', 4, 'inside __init__', ''],
+    ['initBareExcept', 4, 'inside __init__', ''],
+    ['mapLaterPrint', 3, 'here', 'one\n'],
+    ['property', 6, 'here', ''],
+  ])('%s errors at once: nothing asked later or caught', (name, line, where, out) => {
+    const error = errorOf(name)
+    expect(error).toMatch(new RegExp(`^Line ${line}: RuntimeError: .*has to wait.*${where}`))
+    expect(error).not.toContain('own line')
+    expect(result(name).prompts).toEqual([])
+    expect(result(name).out).toBe(out)
+    expect(result(name).warnings).toEqual([])
+  })
+
+  it('Turtle: the child’s own color, speed, width stay in the panel and slow-mo', () => {
+    clean('turtleOwnNames')
+    const { panel, steps } = result('turtleOwnNames')
+    const own = ['color', 'speed', 'width', 'heading', 'position']
+    expect(panel.end.vars.map((v) => v.n).sort()).toEqual([...own].sort())
+    expect(Object.keys(Object.assign({}, ...steps.map((s) => s.s))).sort()).toEqual(own.sort())
+  })
+
+  it('slow-mo copes with the child’s own await, and totals loops that cannot wait', () => {
+    clean('ownAwaitLoop')
+    expect(result('ownAwaitLoop').loops.map((l) => l.total)).toEqual([null, 3])
+  })
+
+  it('has plain-words help for both kinds of "cannot wait"', () => {
+    const title = (name) => explainPythonError(errorOf(name))?.title
+    expect(title('initAppend')).toBe("input() can't wait inside __init__")
+    expect(title('mapLaterPrint')).toBe("ask() can't wait here")
+  })
+
+  it('does not tell a sleep() in __init__ to ask, nor trip on a bare exec()', () => {
+    expect(result('sleepInInit').traceback).toContain('Do it outside the class')
+    expect(result('ownBareExec').traceback).toContain('TypeError: exec')
+  })
+
+  it('keeps what the child’s own first-line exec() made', () => {
+    expect(result('ownExec').panel.end.vars.map((v) => v.n)).toEqual(['x', 'y'])
+  })
+
+  it('never shows _HsPending in the variable tags', () => {
+    const { panel, steps, variables } = result('waitingInTags')
+    expect(JSON.stringify([panel, steps, variables])).not.toContain('_HsPending')
+    expect(errorOf('waitingInTags')).toMatch(/^Line 3: RuntimeError: /)
   })
 })
 
