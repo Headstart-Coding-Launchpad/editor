@@ -39,6 +39,8 @@ describe('ArcadePreview preloads Python', () => {
         .map((file) => PYODIDE + file)
         .sort()
     )
+    // Low priority, so lesson images are fetched first.
+    expect(fetchSpy.mock.calls.every(([, options]) => options?.priority === 'low')).toBe(true)
     first.unmount()
     // Another task, the builder preview, or Play itself: nothing is fetched again.
     const second = render(<ArcadePreview code="game.run()" runId={1} running />)

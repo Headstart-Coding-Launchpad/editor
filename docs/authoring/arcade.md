@@ -178,9 +178,12 @@ def update():
 ```
 
 An emoji sprite needs no asset: `Sprite("🐱", x=20, y=20)` draws the cat, cropped
-to its ink and scaled to fill the sprite's box (keeping its shape, centred), so
-`touches()`, tile collision and `pointer.over()` match what children see. It
-must be only emoji: skin tones, ZWJ sequences such as 👩‍🚀 and keycaps such as 1️⃣
+to its ink, scaled to fit inside the sprite's box, keeping its shape, and centred.
+`touches()`, tile collision and `pointer.over()` use the box, so they match the
+picture only when the box is roughly the emoji's shape. Emoji sprites ignore
+`frames` and `animate()`. Symbols such as ★ and ♪ work too, and are drawn in white
+where the device's font has no colour for them. The name
+must be only emoji or symbols: skin tones, ZWJ sequences such as 👩‍🚀 and keycaps such as 1️⃣
 work; an uploaded asset with the same name wins; any other unknown name still
 draws nothing. Emoji also work as tile images: `world.draw({"#": "🧱"})`. The
 emoji's look comes from the device's emoji font, so it differs between Windows,

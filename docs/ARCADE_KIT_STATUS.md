@@ -157,7 +157,8 @@ installed or used outside Head Start unchanged.
   the first wait, `ArcadePreview` calls `preloadArcadePython()` on mount: the
   page fetches the five Pyodide boot files once, and the sandboxed frame reuses
   them from the HTTP cache (measured 28 Nov 2026 in headless Chromium at
-  10 Mbit/s: first Play 4.6 s to 1.4 s, no bytes downloaded by Play). It does
+  10 Mbit/s: first Play 4.6 s to 1.4 s, no bytes downloaded by Play; not checked in
+  Safari/iPad or school browsers). It does
   not boot Python early, so about a second of start-up remains.
 - Teacher live/source views mirror code only. They do not currently render a
   student's running game canvas.

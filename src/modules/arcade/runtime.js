@@ -10,13 +10,14 @@ export function preloadArcadePython() {
   if (preloading || typeof fetch !== 'function') return
   preloading = true
   const drain = (response) => response.arrayBuffer().catch(() => {})
-  for (const file of PYODIDE_BOOT.split(' ')) fetch(PYODIDE_CDN + file).then(drain, () => {})
+  for (const file of PYODIDE_BOOT.split(' '))
+    fetch(PYODIDE_CDN + file, { priority: 'low' }).then(drain, () => {})
 }
 
-// A sprite name made only of emoji (ZWJ sequences, skin tones, flags, keycaps): Sprite("🐱").
+// A sprite name made only of emoji or symbols (ZWJ sequences, skin tones, flags, keycaps, ★): Sprite("🐱").
 export const isArcadeEmoji = (text) =>
-  /^[\p{Extended_Pictographic}\p{Emoji_Component}]+$/u.test(text) &&
-  /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u.test(text)
+  /^[\p{Extended_Pictographic}\p{Emoji_Component}\p{So}]+$/u.test(text) &&
+  /[\p{Extended_Pictographic}\p{Regional_Indicator}\p{So}\u20e3]/u.test(text)
 
 // Direction names also answer to WASD, so keys.left / keys.horizontal /
 // keys.pressed('left') work for either hand position. Single-letter names
@@ -152,9 +153,9 @@ function emojiCanvas(text) {
   if (emojiArt.has(text)) return emojiArt.get(text);
   const art = document.createElement('canvas'), pen = art.getContext('2d'), font = '128px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   pen.font = font;
-  const ink = pen.measureText(text), left = ink.actualBoundingBoxLeft, top = ink.actualBoundingBoxAscent;
+  const ink = pen.measureText(text), left = ink.actualBoundingBoxLeft ?? 0, top = ink.actualBoundingBoxAscent ?? 112;
   art.width = Math.ceil(left + ink.actualBoundingBoxRight) + 2 || 130; art.height = Math.ceil(top + ink.actualBoundingBoxDescent) + 2 || 130;
-  pen.font = font; pen.fillText(text, left + 1, top + 1);
+  pen.font = font; pen.fillStyle = paletteByName.white; pen.fillText(text, left + 1, top + 1);
   emojiArt.set(text, art); return art;
 }
 function keyDown(name) { const aliases = keyAliases[name]; return aliases ? aliases.some(key => keys.has(key)) : keys.has(name); }

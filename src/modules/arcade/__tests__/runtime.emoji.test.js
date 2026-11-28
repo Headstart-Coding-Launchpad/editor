@@ -13,9 +13,15 @@ const INK = {
   actualBoundingBoxDescent: 10,
 }
 
-function fakeCanvas(log) {
+function fakeCanvas(log, metrics) {
   const ctx = new Proxy(
-    { measureText: () => INK, setTransform() {}, fillRect() {} },
+    {
+      measureText: () => metrics,
+      setTransform() {},
+      fillRect() {},
+      // Records the colour in force, which is what a one-colour glyph is painted with.
+      fillText: (...args) => log.push(['fillText', ctx.fillStyle, ...args]),
+    },
     {
       get: (target, key) => (key in target ? target[key] : (...args) => log.push([key, ...args])),
       set: (target, key, value) => ((target[key] = value), true),
@@ -33,16 +39,16 @@ function fakeCanvas(log) {
   }
 }
 
-function bootFrame(assets = []) {
+function bootFrame(assets = [], metrics = INK) {
   const html = buildArcadeIframeSrc({ assets })
   const script = html.split('<script type="module">')[1].split('const bootstrap =')[0]
   const log = []
-  const game = fakeCanvas(log)
+  const game = fakeCanvas(log, metrics)
   const art = []
   const document = {
     getElementById: (id) => (id === 'game' ? game : { style: {} }),
     createElement: () => {
-      const c = fakeCanvas(log)
+      const c = fakeCanvas(log, metrics)
       art.push(c)
       return c
     },
@@ -63,7 +69,8 @@ function bootFrame(assets = []) {
     'parent',
     script
   )(g, document, Image, () => {}, 640, 480, { postMessage() {} })
-  return { g, log, art, draws: () => log.filter(([op]) => op === 'drawImage') }
+  const of = (name) => () => log.filter(([op]) => op === name)
+  return { g, log, art, draws: of('drawImage'), texts: of('fillText') }
 }
 
 describe('Sprite("🐱") draws an emoji', () => {
@@ -91,6 +98,22 @@ describe('Sprite("🐱") draws an emoji', () => {
     expect(draws()[1][4]).toBeGreaterThanOrEqual(46)
   })
 
+  it('paints one-colour glyphs light, so they show on the dark game screen', () => {
+    const { g, texts } = bootFrame()
+    g.hsArcadeSprite('♥', 0, 0, 16, 16, 0, 1)
+    expect(texts()).toHaveLength(1)
+    expect(texts()[0][1]).toBe('#fff1e8')
+  })
+
+  it('still draws where the browser gives no ink measurements', () => {
+    const { g, texts, draws, art } = bootFrame([], { width: 128 })
+    g.hsArcadeSprite('🐱', 0, 0, 16, 16, 0, 1)
+    const [, , , x, y] = texts()[0]
+    expect([x, y].every(Number.isFinite)).toBe(true)
+    expect([art[0].width, art[0].height]).toEqual([130, 130])
+    expect(draws()[0].slice(2).every(Number.isFinite)).toBe(true)
+  })
+
   it('keeps uploaded assets first, even one named with an emoji', () => {
     const { g, draws, art } = bootFrame([{ name: '🐱', url: 'data:image/png;base64,abc' }])
     g.hsArcadeSprite('🐱', 0, 0, 16, 16, 0, 1)
@@ -111,6 +134,10 @@ describe('isArcadeEmoji', () => {
     for (const e of ['🐱', '❤️', '👍🏽', '👩‍🚀', '🏳️‍🌈', '🇬🇧', '1️⃣', '🐱🐶']) {
       expect(isArcadeEmoji(e), e).toBe(true)
     }
+  })
+
+  it('takes symbols that newer browsers no longer count as emoji', () => {
+    for (const s of ['★', '♪', '●']) expect(isArcadeEmoji(s), s).toBe(true)
   })
 
   it('does not take names, digits or emoji inside a file name', () => {

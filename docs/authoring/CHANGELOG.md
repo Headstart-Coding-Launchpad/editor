@@ -40,8 +40,11 @@ Entries written before 2026-09-29 are not tagged.
 ## 2026-11-28
 
 - **Arcade: `Sprite("🐱")` draws an emoji.** A sprite (or tile) image made only of emoji, with
-  no uploaded asset of that name, draws the emoji cropped to its ink and scaled to fill the
-  sprite's box, so `touches()`, tile collision and `pointer.over()` match the picture. Skin tones,
+  no uploaded asset of that name, draws the emoji cropped to its ink, fitted inside the
+  sprite's box (keeping its shape) and centred. `touches()`, tile collision and `pointer.over()`
+  use the box, so they match the picture only when the box is roughly the emoji's shape. Emoji
+  sprites ignore `frames` and `animate()`. Symbols such as ★ work too (white where the font has no
+  colour for them). Skin tones,
   ZWJ sequences and keycaps work; Windows shows flags as two letters. An uploaded asset with the
   same name still wins, and other unknown names still draw nothing. Opening an Arcade task now
   fetches the game's Python files in the background, so the first **Play** starts faster. Also
